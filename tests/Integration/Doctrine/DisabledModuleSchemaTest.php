@@ -42,9 +42,10 @@ final class DisabledModuleSchemaTest extends TestCase
     /** The module switched off in the build under test. */
     private const string Missing = 'crm';
 
-    private string $schema;
+    /** Empty until the test has one, because setUp skips before it does. */
+    private string $schema = '';
 
-    private string $probeDirectory;
+    private string $probeDirectory = '';
 
     protected function setUp(): void
     {
@@ -62,10 +63,19 @@ final class DisabledModuleSchemaTest extends TestCase
         );
     }
 
+    /**
+     * Runs after a skipped test as well, and a skipped test never got as far
+     * as making either of these.
+     */
     protected function tearDown(): void
     {
-        FileSystem::delete($this->probeDirectory);
-        Database::drop($this->schema);
+        if ($this->probeDirectory !== '') {
+            FileSystem::delete($this->probeDirectory);
+        }
+
+        if ($this->schema !== '') {
+            Database::drop($this->schema);
+        }
     }
 
     public function testADiffFromABuildMissingAModuleGeneratesNothing(): void
