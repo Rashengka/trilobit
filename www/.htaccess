@@ -1,0 +1,20 @@
+# Sends everything that is not a real file to the front controller.
+#
+# The document root is this directory, so nothing above it - not the sources,
+# not the configuration, not the environment file - is reachable over HTTP even
+# if this file is ignored.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Drop a trailing slash so that one page has one address.
+    RewriteRule ^(.+)/$ /$1 [R=301,L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

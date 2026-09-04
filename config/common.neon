@@ -1,0 +1,39 @@
+#
+# Configuration shared by every environment.
+#
+# What differs between two deployments of the same code belongs in .env, and
+# what differs on one developer's machine belongs in config/local.neon; see
+# config/local.neon.example. Neither of those is in the repository.
+#
+
+extensions:
+    core: Trilobit\Core\DI\CoreExtension
+
+application:
+    # Presenter names are mapped explicitly rather than by convention, because
+    # the convention has changed between framework versions and because an
+    # explicit map is what lets a module bring its own mapping with it: an
+    # enabled module adds one line from its own configuration file, a disabled
+    # one adds nothing, and a link into it then fails loudly instead of
+    # resolving to a blank page.
+    #
+    #   Core:Front:Home  ->  Trilobit\Core\Presentation\Front\HomePresenter
+    mapping:
+        Core: Trilobit\Core\Presentation\*\*Presenter
+
+    errorPresenter: Nette:Error
+    catchExceptions: false
+
+latte:
+    strictTypes: true
+    strictParsing: true
+
+http:
+    frames: SAMEORIGIN
+
+session:
+    autoStart: smart
+    expiration: 14 days
+
+tracy:
+    showBar: %debugMode%

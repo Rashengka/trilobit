@@ -1,0 +1,27 @@
+{templateType Trilobit\Core\Presentation\Front\FrontTemplate}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{ifset $pageTitle}{$pageTitle} | {/ifset}{$siteName}</title>
+</head>
+<body data-testid="layout">
+
+<header data-testid="layout-header">
+    {* The leading colon makes the destination absolute; without it Nette would
+       resolve it inside the module the current presenter happens to be in. *}
+    <a n:href=":Core:Front:Home:default" data-testid="layout-home-link">{$siteName}</a>
+</header>
+
+<main data-testid="layout-content">
+    {include content}
+</main>
+
+<footer data-testid="layout-footer">
+    <p>{$siteName} &mdash; open source, MIT.</p>
+</footer>
+
+</body>
+</html>

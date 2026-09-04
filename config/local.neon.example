@@ -1,0 +1,22 @@
+#
+# Template for configuration that belongs to one machine only.
+#
+#   cp config/local.neon.example config/local.neon
+#
+# config/local.neon is in .gitignore and is loaded last, so anything set here
+# wins over config/common.neon. Connection details do not belong here: they
+# come from .env, so that the same values also reach a deployment that has no
+# writable configuration directory.
+#
+# The file is optional. Without it the application boots on the shared
+# configuration alone.
+#
+
+# tracy:
+#     # Where the error pages get emailed. Leave it out unless you want them.
+#     email:
+
+# application:
+#     # Show the exception page instead of the error presenter while working
+#     # on the error presenter itself.
+#     catchExceptions: false

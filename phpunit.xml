@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         cacheDirectory=".phpunit.cache"
+         colors="true"
+         beStrictAboutOutputDuringTests="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerErrors="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerWarnings="true">
+    <testsuites>
+        <!--
+            Every level from the test strategy has a suite here, empty ones
+            included. A suite that appears only once it has a test in it is a
+            suite nobody notices is missing.
+        -->
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="architecture">
+            <directory>tests/Architecture</directory>
+        </testsuite>
+        <testsuite name="template">
+            <directory>tests/Template</directory>
+        </testsuite>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+        <testsuite name="combination">
+            <directory>tests/Combination</directory>
+        </testsuite>
+        <testsuite name="install">
+            <directory>tests/Install</directory>
+        </testsuite>
+        <testsuite name="tooling">
+            <directory>tests/Tooling</directory>
+            <!--
+                CheckLeaksTest.php is a standalone script that ends in exit();
+                loading it as a test case would end the run. LeakGuardTest runs
+                it as a child process instead.
+            -->
+            <exclude>tests/Tooling/CheckLeaksTest.php</exclude>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+</phpunit>

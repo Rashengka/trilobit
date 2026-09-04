@@ -1,0 +1,11 @@
+{templateType Trilobit\Core\Presentation\Front\HomeDefaultTemplate}
+
+{block content}
+    <h1 data-testid="homepage-headline">{$headline}</h1>
+
+    <p data-testid="homepage-tagline">{$tagline}</p>
+
+    <ul data-testid="homepage-highlights" n:if="$highlights !== []">
+        <li n:foreach="$highlights as $highlight" data-testid="homepage-highlight">{$highlight}</li>
+    </ul>
+{/block}

@@ -1,0 +1,11 @@
+#
+# Services of the application wrapper: the things that belong to this
+# particular checkout rather than to Core or to any module.
+#
+# Core registers its own services in Trilobit\Core\DI\CoreExtension, and a
+# module registers its own in src/<Module>/config/services.neon, so this file
+# stays short on purpose. A service that appears here and is used by Core is a
+# service that is in the wrong file.
+#
+
+services:
