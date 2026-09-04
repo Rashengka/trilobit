@@ -57,6 +57,12 @@ final class Build
     }
 
     /**
+     * The build, kept between cases so that eight containers are compiled once
+     * rather than once per claim.
+     *
+     * Safe for every question that is answered out of the container itself.
+     * Not safe for one that is answered out of a database: see freshly().
+     *
      * @param list<string> $enabled
      */
     public static function container(array $enabled): Container
@@ -66,13 +72,32 @@ final class Build
             return self::$containers[$key];
         }
 
+        return self::$containers[$key] = self::freshly($enabled);
+    }
+
+    /**
+     * The same build, put together again from nothing.
+     *
+     * A test that makes itself a schema has to have one of these, because a
+     * container remembers which database it was pointed at when it was built:
+     * rendering a page constructs Nette\Security\User, which constructs the
+     * authenticator, which constructs the entity manager and its connection -
+     * and the connection takes its database name from the environment at that
+     * moment. A container made before Trilobit\Tests\Database created the
+     * schema would run the migrations somewhere else entirely, report success,
+     * and leave the new schema empty.
+     *
+     * @param list<string> $enabled
+     */
+    public static function freshly(array $enabled): Container
+    {
         $root = Bootstrap::rootDirectory();
         $modules = [];
         foreach (self::SWITCHABLE as $module) {
             $modules[$module] = in_array($module, $enabled, true);
         }
 
-        return self::$containers[$key] = Boot::container(ModuleList::of($modules, $root));
+        return Boot::container(ModuleList::of($modules, $root));
     }
 
     /**

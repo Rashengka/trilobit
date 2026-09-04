@@ -229,7 +229,10 @@ final class AllModuleCombinationsTest extends TestCase
         $schema = Database::schemaFor(self::class, $enabled === [] ? 'core' : implode('_', $enabled));
 
         try {
-            $container = Build::container($enabled);
+            // Built after the schema exists, not taken from the cache: a
+            // container remembers which database it was pointed at when it was
+            // made. See Build::freshly().
+            $container = Build::freshly($enabled);
             Migrations::run($container);
 
             self::assertCount(

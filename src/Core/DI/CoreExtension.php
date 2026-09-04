@@ -17,6 +17,7 @@ use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Asset\VersionedViteMapper;
 use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
+use Trilobit\Core\Console\AccountCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\WarmupCommand;
 use Trilobit\Core\Contract\Activity\ActivityRecorder;
@@ -36,6 +37,8 @@ use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
+use Trilobit\Core\Security\Accounts;
+use Trilobit\Core\Security\Authenticator;
 
 /**
  * The always-enabled part of the application, and the five places a module
@@ -144,6 +147,21 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('warmupCommand'))
             ->setFactory(WarmupCommand::class);
+
+        // Identity. The authenticator is autowired on purpose: Nette\Security\
+        // User takes one by type, so registering it here is the whole of the
+        // wiring that makes signing in work. A build has exactly one, because
+        // there is one place accounts are kept.
+        $builder->addDefinition($this->prefix('accounts'))
+            ->setFactory(Accounts::class);
+
+        $builder->addDefinition($this->prefix('authenticator'))
+            ->setFactory(Authenticator::class);
+
+        $builder->addDefinition($this->prefix('accountCommand'))
+            ->setFactory(AccountCommand::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_CONSOLE_COMMAND, 'app:account');
 
         // Doctrine's migration generator, with the two things a build made of
         // modules has to establish first; see the class. It replaces the one
