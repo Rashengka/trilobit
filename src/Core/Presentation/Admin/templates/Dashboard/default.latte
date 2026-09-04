@@ -1,0 +1,63 @@
+{templateType Trilobit\Core\Presentation\Admin\DashboardDefaultTemplate}
+
+{*
+ * The overview: what this installation is, and who is looking at it.
+ *
+ * There is nothing belonging to any module on it, on purpose. A module's pages
+ * are reached from the menu, which is whatever the enabled modules contributed,
+ * so this page says the same thing in a build with three modules and in a build
+ * with none - which is what makes it the page any build can be checked against.
+ *
+ * Every visible thing here is a component from src/Core/Presentation/components/;
+ * the page decides which ones appear and in what order and nothing about how any
+ * of them looks.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/badge.latte'}
+{import '../../../components/marker-list.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'admin-headline',
+        leadTestId: 'admin-lead'}
+
+    {embed block panel, testId: 'admin-account-panel'}
+        {block panelTitle}This account{/block}
+
+        {block panelBody}
+            <div class="l-stack">
+                <div class="l-cluster" data-testid="admin-roles">
+                    {foreach $roles as $role}
+                        {include badge, label: $role, variant: 'accent', testId: 'admin-role-' . $role}
+                    {/foreach}
+                </div>
+
+                <div class="l-cluster" data-testid="admin-permissions">
+                    {foreach $permissions as $permission}
+                        {include badge, label: $permission, testId: 'admin-permission-' . $permission}
+                    {/foreach}
+                </div>
+            </div>
+        {/block}
+    {/embed}
+
+    {embed block panel, testId: 'admin-build-panel'}
+        {block panelTitle}This build{/block}
+
+        {block panelBody}
+            {include markerList,
+                items: [
+                    $sectionCount === 1
+                        ? 'One module contributed a section to the menu.'
+                        : $sectionCount . ' modules contributed a section to the menu.',
+                    'A module that is switched off registers nothing, so it leaves no entry behind.',
+                    'Switching one on is a line in config/modules.neon and a run of the migrations.',
+                ],
+                testId: 'admin-build-notes'}
+        {/block}
+    {/embed}
+{/block}

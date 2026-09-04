@@ -63,6 +63,11 @@
     --color-accent-ink: light-dark(oklch(0.99 0.01 215), oklch(0.18 0.03 215));
     --color-focus: light-dark(oklch(0.58 0.13 215), oklch(0.78 0.12 215));
 
+    /* What a page says when it has to refuse something. */
+    --color-danger: light-dark(oklch(0.55 0.17 27), oklch(0.7 0.15 27));
+    --color-danger-ink: light-dark(oklch(0.33 0.11 27), oklch(0.93 0.04 27));
+    --color-danger-surface: light-dark(oklch(0.96 0.03 27), oklch(0.27 0.05 27));
+
     --color-banner: light-dark(oklch(1 0 0), oklch(0.22 0.015 255));
     --color-banner-ink: var(--color-ink);
     --color-nav: light-dark(oklch(1 0 0), oklch(0.22 0.015 255));

@@ -72,6 +72,16 @@ final class ComponentRegistry
                 ['plain', 'accent'],
             ),
             new Component(
+                'c-field',
+                'One thing a form asks for: what it is called, and the control that answers it.',
+                ['default', 'with a control that is not a line of text'],
+            ),
+            new Component(
+                'c-notice',
+                'One sentence a page has to say to whoever is reading it.',
+                ['info', 'danger'],
+            ),
+            new Component(
                 'c-marker-list',
                 'A handful of short statements, each one marked.',
                 ['default'],

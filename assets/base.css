@@ -382,6 +382,50 @@
         color: var(--color-accent-ink);
     }
 
+    .c-field {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2xs);
+    }
+
+    .c-field__label {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+    }
+
+    /* The control is styled where it sits rather than through a class of its
+       own. What a form puts into this slot is an element the framework wrote,
+       and it carries no class this file could name. */
+    .c-field__control :is(input, select, textarea) {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-sm);
+        color: var(--color-ink);
+        inline-size: 100%;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    .c-field__control :is(input, select, textarea):focus-visible {
+        border-color: var(--color-accent);
+    }
+
+    .c-notice {
+        background-color: var(--color-canvas-sunken);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        color: var(--color-ink);
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
+    .c-notice--danger {
+        background-color: var(--color-danger-surface);
+        border-color: var(--color-danger);
+        color: var(--color-danger-ink);
+    }
+
     .c-marker-list {
         display: flex;
         flex-direction: column;

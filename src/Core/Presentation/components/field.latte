@@ -1,0 +1,20 @@
+{**
+ * c-field - one thing a form asks for: what it is called, and the control that
+ * answers it.
+ *
+ * It takes slots rather than a label and a control as strings, because the
+ * control belongs to whatever form it is part of - a component that accepted it
+ * as text would be a component escaping markup back out again, and one that
+ * knew about nette/forms would be a component the style guide could not show
+ * without a form to show it in.
+ *
+ * Use it with {embed block field}, filling in fieldLabel and fieldControl.
+ *}
+
+{define field, ?string $testId = null}
+    <div class="c-field" data-testid="{$testId}">
+        <div class="c-field__label">{block fieldLabel}{/block}</div>
+
+        <div class="c-field__control">{block fieldControl}{/block}</div>
+    </div>
+{/define}

@@ -35,6 +35,7 @@ use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
+use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
@@ -181,6 +182,14 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('router'))
             ->setType(RouteList::class)
             ->setFactory('@' . $this->prefix('routerFactory') . '::create');
+
+        // The administration is Core's own and is in every build, so its routes
+        // are registered unconditionally - unlike the style guide's, which are
+        // registered only where that page exists.
+        $builder->addDefinition($this->prefix('adminRoutes'))
+            ->setFactory(AdminRoutes::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ROUTE_PROVIDER);
 
         $builder->addDefinition($this->prefix('adminMenu'))
             ->setFactory(Menu::class, [[]]);

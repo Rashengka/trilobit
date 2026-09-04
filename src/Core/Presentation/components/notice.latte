@@ -1,0 +1,17 @@
+{**
+ * c-notice - one sentence the page has to say to whoever is reading it: that
+ * something was saved, or that something was refused.
+ *
+ * The variant names what kind of news it is rather than what colour it should
+ * be, so a theme decides how loud either one looks. A refusal is announced to a
+ * screen reader as soon as it appears, because somebody who cannot see the page
+ * change would otherwise be left with a form that simply did nothing.
+ *}
+
+{define notice, string $message, string $variant = 'info', ?string $testId = null}
+    <p
+        n:class="'c-notice', $variant === 'danger' ? 'c-notice--danger'"
+        role="{$variant === 'danger' ? 'alert' : 'status'}"
+        data-testid="{$testId}"
+    >{$message}</p>
+{/define}

@@ -47,6 +47,7 @@ final class OverviewPresenter extends FrontPresenter
         '--color-ink-muted' => 'text that supports other text',
         '--color-line' => 'borders and rules',
         '--color-accent' => 'the action a page is about',
+        '--color-danger' => 'something the page had to refuse',
         '--color-nav' => 'behind the navigation',
     ];
 
