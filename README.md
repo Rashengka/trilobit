@@ -109,9 +109,38 @@ names; a checkout with no `var/build/modules.json` fails the build with a
 message naming the command to run, rather than bundling every module's code
 regardless of `config/modules.neon`.
 
+### The build is in the repository
+
+`www/build` is committed, so a clone runs without Node at all: point a document
+root at `www/` and the pages arrive styled. Trilobit is meant to be runnable on
+ordinary hosting, and a JavaScript toolchain is a steep price to ask before
+somebody can look at it. Two smaller things follow from the same decision: a
+deployment never builds, which is the riskiest moment to depend on a package
+registry, and a rollback is a `git checkout`.
+
+It is paid for in two ways.
+
+The files are named without a content hash - `app.js`, not `app-0btNOuvg.js`.
+A hashed name is not a modification to git but the deletion of one file and the
+arrival of another, so the file's history and the delta the packer would have
+stored are both lost, and the manifest changes on every build. What the hash
+was also doing - telling a browser the file had changed - is done by
+`bin/build-versions.mjs`, which records what each built file's contents hash
+to, and by `Trilobit\Core\Asset\VersionedViteMapper`, which turns that into
+`app.js?v=1a2b3c4d`. Git never sees a query string.
+
+And a committed build can go stale: edit a `.ts`, forget to rebuild, commit,
+and the repository shows new source while the application runs old code, with
+nothing red anywhere. The answer to that is a gate rather than discipline, and
+it is described below. The answer to a merge conflict inside `www/build` is
+`npm run build` too - `.gitattributes` deliberately refuses to resolve one,
+because a merged bundle is a file neither side wrote.
+
 `npm run e2e` runs Playwright. On a machine with Google Chrome installed it
 uses that one, so nothing has to be downloaded; set `PLAYWRIGHT_CHANNEL` to
 choose another, or leave it unset on a build server to use Playwright's own.
+`npm run test:frontend` runs what is claimed about the build itself under
+Node's own runner, because `composer test` has no Node to run it with.
 
 ## The design system
 
@@ -252,10 +281,11 @@ knows nothing about it. `migrations:diff` excludes it and is the tool of record.
 - MariaDB 11 LTS. It is the only tested target: the generated DDL differs
   between dialects, so "MySQL or MariaDB" would mean neither of them verified.
   `compose.yaml` starts the right one.
-- Node, for the front-end build alone. `composer check` never needs it: the
-  suites render pages against a fixture manifest rather than against a real
-  `www/build`, and `tests/Combination/NoRealBuildRequiredTest` moves a real one
-  out of the way to prove it.
+- Node, to change the front end - not to run it. `www/build` is committed, so a
+  clone serves styled pages with no Node anywhere. `composer check` never needs
+  it either: the suites render pages against a fixture manifest rather than
+  against a real `www/build`, and `tests/Combination/NoRealBuildRequiredTest`
+  moves a real one out of the way to prove it.
 
 ## Installation
 
@@ -267,13 +297,13 @@ cp .env.example .env
 docker compose up -d
 bin/trilobit migrations:migrate
 bin/trilobit app:warmup
-npm ci && npm run build
 ```
 
-The last two lines are the stylesheet and the scripts. `app:warmup` writes down
-which modules this build is made of, and `npm run build` is what turns
-`assets/base.css` and `assets/themes/` into the file the pages load - without it
-the application answers, in plain unstyled HTML.
+`app:warmup` writes down which modules this build is made of, for the parts
+that never start PHP. The scripts and the stylesheet are already in the clone,
+under `www/build`; run `npm ci && npm run build` only once you change something
+under `assets/` or `src/*/assets/`, or once you switch a module on or off -
+`www/build` is built for the modules `config/modules.neon` names.
 
 Then serve `www/`:
 

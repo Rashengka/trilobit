@@ -1,0 +1,27 @@
+# What git is looking at when it looks at the built frontend.
+#
+# www/build is committed - see the README for why - and almost all of it is
+# machine-written output on a single line. Two of git's defaults are wrong for
+# that kind of file, so both are turned off:
+#
+#   -diff   a bundle rendered as a textual diff is one deleted line and one
+#           added line of twenty thousand characters. Nobody reads it, and it
+#           makes every review of a real change harder to find.
+#
+#   -merge  a three-way merge of two minified lines can succeed and produce
+#           something that is neither side. Unset, git stops and leaves the
+#           current branch's version in place with the merge marked as
+#           conflicted, which is the honest state: the resolution for a
+#           conflict in generated output is to rebuild it, never to edit it.
+#
+# linguist-generated tells GitHub the same thing, so the files are collapsed in
+# a pull request instead of drowning it.
+/www/build/** -diff -merge linguist-generated
+
+# The exceptions are the two small, sorted JSON files beside the bundle. They
+# are the part of a build a person actually reads during review - which entry
+# points exist and which files changed - so they keep an ordinary diff. They
+# are still not mergeable by hand: the version of a file is the hash of that
+# file, so a merged one would be a version nothing hashes to.
+/www/build/.vite/manifest.json diff -linguist-generated
+/www/build/.vite/versions.json diff -linguist-generated

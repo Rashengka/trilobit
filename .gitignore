@@ -3,7 +3,12 @@
 /node_modules/
 /var/
 /vendor/
-/www/build/
+
+# The built frontend under www/build is committed on purpose - see the README -
+# so it is not listed here. The one file in it that is not part of a build is:
+# @nette/vite-plugin writes this while `npm run dev` is running to tell the
+# application where the dev server is, and leaves it behind when it crashes.
+/www/build/.vite/nette.json
 
 # Browser-suite output.
 /test-results/

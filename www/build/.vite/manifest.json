@@ -1,0 +1,29 @@
+{
+  "assets/app.ts": {
+    "file": "app.js",
+    "name": "app",
+    "src": "assets/app.ts",
+    "isEntry": true,
+    "css": [
+      "app.css"
+    ]
+  },
+  "src/Cms/assets/entry.ts": {
+    "file": "cms.js",
+    "name": "entry",
+    "src": "src/Cms/assets/entry.ts",
+    "isEntry": true
+  },
+  "src/Crm/assets/entry.ts": {
+    "file": "crm.js",
+    "name": "entry",
+    "src": "src/Crm/assets/entry.ts",
+    "isEntry": true
+  },
+  "src/Shop/assets/entry.ts": {
+    "file": "shop.js",
+    "name": "entry",
+    "src": "src/Shop/assets/entry.ts",
+    "isEntry": true
+  }
+}
