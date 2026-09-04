@@ -6,6 +6,7 @@ namespace Trilobit\Core;
 
 use Nette\Bootstrap\Configurator;
 use Nette\DI\Container;
+use Nette\Utils\FileSystem;
 use Trilobit\Core\Config\Environment;
 
 /**
@@ -30,10 +31,20 @@ final class Bootstrap
         $root = self::rootDirectory();
         $environment = Environment::load($root . '/.env');
 
+        // var/ holds only generated files, so it is not in the repository and a
+        // fresh clone does not have it. Creating it here rather than asking for
+        // a mkdir in the installation instructions is the difference between an
+        // application that starts and one that starts once you have read a page
+        // of documentation.
+        $logDirectory = $root . '/var/log';
+        $tempDirectory = $root . '/var/tmp';
+        FileSystem::createDir($logDirectory);
+        FileSystem::createDir($tempDirectory);
+
         $configurator = new Configurator();
         $configurator->setDebugMode($environment->flag('TRILOBIT_DEBUG'));
-        $configurator->enableTracy($root . '/var/log');
-        $configurator->setTempDirectory($root . '/var/tmp');
+        $configurator->enableTracy($logDirectory);
+        $configurator->setTempDirectory($tempDirectory);
 
         $configurator->addStaticParameters([
             'rootDir' => $root,
