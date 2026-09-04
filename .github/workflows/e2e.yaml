@@ -31,6 +31,36 @@ jobs:
     name: npm run e2e
     runs-on: ubuntu-latest
 
+    # Signing in is a claim about a database as much as about a browser: the
+    # suite runs the migrations, makes itself an account and then signs in as
+    # it. The image and the version are the ones ci.yaml uses and the ones
+    # compose.yaml starts locally, because a migration is written in the
+    # dialect it was generated against.
+    services:
+      database:
+        image: mariadb:11.8
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+          MARIADB_DATABASE: trilobit
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      # Read by the application both times it starts here: once as the console
+      # running the migrations and the account command, and once as the server
+      # Playwright puts in front of the browser. There is no .env on a runner,
+      # so without these the application would fall back to the defaults in
+      # config/common.neon and look for a database that is not there.
+      TRILOBIT_DB_HOST: 127.0.0.1
+      TRILOBIT_DB_PORT: '3306'
+      TRILOBIT_DB_NAME: trilobit
+      TRILOBIT_DB_USER: root
+
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +68,7 @@ jobs:
         with:
           php-version: '8.4'
           coverage: none
+          extensions: pdo_mysql
 
       - uses: ramsey/composer-install@v3
 
