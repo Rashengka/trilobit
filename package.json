@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node bin/build-versions.mjs",
+    "check:build": "node bin/check-build-drift.mjs",
     "e2e": "playwright test",
     "test:frontend": "node --test \"tests/frontend/*.test.mjs\""
   },

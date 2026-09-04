@@ -1,0 +1,78 @@
+#
+# The gate on the committed frontend.
+#
+# www/build is in the repository, which trades one silent failure for another:
+# somebody edits a .ts, forgets to rebuild, and commits, and from then on the
+# repository shows new source while the application runs old code - with
+# nothing red anywhere, because every check reads the same stale file. This
+# job rebuilds and compares.
+#
+# It is a workflow of its own rather than a step of another, for two reasons.
+# `composer check` is the one definition of green on the PHP side and must keep
+# running with no Node at all, which T05 already broke once by folding a
+# frontend step into it. And a gate should fail for one reason and say so: the
+# E2E job builds the frontend too, but a failure there is a statement about a
+# browser, and a drift failure buried in it would be read as flakiness.
+#
+# It measures nothing that a developer cannot: the whole of it is
+# `npm run check:build`, which is what a developer runs. The workflow is the
+# copy nobody can forget to run.
+#
+
+name: Build drift
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    name: npm run check:build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # PHP is here only for app:warmup below, which is a console command of
+      # the application and needs its dependencies.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # From the lockfile, not from the version ranges: the toolchain is what
+      # decides the bytes, so a comparison against a committed build is only
+      # meaningful when the toolchain is the one that built it. Measured on
+      # 2026-09-04 across macOS/arm64 and Linux/x64 on Node 22 and Node 26 -
+      # same lockfile, byte-identical output - which is why no Node version is
+      # pinned beyond this job's own.
+      - run: npm ci
+
+      # var/build/modules.json is generated from config/modules.neon, so the
+      # build has nothing to read without it - see vite.config.ts. The
+      # committed www/build is built for the modules that file names, so the
+      # comparison has to be made against the same list.
+      - name: Write the build manifest
+        run: php bin/trilobit app:warmup
+
+      - run: npm run check:build
+
+      # The claims about the build itself - that no output name carries a
+      # content hash, and that the version file is a function of the bytes.
+      # They run under Node's own runner because `composer check` has none.
+      - run: npm run test:frontend
