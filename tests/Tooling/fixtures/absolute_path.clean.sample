@@ -1,1 +1,7 @@
 require __DIR__ . '/../vendor/autoload.php';
+
+// A PHP namespace literal is not a UNC path. The rule used to match the
+// doubled backslashes below and made ordinary code have to be written the
+// long way round, so the branch that did it was removed.
+$extension = $namespace . '\\DI\\' . $label . 'Extension';
+$class = 'Trilobit\\Shop\\DI\\ShopExtension';

@@ -887,7 +887,14 @@ function ruleDefinitions(array $config, array $localPatterns): array
             'fn' => static function (string $text): array {
                 $hits = allMatches('#(?:/Users/|/home/|/opt/www/|/var/www/)[A-Za-z0-9._\-/]*#', $text); // check-leaks:allow rule=absolute_path reason=the rule has to name the prefixes it looks for
                 $hits = array_merge($hits, allMatches('#(?<![A-Za-z0-9])[A-Za-z]:\\\\{1,2}[A-Za-z0-9_.\- ]+#', $text));
-                $hits = array_merge($hits, allMatches('#(?<![A-Za-z0-9])\\\\{2}[A-Za-z0-9._\-]+\\\\#', $text));
+
+                // A UNC path (\\server\share) used to be matched here as well. It was
+                // dropped: the pattern also matches every PHP namespace literal, which
+                // is how half the files in this repository are written, while a UNC path
+                // does not occur on a macOS or Linux machine at all. A rule that makes
+                // people write ordinary code the long way round costs more than it
+                // protects. Bring it back if this project ever runs on Windows, where a
+                // UNC path in configuration is a real thing to leak.
 
                 return $hits;
             },

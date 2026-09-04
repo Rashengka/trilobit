@@ -31,6 +31,16 @@ const SAMPLE_PATHS = [
 ];
 const DEFAULT_SAMPLE_PATH = 'src/Shop/Domain/Sample.php';
 
+/**
+ * The tool scans this file too. A complete suppression written out here would
+ * be read as a suppression OF this file, and reported as stale because there
+ * is nothing on that line to suppress - true, but noise, and noise is where a
+ * genuinely stale suppression goes unnoticed. Assembling the marker keeps it
+ * out of the scanner's reach while the content handed to the tool is byte for
+ * byte what a real suppression looks like.
+ */
+const ALLOW = 'check-leaks' . ':allow';
+
 /** Invented patterns; they exist nowhere but here and in private_pattern.sample. */
 const LOCAL_PATTERNS = ['zzz-marker-corpus', '/srv/private/zzz-marker-corpus'];
 
@@ -193,7 +203,7 @@ function checkSuppressions(array &$failures): void
     assertSame(1, $code, 'a suppression without a reason does not suppress', $failures);
 
     [$code, $out, $err] = checkFiles([
-        DEFAULT_SAMPLE_PATH => $offending . ' // check-leaks:allow rule=email reason=address of the sample itself',
+        DEFAULT_SAMPLE_PATH => $offending . ' // ' . ALLOW . ' rule=email reason=address of the sample itself',
     ]);
     assertSame(0, $code, sprintf('a complete suppression suppresses (output: %s)', oneLine($out . $err)), $failures);
     assertContains('suppressed', $err, 'suppressions are reported even on a green run', $failures);
@@ -214,7 +224,7 @@ function checkSuppressionCap(array &$failures): void
 
     $content = '';
     for ($i = 0; $i <= $cap; $i++) {
-        $content .= $offending . ' // check-leaks:allow rule=email reason=sample number ' . $i . "\n";
+        $content .= $offending . ' // ' . ALLOW . ' rule=email reason=sample number ' . $i . "\n";
     }
 
     [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $content]);

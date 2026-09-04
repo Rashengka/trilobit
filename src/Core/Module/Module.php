@@ -79,15 +79,9 @@ final readonly class Module
         return $this->directory() . '/config/services.neon';
     }
 
-    /**
-     * Assembled with implode rather than written out, because a literal with an
-     * escaped separator on both sides of a word is indistinguishable from a
-     * path on somebody's file server, and the leak guard reports it as one. The
-     * guard cannot read PHP, and one that could would be one nobody trusts.
-     */
     public function extensionClass(): string
     {
-        return implode('\\', [$this->namespace(), 'DI', $this->label() . 'Extension']);
+        return $this->namespace() . '\\DI\\' . $this->label() . 'Extension';
     }
 
     public function createExtension(): CompilerExtension
