@@ -115,14 +115,6 @@ test.describe('themes', () => {
                 return;
             }
 
-            // The browser asks for /favicon.ico by itself and the application
-            // has none to answer with yet. That 404 is the browser's request,
-            // not this page's markup, and it is named here rather than
-            // swallowed with everything else.
-            if (message.location().url.endsWith('/favicon.ico')) {
-                return;
-            }
-
             problems.push(message.text());
         });
         page.on('pageerror', (error) => problems.push(error.message));
