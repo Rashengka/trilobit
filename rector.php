@@ -30,4 +30,16 @@ return RectorConfig::configure()
         typeDeclarations: true,
         earlyReturn: true,
     )
-    ->withImportNames(importShortClasses: false, removeUnusedImports: true);
+    ->withImportNames(importShortClasses: false, removeUnusedImports: true)
+    // Serial on purpose. In parallel the run failed on CI - on both PHP
+    // versions, at the same step - with a worker error and a parser message
+    // that names no file: "Unclosed '(' on line 9". No file in the project has
+    // that: every .php under src, tests and www lints clean, and the run is
+    // green here in every shape it can be given, including a fresh clone with
+    // the cache cleared and assertions on. What is left is the worker
+    // scheduling on a smaller machine, and a gate whose result depends on that
+    // is a gate people learn to re-run instead of read. The same eighty files
+    // are still checked; only the number of processes changes.
+    //
+    // Revisit when the run stops being quick - it is a few seconds today.
+    ->withoutParallel();
