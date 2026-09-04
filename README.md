@@ -13,6 +13,11 @@ three modules that are empty apart from a page saying they are here, and one
 table per module so that switching a module off is something a test can watch
 happen to a real database.
 
+There is also a design system: a set of components every page is drawn out of,
+two themes that change the palette and the layout without a rebuild, and a style
+guide at `/_styleguide` that shows the components by rendering them the way the
+application does. See "The design system" below.
+
 | path | what it is |
 |---|---|
 | `www/index.php` | the front controller; the document root is `www/`, nothing above it is reachable |
@@ -21,6 +26,9 @@ happen to a real database.
 | `src/Core/Module/` | what a module's name implies, and which modules this build has |
 | `src/Core/DI/CoreExtension.php` | the four places a module hands something to Core |
 | `src/Core/Presentation/Front/` | the homepage, the shared layout and the base every public page is built on |
+| `src/Core/Presentation/components/` | the components every page is built out of, one Latte block per file |
+| `src/Core/Presentation/Styleguide/` | the page that shows those components, at `/_styleguide` |
+| `assets/base.css`, `assets/themes/` | the design system: structure in one file, values in one file per theme |
 | `src/Cms/`, `src/Crm/`, `src/Shop/` | the three switchable modules, each with its own extension, route, page, entity and migration |
 | `src/*/Domain/` | the entities of a module; the mapping is registered by the module, never centrally |
 | `src/*/Migrations/` | the migrations of a module, one namespace each |
@@ -101,7 +109,88 @@ names; a checkout with no `var/build/modules.json` fails the build with a
 message naming the command to run, rather than bundling every module's code
 regardless of `config/modules.neon`.
 
-`npm run e2e` runs Playwright.
+`npm run e2e` runs Playwright. On a machine with Google Chrome installed it
+uses that one, so nothing has to be downloaded; set `PLAYWRIGHT_CHANNEL` to
+choose another, or leave it unset on a build server to use Playwright's own.
+
+## The design system
+
+Two files decide how the application looks, and they are split by what is in
+them rather than by what they style.
+
+| file | what is in it |
+|---|---|
+| `assets/base.css` | the reset, the layout primitives, every component's shape and behaviour, a few utilities |
+| `assets/themes/<name>.css` | values: palette, type scale, spacing, radii, shadows, and the layout tokens the page shell is built out of |
+
+`base.css` carries no value of its own - no colour, no length, no type scale.
+Everything it uses is read out of a custom property a theme declares.
+`tests/Architecture/BaseCssHoldsNoLiteralsTest` fails on a hexadecimal colour, a
+colour notation, a named colour or a number with an absolute unit, so the split
+is a mechanism rather than an intention: one colour written in "just for now"
+looks harmless every time, and a theme cannot overrule it.
+
+The default theme declares its tokens in Tailwind's `@theme static` block, so
+Tailwind emits them as custom properties on `:root` and generates its own
+utilities from the ones whose names fall in a namespace it knows. A second theme
+re-declares the same names under `[data-theme="..."]`. There is no parallel set
+of variables beside Tailwind's, and no build step involved in choosing between
+them: the whole of a theme is one attribute on `<html>`.
+
+### Two themes, and why the second one moves things
+
+`atrium` is the theme the application starts in. `ledger` changes the palette and
+the type - and also moves the navigation from under the banner to a column down
+the left, narrows the content column and squares the corners. That is deliberate:
+a second theme that only repainted would pass while the markup still had its
+appearance written into it, which is exactly the failure the split exists to
+prevent.
+
+It moves the navigation without a template changing and without the order of the
+elements in the page changing. The shell is one grid whose areas, columns and
+rows are tokens; the layout writes banner, navigation, content and footer in that
+order in every theme, and a theme decides where those areas are.
+`tests/e2e/theme.spec.ts` switches `data-theme` on a live page and reads the
+computed style and the resolved geometry back: the palette changes, the
+navigation ends up beside the content instead of above it, and a marker left on
+`window` beforehand is still there, which is what says no reload happened.
+
+Light and dark are a variant inside a theme rather than two themes. Every colour
+is a `light-dark()` pair, `base.css` maps `data-theme-mode` onto `color-scheme`,
+and the browser resolves the rest. Adding a mode therefore costs one argument per
+colour instead of a second copy of the theme.
+
+### Components
+
+A component is a Latte block in a file of its own under
+`src/Core/Presentation/components/`, and a record in
+`Trilobit\Core\Presentation\Component\ComponentRegistry`. Its classes name what
+it is (`c-card`, `c-card__media`), never what it looks like, and no Tailwind
+utility is used inside one - a utility in the markup is a decision about
+appearance that a theme cannot overrule. Page templates use utilities freely for
+spacing and layout; only the components abstain.
+
+Two tests hold the register and the directory together.
+`tests/Template/ComponentRegistryTest` fails when a file has no record or a
+record has no file, and `tests/Template/StyleguideShowsEveryComponentTest`
+renders the style guide and fails when a registered variant has no specimen on
+it. So a component nobody has shown does not pass `composer check`.
+
+### The style guide
+
+`/_styleguide` is a page of the application, not a separate tool: same base
+presenter, same Latte engine, same layout, and it includes the same component
+files the homepage does. A catalogue rendering its own HTML would drift away
+from the application and nobody would see it happen.
+
+It exists only where `trilobit.styleguide` is on - by default in debug mode, off
+in production, and `config/local.neon` overrides either. Off means the route is
+never registered, so the path is claimed by nobody and the answer is 404 rather
+than 403: a tool that is not there has nothing to admit to.
+
+The page carries a switcher for the theme and for the light/dark mode. Neither
+choice is remembered between page loads; what a build starts in is
+`trilobit.theme` in `config/common.neon`.
 
 ## The database
 
@@ -163,6 +252,10 @@ knows nothing about it. `migrations:diff` excludes it and is the tool of record.
 - MariaDB 11 LTS. It is the only tested target: the generated DDL differs
   between dialects, so "MySQL or MariaDB" would mean neither of them verified.
   `compose.yaml` starts the right one.
+- Node, for the front-end build alone. `composer check` never needs it: the
+  suites render pages against a fixture manifest rather than against a real
+  `www/build`, and `tests/Combination/NoRealBuildRequiredTest` moves a real one
+  out of the way to prove it.
 
 ## Installation
 
@@ -173,7 +266,14 @@ composer install
 cp .env.example .env
 docker compose up -d
 bin/trilobit migrations:migrate
+bin/trilobit app:warmup
+npm ci && npm run build
 ```
+
+The last two lines are the stylesheet and the scripts. `app:warmup` writes down
+which modules this build is made of, and `npm run build` is what turns
+`assets/base.css` and `assets/themes/` into the file the pages load - without it
+the application answers, in plain unstyled HTML.
 
 Then serve `www/`:
 
