@@ -9,8 +9,14 @@
 #
 # Every value comes from .env, the same file the application reads, so the two
 # cannot drift apart. The port is published because the application runs on the
-# host rather than in a container here; set TRILOBIT_DB_PORT in .env when
-# something else on the machine already answers on 3306.
+# host rather than in a container here.
+#
+# The published port is 13306 and not 3306 on purpose. A developer machine
+# usually already runs a database on the standard port, so claiming it would
+# fail to start at best - and at worst the application would reach that other
+# database instead of this one, where the suites create and drop schemas of
+# their own. config/common.neon names the same number beside it; the two have
+# to move together. Set TRILOBIT_DB_PORT in .env to use a different one.
 
 services:
     database:
@@ -25,7 +31,7 @@ services:
             # schemas. Nothing outside this machine reaches this container.
             MARIADB_ROOT_PASSWORD: ${TRILOBIT_DB_PASSWORD:-trilobit}
         ports:
-            - '${TRILOBIT_DB_PORT:-3306}:3306'
+            - '${TRILOBIT_DB_PORT:-13306}:3306'
         volumes:
             - database:/var/lib/mysql
             - ./docker/mariadb/init:/docker-entrypoint-initdb.d:ro

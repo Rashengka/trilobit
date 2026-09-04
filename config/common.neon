@@ -79,7 +79,7 @@ nettrine.dbal:
         default:
             driver: pdo_mysql
             host: @core.environment::value(TRILOBIT_DB_HOST, 127.0.0.1)
-            port: @core.environment::value(TRILOBIT_DB_PORT, '3306')
+            port: @core.environment::value(TRILOBIT_DB_PORT, '13306')
             dbname: @core.environment::value(TRILOBIT_DB_NAME, trilobit)
             user: @core.environment::value(TRILOBIT_DB_USER, trilobit)
             password: @core.environment::value(TRILOBIT_DB_PASSWORD)
