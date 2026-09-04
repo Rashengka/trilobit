@@ -56,6 +56,8 @@ final class Bootstrap
         FileSystem::createDir($logDirectory);
         FileSystem::createDir($tempDirectory);
 
+        $files = self::configurationFiles($modules);
+
         $configurator = new Configurator();
         $configurator->setDebugMode($environment->flag('TRILOBIT_DEBUG'));
         $configurator->enableTracy($logDirectory);
@@ -76,26 +78,27 @@ final class Bootstrap
             // builds that differ only in which modules are on have to be two
             // cached containers, not one.
             'modules' => $modules->all(),
+            // What the configuration files say, as one value.
+            //
+            // Outside debug mode the framework does not look at whether a
+            // configuration file has changed since the container was compiled;
+            // it hands back the cached container, which is right in production
+            // and wrong on a working copy, where it means a change to a NEON
+            // file has no effect and no error either. The compiled container is
+            // cached by its static parameters, so putting the contents in one
+            // makes the cache key say what it is a cache of.
+            'configHash' => self::configurationHash($files),
         ]);
         $configurator->addDynamicParameters([
             'env' => $environment->resolved(),
         ]);
 
-        $configurator->addConfig($root . '/config/common.neon');
-        $configurator->addConfig($root . '/config/services.neon');
-
         // A module brings its own configuration with it. A switched-off module
-        // contributes no file, which is why it ends up with no services and no
-        // presenter mapping - and, once there are entities, no mapping and no
-        // migration directory either - without anything having to know its name.
-        foreach ($modules->enabled() as $module) {
-            $configurator->addConfig($module->configFile());
-        }
-
-        // Last, so that a machine-local override wins over everything else.
-        $local = $root . '/config/local.neon';
-        if (is_file($local)) {
-            $configurator->addConfig($local);
+        // contributes no file, which is why it ends up with no services, no
+        // presenter mapping, no entity mapping and no migration directory
+        // without anything having to know its name.
+        foreach ($files as $file) {
+            $configurator->addConfig($file);
         }
 
         // onCompile is the documented point at which an extension can be added
@@ -115,5 +118,54 @@ final class Bootstrap
     public static function rootDirectory(): string
     {
         return dirname(__DIR__, 2);
+    }
+
+    /**
+     * The configuration files a build made of $modules is assembled from, in
+     * the order they are loaded: the shared file, the application's own, one
+     * per enabled module, and last the machine-local override so that it wins
+     * over everything else.
+     *
+     * A module that is switched off contributes nothing here, which is what
+     * leaves it without services, without a presenter mapping, without an
+     * entity mapping and without a migration directory - none of which
+     * anything had to know its name to arrange.
+     *
+     * @return list<string>
+     */
+    public static function configurationFiles(ModuleList $modules): array
+    {
+        $root = $modules->rootDirectory();
+
+        $files = [$root . '/config/common.neon', $root . '/config/services.neon'];
+        foreach ($modules->enabled() as $module) {
+            $files[] = $module->configFile();
+        }
+
+        $local = $root . '/config/local.neon';
+        if (is_file($local)) {
+            $files[] = $local;
+        }
+
+        return $files;
+    }
+
+    /**
+     * What those files say, as one value.
+     *
+     * Their order is part of it, because order decides which file wins a
+     * repeated key: the same files read in a different sequence are a
+     * different configuration.
+     *
+     * @param list<string> $files
+     */
+    public static function configurationHash(array $files): string
+    {
+        $contents = '';
+        foreach ($files as $file) {
+            $contents .= $file . "\0" . FileSystem::read($file) . "\0";
+        }
+
+        return hash('xxh128', $contents);
     }
 }

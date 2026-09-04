@@ -15,7 +15,9 @@ use Nette\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Admin\Menu\Menu;
+use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Event\ListenerCollection;
+use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Tests\Boot;
 
@@ -36,6 +38,23 @@ final class ApplicationSkeletonTest extends TestCase
     public function testTheContainerCompiles(): void
     {
         self::assertNotSame([], array_keys($this->container()->getServiceDescriptors()));
+    }
+
+    /**
+     * The compiled container is cached by its static parameters and, outside
+     * debug mode, by nothing else - so what the configuration files say has to
+     * be one of them, or a change to a NEON file has no effect and no error
+     * either. Trilobit\Tests\Unit\Core\BootstrapTest is what says the value
+     * changes when a file does; this is what says the container carries it.
+     */
+    public function testTheContainerIsCachedByWhatTheConfigurationSays(): void
+    {
+        $modules = ModuleList::of([], Bootstrap::rootDirectory());
+
+        self::assertSame(
+            Bootstrap::configurationHash(Bootstrap::configurationFiles($modules)),
+            $this->container()->getParameters()['configHash'] ?? null,
+        );
     }
 
     public function testTheRouterSendsTheRootToTheHomepage(): void
