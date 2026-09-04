@@ -220,6 +220,7 @@ It runs, in this order:
 |---|---|---|
 | `leaks` | `bin/check-leaks --all` | nothing private has reached a tracked file |
 | `cs` | `php-cs-fixer check --diff` | the code is written the agreed way |
+| `cs:sniff` | `phpcs` | the rules a formatter cannot express |
 | `stan` | `phpstan analyse` | static analysis at level `max` |
 | `deptrac` | `deptrac analyse --fail-on-uncovered` | no layer depends on something it may not |
 | `rector` | `rector process --dry-run` | nothing is written in a way the project has moved past |
@@ -227,6 +228,18 @@ It runs, in this order:
 
 The cheapest and most expensive-to-miss check runs first: whoever starts the
 gate and walks away learns about a disclosure at once, not a minute later.
+
+`cs` and `cs:sniff` are two tools over the same files, so the boundary between
+them is drawn on purpose rather than left to chance. php-cs-fixer owns
+everything about the shape of the code: whitespace, braces, import order, the
+form of a `declare`. phpcs owns what is left, and it is the part a formatter
+has no way to reach - what a thing is called, whether an import is still used,
+whether a catch block can be reached, whether a class lives in the file its
+namespace points at. Where a rule exists in both, `phpcs.xml` configures the
+sniff to agree with the fixer or turns it off, with the reason and the name of
+the rule on the other side written next to it. That is not tidiness: two
+formatters that disagree make `composer check` pass or fail depending on which
+one ran last, and `cs:fix` runs both.
 
 Nothing in that list has a baseline, and none of it may acquire one.
 `tests/Architecture/NoBaselineTest` fails if a baseline file appears anywhere in
