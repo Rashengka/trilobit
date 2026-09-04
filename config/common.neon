@@ -16,6 +16,14 @@ parameters:
 extensions:
     core: Trilobit\Core\DI\CoreExtension
 
+    # Registers nothing outside the command line, so the web container is
+    # unchanged by its presence. The console is where the generated files under
+    # var/ are written from, and later where the schema tools will live.
+    console: Contributte\Console\DI\ConsoleExtension(%consoleMode%)
+
+console:
+    name: Trilobit
+
 application:
     # Presenter names are mapped explicitly rather than by convention, because
     # the convention has changed between framework versions and because an

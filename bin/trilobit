@@ -1,0 +1,11 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Contributte\Console\Application;
+use Trilobit\Core\Bootstrap;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+Bootstrap::boot()->getByType(Application::class)->run();

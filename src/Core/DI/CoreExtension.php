@@ -12,6 +12,8 @@ use Nette\InvalidStateException;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Trilobit\Core\Admin\Menu\Menu;
+use Trilobit\Core\Build\BuildManifest;
+use Trilobit\Core\Console\WarmupCommand;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
@@ -72,6 +74,12 @@ final class CoreExtension extends CompilerExtension
                 $this->parameterArray('modules'),
                 $this->parameterString('rootDir'),
             ]);
+
+        $builder->addDefinition($this->prefix('buildManifest'))
+            ->setFactory(BuildManifest::class);
+
+        $builder->addDefinition($this->prefix('warmupCommand'))
+            ->setFactory(WarmupCommand::class);
 
         $builder->addDefinition($this->prefix('routerFactory'))
             ->setFactory(RouterFactory::class, [[]]);
