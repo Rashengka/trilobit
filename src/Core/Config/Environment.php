@@ -70,6 +70,25 @@ final readonly class Environment
     }
 
     /**
+     * The value, or $default when this deployment did not set one.
+     *
+     * It exists so that a configuration file can name a setting and its
+     * fallback on the same line, which is where somebody reading that file
+     * looks for both. The alternative - a parameter reference that has to
+     * resolve - turns one missing entry in .env into a container that cannot
+     * be built at all, and most of the application has nothing to do with
+     * whichever setting happens to be missing.
+     *
+     * Emptiness counts as absence, for the reason given on flag().
+     */
+    public function value(string $name, string $default = ''): string
+    {
+        $value = $this->get($name);
+
+        return $value === null || $value === '' ? $default : $value;
+    }
+
+    /**
      * Any value but the empty one turns a flag on. Absence and emptiness are
      * the same answer on purpose: an unset variable and a variable set to
      * nothing look identical to a web server, so they may not mean different

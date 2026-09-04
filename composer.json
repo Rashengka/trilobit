@@ -14,6 +14,9 @@
         "nette/neon": "^3.4",
         "nette/robot-loader": "^4.1",
         "nette/utils": "^4.1",
+        "nettrine/dbal": "^0.10",
+        "nettrine/migrations": "^0.10",
+        "nettrine/orm": "^0.10",
         "tracy/tracy": "^2.12"
     },
     "require-dev": {
@@ -21,6 +24,7 @@
         "friendsofphp/php-cs-fixer": "^3.95",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan-doctrine": "^2.0",
         "phpstan/phpstan-nette": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^13.3",

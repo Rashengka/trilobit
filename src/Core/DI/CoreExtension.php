@@ -13,7 +13,9 @@ use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Build\BuildManifest;
+use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Console\WarmupCommand;
+use Trilobit\Core\Doctrine\SchemaAssetsFilter;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
@@ -74,6 +76,20 @@ final class CoreExtension extends CompilerExtension
                 $this->parameterArray('modules'),
                 $this->parameterString('rootDir'),
             ]);
+
+        // The environment file, as something the configuration can ask for one
+        // setting and its fallback on the same line. It is read here rather
+        // than handed down from the boot because a fallback belongs next to
+        // the key it stands in for; see Environment::value().
+        $builder->addDefinition($this->prefix('environment'))
+            ->setFactory(Environment::class . '::load', [$this->parameterString('rootDir') . '/.env']);
+
+        // Which tables the schema tools of this build are allowed to see. It
+        // is derived from the module list rather than written down, so that
+        // switching a module off hides its tables without anybody maintaining
+        // a second list of prefixes.
+        $builder->addDefinition($this->prefix('schemaAssetsFilter'))
+            ->setFactory(SchemaAssetsFilter::class . '::of', ['@' . $this->prefix('modules')]);
 
         $builder->addDefinition($this->prefix('buildManifest'))
             ->setFactory(BuildManifest::class);

@@ -18,8 +18,18 @@ extensions:
 
     # Registers nothing outside the command line, so the web container is
     # unchanged by its presence. The console is where the generated files under
-    # var/ are written from, and later where the schema tools will live.
+    # var/ are written from, and where the schema tools live.
     console: Contributte\Console\DI\ConsoleExtension(%consoleMode%)
+
+    # The bridge between Nette and Doctrine is taken ready-made rather than
+    # written, because the three configuration keys the modular schema stands on
+    # - a mapping per namespace, a migrations directory per namespace, and a
+    # filter over the tables the schema tools may see - are exactly the keys it
+    # already has. It is pinned to a 0.x minor on purpose: before 1.0 a minor
+    # release may break, and the caret refuses to cross one.
+    nettrine.dbal: Nettrine\DBAL\DI\DbalExtension
+    nettrine.orm: Nettrine\ORM\DI\OrmExtension
+    nettrine.migrations: Nettrine\Migrations\DI\MigrationsExtension
 
 console:
     name: Trilobit
@@ -52,3 +62,76 @@ session:
 
 tracy:
     showBar: %debugMode%
+
+#
+# The database.
+#
+# Every setting names its fallback on the same line, so that a checkout with no
+# .env still compiles a container and fails only when something actually asks
+# for a connection. The alternative - a parameter that has to resolve - turns
+# one missing line in .env into an application that cannot start at all.
+#
+nettrine.dbal:
+    debug:
+        panel: %debugMode%
+
+    connections:
+        default:
+            driver: pdo_mysql
+            host: @core.environment::value(TRILOBIT_DB_HOST, 127.0.0.1)
+            port: @core.environment::value(TRILOBIT_DB_PORT, '3306')
+            dbname: @core.environment::value(TRILOBIT_DB_NAME, trilobit)
+            user: @core.environment::value(TRILOBIT_DB_USER, trilobit)
+            password: @core.environment::value(TRILOBIT_DB_PASSWORD)
+            charset: utf8mb4
+
+            # Declared rather than asked for. Without it Doctrine opens a
+            # connection merely to find out which platform it is talking to,
+            # which would make reading the mapping - what the architecture
+            # tests do - impossible on a machine with no database running.
+            # MariaDB 11 LTS is the only tested target; a deployment on another
+            # one says so in config/local.neon.
+            serverVersion: @core.environment::value(TRILOBIT_DB_SERVER_VERSION, 11.8.0-MariaDB)
+
+            # The tables this build is allowed to see. It is the whole of what
+            # protects a switched-off module's data: without it the schema
+            # comparator sees tables with nothing in the mapping to justify
+            # them, and writes a migration that drops them. See
+            # Trilobit\Core\Doctrine\SchemaAssetsFilter.
+            schemaAssetsFilter: @core.schemaAssetsFilter
+
+nettrine.orm:
+    managers:
+        default:
+            connection: default
+
+            # Proxies are PHP's own lazy objects rather than generated
+            # classes. The project is on PHP 8.4 anyway, Doctrine deprecates
+            # every other answer, and the alternative is a package pulled in
+            # for nothing but this.
+            lazyNativeObjects: true
+
+            # Core maps its own entities and nothing else. A module adds its
+            # own three lines from its own configuration file, which the boot
+            # loads only when the module is switched on - so a build without a
+            # module has no metadata for its entities, no repositories and no
+            # proxies, rather than a mapping that is merely unused.
+            mapping:
+                Core:
+                    directories: [%rootDir%/src/Core/Domain]
+                    namespace: Trilobit\Core\Domain
+
+nettrine.migrations:
+    # The table the migrations record themselves in carries a module prefix
+    # like every other table, because the filter above decides what exists by
+    # reading prefixes: a table it hides is a table Doctrine believes is not
+    # there, and the migrations would try to create it on every run.
+    table: core_migration
+
+    # One namespace per module, which is how doctrine/migrations natively holds
+    # more than one directory. An enabled module contributes its line, a
+    # disabled one contributes nothing, and the shared record of what has been
+    # executed holds full class names - so switching a module back on runs the
+    # versions it is missing and nothing else.
+    directories:
+        'Trilobit\Core\Migrations': %rootDir%/src/Core/Migrations

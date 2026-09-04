@@ -16,3 +16,23 @@ application:
 
     mapping:
         Crm: Trilobit\Crm\Presentation\*\*Presenter
+
+#
+# The data layer of this module, contributed the same way its presenters are:
+# from a file the boot loads only when the module is switched on. A build
+# without it therefore has no mapping for its entities and no directory of its
+# migrations, so neither the schema tools nor the migration runner know its
+# tables exist - which is what leaves them untouched in a database that still
+# has them.
+#
+nettrine.orm:
+    managers:
+        default:
+            mapping:
+                Crm:
+                    directories: [%rootDir%/src/Crm/Domain]
+                    namespace: Trilobit\Crm\Domain
+
+nettrine.migrations:
+    directories:
+        'Trilobit\Crm\Migrations': %rootDir%/src/Crm/Migrations
