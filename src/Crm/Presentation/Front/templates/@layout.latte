@@ -1,0 +1,11 @@
+{layout '../../../../Core/Presentation/Front/templates/@layout.latte'}
+
+{* Every page under Crm:Front inherits this without asking for it by name -
+   Nette finds it by walking up from the presenter's own directory before it
+   ever reaches Core's layout, see FrontPresenter::formatLayoutTemplateFiles().
+   {block content} is left alone here and reaches Core's layout unchanged; only
+   the shared bundle gains Crm's own entry point. *}
+{block scripts}
+    {include parent}
+    {asset 'vite:src/Crm/assets/entry.ts'}
+{/block}
