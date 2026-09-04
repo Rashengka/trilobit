@@ -16,8 +16,15 @@ use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\WarmupCommand;
+use Trilobit\Core\Contract\Activity\ActivityRecorder;
+use Trilobit\Core\Contract\Activity\NullActivityRecorder;
+use Trilobit\Core\Contract\Party\NullPartyDirectory;
+use Trilobit\Core\Contract\Party\PartyDirectory;
 use Trilobit\Core\Doctrine\SchemaAssetsFilter;
+use Trilobit\Core\Event\AuditListener;
+use Trilobit\Core\Event\Dispatcher;
 use Trilobit\Core\Event\ListenerCollection;
+use Trilobit\Core\Event\ListenerProvider;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Core\Routing\RouterFactory;
@@ -52,6 +59,18 @@ final class CoreExtension extends CompilerExtension
 
     /** The console's own tag; the value is the name the command answers to. */
     private const string TAG_CONSOLE_COMMAND = 'console.command';
+
+    /**
+     * Every port Core declares, and what stands in for it when no enabled
+     * module implements it. See Trilobit\Core\DI\PortFallback and
+     * .ai/plans/01a-komunikace-modulu.md §2.
+     *
+     * @var array<class-string, class-string>
+     */
+    private const array PORTS = [
+        PartyDirectory::class => NullPartyDirectory::class,
+        ActivityRecorder::class => NullActivityRecorder::class,
+    ];
 
     /**
      * The migration generator registered by the Nette-to-Doctrine bridge,
@@ -136,6 +155,24 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('ports'))
             ->setFactory(PortRegistry::class, [[]]);
+
+        // Core's own event mechanism - see the class docblock of Dispatcher
+        // for why it exists beside the ports above rather than instead of
+        // them. The provider is autowired from '@core.listeners' above, the
+        // way every other consumer of that collection is.
+        $builder->addDefinition($this->prefix('listenerProvider'))
+            ->setFactory(ListenerProvider::class);
+
+        $builder->addDefinition($this->prefix('dispatcher'))
+            ->setFactory(Dispatcher::class);
+
+        // The one listener Core registers for itself, rather than collecting
+        // through the tag: the audit trail is Core's own cross-cutting
+        // concern, not something a module contributes.
+        $builder->addDefinition($this->prefix('auditListener'))
+            ->setFactory(AuditListener::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_EVENT_LISTENER);
     }
 
     /**
@@ -154,6 +191,12 @@ final class CoreExtension extends CompilerExtension
         }
 
         $builder->removeDefinition(self::BRIDGE_DIFF_COMMAND);
+
+        // Has to run before taggedPorts() below: a port with no module
+        // behind it gets its fallback registered and tagged here, so that
+        // from taggedPorts()'s point of view a fallback is indistinguishable
+        // from a module that implemented the port itself.
+        PortFallback::register($builder, self::PORTS, $this->prefix('port'), self::TAG_PORT);
 
         $this->service('routerFactory')->setArguments([$this->taggedServices(self::TAG_ROUTE_PROVIDER)]);
         $this->service('adminMenu')->setArguments([$this->taggedServices(self::TAG_ADMIN_MENU_PROVIDER)]);

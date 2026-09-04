@@ -69,9 +69,14 @@
             project's coding standard, so it wins. Left on, these two codes turn
             `composer check` into a coin toss: phpcbf expands the braces and the
             next `php-cs-fixer fix` collapses them again, forever.
+
+            The same fight happens one level up, over an empty class or
+            interface body - `final class Foo {}` against braces on lines of
+            their own - and gets the same answer for the same reason.
         -->
         <exclude name="Squiz.WhiteSpace.ScopeClosingBrace.ContentBefore"/>
         <exclude name="Squiz.Functions.MultiLineFunctionDeclaration.BraceOnSameLine"/>
+        <exclude name="PSR2.Classes.ClassDeclaration.OpenBraceNewLine"/>
     </rule>
 
     <rule ref="SlevomatCodingStandard.Exceptions.ReferenceThrowableOnly"/>
