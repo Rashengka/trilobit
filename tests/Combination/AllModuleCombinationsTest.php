@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Tests\Combination;
 
+use Doctrine\Migrations\DependencyFactory;
 use Dom\HTMLDocument;
 use Nette\Application\InvalidPresenterException;
 use Nette\Application\IPresenterFactory;
@@ -13,6 +14,9 @@ use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Admin\Menu\MenuItem;
+use Trilobit\Core\Doctrine\TableName;
+use Trilobit\Tests\Database;
+use Trilobit\Tests\Migrations;
 
 /**
  * Every build the application can be shipped as, started once each.
@@ -154,6 +158,61 @@ final class AllModuleCombinationsTest extends TestCase
                 ucfirst($module),
                 $document->querySelector('[data-testid="module-status-name"]')?->textContent,
             );
+        }
+    }
+
+    /**
+     * The schema of a build, made the way a customer's is made: by running the
+     * migrations, not by asking the mapping for a schema. A schema built from
+     * metadata would be right every time and would never once have shown that
+     * the migrations themselves are complete.
+     *
+     * Two claims in one act, because they are one act: the migrations of this
+     * build run to the end and leave nothing outstanding, and what they leave
+     * behind is the tables of the enabled modules and no others. The second is
+     * what catches a migration put in the wrong module - a build without that
+     * module would create its tables all the same, and nothing else would
+     * notice until a customer switched it off.
+     *
+     * Tables are checked by the module their name carries rather than one by
+     * one, because the claim is about which modules own tables here; which
+     * tables a module owns is that module's own business and changes with it.
+     *
+     * @param list<string> $enabled
+     */
+    #[DataProviderExternal(Build::class, 'everyCombination')]
+    public function testTheMigrationsRunAndLeaveTheTablesOfTheEnabledModules(array $enabled): void
+    {
+        $schema = Database::schemaFor(self::class, $enabled === [] ? 'core' : implode('_', $enabled));
+
+        try {
+            $container = Build::container($enabled);
+            Migrations::run($container);
+
+            self::assertCount(
+                0,
+                $container->getByType(DependencyFactory::class)->getMigrationStatusCalculator()->getNewMigrations(),
+                'a migration was left unexecuted',
+            );
+
+            $owners = [];
+            foreach (Database::tablesIn($schema) as $table) {
+                $owner = TableName::moduleOf($table);
+                self::assertNotNull($owner, $table . ' carries no module in its name');
+                $owners[$owner] = true;
+            }
+
+            self::assertSame(
+                ['core', ...$enabled],
+                array_values(array_unique(['core', ...array_keys($owners)])),
+                'the tables in the database do not belong to exactly the enabled modules',
+            );
+
+            foreach ($enabled as $module) {
+                self::assertArrayHasKey($module, $owners, $module . ' is enabled and owns no table');
+            }
+        } finally {
+            Database::drop($schema);
         }
     }
 
