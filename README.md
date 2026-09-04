@@ -131,10 +131,17 @@ to, and by `Trilobit\Core\Asset\VersionedViteMapper`, which turns that into
 
 And a committed build can go stale: edit a `.ts`, forget to rebuild, commit,
 and the repository shows new source while the application runs old code, with
-nothing red anywhere. The answer to that is a gate rather than discipline, and
-it is described below. The answer to a merge conflict inside `www/build` is
-`npm run build` too - `.gitattributes` deliberately refuses to resolve one,
-because a merged bundle is a file neither side wrote.
+nothing red anywhere, because every check reads the same stale file. So it is a
+gate and not discipline. `npm run check:build` rebuilds into a throwaway
+directory and compares; the `Build drift` workflow runs the same command on
+every push, separately from `composer check`, which has to keep running with no
+Node at all. It compares the *output*, so a change to the source that the
+bundler drops - an exported function nobody calls - produces the same bytes,
+needs no rebuild, and passes in silence.
+
+When it fails, the fix is `npm run build` and committing what it writes. So it
+is for a merge conflict inside `www/build`: `.gitattributes` deliberately
+refuses to resolve one, because a merged bundle is a file neither side wrote.
 
 `npm run e2e` runs Playwright. On a machine with Google Chrome installed it
 uses that one, so nothing has to be downloaded; set `PLAYWRIGHT_CHANNEL` to
