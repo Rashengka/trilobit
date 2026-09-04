@@ -2,24 +2,74 @@
 
 A modular e-shop, CRM and CMS built on Nette and Latte. Open source, MIT.
 
+A trilobite has three lobes along one axis, and so does this: three modules -
+shop, CRM, content - on one shared spine, each of them switchable on its own.
+
 ## What is here today
 
-The application does not exist yet. This repository currently holds one thing:
-the guard that keeps content which does not belong in a public repository out
-of it. It is first on purpose - anything committed before it would have to be
-reviewed by hand.
+The spine and the gate around it. There is one page, no module, and no database
+yet; what exists is the skeleton every later piece has to fit into, and the
+checks that stop it drifting.
 
 | path | what it is |
 |---|---|
-| `bin/check-leaks` | the guard; reads, never writes |
-| `.check-leaks.yaml` | its public configuration: structural rules only |
-| `.check-leaks.local.example` | template for the private pattern file, which lives outside the repository |
-| `.githooks/pre-commit` | runs the guard over what is staged |
-| `tests/Tooling/CheckLeaksTest.php` | proves every rule fires, discriminates, and that the hook really blocks a commit |
+| `www/index.php` | the front controller; the document root is `www/`, nothing above it is reachable |
+| `src/Core/Bootstrap.php` | turns a checkout into a compiled container |
+| `src/Core/DI/CoreExtension.php` | the four places a module hands something to Core |
+| `src/Core/Presentation/Front/` | the homepage, its template class and its Latte templates |
+| `config/` | `common.neon` for every environment, `services.neon` for this checkout |
+| `bin/check-leaks` | the guard that keeps private content out of a public repository |
+| `tests/` | one directory per level of test, listed in `phpunit.xml` |
 
-## Setting up a clone
+Modules, entities and migrations are not here yet. When they arrive they arrive
+as directories beside `src/Core/`, without Core learning their names.
 
-Two steps, both one-off:
+## Requirements
+
+- PHP 8.4 or newer. Both 8.4 and 8.5 run in CI.
+- Composer.
+- MariaDB 11 LTS, once there is a database to talk to. It is the only tested
+  target: the generated DDL differs between dialects, so "MySQL or MariaDB"
+  would mean neither of them verified.
+
+## Installation
+
+```sh
+git clone https://github.com/Rashengka/trilobit.git
+cd trilobit
+composer install
+cp .env.example .env
+```
+
+Then serve `www/`:
+
+```sh
+php -S localhost:8000 -t www
+```
+
+`http://localhost:8000/` answers with the homepage. For a real deployment point
+the document root at `www/` and leave the rest of the checkout outside it;
+`www/.htaccess` covers Apache.
+
+Two settings are worth knowing about:
+
+- `.env` holds what differs between deployments. Every value in `.env.example`
+  is empty on purpose - a committed file carrying a host, a user name or a
+  password is a disclosure git keeps forever. A variable set in the process
+  environment wins over the file, so a container needs no `.env` at all.
+- `TRILOBIT_DEBUG=1` turns on the debug bar and the detailed error page. It is
+  a variable rather than a check on the visitor's address, because an address
+  check is unreliable in production and would mean an address written into a
+  public repository.
+
+`config/local.neon` is optional and applies to one machine; see
+`config/local.neon.example`.
+
+## Working on it
+
+Enable the pre-commit hook and give the leak guard its list of private
+patterns. Both are one-off, and the second one is not optional - without it the
+guard exits with code 2 rather than reporting a success it cannot vouch for.
 
 ```sh
 git config core.hooksPath .githooks
@@ -29,70 +79,61 @@ cp .check-leaks.local.example ~/.config/trilobit/check-leaks.local
 $EDITOR ~/.config/trilobit/check-leaks.local
 ```
 
-The second file holds the words and path fragments that must never appear in a
+That second file holds the words and path fragments that must never appear in a
 commit: source trees that are not yours to publish, customer and project names,
 class and table names taken from them. It is not in the repository and not in
 any ignore list either - a committed list of forbidden words would be exactly
-the disclosure it is meant to prevent, and git would keep it forever.
+the disclosure it is meant to prevent.
 
-Without that file `bin/check-leaks` exits with code **2** and refuses to report
-success. A guard that passes everything when it is unconfigured is worse than
-no guard, because it looks like one.
-
-## Running the guard
+### The gate
 
 ```sh
-bin/check-leaks                            # what is staged (the hook's mode)
-bin/check-leaks --range origin/main...HEAD # a pull request, for CI
-bin/check-leaks --all                      # every tracked file
-bin/check-leaks --history                  # every commit and message on every branch
-bin/check-leaks --files path/to/file       # files that are not staged yet
+composer check
 ```
 
-Exit codes: `0` clean, `1` finding, `2` tool error. Findings are printed as
-`file:line [rule] masked-snippet` followed by one sentence on what to do. The
-snippet is masked because a CI log of a public repository is public too.
+It runs, in this order:
 
-`--history` is slow and is meant to be run once, immediately before the
-repository is made public, and afterwards only on suspicion.
+| step | command | what it decides |
+|---|---|---|
+| `leaks` | `bin/check-leaks --all` | nothing private has reached a tracked file |
+| `cs` | `php-cs-fixer check --diff` | the code is written the agreed way |
+| `stan` | `phpstan analyse` | static analysis at level `max` |
+| `deptrac` | `deptrac analyse --fail-on-uncovered` | no layer depends on something it may not |
+| `rector` | `rector process --dry-run` | nothing is written in a way the project has moved past |
+| `test` | `phpunit` | every suite in `phpunit.xml` |
 
-### Demo content
+The cheapest and most expensive-to-miss check runs first: whoever starts the
+gate and walks away learns about a disclosure at once, not a minute later.
 
-Inside `src/*/DataFixtures/`, `tests/**/Fixtures/` and `demo/` the rules are
-narrower rather than looser: addresses end in `example.com`, phone numbers use
-the reserved prefix, company numbers stay in the reserved range, links point at
-the reserved hosts, and people are named from `demo_names` in
-`.check-leaks.yaml`. Invented data is written to a convention the tool can
-check, so that a leak cannot hide in the one place where fake data is expected.
+Nothing in that list has a baseline, and none of it may acquire one.
+`tests/Architecture/NoBaselineTest` fails if a baseline file appears anywhere in
+the repository. Raising a threshold back up is something nobody ever gets round
+to, so lowering it is made impossible rather than discouraged. The same goes for
+the analysis level: `max` from the first commit, because it is never raised
+afterwards either.
 
-### Suppressing a single finding
+### The test suites
 
-A last resort, on one line, naming the rule and the reason:
+`phpunit.xml` declares one suite per level, including the ones that are still
+empty. A suite that only appears once it has a test in it is a suite nobody
+notices is missing.
 
-```php
-$address = 'name@sub.example'; // check-leaks:allow rule=email reason=RFC 2606 example in a docblock
-```
+| suite | what belongs in it | what may not |
+|---|---|---|
+| `unit` | plain objects and functions | container, database, filesystem, network |
+| `architecture` | reading the sources and the configuration | running the application |
+| `template` | compiling and rendering Latte | container, database |
+| `integration` | a real container, later a real database | a browser |
+| `combination` | booting each combination of modules | anything past booting |
+| `install` | a fresh clone, installed from scratch | writing into your working copy |
+| `tooling` | the leak guard | - |
 
-Without both `rule=` and `reason=` the comment is ignored and the finding
-stands. Every suppression is listed on every run, green ones included, so a
-growing number is visible in every log, and `max_suppressions` in
-`.check-leaks.yaml` caps how many may be in effect at once.
+`tests/Tooling/CheckLeaksTest.php` is a standalone script rather than a test
+case, because the guard has to work before Composer does. `LeakGuardTest` runs
+it as a child process so that `composer check` covers it too.
 
-Only a suppression that actually switched a finding off counts against that
-cap. A comment that suppresses nothing is reported as a stale suppression
-instead: it should be deleted, and it must not eat the budget meant for real
-exceptions.
+Run one suite with `vendor/bin/phpunit --testsuite unit`.
 
-## Tests
+## Licence
 
-```sh
-php tests/Tooling/CheckLeaksTest.php
-```
-
-It runs without composer, because the guard has to work before the application
-exists. Every rule in `.check-leaks.yaml` needs a sample that trips it and a
-counterexample that does not, or the test fails. The hook is exercised in a
-throw-away repository, never in yours.
-
-A full PHPUnit suite, static analysis and a `composer check` gate arrive with
-the application skeleton; this test becomes a case in it.
+MIT. See `LICENSE`.
