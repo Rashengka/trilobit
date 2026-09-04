@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- A simple, self-drawn mark: a trilobite's segmented body, reduced to an
+       abstract glyph legible at 16px. Three lobes (the animal's namesake)
+       are three overlapping rounded bars on a dark rounded square. -->
+  <rect x="1" y="1" width="30" height="30" rx="7" fill="#1f2933"/>
+  <rect x="7" y="8" width="18" height="4.5" rx="2.25" fill="#e8ecef"/>
+  <rect x="5" y="14" width="22" height="4.5" rx="2.25" fill="#e8ecef"/>
+  <rect x="7" y="20" width="18" height="4.5" rx="2.25" fill="#e8ecef"/>
+</svg>
