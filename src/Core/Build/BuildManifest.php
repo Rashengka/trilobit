@@ -25,13 +25,13 @@ use Trilobit\Core\Module\ModuleList;
 final readonly class BuildManifest
 {
     /** Under the root, and inside var/, which is generated and not in the repository. */
-    public const string Directory = 'var/build';
+    public const string DIRECTORY = 'var/build';
 
     /** Which modules this build is made of, for whatever reads JSON. */
-    public const string ModulesFile = 'modules.json';
+    public const string MODULES_FILE = 'modules.json';
 
     /** Where the stylesheet build should look for class names, for whatever reads CSS. */
-    public const string SourcesFile = 'sources.css';
+    public const string SOURCES_FILE = 'sources.css';
 
     public function __construct(
         private ModuleList $modules,
@@ -39,7 +39,7 @@ final readonly class BuildManifest
 
     public function directory(): string
     {
-        return $this->modules->rootDirectory() . '/' . self::Directory;
+        return $this->modules->rootDirectory() . '/' . self::DIRECTORY;
     }
 
     public function modulesJson(): string
@@ -88,12 +88,12 @@ final readonly class BuildManifest
     {
         $directory = $this->directory();
 
-        FileSystem::write($directory . '/' . self::ModulesFile, $this->modulesJson());
-        FileSystem::write($directory . '/' . self::SourcesFile, $this->sourcesCss());
+        FileSystem::write($directory . '/' . self::MODULES_FILE, $this->modulesJson());
+        FileSystem::write($directory . '/' . self::SOURCES_FILE, $this->sourcesCss());
 
         return [
-            $directory . '/' . self::ModulesFile,
-            $directory . '/' . self::SourcesFile,
+            $directory . '/' . self::MODULES_FILE,
+            $directory . '/' . self::SOURCES_FILE,
         ];
     }
 }

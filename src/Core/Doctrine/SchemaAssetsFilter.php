@@ -31,14 +31,14 @@ use Trilobit\Core\Module\ModuleList;
 final readonly class SchemaAssetsFilter
 {
     /** In every build, so its tables are always visible. */
-    private const string AlwaysEnabled = 'core';
+    private const string ALWAYS_ENABLED = 'core';
 
     /** @param list<string> $modules the modules whose tables this build may see */
     private function __construct(private array $modules) {}
 
     public static function of(ModuleList $modules): self
     {
-        return new self([self::AlwaysEnabled, ...$modules->enabledNames()]);
+        return new self([self::ALWAYS_ENABLED, ...$modules->enabledNames()]);
     }
 
     /**

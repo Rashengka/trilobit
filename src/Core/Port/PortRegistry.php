@@ -13,7 +13,7 @@ namespace Trilobit\Core\Port;
  * in the build we are running.
  *
  * Implementations are collected from the tag
- * Trilobit\Core\DI\CoreExtension::TagPort, whose value is the port interface.
+ * Trilobit\Core\DI\CoreExtension::TAG_PORT, whose value is the port interface.
  */
 final readonly class PortRegistry
 {

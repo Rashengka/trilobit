@@ -29,7 +29,7 @@ use Trilobit\Core\Module\ModuleList;
 final class TablePrefixTest extends TestCase
 {
     /** The module every build contains, and the one Core's own tables belong to. */
-    private const string AlwaysEnabled = 'core';
+    private const string ALWAYS_ENABLED = 'core';
 
     public function testEveryTableCarriesThePrefixOfItsModule(): void
     {
@@ -70,7 +70,7 @@ final class TablePrefixTest extends TestCase
     {
         $root = Bootstrap::rootDirectory();
         $known = ModuleList::fromNeon($root . '/config/modules.neon', $root)->names();
-        $known[] = self::AlwaysEnabled;
+        $known[] = self::ALWAYS_ENABLED;
 
         $strangers = [];
         foreach (Mapping::ofTheApplication() as $metadata) {

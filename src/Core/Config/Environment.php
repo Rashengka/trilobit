@@ -22,7 +22,7 @@ use Nette\Utils\FileSystem;
 final readonly class Environment
 {
     /** The prefix that marks a process variable as meant for this application. */
-    public const string Prefix = 'TRILOBIT_';
+    public const string PREFIX = 'TRILOBIT_';
 
     /**
      * @param array<string, string> $file
@@ -122,7 +122,7 @@ final readonly class Environment
     {
         $resolved = $this->file;
         foreach ($this->process as $name => $value) {
-            if (isset($resolved[$name]) || str_starts_with($name, self::Prefix)) {
+            if (isset($resolved[$name]) || str_starts_with($name, self::PREFIX)) {
                 $resolved[$name] = $value;
             }
         }

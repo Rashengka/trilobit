@@ -32,7 +32,7 @@ use Trilobit\Tests\Boot;
 #[CoversNothing]
 final class MigrationsDiffGuardTest extends TestCase
 {
-    private const string Service = 'core.migrationsDiffCommand';
+    private const string SERVICE = 'core.migrationsDiffCommand';
 
     public function testItRefusesToRunWhenAModuleIsSwitchedOff(): void
     {
@@ -93,7 +93,7 @@ final class MigrationsDiffGuardTest extends TestCase
     private function command(array $modules): Command
     {
         $container = Boot::container(ModuleList::of($modules, Bootstrap::rootDirectory()));
-        $command = $container->getService(self::Service);
+        $command = $container->getService(self::SERVICE);
 
         self::assertInstanceOf(Command::class, $command);
 

@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 final class NoBaselineTest extends TestCase
 {
     /** File names by which each tool in the gate remembers what it agreed to ignore. */
-    private const array BaselineNames = [
+    private const array BASELINE_NAMES = [
         'phpstan-baseline.neon',
         'phpstan-baseline.php',
         'phpstan-baseline.neon.dist',
@@ -90,7 +90,7 @@ final class NoBaselineTest extends TestCase
 
         foreach (new \RecursiveIteratorIterator($filter) as $file) {
             self::assertInstanceOf(\SplFileInfo::class, $file);
-            if (in_array($file->getFilename(), self::BaselineNames, true)) {
+            if (in_array($file->getFilename(), self::BASELINE_NAMES, true)) {
                 $found[] = substr($file->getPathname(), strlen($root) + 1);
             }
         }

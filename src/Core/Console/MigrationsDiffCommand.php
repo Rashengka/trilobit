@@ -52,7 +52,7 @@ final class MigrationsDiffCommand extends Command
      * that one directory holds one module's migrations and the module a
      * migration belongs to can be read off its name.
      */
-    private const string NamespacePattern = '#^Trilobit\\\\([A-Z][A-Za-z0-9]*)\\\\Migrations$#';
+    private const string NAMESPACE_PATTERN = '#^Trilobit\\\\([A-Z][A-Za-z0-9]*)\\\\Migrations$#';
 
     private readonly DiffCommand $generator;
 
@@ -86,7 +86,7 @@ final class MigrationsDiffCommand extends Command
      */
     public static function filterFor(string $namespace): ?string
     {
-        if (preg_match(self::NamespacePattern, $namespace, $match) !== 1) {
+        if (preg_match(self::NAMESPACE_PATTERN, $namespace, $match) !== 1) {
             return null;
         }
 

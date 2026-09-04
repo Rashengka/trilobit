@@ -29,7 +29,7 @@ use Trilobit\Tests\Boot;
 final class Build
 {
     /** The modules that can be switched off. Core is always on and is not one of them. */
-    public const array Switchable = ['cms', 'crm', 'shop'];
+    public const array SWITCHABLE = ['cms', 'crm', 'shop'];
 
     /** @var array<string, Container> */
     private static array $containers = [];
@@ -42,7 +42,7 @@ final class Build
      */
     public static function everyCombination(): iterable
     {
-        $modules = self::Switchable;
+        $modules = self::SWITCHABLE;
 
         for ($mask = 0; $mask < 2 ** count($modules); $mask++) {
             $enabled = [];
@@ -68,7 +68,7 @@ final class Build
 
         $root = Bootstrap::rootDirectory();
         $modules = [];
-        foreach (self::Switchable as $module) {
+        foreach (self::SWITCHABLE as $module) {
             $modules[$module] = in_array($module, $enabled, true);
         }
 

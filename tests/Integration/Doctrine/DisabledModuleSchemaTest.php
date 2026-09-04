@@ -40,7 +40,7 @@ use Trilobit\Tests\Migrations;
 final class DisabledModuleSchemaTest extends TestCase
 {
     /** The module switched off in the build under test. */
-    private const string Missing = 'crm';
+    private const string MISSING = 'crm';
 
     /** Empty until the test has one, because setUp skips before it does. */
     private string $schema = '';
@@ -80,12 +80,12 @@ final class DisabledModuleSchemaTest extends TestCase
 
     public function testADiffFromABuildMissingAModuleGeneratesNothing(): void
     {
-        self::assertNull($this->migrationGeneratedBy($this->buildWithout(self::Missing)));
+        self::assertNull($this->migrationGeneratedBy($this->buildWithout(self::MISSING)));
     }
 
     public function testWithoutTheFilterTheSameDiffWouldDropThatModulesTables(): void
     {
-        $build = $this->buildWithout(self::Missing);
+        $build = $this->buildWithout(self::MISSING);
 
         // Exactly the mechanism under test, and nothing else about the build,
         // is taken away: the connection keeps its mapping, its migrations and
@@ -105,7 +105,7 @@ final class DisabledModuleSchemaTest extends TestCase
      */
     public function testABuildMissingAModuleStillSeesItsOwnTables(): void
     {
-        $tables = $this->buildWithout(self::Missing)
+        $tables = $this->buildWithout(self::MISSING)
             ->getByType(Connection::class)
             ->createSchemaManager()
             ->listTableNames();

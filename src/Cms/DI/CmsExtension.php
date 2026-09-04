@@ -39,11 +39,11 @@ final class CmsExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('routes'))
             ->setFactory(CmsRoutes::class)
             ->setAutowired(false)
-            ->addTag(CoreExtension::TagRouteProvider);
+            ->addTag(CoreExtension::TAG_ROUTE_PROVIDER);
 
         $builder->addDefinition($this->prefix('adminMenu'))
             ->setFactory(CmsMenu::class)
             ->setAutowired(false)
-            ->addTag(CoreExtension::TagAdminMenuProvider);
+            ->addTag(CoreExtension::TAG_ADMIN_MENU_PROVIDER);
     }
 }

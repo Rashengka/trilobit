@@ -6,7 +6,7 @@ namespace Trilobit\Core\Event;
 
 /**
  * The listeners the enabled modules contributed, gathered from the tag
- * Trilobit\Core\DI\CoreExtension::TagEventListener.
+ * Trilobit\Core\DI\CoreExtension::TAG_EVENT_LISTENER.
  *
  * It is deliberately only the collection, not a dispatcher: the dispatcher
  * arrives with the ports and events it is meant to carry. What has to exist

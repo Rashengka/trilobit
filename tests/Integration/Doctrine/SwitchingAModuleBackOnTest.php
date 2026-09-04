@@ -34,7 +34,7 @@ use Trilobit\Tests\Migrations;
 final class SwitchingAModuleBackOnTest extends TestCase
 {
     /** The module the installation starts without. */
-    private const string Absent = 'crm';
+    private const string ABSENT = 'crm';
 
     private string $schema = '';
 
@@ -52,12 +52,12 @@ final class SwitchingAModuleBackOnTest extends TestCase
 
     public function testAModuleSwitchedOnLaterBringsItsTablesAndLeavesTheRestAlone(): void
     {
-        $without = $this->buildWithout(self::Absent);
+        $without = $this->buildWithout(self::ABSENT);
         Migrations::run($without);
 
         self::assertSame(
             [],
-            $this->tablesOf(self::Absent),
+            $this->tablesOf(self::ABSENT),
             'a build without the module created its tables anyway',
         );
 
@@ -70,7 +70,7 @@ final class SwitchingAModuleBackOnTest extends TestCase
 
         self::assertSame(
             ['crm_marker'],
-            $this->tablesOf(self::Absent),
+            $this->tablesOf(self::ABSENT),
             'switching the module on did not bring its tables',
         );
 

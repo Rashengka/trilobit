@@ -20,7 +20,7 @@ use Trilobit\Core\Module\Module;
 #[CoversClass(Module::class)]
 final class ModuleTest extends TestCase
 {
-    private const string Root = '/opt/app';
+    private const string ROOT = '/opt/app';
 
     /**
      * The module here is invented rather than one of the real ones, because
@@ -30,7 +30,7 @@ final class ModuleTest extends TestCase
      */
     public function testTheNameDecidesEveryPathAndClassName(): void
     {
-        $module = Module::named('widget', self::Root);
+        $module = Module::named('widget', self::ROOT);
 
         self::assertSame('widget', $module->name);
         self::assertSame('Widget', $module->label());
@@ -52,7 +52,7 @@ final class ModuleTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        Module::named($name, self::Root);
+        Module::named($name, self::ROOT);
     }
 
     /** @return iterable<string, array{string}> */
@@ -68,7 +68,7 @@ final class ModuleTest extends TestCase
 
     public function testAModuleWhoseExtensionClassIsMissingSaysWhichClassItLookedFor(): void
     {
-        $module = Module::named('nosuchmodule', self::Root);
+        $module = Module::named('nosuchmodule', self::ROOT);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Trilobit\Nosuchmodule\DI\NosuchmoduleExtension');

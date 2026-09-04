@@ -23,11 +23,11 @@ use Trilobit\Core\Module\ModuleList;
 #[CoversClass(ModuleList::class)]
 final class ModuleListTest extends TestCase
 {
-    private const string Root = '/opt/app';
+    private const string ROOT = '/opt/app';
 
     public function testOnlyTheModulesSwitchedOnAreEnabled(): void
     {
-        $list = ModuleList::of(['shop' => true, 'cms' => false, 'crm' => true], self::Root);
+        $list = ModuleList::of(['shop' => true, 'cms' => false, 'crm' => true], self::ROOT);
 
         self::assertSame(['cms', 'crm', 'shop'], $list->names());
         self::assertSame(['crm', 'shop'], $list->enabledNames());
@@ -37,12 +37,12 @@ final class ModuleListTest extends TestCase
 
     public function testAModuleNobodyDeclaredIsNotEnabled(): void
     {
-        self::assertFalse(ModuleList::of([], self::Root)->isEnabled('shop'));
+        self::assertFalse(ModuleList::of([], self::ROOT)->isEnabled('shop'));
     }
 
     public function testTheEnabledModulesComeBackInAStableOrder(): void
     {
-        $list = ModuleList::of(['shop' => true, 'cms' => true, 'crm' => true], self::Root);
+        $list = ModuleList::of(['shop' => true, 'cms' => true, 'crm' => true], self::ROOT);
 
         self::assertSame(
             ['cms', 'crm', 'shop'],
@@ -61,7 +61,7 @@ final class ModuleListTest extends TestCase
             NEON);
 
         try {
-            $list = ModuleList::fromNeon($file, self::Root);
+            $list = ModuleList::fromNeon($file, self::ROOT);
 
             self::assertSame(['cms', 'shop'], $list->names());
             self::assertSame(['shop'], $list->enabledNames());
@@ -75,7 +75,7 @@ final class ModuleListTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('modules.neon');
 
-        ModuleList::fromNeon(self::Root . '/config/modules.neon', self::Root);
+        ModuleList::fromNeon(self::ROOT . '/config/modules.neon', self::ROOT);
     }
 
     public function testAFileWithoutTheModuleListIsRefused(): void
@@ -86,7 +86,7 @@ final class ModuleListTest extends TestCase
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('parameters.trilobit.modules');
 
-            ModuleList::fromNeon($file, self::Root);
+            ModuleList::fromNeon($file, self::ROOT);
         } finally {
             FileSystem::delete(dirname($file));
         }
@@ -106,7 +106,7 @@ final class ModuleListTest extends TestCase
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('crm');
 
-            ModuleList::fromNeon($file, self::Root);
+            ModuleList::fromNeon($file, self::ROOT);
         } finally {
             FileSystem::delete(dirname($file));
         }

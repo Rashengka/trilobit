@@ -25,7 +25,7 @@ use PHPUnit\Framework\TestCase;
 final class BudgetTest extends TestCase
 {
     /** Seconds. From the test strategy: over this, the suite gets faster, not the budget bigger. */
-    private const float Budget = 90.0;
+    private const float BUDGET = 90.0;
 
     public function testTheWholeSuiteFitsInItsBudget(): void
     {
@@ -33,10 +33,10 @@ final class BudgetTest extends TestCase
 
         // Straight to the error stream rather than through the output buffer,
         // because a suite that prints is a suite PHPUnit reports as risky.
-        fwrite(STDERR, sprintf("\ncombination suite: %.1f s of a %.0f s budget\n", $elapsed, self::Budget));
+        fwrite(STDERR, sprintf("\ncombination suite: %.1f s of a %.0f s budget\n", $elapsed, self::BUDGET));
 
         self::assertLessThanOrEqual(
-            self::Budget,
+            self::BUDGET,
             $elapsed,
             'the combination suite is over budget; make it faster rather than raising this number',
         );

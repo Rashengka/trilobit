@@ -27,7 +27,7 @@ final readonly class Module
      * anything else here is cheaper than discovering half way through a
      * compile that a name was a path fragment.
      */
-    private const string NamePattern = '#^[a-z][a-z0-9]*$#';
+    private const string NAME_PATTERN = '#^[a-z][a-z0-9]*$#';
 
     private function __construct(
         public string $name,
@@ -36,7 +36,7 @@ final readonly class Module
 
     public static function named(string $name, string $rootDirectory): self
     {
-        if (preg_match(self::NamePattern, $name) !== 1) {
+        if (preg_match(self::NAME_PATTERN, $name) !== 1) {
             throw new \InvalidArgumentException(sprintf(
                 "'%s' is not a module name; a module name is one lower-case word starting with a letter.",
                 $name,

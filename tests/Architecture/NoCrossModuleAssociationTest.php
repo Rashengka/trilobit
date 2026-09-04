@@ -33,7 +33,7 @@ use Trilobit\Core\Doctrine\TableName;
 final class NoCrossModuleAssociationTest extends TestCase
 {
     /** In every build, so a foreign key into it is safe from any module. */
-    private const string AlwaysEnabled = 'core';
+    private const string ALWAYS_ENABLED = 'core';
 
     public function testNoAssociationCrossesTheBoundaryBetweenTwoModules(): void
     {
@@ -77,7 +77,7 @@ final class NoCrossModuleAssociationTest extends TestCase
                 self::assertNotNull($from, $metadata->getTableName() . ' belongs to no module');
                 self::assertNotNull($to, $association->targetEntity . ' is not in this mapping');
 
-                if ($from === $to || $to === self::AlwaysEnabled) {
+                if ($from === $to || $to === self::ALWAYS_ENABLED) {
                     continue;
                 }
 

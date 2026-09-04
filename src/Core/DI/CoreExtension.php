@@ -39,19 +39,19 @@ use Trilobit\Core\Routing\RouterFactory;
 final class CoreExtension extends CompilerExtension
 {
     /** Services tagged with this add routes; see Trilobit\Core\Routing\RouteProvider. */
-    public const string TagRouteProvider = 'trilobit.route_provider';
+    public const string TAG_ROUTE_PROVIDER = 'trilobit.route_provider';
 
     /** Services tagged with this add administration menu entries. */
-    public const string TagAdminMenuProvider = 'trilobit.admin_menu_provider';
+    public const string TAG_ADMIN_MENU_PROVIDER = 'trilobit.admin_menu_provider';
 
     /** Services tagged with this listen to domain events. */
-    public const string TagEventListener = 'trilobit.event_listener';
+    public const string TAG_EVENT_LISTENER = 'trilobit.event_listener';
 
     /** Services tagged with this implement a Core port; the tag value is the interface. */
-    public const string TagPort = 'trilobit.port';
+    public const string TAG_PORT = 'trilobit.port';
 
     /** The console's own tag; the value is the name the command answers to. */
-    private const string TagConsoleCommand = 'console.command';
+    private const string TAG_CONSOLE_COMMAND = 'console.command';
 
     /**
      * The migration generator registered by the Nette-to-Doctrine bridge,
@@ -59,7 +59,7 @@ final class CoreExtension extends CompilerExtension
      * that moves it fails loudly on the next compile rather than quietly
      * leaving the unguarded generator in place.
      */
-    private const string BridgeDiffCommand = 'nettrine.migrations.diffCommand';
+    private const string BRIDGE_DIFF_COMMAND = 'nettrine.migrations.diffCommand';
 
     public function getConfigSchema(): Schema
     {
@@ -119,7 +119,7 @@ final class CoreExtension extends CompilerExtension
             ->setType(MigrationsDiffCommand::class)
             ->setFactory(MigrationsDiffCommand::class)
             ->setAutowired(false)
-            ->addTag(self::TagConsoleCommand, 'migrations:diff');
+            ->addTag(self::TAG_CONSOLE_COMMAND, 'migrations:diff');
 
         $builder->addDefinition($this->prefix('routerFactory'))
             ->setFactory(RouterFactory::class, [[]]);
@@ -145,19 +145,19 @@ final class CoreExtension extends CompilerExtension
     public function beforeCompile(): void
     {
         $builder = $this->getContainerBuilder();
-        if (!$builder->hasDefinition(self::BridgeDiffCommand)) {
+        if (!$builder->hasDefinition(self::BRIDGE_DIFF_COMMAND)) {
             throw new InvalidStateException(sprintf(
                 "'%s' is not in the container, so the unguarded migration generator could not be taken out of it. "
                 . 'It is registered by the Nette-to-Doctrine bridge; a release that renames it needs this name changed with it.',
-                self::BridgeDiffCommand,
+                self::BRIDGE_DIFF_COMMAND,
             ));
         }
 
-        $builder->removeDefinition(self::BridgeDiffCommand);
+        $builder->removeDefinition(self::BRIDGE_DIFF_COMMAND);
 
-        $this->service('routerFactory')->setArguments([$this->taggedServices(self::TagRouteProvider)]);
-        $this->service('adminMenu')->setArguments([$this->taggedServices(self::TagAdminMenuProvider)]);
-        $this->service('listeners')->setArguments([$this->taggedServices(self::TagEventListener)]);
+        $this->service('routerFactory')->setArguments([$this->taggedServices(self::TAG_ROUTE_PROVIDER)]);
+        $this->service('adminMenu')->setArguments([$this->taggedServices(self::TAG_ADMIN_MENU_PROVIDER)]);
+        $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
         $this->service('ports')->setArguments([$this->taggedPorts()]);
     }
 
@@ -235,12 +235,12 @@ final class CoreExtension extends CompilerExtension
     private function taggedPorts(): array
     {
         $ports = [];
-        foreach ($this->getContainerBuilder()->findByTag(self::TagPort) as $name => $port) {
+        foreach ($this->getContainerBuilder()->findByTag(self::TAG_PORT) as $name => $port) {
             if (!is_string($port) || !interface_exists($port)) {
                 throw new InvalidStateException(sprintf(
                     "Service '%s' is tagged %s, so the tag value has to be the port interface it implements; got %s.",
                     $name,
-                    self::TagPort,
+                    self::TAG_PORT,
                     get_debug_type($port),
                 ));
             }

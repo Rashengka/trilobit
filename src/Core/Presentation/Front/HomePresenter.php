@@ -15,7 +15,7 @@ use Nette\Application\UI\Template;
  */
 final class HomePresenter extends FrontPresenter
 {
-    private const array Highlights = [
+    private const array HIGHLIGHTS = [
         'Modules that can be switched on and off one at a time.',
         'A schema that is generated from the model, never written by hand.',
         'A gate that has to be green before anything is called done.',
@@ -35,7 +35,7 @@ final class HomePresenter extends FrontPresenter
         $template->pageTitle = 'Home';
         $template->headline = 'Trilobit';
         $template->tagline = 'A modular e-shop, CRM and CMS built on Nette and Latte.';
-        $template->highlights = self::Highlights;
+        $template->highlights = self::HIGHLIGHTS;
     }
 
     /**

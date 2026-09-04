@@ -67,7 +67,7 @@ final class AllModuleCombinationsTest extends TestCase
     {
         $names = Build::serviceNames(Build::container($enabled));
 
-        foreach (Build::Switchable as $module) {
+        foreach (Build::SWITCHABLE as $module) {
             $owned = array_values(array_filter(
                 $names,
                 static fn(string $name): bool => str_starts_with($name, $module . '.'),
@@ -107,7 +107,7 @@ final class AllModuleCombinationsTest extends TestCase
     {
         $container = Build::container($enabled);
 
-        foreach (Build::Switchable as $module) {
+        foreach (Build::SWITCHABLE as $module) {
             $match = Build::match($container, '/' . $module);
 
             if (in_array($module, $enabled, true)) {
@@ -133,7 +133,7 @@ final class AllModuleCombinationsTest extends TestCase
     {
         $container = Build::container($enabled);
 
-        foreach (Build::Switchable as $module) {
+        foreach (Build::SWITCHABLE as $module) {
             $presenter = ucfirst($module) . ':Front:Status';
 
             if (!in_array($module, $enabled, true)) {

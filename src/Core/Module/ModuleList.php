@@ -21,7 +21,7 @@ use Nette\Neon\Neon;
  */
 final readonly class ModuleList
 {
-    private const string ParameterPath = 'parameters.trilobit.modules';
+    private const string PARAMETER_PATH = 'parameters.trilobit.modules';
 
     /** @param array<string, bool> $modules sorted by name */
     private function __construct(
@@ -58,7 +58,7 @@ final readonly class ModuleList
         $declared = is_array($declared) ? ($declared['modules'] ?? null) : null;
 
         if (!is_array($declared)) {
-            throw new \RuntimeException(sprintf('%s has no %s.', $file, self::ParameterPath));
+            throw new \RuntimeException(sprintf('%s has no %s.', $file, self::PARAMETER_PATH));
         }
 
         $modules = [];
@@ -74,7 +74,7 @@ final readonly class ModuleList
             if (!is_bool($enabled)) {
                 throw new \RuntimeException(sprintf(
                     "%s in %s says '%s: %s'; a module is either true or false.",
-                    self::ParameterPath,
+                    self::PARAMETER_PATH,
                     $file,
                     $name,
                     get_debug_type($enabled),

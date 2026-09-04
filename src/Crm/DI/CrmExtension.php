@@ -39,11 +39,11 @@ final class CrmExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('routes'))
             ->setFactory(CrmRoutes::class)
             ->setAutowired(false)
-            ->addTag(CoreExtension::TagRouteProvider);
+            ->addTag(CoreExtension::TAG_ROUTE_PROVIDER);
 
         $builder->addDefinition($this->prefix('adminMenu'))
             ->setFactory(CrmMenu::class)
             ->setAutowired(false)
-            ->addTag(CoreExtension::TagAdminMenuProvider);
+            ->addTag(CoreExtension::TAG_ADMIN_MENU_PROVIDER);
     }
 }

@@ -29,13 +29,13 @@ use Trilobit\Core\Config\Environment;
 final class Database
 {
     /** Under docker compose the server is the one in compose.yaml. */
-    private const string DefaultHost = '127.0.0.1';
+    private const string DEFAULT_HOST = '127.0.0.1';
 
-    private const string DefaultPort = '3306';
+    private const string DEFAULT_PORT = '3306';
 
-    private const string DefaultName = 'trilobit';
+    private const string DEFAULT_NAME = 'trilobit';
 
-    private const string DefaultUser = 'trilobit';
+    private const string DEFAULT_USER = 'trilobit';
 
     /**
      * A schema for $owner, empty, with the application pointed at it.
@@ -103,7 +103,7 @@ final class Database
 
     private static function baseName(Environment $environment): string
     {
-        $name = $environment->value('TRILOBIT_DB_NAME', self::DefaultName);
+        $name = $environment->value('TRILOBIT_DB_NAME', self::DEFAULT_NAME);
 
         // A schema this test made carries a suffix, so a second suffix on top
         // of it would name a schema of a schema. Whatever is in the
@@ -115,9 +115,9 @@ final class Database
     {
         $parameters = [
             'driver' => 'pdo_mysql',
-            'host' => $environment->value('TRILOBIT_DB_HOST', self::DefaultHost),
-            'port' => (int) $environment->value('TRILOBIT_DB_PORT', self::DefaultPort),
-            'user' => $environment->value('TRILOBIT_DB_USER', self::DefaultUser),
+            'host' => $environment->value('TRILOBIT_DB_HOST', self::DEFAULT_HOST),
+            'port' => (int) $environment->value('TRILOBIT_DB_PORT', self::DEFAULT_PORT),
+            'user' => $environment->value('TRILOBIT_DB_USER', self::DEFAULT_USER),
             'password' => $environment->value('TRILOBIT_DB_PASSWORD'),
             'charset' => 'utf8mb4',
         ];
