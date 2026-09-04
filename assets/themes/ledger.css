@@ -1,0 +1,146 @@
+/*
+ * Ledger - the second theme, and the reason there is a second one at all.
+ *
+ * A theme that only repaints proves nothing: HTML wired to a particular
+ * appearance passes a palette swap without complaining. Ledger therefore moves
+ * the navigation to the side of the page, narrows the content column, squares
+ * the corners, drops the shadows for rules and sets the headings in a serif -
+ * all of it by re-declaring tokens assets/themes/atrium.css already declared,
+ * and none of it by touching a template. If a component had its appearance
+ * written into its markup, this is where it would show.
+ *
+ * Every property name below also appears in atrium.css. Nothing new is invented
+ * here: a token this file declared and atrium.css did not would be a token that
+ * exists in one theme only, which is how a component quietly becomes
+ * theme-specific.
+ *
+ * It is a plain selector block rather than a second `@theme`, because Tailwind's
+ * `@theme` always emits on :root and a theme has to be selectable at run time.
+ * The custom properties themselves are still Tailwind's own - this file
+ * overrides them, it does not run a parallel set beside them.
+ *
+ * What this file deliberately does NOT do is reorder the page. The elements
+ * arrive in the same order in every theme; only the grid areas they land in
+ * differ. Reordering would mean templates per theme, which .ai/plans/01d-design-
+ * system.md rules out on purpose.
+ */
+
+[data-theme='ledger'] {
+    /* ---- Typography -------------------------------------------------- */
+
+    --font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', roboto, helvetica, arial, sans-serif;
+    --font-display: ui-serif, georgia, 'Times New Roman', times, serif;
+    --font-mono: ui-monospace, sfmono-regular, menlo, consolas, monospace;
+
+    --text-sm: 0.8125rem;
+    --text-base: 0.9375rem;
+    --text-lg: 1.0625rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2.125rem;
+
+    --leading-tight: 1.2;
+    --leading-normal: 1.55;
+    --tracking-display: 0.005em;
+    --font-weight-display: 600;
+
+    /* ---- Palette ------------------------------------------------------ */
+
+    --color-canvas: light-dark(oklch(0.96 0.014 85), oklch(0.2 0.012 75));
+    --color-canvas-sunken: light-dark(oklch(0.92 0.021 85), oklch(0.25 0.014 75));
+    --color-surface: light-dark(oklch(0.99 0.008 85), oklch(0.24 0.013 75));
+    --color-surface-hover: light-dark(oklch(0.93 0.024 85), oklch(0.29 0.016 75));
+
+    --color-ink: light-dark(oklch(0.26 0.024 60), oklch(0.94 0.012 85));
+    --color-ink-muted: light-dark(oklch(0.48 0.026 60), oklch(0.73 0.018 85));
+    --color-line: light-dark(oklch(0.83 0.026 75), oklch(0.35 0.018 75));
+
+    --color-accent: light-dark(oklch(0.5 0.14 25), oklch(0.7 0.13 30));
+    --color-accent-hover: light-dark(oklch(0.43 0.15 25), oklch(0.77 0.12 30));
+    --color-accent-ink: light-dark(oklch(0.98 0.012 60), oklch(0.19 0.03 30));
+    --color-focus: light-dark(oklch(0.5 0.14 25), oklch(0.76 0.13 30));
+
+    --color-banner: light-dark(oklch(0.99 0.008 85), oklch(0.24 0.013 75));
+    --color-banner-ink: var(--color-ink);
+    --color-nav: light-dark(oklch(0.3 0.026 60), oklch(0.16 0.012 75));
+    --color-nav-ink: light-dark(oklch(0.85 0.018 75), oklch(0.78 0.016 85));
+    --color-nav-ink-active: light-dark(oklch(0.99 0.008 85), oklch(0.97 0.01 85));
+    --color-nav-marker: light-dark(oklch(0.72 0.14 55), oklch(0.72 0.13 40));
+
+    /* ---- Spacing ------------------------------------------------------ */
+
+    --spacing: 0.22rem;
+
+    --space-3xs: 0.125rem;
+    --space-2xs: 0.25rem;
+    --space-xs: 0.4375rem;
+    --space-sm: 0.625rem;
+    --space-md: 0.9375rem;
+    --space-lg: 1.375rem;
+    --space-xl: 2rem;
+    --space-2xl: 3.25rem;
+
+    /* ---- Shape and depth ---------------------------------------------- */
+
+    --radius-sm: 0.125rem;
+    --radius-md: 0.125rem;
+    --radius-lg: 0.1875rem;
+    --radius-pill: 0.1875rem;
+
+    --border-hairline: 1px;
+    --border-marker: 3px;
+
+    /* Rules instead of shadows: the surface is separated by a line, the way a
+       printed ledger separates one column from the next. */
+    --shadow-raised: 0 0 0 0 transparent;
+
+    --motion-fast: 90ms ease;
+
+    /* ---- Layout -------------------------------------------------------- */
+
+    /*
+     * The whole point of the second theme. The navigation moves out of the
+     * stack and becomes the left-hand column of the shell, spanning every row;
+     * the banner, the content and the footer share the column beside it. The
+     * markup is identical to the one Atrium renders.
+     */
+    --layout-shell-areas: 'nav banner' 'nav main' 'nav footer';
+    --layout-shell-columns: var(--layout-nav-size) minmax(0, 1fr);
+    --layout-shell-rows: auto 1fr auto;
+    --layout-shell-min-size: 100dvh;
+
+    --layout-nav-size: 15rem;
+    --layout-nav-direction: column;
+    --layout-nav-wrap: nowrap;
+    --layout-nav-gap: 0.125rem;
+    --layout-nav-padding: 1.25rem 0.75rem;
+    --layout-nav-marker-block-end: 0px;
+    --layout-nav-marker-inline-start: 3px;
+
+    --layout-content-width: 58rem;
+    --layout-measure: 38rem;
+    --layout-gutter: 2rem;
+
+    --layout-card-min: 15rem;
+    --layout-card-media-ratio: 3 / 2;
+}
+
+/*
+ * On a narrow viewport a fixed side column would leave the content nothing to
+ * live in, so the shell falls back to the stack Atrium uses. A breakpoint is a
+ * measurement, which is why it belongs in a theme file and not in base.css:
+ * base.css has no dimension of its own to compare against.
+ */
+@media (width < 52rem) {
+    [data-theme='ledger'] {
+        --layout-shell-areas: 'banner' 'nav' 'main' 'footer';
+        --layout-shell-columns: minmax(0, 1fr);
+        --layout-shell-rows: auto auto 1fr auto;
+        --layout-nav-size: auto;
+        --layout-nav-direction: row;
+        --layout-nav-wrap: wrap;
+        --layout-nav-padding: 0.5rem 0.75rem;
+        --layout-nav-marker-block-end: 3px;
+        --layout-nav-marker-inline-start: 0px;
+    }
+}
