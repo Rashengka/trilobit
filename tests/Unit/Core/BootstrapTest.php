@@ -36,7 +36,7 @@ final class BootstrapTest extends TestCase
                 $root . '/src/Cms/config/services.neon',
                 $root . '/src/Shop/config/services.neon',
             ],
-            self::withoutLocalOverride(Bootstrap::configurationFiles(
+            $this->withoutLocalOverride(Bootstrap::configurationFiles(
                 ModuleList::of(['cms' => true, 'crm' => false, 'shop' => true], $root),
             )),
         );
@@ -45,7 +45,7 @@ final class BootstrapTest extends TestCase
     public function testASwitchedOffModuleContributesNoFile(): void
     {
         $root = Bootstrap::rootDirectory();
-        $files = self::withoutLocalOverride(Bootstrap::configurationFiles(
+        $files = $this->withoutLocalOverride(Bootstrap::configurationFiles(
             ModuleList::of(['cms' => false, 'crm' => false, 'shop' => false], $root),
         ));
 
@@ -103,7 +103,7 @@ final class BootstrapTest extends TestCase
      *
      * @return list<string>
      */
-    private static function withoutLocalOverride(array $files): array
+    private function withoutLocalOverride(array $files): array
     {
         $local = Bootstrap::rootDirectory() . '/config/local.neon';
 
