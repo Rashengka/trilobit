@@ -1,0 +1,71 @@
+{
+    "name": "trilobit/trilobit",
+    "description": "A modular e-shop, CRM and CMS built on Nette and Latte.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.4",
+        "latte/latte": "^3.1.4",
+        "nette/application": "^3.3",
+        "nette/bootstrap": "^3.3",
+        "nette/di": "^3.2",
+        "nette/http": "^3.4",
+        "nette/neon": "^3.4",
+        "nette/robot-loader": "^4.1",
+        "nette/utils": "^4.1",
+        "tracy/tracy": "^2.12"
+    },
+    "require-dev": {
+        "deptrac/deptrac": "^4.7",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan-nette": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^13.3",
+        "rector/rector": "^2.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Trilobit\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Trilobit\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "phpstan/extension-installer": true
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "check": [
+            "@leaks",
+            "@cs",
+            "@stan",
+            "@deptrac",
+            "@rector",
+            "@test"
+        ],
+        "leaks": "bin/check-leaks --all",
+        "cs": "php-cs-fixer check --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "stan": "phpstan analyse --memory-limit=512M",
+        "deptrac": "deptrac analyse --fail-on-uncovered --report-uncovered",
+        "rector": "rector process --dry-run",
+        "test": "phpunit --testsuite unit,architecture,template,integration,combination,tooling"
+    },
+    "scripts-descriptions": {
+        "check": "Runs the whole gate: leak guard, coding standard, static analysis, layer rules, refactoring check, tests.",
+        "leaks": "Looks over every tracked file for content that does not belong in a public repository.",
+        "cs": "Reports coding standard violations without changing anything.",
+        "cs:fix": "Applies the coding standard.",
+        "stan": "Static analysis at the maximum level, without a baseline.",
+        "deptrac": "Checks that no layer depends on something it may not.",
+        "rector": "Reports refactorings the project has agreed to, without applying them.",
+        "test": "Runs every PHPUnit suite that belongs in the gate."
+    }
+}

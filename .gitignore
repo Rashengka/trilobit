@@ -1,0 +1,11 @@
+/.env
+/config/local.neon
+/node_modules/
+/var/
+/vendor/
+/www/build/
+
+# Tool caches.
+/.deptrac.cache
+/.php-cs-fixer.cache
+/.phpunit.cache/
