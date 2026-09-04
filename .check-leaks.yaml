@@ -115,7 +115,28 @@ demo_names:
   - Dana Dinoflagellate
 
 # Paths where a rule does not apply. Kept short on purpose.
+#
+# composer.lock is the one file listed here that nobody writes. It is generated
+# from the metadata of the packages the project depends on, so it carries their
+# authors' addresses, their names in their own alphabets, digit runs that read
+# as phone numbers, and package names such as "theseer/tokenizer" that read to
+# the credential rule as a token with a value. All of that is already public on
+# Packagist, none of it is ours, and editing the file by hand is forbidden for a
+# reason of its own: what is committed has to be provably what the resolver
+# produced.
+#
+# Only the four rules that fire on that metadata are lifted. The rules that
+# would catch a real disclosure in a lock file - a private package repository,
+# a URL carrying a password, a service token, a pattern from the local list -
+# keep applying to it. That is why this is four names and not skip_paths.
 exempt:
   czech_text:
     - '**/translations/cs.*'
     - 'LICENSE'
+    - 'composer.lock'
+  email:
+    - 'composer.lock'
+  phone:
+    - 'composer.lock'
+  credential:
+    - 'composer.lock'
