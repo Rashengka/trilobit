@@ -24,11 +24,36 @@ use Trilobit\Core\Module\ModuleList;
  */
 final class Boot
 {
+    /**
+     * A manifest the real build produces, without running the real build.
+     *
+     * A suite that renders a real page renders through ViteMapper, which in
+     * production reads www/build/.vite/manifest.json - a file `npm run
+     * build` writes and `composer test` must not need, because it runs
+     * without Node and CI never runs npm. Pointing every test-built
+     * container at this fixture instead, rather than teaching ViteMapper to
+     * tolerate a missing manifest, keeps a real missing manifest a real
+     * error in production - see vendor/nette/assets' ViteMapper::
+     * readChunks(). tests/Combination/NoRealBuildRequiredTest asserts this
+     * holds even when a real www/build happens to sit on the machine
+     * `composer test` runs on.
+     */
+    private const string ASSET_MANIFEST_FIXTURE = __DIR__ . '/Fixtures/vite-manifest.json';
+
     private static bool $handlersTaken = false;
 
     public static function container(?ModuleList $modules = null): Container
     {
         $configurator = Bootstrap::configurator($modules);
+        $configurator->addConfig([
+            'assets' => [
+                'mapping' => [
+                    'vite' => [
+                        'manifest' => self::ASSET_MANIFEST_FIXTURE,
+                    ],
+                ],
+            ],
+        ]);
 
         if (!self::$handlersTaken) {
             self::$handlersTaken = true;
