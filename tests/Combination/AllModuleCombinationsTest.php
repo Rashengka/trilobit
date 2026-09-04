@@ -97,6 +97,49 @@ final class AllModuleCombinationsTest extends TestCase
     }
 
     /**
+     * A finding from clicking through the running application: the homepage
+     * had no way into the section of any enabled module. Every enabled
+     * module has to leave a real link on the homepage, and a module that is
+     * switched off has to leave neither an empty entry nor a link that
+     * points nowhere - the routed path itself has to be gone, the same way
+     * testOnlyTheEnabledModulesHaveRoutes above proves it is.
+     *
+     * @param list<string> $enabled
+     */
+    #[DataProviderExternal(Build::class, 'everyCombination')]
+    public function testTheHomepageLinksToEachEnabledModule(array $enabled): void
+    {
+        $container = Build::container($enabled);
+        $document = HTMLDocument::createFromString(
+            Build::render($container, 'Core:Front:Home'),
+            LIBXML_NOERROR,
+        );
+
+        foreach (Build::SWITCHABLE as $module) {
+            $link = $document->querySelector(sprintf('[data-testid="signpost-%s"]', $module));
+
+            if (!in_array($module, $enabled, true)) {
+                self::assertNull($link, sprintf('%s is switched off and still has a homepage link', $module));
+
+                continue;
+            }
+
+            self::assertNotNull($link, sprintf('%s is enabled and has no homepage link', $module));
+            self::assertSame(ucfirst($module), $link->textContent);
+
+            $href = $link->getAttribute('href');
+            self::assertNotNull($href, sprintf('%s homepage link carries no href', $module));
+            self::assertNotSame('', $href, sprintf('%s homepage link has an empty href', $module));
+
+            self::assertSame(
+                Build::match($container, $href)['presenter'] ?? null,
+                ucfirst($module) . ':Front:Status',
+                sprintf('%s homepage link does not resolve through the router to the module', $module),
+            );
+        }
+    }
+
+    /**
      * The router has no catch-all route, which is what lets this be an
      * assertion rather than a hope: a path nobody claimed comes back as null.
      *
