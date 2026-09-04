@@ -901,7 +901,12 @@ function ruleDefinitions(array $config, array $localPatterns): array
             'advice' => 'Use a path relative to the project root, or read it from the environment.',
             'fn' => static function (string $text): array {
                 $hits = allMatches('#(?:/Users/|/home/|/opt/www/|/var/www/)[A-Za-z0-9._\-/]*#', $text); // check-leaks:allow rule=absolute_path reason=the rule has to name the prefixes it looks for
-                $hits = array_merge($hits, allMatches('#(?<![A-Za-z0-9])[A-Za-z]:\\\\{1,2}[A-Za-z0-9_.\- ]+#', $text));
+                // The character after the separator may not be a space. A Windows path
+                // never starts one there, but prose does - "C:" followed by a separator
+                // and a sentence used to be reported as a path, which is how a commit
+                // message describing this very rule came to fail the check. Spaces are
+                // still allowed further along, so "Program Files" is matched.
+                $hits = array_merge($hits, allMatches('#(?<![A-Za-z0-9])[A-Za-z]:\\\\{1,2}[A-Za-z0-9_.\-][A-Za-z0-9_.\- ]*#', $text));
 
                 // A UNC path (\\server\share) used to be matched here as well. It was
                 // dropped: the pattern also matches every PHP namespace literal, which

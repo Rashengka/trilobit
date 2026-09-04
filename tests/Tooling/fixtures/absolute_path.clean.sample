@@ -5,3 +5,8 @@ require __DIR__ . '/../vendor/autoload.php';
 // long way round, so the branch that did it was removed.
 $extension = $namespace . '\\DI\\' . $label . 'Extension';
 $class = 'Trilobit\\Shop\\DI\\ShopExtension';
+
+// Prose is not a path either. A drive letter and a separator followed by a
+// space used to be reported as one, which is how a commit message describing
+// the rule came to fail the check.
+// Writing C:\ in a sentence like this one has to stay clean.
