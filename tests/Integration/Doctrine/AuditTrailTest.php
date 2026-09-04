@@ -24,6 +24,12 @@ use Trilobit\Tests\Migrations;
  * The container under test is Core alone: the audit trail is Core's own
  * cross-cutting concern (see the class docblock of Dispatcher) and does not
  * need a module switched on to work.
+ *
+ * The dispatcher is fetched by its service name rather than by
+ * getByType(EventDispatcherInterface::class): CoreExtension registers it
+ * with autowiring off precisely so that asking for it by type answers
+ * nothing, and this test is meant to show how the service is actually
+ * reached, not the way DispatcherFallbackTest proves is closed.
  */
 #[CoversNothing]
 final class AuditTrailTest extends TestCase
@@ -46,7 +52,9 @@ final class AuditTrailTest extends TestCase
         $occurredAt = new DateTimeImmutable('2026-09-04T12:00:00+00:00');
         $event = new EntityChanged(User::class, '1', 'created', $occurredAt);
 
-        $container->getByType(EventDispatcherInterface::class)->dispatch($event);
+        $dispatcher = $container->getService('core.dispatcher');
+        self::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
+        $dispatcher->dispatch($event);
 
         $entries = $container->getByType(EntityManagerInterface::class)
             ->getRepository(AuditEntry::class)
