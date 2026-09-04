@@ -163,8 +163,16 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('listenerProvider'))
             ->setFactory(ListenerProvider::class);
 
+        // Not autowired: deptrac already stops a module from naming
+        // Dispatcher, but psr/event-dispatcher's EventDispatcherInterface is
+        // Vendor, which every module may depend on - autowiring left on would
+        // hand the dispatcher to any module asking for that interface by
+        // type, unseen by deptrac because it never looks inside the
+        // container. Something inside Core that needs it takes it by the
+        // explicit reference '@core.dispatcher'.
         $builder->addDefinition($this->prefix('dispatcher'))
-            ->setFactory(Dispatcher::class);
+            ->setFactory(Dispatcher::class)
+            ->setAutowired(false);
 
         // The one listener Core registers for itself, rather than collecting
         // through the tag: the audit trail is Core's own cross-cutting

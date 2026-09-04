@@ -14,6 +14,7 @@ use Nette\Http\UrlScript;
 use Nette\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Contract\Activity\ActivityRecorder;
@@ -118,6 +119,22 @@ final class ApplicationSkeletonTest extends TestCase
 
         self::assertInstanceOf(NullPartyDirectory::class, $directory);
         self::assertNull($directory->find(new PartyLookup(email: 'person@example.com')));
+    }
+
+    /**
+     * The regression this guards: deptrac stops a module from naming
+     * Trilobit\Core\Event\Dispatcher, but not from asking the container for
+     * Psr\EventDispatcher\EventDispatcherInterface, which is Vendor and every
+     * module may depend on it. The dispatcher is registered with autowiring
+     * off for exactly that reason - see the comment next to 'dispatcher' in
+     * CoreExtension - so asking for it by type, the way a module's own
+     * constructor would, has to come back empty. This is the real,
+     * fully-compiled container; Trilobit\Tests\Unit\Core\DI\DispatcherFallbackTest
+     * proves the same mechanism in isolation.
+     */
+    public function testTheDispatcherDoesNotResolveByType(): void
+    {
+        self::assertNull($this->container()->getByType(EventDispatcherInterface::class, false));
     }
 
     public function testTheHomepageRendersInsideTheLayout(): void

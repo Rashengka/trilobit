@@ -22,6 +22,14 @@ use Psr\EventDispatcher\ListenerProviderInterface;
  * meant to construct or call it, which deptrac.yaml enforces with a layer of
  * its own - the point where a module reached for this directly is exactly the
  * point it should have reached for a port instead.
+ *
+ * The fence stands on two legs, not one: deptrac catches a module naming this
+ * class, but psr/event-dispatcher's interfaces sit in the Vendor layer every
+ * module is allowed to depend on, so a module asking for
+ * EventDispatcherInterface by type would slip past deptrac entirely.
+ * CoreExtension therefore registers this service with autowiring off - see
+ * the comment next to 'dispatcher' there, and
+ * Trilobit\Tests\Unit\Core\DI\DispatcherFallbackTest for the regression.
  */
 final readonly class Dispatcher implements EventDispatcherInterface
 {
