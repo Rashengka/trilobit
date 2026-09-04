@@ -112,7 +112,17 @@ final class DisabledModuleSchemaTest extends TestCase
 
         sort($tables);
 
-        self::assertSame(['cms_marker', 'core_audit_entry', 'core_migration', 'core_user', 'shop_marker'], $tables);
+        self::assertSame([
+            'cms_marker',
+            'core_audit_entry',
+            'core_media_file',
+            'core_migration',
+            'core_role',
+            'core_setting',
+            'core_user',
+            'core_user_role',
+            'shop_marker',
+        ], $tables);
     }
 
     /**
