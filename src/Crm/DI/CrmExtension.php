@@ -7,6 +7,7 @@ namespace Trilobit\Crm\DI;
 use Nette\DI\CompilerExtension;
 use Trilobit\Core\DI\CoreExtension;
 use Trilobit\Crm\Admin\CrmMenu;
+use Trilobit\Crm\Presentation\Front\CrmSignpost;
 use Trilobit\Crm\Routing\CrmRoutes;
 
 /**
@@ -45,5 +46,10 @@ final class CrmExtension extends CompilerExtension
             ->setFactory(CrmMenu::class)
             ->setAutowired(false)
             ->addTag(CoreExtension::TAG_ADMIN_MENU_PROVIDER);
+
+        $builder->addDefinition($this->prefix('signpost'))
+            ->setFactory(CrmSignpost::class)
+            ->setAutowired(false)
+            ->addTag(CoreExtension::TAG_SIGNPOST_PROVIDER);
     }
 }

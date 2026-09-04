@@ -6,6 +6,7 @@ namespace Trilobit\Cms\DI;
 
 use Nette\DI\CompilerExtension;
 use Trilobit\Cms\Admin\CmsMenu;
+use Trilobit\Cms\Presentation\Front\CmsSignpost;
 use Trilobit\Cms\Routing\CmsRoutes;
 use Trilobit\Core\DI\CoreExtension;
 
@@ -45,5 +46,10 @@ final class CmsExtension extends CompilerExtension
             ->setFactory(CmsMenu::class)
             ->setAutowired(false)
             ->addTag(CoreExtension::TAG_ADMIN_MENU_PROVIDER);
+
+        $builder->addDefinition($this->prefix('signpost'))
+            ->setFactory(CmsSignpost::class)
+            ->setAutowired(false)
+            ->addTag(CoreExtension::TAG_SIGNPOST_PROVIDER);
     }
 }

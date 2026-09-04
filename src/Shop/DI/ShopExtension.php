@@ -7,6 +7,7 @@ namespace Trilobit\Shop\DI;
 use Nette\DI\CompilerExtension;
 use Trilobit\Core\DI\CoreExtension;
 use Trilobit\Shop\Admin\ShopMenu;
+use Trilobit\Shop\Presentation\Front\ShopSignpost;
 use Trilobit\Shop\Routing\ShopRoutes;
 
 /**
@@ -45,5 +46,10 @@ final class ShopExtension extends CompilerExtension
             ->setFactory(ShopMenu::class)
             ->setAutowired(false)
             ->addTag(CoreExtension::TAG_ADMIN_MENU_PROVIDER);
+
+        $builder->addDefinition($this->prefix('signpost'))
+            ->setFactory(ShopSignpost::class)
+            ->setAutowired(false)
+            ->addTag(CoreExtension::TAG_SIGNPOST_PROVIDER);
     }
 }

@@ -27,20 +27,21 @@ use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
+use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Routing\RouterFactory;
 
 /**
- * The always-enabled part of the application, and the four places a module
+ * The always-enabled part of the application, and the five places a module
  * hands something to it.
  *
- * All four work the same way and for the same reason: a module registers a
+ * All five work the same way and for the same reason: a module registers a
  * service and tags it, and Core reads the tag. Core therefore contains no list
  * of modules and no condition on one being enabled. A module that is switched
  * off registers no service at all, so every one of these collections simply
  * comes back shorter - which is what makes "switched off" measurable in the
  * container rather than only visible in the user interface.
  *
- * With no modules enabled all four collections are empty, and that is the
+ * With no modules enabled all five collections are empty, and that is the
  * state this class is first delivered in.
  */
 final class CoreExtension extends CompilerExtension
@@ -50,6 +51,9 @@ final class CoreExtension extends CompilerExtension
 
     /** Services tagged with this add administration menu entries. */
     public const string TAG_ADMIN_MENU_PROVIDER = 'trilobit.admin_menu_provider';
+
+    /** Services tagged with this add a homepage entry point; see Trilobit\Core\Presentation\Front\Signpost\SignpostProvider. */
+    public const string TAG_SIGNPOST_PROVIDER = 'trilobit.signpost_provider';
 
     /** Services tagged with this listen to domain events. */
     public const string TAG_EVENT_LISTENER = 'trilobit.event_listener';
@@ -150,6 +154,9 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('adminMenu'))
             ->setFactory(Menu::class, [[]]);
 
+        $builder->addDefinition($this->prefix('signposts'))
+            ->setFactory(SignpostList::class, [[]]);
+
         $builder->addDefinition($this->prefix('listeners'))
             ->setFactory(ListenerCollection::class, [[]]);
 
@@ -208,6 +215,7 @@ final class CoreExtension extends CompilerExtension
 
         $this->service('routerFactory')->setArguments([$this->taggedServices(self::TAG_ROUTE_PROVIDER)]);
         $this->service('adminMenu')->setArguments([$this->taggedServices(self::TAG_ADMIN_MENU_PROVIDER)]);
+        $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
         $this->service('ports')->setArguments([$this->taggedPorts()]);
     }

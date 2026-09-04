@@ -26,6 +26,7 @@ use Trilobit\Core\Event\AuditListener;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
+use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Tests\Boot;
 
 /**
@@ -76,6 +77,11 @@ final class ApplicationSkeletonTest extends TestCase
     public function testTheAdminMenuIsEmptyWithoutModules(): void
     {
         self::assertSame([], $this->container()->getByType(Menu::class)->items());
+    }
+
+    public function testTheSignpostsAreEmptyWithoutModules(): void
+    {
+        self::assertSame([], $this->container()->getByType(SignpostList::class)->items());
     }
 
     /**

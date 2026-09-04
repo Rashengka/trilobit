@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Front;
 
 use Nette\Application\UI\Template;
+use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 
 /**
  * The one page the application has while it consists of Core alone.
@@ -21,6 +22,12 @@ final class HomePresenter extends FrontPresenter
         'A gate that has to be green before anything is called done.',
     ];
 
+    public function __construct(
+        private readonly SignpostList $signposts,
+    ) {
+        parent::__construct();
+    }
+
     public function renderDefault(): void
     {
         $template = $this->getTemplate();
@@ -36,6 +43,7 @@ final class HomePresenter extends FrontPresenter
         $template->headline = 'Trilobit';
         $template->tagline = 'A modular e-shop, CRM and CMS built on Nette and Latte.';
         $template->highlights = self::HIGHLIGHTS;
+        $template->signposts = $this->signposts->items();
     }
 
     /**

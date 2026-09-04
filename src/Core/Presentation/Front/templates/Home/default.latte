@@ -8,4 +8,15 @@
     <ul data-testid="homepage-highlights" n:if="$highlights !== []">
         <li n:foreach="$highlights as $highlight" data-testid="homepage-highlight">{$highlight}</li>
     </ul>
+
+    <nav data-testid="homepage-signposts" n:if="$signposts !== []">
+        <ul>
+            <li n:foreach="$signposts as $signpost">
+                {* The leading colon makes the destination absolute, the way
+                   @layout.latte's own home link does - without it Nette would
+                   resolve it inside Core, the module HomePresenter lives in. *}
+                <a n:href="':' . $signpost->destination" data-testid="signpost-{$signpost->label|lower}">{$signpost->label}</a>
+            </li>
+        </ul>
+    </nav>
 {/block}
