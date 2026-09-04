@@ -1,0 +1,84 @@
+#
+# The browser-side suite, in its own job.
+#
+# It is not a step of `composer check`: that gate has to run without Node at
+# all, because it is the one definition of green on the PHP side and T05
+# already broke that once by folding a frontend step into it. This job builds
+# the frontend and drives a real browser instead, and takes as long as that
+# needs to take.
+#
+
+name: E2E
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+# Keyed on github.ref for the same reason as ci.yaml: a push and a pull request
+# for the same commit build different trees (branch head vs. merged into base)
+# and must not cancel one another. A cancelled run shows up on a PR as a failed
+# check, not as "not run".
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: npm run e2e
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # var/build/modules.json is generated, not committed (it is derived from
+      # config/modules.neon), so the build has nothing to read without this -
+      # see vite.config.ts.
+      - name: Write the build manifest
+        run: php bin/trilobit app:warmup
+
+      - run: npm run build
+
+      # A developer's machine points playwright.config.ts at its own installed
+      # Chrome (channel: 'chrome'), so nothing is downloaded there. A runner has
+      # no such browser - the config leaves the channel unset whenever CI is
+      # set, which selects Playwright's own build, installed here.
+      - run: npx playwright install --with-deps chromium
+        env:
+          CI: 'true'
+
+      - name: npm run e2e
+        run: npm run e2e
+        env:
+          CI: 'true'
+
+      # The whole point of this job: a failing run is unreadable without a
+      # trace. playwright.config.ts keeps one per failed test (retain-on-failure);
+      # this uploads whatever it wrote so a failure can be opened locally with
+      # `npx playwright show-trace`.
+      - name: Upload the trace of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
