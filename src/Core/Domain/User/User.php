@@ -102,6 +102,12 @@ class User
         return $this->active;
     }
 
+    /** The way an account is taken away: it stops being able to sign in and stays attributable. */
+    public function deactivate(): void
+    {
+        $this->active = false;
+    }
+
     public function createdAt(): DateTimeImmutable
     {
         return $this->createdAt;
