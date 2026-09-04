@@ -1,0 +1,25 @@
+{
+    "assets/app.ts": {
+        "file": "app-test-fixture.js",
+        "src": "assets/app.ts",
+        "isEntry": true,
+        "css": [
+            "app-test-fixture.css"
+        ]
+    },
+    "src/Cms/assets/entry.ts": {
+        "file": "cms-entry-test-fixture.js",
+        "src": "src/Cms/assets/entry.ts",
+        "isEntry": true
+    },
+    "src/Crm/assets/entry.ts": {
+        "file": "crm-entry-test-fixture.js",
+        "src": "src/Crm/assets/entry.ts",
+        "isEntry": true
+    },
+    "src/Shop/assets/entry.ts": {
+        "file": "shop-entry-test-fixture.js",
+        "src": "src/Shop/assets/entry.ts",
+        "isEntry": true
+    }
+}
