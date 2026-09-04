@@ -1,0 +1,2 @@
+// RFC 2606 keeps example.com free for exactly this.
+$notify = 'alice@example.com';

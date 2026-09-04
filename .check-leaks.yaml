@@ -1,0 +1,121 @@
+# Public configuration of bin/check-leaks.
+#
+# Only structural rules live here: the shape of an address, of a connection
+# string, of an absolute path. Nothing in this file may identify a project, a
+# customer or a person - a committed list of forbidden words would itself be
+# the leak it is meant to prevent, and git would keep it forever.
+#
+# The words themselves live outside the repository, one per line, in
+#   $XDG_CONFIG_HOME/trilobit/check-leaks.local, or
+#   ~/.config/trilobit/check-leaks.local
+# See .check-leaks.local.example. When that file is missing the tool exits
+# with code 2 instead of reporting success.
+
+version: 1
+
+# Suppressions are the last resort, so their number is capped. The cap is
+# enforced by the modes that see whole files (--all, --files, --history).
+max_suppressions: 10
+
+# Every rule listed here must be implemented in bin/check-leaks and must have
+# both a dirty and a clean sample in tests/Tooling/fixtures/.
+rules:
+  private_pattern:
+    description: a word or path fragment from the local list
+  email:
+    description: a mailbox outside the domains reserved for documentation
+  connection_string:
+    description: a URL carrying a user name and a password
+  dsn:
+    description: a data source name with a value filled in
+  credential:
+    description: a password, secret, token or key assigned a literal value
+  private_key:
+    description: a PEM private key block
+  service_token:
+    description: a token in the published shape of a hosting or cloud service
+  high_entropy:
+    description: a long opaque literal assigned to a name
+  absolute_path:
+    description: a path rooted in somebody's machine
+  public_ip:
+    description: an address outside the loopback, private and documentation ranges
+  phone:
+    description: a phone number outside the demo directories
+  company_id:
+    description: a company registration or VAT number outside the demo directories
+  bank_account:
+    description: an account number in IBAN shape
+  national_id:
+    description: a national identification number
+  czech_text:
+    description: non-English letters in a tracked file
+  demo_email:
+    description: a demo address off the example.* convention
+  demo_phone:
+    description: a demo phone number off the reserved prefix
+  demo_company_id:
+    description: a demo company number outside the reserved range
+  demo_url:
+    description: a demo link pointing anywhere but the reserved hosts
+  demo_name:
+    description: a demo person not named from demo_names
+
+# Rules that are also applied to file names, not only to file content.
+path_rules:
+  - private_pattern
+  - czech_text
+
+# Demo content is held to a stricter convention rather than excused, so that a
+# leak cannot hide in the one place where invented data is expected.
+demo_paths:
+  - 'src/*/DataFixtures/**'
+  - 'tests/**/Fixtures/**'
+  - 'demo/**'
+
+# The deliberately dirty samples the tool is tested against. Only the .sample
+# extension is skipped; tests/Tooling/CheckLeaksTest asserts the directory
+# holds nothing else.
+skip_paths:
+  - 'tests/Tooling/fixtures/*.sample'
+
+# Domains reserved by RFC 2606 and RFC 6761 for documentation and testing.
+allowed_email_domains:
+  - example.com
+  - example.org
+  - example.net
+  - localhost
+allowed_email_suffixes:
+  - '.example'
+  - '.test'
+  - '.invalid'
+# Exact addresses that are nobody's mailbox: the no-reply addresses that commit
+# trailers are required to carry. Listed one by one, never as a domain, so that
+# a real mailbox on the same domain is still a finding. Only --history sees
+# these, and only because it reads commit messages.
+allowed_emails:
+  - noreply@anthropic.com
+
+# Inside the demo directories the convention is narrower than the rule above.
+demo_email_domains:
+  - example.com
+  - example.org
+  - example.net
+demo_hosts:
+  - example.com
+  - example.org
+  - example.net
+  - localhost
+demo_phone_prefix: '+420 000 000' # check-leaks:allow rule=phone reason=the reserved demo prefix is the rule itself
+demo_names:
+  - Trilobit Testovic
+  - Alice Ammonite
+  - Bruno Brachiopod
+  - Cyril Crinoid
+  - Dana Dinoflagellate
+
+# Paths where a rule does not apply. Kept short on purpose.
+exempt:
+  czech_text:
+    - '**/translations/cs.*'
+    - 'LICENSE'

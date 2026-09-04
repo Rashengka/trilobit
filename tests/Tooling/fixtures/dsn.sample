@@ -1,0 +1,1 @@
+DATABASE_URL=postgres://app:pw@db.invalid:5432/app

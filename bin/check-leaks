@@ -1,0 +1,1178 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * check-leaks - keeps content that does not belong in a public repository out of it.
+ *
+ * Exit codes:
+ *   0  clean (a summary of suppressions, if any, goes to stderr)
+ *   1  finding
+ *   2  tool error (missing local configuration, missing git, unreadable public configuration)
+ *
+ * The tool never writes to the working tree. It only reads.
+ */
+
+declare(strict_types=1);
+
+const EX_OK = 0;
+const EX_FINDING = 1;
+const EX_ERROR = 2;
+
+const LOCAL_CONFIG_RELATIVE = 'trilobit/check-leaks.local';
+const PUBLIC_CONFIG_NAME = '.check-leaks.yaml';
+
+exit(main(array_slice($argv, 1)));
+
+/**
+ * @param list<string> $args
+ */
+function main(array $args): int
+{
+    $mode = 'staged';
+    $range = null;
+    $files = [];
+
+    for ($i = 0; $i < count($args); $i++) {
+        $arg = $args[$i];
+        switch ($arg) {
+            case '--staged':
+                $mode = 'staged';
+                break;
+            case '--all':
+                $mode = 'all';
+                break;
+            case '--history':
+                $mode = 'history';
+                break;
+            case '--range':
+                $mode = 'range';
+                $range = $args[++$i] ?? null;
+                if ($range === null) {
+                    return toolError('--range needs an argument, for example --range origin/main...HEAD');
+                }
+                break;
+            case '--files':
+                $mode = 'files';
+                while (isset($args[$i + 1]) && !str_starts_with($args[$i + 1], '--')) {
+                    $files[] = $args[++$i];
+                }
+                if ($files === []) {
+                    return toolError('--files needs at least one path');
+                }
+                break;
+            case '-h':
+            case '--help':
+                usage();
+                return EX_OK;
+            default:
+                return toolError(sprintf('unknown argument "%s"; try --help', $arg));
+        }
+    }
+
+    $root = repositoryRoot();
+    if ($root === null && $mode !== 'files') {
+        return toolError('not inside a git repository and mode needs one; use --files <path> instead');
+    }
+    $root ??= (string) getcwd();
+
+    $publicConfigPath = $root . '/' . PUBLIC_CONFIG_NAME;
+    if (!is_file($publicConfigPath)) {
+        return toolError(sprintf('missing %s (expected at %s)', PUBLIC_CONFIG_NAME, $publicConfigPath));
+    }
+
+    try {
+        $config = loadPublicConfig($publicConfigPath);
+    } catch (RuntimeException $e) {
+        return toolError(sprintf('cannot read %s: %s', PUBLIC_CONFIG_NAME, $e->getMessage()));
+    }
+
+    $localPath = localConfigPath();
+    if ($localPath === null) {
+        return toolError('cannot determine the home directory; set HOME or XDG_CONFIG_HOME');
+    }
+    if (!is_file($localPath)) {
+        return toolError(missingLocalConfigMessage($localPath));
+    }
+    $localPatterns = loadLocalConfig($localPath);
+    if ($localPatterns === []) {
+        return toolError(sprintf(
+            "the local pattern file %s holds no patterns.\n%s",
+            $localPath,
+            'An empty file would let every private pattern through while looking green; fill it in or remove it deliberately.'
+        ));
+    }
+
+    try {
+        $lines = collectLines($mode, $range, $files, $root, $config);
+    } catch (RuntimeException $e) {
+        return toolError($e->getMessage());
+    }
+
+    $rules = buildRules($config, $localPatterns);
+    $findings = [];
+    $suppressions = [];
+
+    foreach ($lines as $line) {
+        $path = $line['path'];
+        $text = $line['text'];
+        $demo = matchesAny($path, $config['demo_paths']);
+        $suppressed = parseSuppression($text);
+        $suppressionUsed = false;
+
+        foreach ($rules as $rule) {
+            if ($rule['scope'] === 'demo' && !$demo) {
+                continue;
+            }
+            if ($rule['scope'] === 'outside-demo' && $demo) {
+                continue;
+            }
+            if ($line['kind'] === 'path' && !in_array($rule['id'], $config['path_rules'], true)) {
+                continue;
+            }
+            if (matchesAny($path, $config['exempt'][$rule['id']] ?? [])) {
+                continue;
+            }
+            $hits = ($rule['fn'])($text, $path);
+            if ($hits === []) {
+                continue;
+            }
+            if ($suppressed !== null && $suppressed['rule'] === $rule['id']) {
+                $suppressionUsed = true;
+                continue;
+            }
+            foreach ($hits as $hit) {
+                $findings[] = [
+                    'path' => $path,
+                    'line' => $line['line'],
+                    'rule' => $rule['id'],
+                    'snippet' => maskFragment($rule['id'], $hit),
+                    'advice' => $rule['advice'],
+                ];
+            }
+        }
+
+        if ($suppressed !== null) {
+            $suppressions[] = [
+                'path' => $path,
+                'line' => $line['line'],
+                'rule' => $suppressed['rule'],
+                'reason' => $suppressed['reason'],
+                'used' => $suppressionUsed,
+            ];
+        }
+    }
+
+    // Only a suppression that actually switched off a finding counts against the
+    // cap; a comment that suppresses nothing is stale, and saying so is more
+    // useful than letting it eat the budget.
+    $used = array_values(array_filter($suppressions, static fn (array $s): bool => $s['used']));
+    $stale = array_values(array_filter($suppressions, static fn (array $s): bool => !$s['used']));
+
+    foreach ($used as $suppression) {
+        fwrite(STDERR, sprintf(
+            "suppressed  %s:%d  [%s]  %s\n",
+            $suppression['path'],
+            $suppression['line'],
+            $suppression['rule'],
+            $suppression['reason']
+        ));
+    }
+    foreach ($stale as $suppression) {
+        fwrite(STDERR, sprintf(
+            "stale suppression  %s:%d  [%s]  nothing to suppress on this line\n",
+            $suppression['path'],
+            $suppression['line'],
+            $suppression['rule']
+        ));
+    }
+    if ($used !== []) {
+        fwrite(STDERR, sprintf(
+            "%d suppression(s) in effect, %d allowed.\n",
+            count($used),
+            $config['max_suppressions']
+        ));
+    }
+
+    $overCap = in_array($mode, ['all', 'files', 'history'], true)
+        && count($used) > $config['max_suppressions'];
+
+    if ($findings === [] && !$overCap) {
+        return EX_OK;
+    }
+
+    foreach ($findings as $finding) {
+        printf(
+            "%s:%d  [%s]  %s\n    %s\n",
+            $finding['path'],
+            $finding['line'],
+            $finding['rule'],
+            $finding['snippet'],
+            $finding['advice']
+        );
+    }
+
+    if ($findings !== []) {
+        printf("\n%d finding(s). Nothing was changed; fix the source and run again.\n", count($findings));
+    }
+
+    if ($overCap) {
+        printf(
+            "\nToo many suppressions: %d in effect, %d allowed by max_suppressions in %s.\n",
+            count($used),
+            $config['max_suppressions'],
+            PUBLIC_CONFIG_NAME
+        );
+    }
+
+    return EX_FINDING;
+}
+
+function usage(): void
+{
+    echo <<<TXT
+    Usage: bin/check-leaks [mode]
+
+      --staged            scan what is staged for commit (default, used by .githooks/pre-commit)
+      --range <a>...<b>   scan the diff of a range, for CI over a pull request
+      --all               scan every tracked file
+      --history           scan every commit of every branch, including messages
+      --files <path>...   scan the given files as if they were entirely new
+
+    Exit codes: 0 clean, 1 finding, 2 tool error.
+    TXT;
+    echo "\n";
+}
+
+function toolError(string $message): int
+{
+    fwrite(STDERR, 'check-leaks: ' . $message . "\n");
+
+    return EX_ERROR;
+}
+
+function missingLocalConfigMessage(string $path): string
+{
+    return sprintf(
+        "missing the local pattern file %s.\n%s\n%s\n  mkdir -p %s\n  cp .check-leaks.local.example %s",
+        $path,
+        'Without it the tool cannot look for the patterns that must never appear here, so it refuses to report success.',
+        'Create it from the template in the repository:',
+        dirname($path),
+        $path
+    );
+}
+
+function repositoryRoot(): ?string
+{
+    $root = runGit(['rev-parse', '--show-toplevel']);
+    if ($root === null) {
+        return null;
+    }
+    $root = trim($root);
+
+    return $root === '' ? null : $root;
+}
+
+/**
+ * @param list<string> $args
+ */
+function runGit(array $args): ?string
+{
+    $command = 'git -c core.quotepath=false';
+    foreach ($args as $arg) {
+        $command .= ' ' . escapeshellarg($arg);
+    }
+    $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+    $process = @proc_open($command, $descriptors, $pipes);
+    if (!is_resource($process)) {
+        return null;
+    }
+    $stdout = stream_get_contents($pipes[1]);
+    stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $code = proc_close($process);
+
+    return $code === 0 ? (string) $stdout : null;
+}
+
+/**
+ * @param list<string> $files
+ * @param array<string, mixed> $config
+ * @return list<array{path: string, line: int, text: string, kind: string}>
+ */
+function collectLines(string $mode, ?string $range, array $files, string $root, array $config): array
+{
+    $lines = match ($mode) {
+        'staged' => fromDiff(requireGit(['diff', '--cached', '--unified=0', '--no-color'])),
+        'range' => fromDiff(requireGit(['diff', '--unified=0', '--no-color', (string) $range])),
+        'all' => fromTrackedFiles($root),
+        'files' => fromGivenFiles($files, $root),
+        'history' => fromHistory(),
+        default => throw new RuntimeException('unknown mode ' . $mode),
+    };
+
+    $kept = [];
+    $seenPaths = [];
+    foreach ($lines as $line) {
+        if (matchesAny($line['path'], $config['skip_paths'])) {
+            continue;
+        }
+        if (!isset($seenPaths[$line['path']])) {
+            $seenPaths[$line['path']] = true;
+            $kept[] = ['path' => $line['path'], 'line' => 0, 'text' => $line['path'], 'kind' => 'path'];
+        }
+        $kept[] = $line;
+    }
+
+    return $kept;
+}
+
+/**
+ * @param list<string> $args
+ */
+function requireGit(array $args): string
+{
+    $out = runGit($args);
+    if ($out === null) {
+        throw new RuntimeException('git failed: git ' . implode(' ', $args));
+    }
+
+    return $out;
+}
+
+/**
+ * @return list<array{path: string, line: int, text: string, kind: string}>
+ */
+function fromDiff(string $diff): array
+{
+    $result = [];
+    $path = null;
+    $lineNumber = 0;
+
+    foreach (preg_split('/\r\n|\n|\r/', $diff) ?: [] as $raw) {
+        if (str_starts_with($raw, 'diff --git ')) {
+            $path = null;
+            continue;
+        }
+        if (str_starts_with($raw, '+++ ')) {
+            $candidate = substr($raw, 4);
+            $path = $candidate === '/dev/null' ? null : (string) preg_replace('#^b/#', '', $candidate);
+            continue;
+        }
+        if (str_starts_with($raw, '@@')) {
+            if (preg_match('/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/', $raw, $m) === 1) {
+                $lineNumber = (int) $m[1];
+            }
+            continue;
+        }
+        if ($path !== null && str_starts_with($raw, '+')) {
+            $result[] = ['path' => $path, 'line' => $lineNumber, 'text' => substr($raw, 1), 'kind' => 'content'];
+            $lineNumber++;
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * @return list<array{path: string, line: int, text: string, kind: string}>
+ */
+function fromTrackedFiles(string $root): array
+{
+    $listing = requireGit(['ls-files', '-z']);
+    $paths = array_values(array_filter(explode("\0", $listing), static fn (string $p): bool => $p !== ''));
+
+    return readFiles($paths, $root);
+}
+
+/**
+ * @param list<string> $files
+ * @return list<array{path: string, line: int, text: string, kind: string}>
+ */
+function fromGivenFiles(array $files, string $root): array
+{
+    $paths = [];
+    foreach ($files as $file) {
+        if (!is_file($file)) {
+            throw new RuntimeException(sprintf('no such file: %s', $file));
+        }
+        $absolute = (string) realpath($file);
+        $prefix = rtrim($root, '/') . '/';
+        $paths[] = str_starts_with($absolute, $prefix) ? substr($absolute, strlen($prefix)) : $file;
+    }
+
+    return readFiles($paths, $root);
+}
+
+/**
+ * @param list<string> $paths
+ * @return list<array{path: string, line: int, text: string, kind: string}>
+ */
+function readFiles(array $paths, string $root): array
+{
+    $result = [];
+    foreach ($paths as $path) {
+        $absolute = str_starts_with($path, '/') ? $path : rtrim($root, '/') . '/' . $path;
+        if (!is_file($absolute)) {
+            continue;
+        }
+        $contents = (string) file_get_contents($absolute);
+        if (str_contains($contents, "\0")) {
+            // Binary file: only the name is checked, never the bytes.
+            $result[] = ['path' => $path, 'line' => 0, 'text' => '', 'kind' => 'content'];
+            continue;
+        }
+        $number = 1;
+        foreach (preg_split('/\r\n|\n|\r/', $contents) ?: [] as $text) {
+            $result[] = ['path' => $path, 'line' => $number, 'text' => $text, 'kind' => 'content'];
+            $number++;
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * @return list<array{path: string, line: int, text: string, kind: string}>
+ */
+function fromHistory(): array
+{
+    $result = fromDiff(requireGit(['log', '-p', '--all', '--unified=0', '--no-color', '--format=']));
+
+    $messages = requireGit(['log', '--all', '--format=%H%x1f%B%x1e']);
+    foreach (explode("\x1e", $messages) as $chunk) {
+        $chunk = trim($chunk, "\n");
+        if ($chunk === '' || !str_contains($chunk, "\x1f")) {
+            continue;
+        }
+        [$hash, $body] = explode("\x1f", $chunk, 2);
+        $number = 1;
+        foreach (preg_split('/\r\n|\n|\r/', $body) ?: [] as $text) {
+            $result[] = [
+                'path' => 'commit ' . substr($hash, 0, 12) . ' (message)',
+                'line' => $number,
+                'text' => $text,
+                'kind' => 'content',
+            ];
+            $number++;
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * @return array{rule: string, reason: string}|null
+ */
+function parseSuppression(string $text): ?array
+{
+    if (!str_contains($text, 'check-leaks:allow')) {
+        return null;
+    }
+    if (preg_match('/check-leaks:allow\s+rule=([A-Za-z0-9_]+)\s+reason=(\S.*?)\s*(?:\*\/|-->|$)/', $text, $m) !== 1) {
+        // A suppression without a rule and a reason is ignored on purpose; the finding stands.
+        return null;
+    }
+
+    return ['rule' => $m[1], 'reason' => trim($m[2])];
+}
+
+/**
+ * @param list<string> $globs
+ */
+function matchesAny(string $path, array $globs): bool
+{
+    foreach ($globs as $glob) {
+        if (preg_match(globToRegex($glob), $path) === 1) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function globToRegex(string $glob): string
+{
+    $out = '';
+    $length = strlen($glob);
+    for ($i = 0; $i < $length; $i++) {
+        $char = $glob[$i];
+        if ($char === '*' && ($glob[$i + 1] ?? '') === '*') {
+            $i++;
+            if (($glob[$i + 1] ?? '') === '/') {
+                $i++;
+                $out .= '(?:[^/]+/)*';
+            } else {
+                $out .= '.*';
+            }
+            continue;
+        }
+        $out .= match ($char) {
+            '*' => '[^/]*',
+            '?' => '[^/]',
+            default => preg_quote($char, '#'),
+        };
+    }
+
+    return '#^' . $out . '$#';
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function loadPublicConfig(string $path): array
+{
+    $parsed = parseYamlSubset((string) file_get_contents($path));
+
+    foreach (['rules', 'demo_paths', 'skip_paths', 'max_suppressions'] as $key) {
+        if (!isset($parsed[$key])) {
+            throw new RuntimeException(sprintf('missing key "%s"', $key));
+        }
+    }
+    if (!is_array($parsed['rules']) || $parsed['rules'] === []) {
+        throw new RuntimeException('"rules" must list at least one rule');
+    }
+
+    return [
+        'rules' => array_keys($parsed['rules']),
+        'demo_paths' => toList($parsed['demo_paths']),
+        'skip_paths' => toList($parsed['skip_paths']),
+        'path_rules' => toList($parsed['path_rules'] ?? []),
+        'max_suppressions' => (int) $parsed['max_suppressions'],
+        'allowed_emails' => toList($parsed['allowed_emails'] ?? []),
+        'allowed_email_domains' => toList($parsed['allowed_email_domains'] ?? []),
+        'allowed_email_suffixes' => toList($parsed['allowed_email_suffixes'] ?? []),
+        'demo_email_domains' => toList($parsed['demo_email_domains'] ?? []),
+        'demo_hosts' => toList($parsed['demo_hosts'] ?? []),
+        'demo_names' => toList($parsed['demo_names'] ?? []),
+        'demo_phone_prefix' => (string) ($parsed['demo_phone_prefix'] ?? ''),
+        'exempt' => array_map(static fn ($v): array => toList($v), (array) ($parsed['exempt'] ?? [])),
+    ];
+}
+
+/**
+ * @return list<string>
+ */
+function toList(mixed $value): array
+{
+    if ($value === null || $value === '') {
+        return [];
+    }
+
+    return array_values(array_map(static fn ($v): string => (string) $v, (array) $value));
+}
+
+/**
+ * @return list<string>
+ */
+function loadLocalConfig(string $path): array
+{
+    $patterns = [];
+    foreach (preg_split('/\r\n|\n|\r/', (string) file_get_contents($path)) ?: [] as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+        $patterns[] = $line;
+    }
+
+    return $patterns;
+}
+
+function localConfigPath(): ?string
+{
+    $xdg = getenv('XDG_CONFIG_HOME');
+    if (is_string($xdg) && $xdg !== '') {
+        return rtrim($xdg, '/') . '/' . LOCAL_CONFIG_RELATIVE;
+    }
+    $home = getenv('HOME');
+    if (!is_string($home) || $home === '') {
+        return null;
+    }
+
+    return rtrim($home, '/') . '/.config/' . LOCAL_CONFIG_RELATIVE;
+}
+
+/**
+ * A deliberately small YAML subset: nested maps, block lists of scalars, comments.
+ * Anything else throws, because a configuration the tool half understands is worse than none.
+ *
+ * @return array<string, mixed>
+ */
+function parseYamlSubset(string $text): array
+{
+    $rows = [];
+    foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $number => $raw) {
+        $line = rtrim(stripYamlComment($raw));
+        if (trim($line) === '') {
+            continue;
+        }
+        $indent = strlen($line) - strlen(ltrim($line, ' '));
+        if (str_contains(substr($line, 0, $indent), "\t")) {
+            throw new RuntimeException(sprintf('tab indentation on line %d', $number + 1));
+        }
+        $rows[] = ['indent' => $indent, 'text' => trim($line), 'number' => $number + 1];
+    }
+
+    $index = 0;
+    $parsed = parseYamlBlock($rows, $index, 0);
+
+    return is_array($parsed) ? $parsed : [];
+}
+
+function stripYamlComment(string $line): string
+{
+    $out = '';
+    $quote = null;
+    $length = strlen($line);
+    for ($i = 0; $i < $length; $i++) {
+        $char = $line[$i];
+        if ($quote !== null) {
+            $out .= $char;
+            if ($char === $quote) {
+                $quote = null;
+            }
+            continue;
+        }
+        if ($char === '"' || $char === "'") {
+            $quote = $char;
+            $out .= $char;
+            continue;
+        }
+        if ($char === '#' && ($i === 0 || $line[$i - 1] === ' ')) {
+            break;
+        }
+        $out .= $char;
+    }
+
+    return $out;
+}
+
+/**
+ * @param list<array{indent: int, text: string, number: int}> $rows
+ */
+function parseYamlBlock(array $rows, int &$index, int $indent): mixed
+{
+    $map = [];
+    $list = [];
+
+    while ($index < count($rows)) {
+        $row = $rows[$index];
+        if ($row['indent'] < $indent) {
+            break;
+        }
+        if ($row['indent'] > $indent) {
+            throw new RuntimeException(sprintf('unexpected indentation on line %d', $row['number']));
+        }
+
+        $text = $row['text'];
+        if (str_starts_with($text, '- ')) {
+            if ($map !== []) {
+                throw new RuntimeException(sprintf('list item inside a map on line %d', $row['number']));
+            }
+            $list[] = scalarValue(trim(substr($text, 2)));
+            $index++;
+            continue;
+        }
+
+        if (preg_match('/^([A-Za-z0-9_.\-]+):(?:\s+(.*))?$/', $text, $m) !== 1) {
+            throw new RuntimeException(sprintf('unsupported syntax on line %d', $row['number']));
+        }
+        if ($list !== []) {
+            throw new RuntimeException(sprintf('map key inside a list on line %d', $row['number']));
+        }
+
+        $key = $m[1];
+        $inline = isset($m[2]) ? trim($m[2]) : '';
+        $index++;
+
+        if ($inline !== '') {
+            $map[$key] = scalarValue($inline);
+            continue;
+        }
+
+        $nextIndent = $rows[$index]['indent'] ?? -1;
+        $map[$key] = $nextIndent > $indent ? parseYamlBlock($rows, $index, $nextIndent) : null;
+    }
+
+    if ($list !== []) {
+        return $list;
+    }
+
+    return $map;
+}
+
+function scalarValue(string $value): mixed
+{
+    if ($value === '') {
+        return null;
+    }
+    if (
+        (str_starts_with($value, "'") && str_ends_with($value, "'"))
+        || (str_starts_with($value, '"') && str_ends_with($value, '"'))
+    ) {
+        return substr($value, 1, -1);
+    }
+
+    return match (strtolower($value)) {
+        'true' => true,
+        'false' => false,
+        'null', '~' => null,
+        default => preg_match('/^-?\d+$/', $value) === 1 ? (int) $value : $value,
+    };
+}
+
+/**
+ * @param array<string, mixed> $config
+ * @param list<string> $localPatterns
+ * @return list<array{id: string, scope: string, advice: string, fn: callable(string, string): list<string>}>
+ */
+function buildRules(array $config, array $localPatterns): array
+{
+    $definitions = ruleDefinitions($config, $localPatterns);
+    $declared = $config['rules'];
+
+    $rules = [];
+    foreach ($declared as $id) {
+        if (!isset($definitions[$id])) {
+            fwrite(STDERR, sprintf("check-leaks: rule \"%s\" is declared in %s but not implemented\n", $id, PUBLIC_CONFIG_NAME));
+            continue;
+        }
+        $rules[] = ['id' => $id] + $definitions[$id];
+    }
+
+    return $rules;
+}
+
+/**
+ * @param array<string, mixed> $config
+ * @param list<string> $localPatterns
+ * @return array<string, array{scope: string, advice: string, fn: callable(string, string): list<string>}>
+ */
+function ruleDefinitions(array $config, array $localPatterns): array
+{
+    $czech = '[\x{00e1}\x{010d}\x{010f}\x{00e9}\x{011b}\x{00ed}\x{0148}\x{00f3}\x{0159}\x{0161}\x{0165}\x{00fa}\x{016f}\x{00fd}\x{017e}'
+        . '\x{00c1}\x{010c}\x{010e}\x{00c9}\x{011a}\x{00cd}\x{0147}\x{00d3}\x{0158}\x{0160}\x{0164}\x{00da}\x{016e}\x{00dd}\x{017d}]';
+
+    return [
+        'private_pattern' => [
+            'scope' => 'any',
+            'advice' => 'This comes from the local list of things that must never appear here. Remove it; do not rename it.',
+            'fn' => static function (string $text, string $path) use ($localPatterns): array {
+                $hits = [];
+                foreach ($localPatterns as $pattern) {
+                    if (stripos($text, $pattern) !== false) {
+                        $hits[] = $pattern;
+                    }
+                }
+
+                return $hits;
+            },
+        ],
+        'email' => [
+            'scope' => 'outside-demo',
+            'advice' => 'Use an address on example.com; a real mailbox has no place in a public repository.',
+            'fn' => static function (string $text) use ($config): array {
+                $hits = [];
+                foreach (emailsIn($text) as $email) {
+                    if (in_array(strtolower($email), array_map('strtolower', $config['allowed_emails']), true)) {
+                        continue;
+                    }
+                    $domain = strtolower(substr($email, strpos($email, '@') + 1));
+                    if (in_array($domain, array_map('strtolower', $config['allowed_email_domains']), true)) {
+                        continue;
+                    }
+                    foreach ($config['allowed_email_suffixes'] as $suffix) {
+                        if (str_ends_with($domain, strtolower($suffix))) {
+                            continue 2;
+                        }
+                    }
+                    $hits[] = $email;
+                }
+
+                return $hits;
+            },
+        ],
+        'connection_string' => [
+            'scope' => 'any',
+            'advice' => 'Move the credentials to .env and keep only the variable name in the repository.',
+            'fn' => static fn (string $text): array => allMatches(
+                '#\b(?:mysql|mariadb|pgsql|postgres|postgresql|redis|mongodb|amqp)://[^:\s\'"]+:[^@\s\'"]+@#i',
+                $text
+            ),
+        ],
+        'dsn' => [
+            'scope' => 'any',
+            'advice' => 'Leave the value empty in the committed file and set it in .env.',
+            'fn' => static function (string $text): array {
+                $hits = [];
+                if (preg_match('/\b(DATABASE_URL|DB_DSN|DSN|dbname)[\'"\]]*\s*(?:=>|=|:)\s*(\S.*)$/i', $text, $m) === 1) {
+                    $value = literalValue($m[2]);
+                    if ($value !== null && $value !== '') {
+                        $hits[] = $m[1] . '=' . $value;
+                    }
+                }
+                if (
+                    preg_match('/\b(Server|Data Source)\s*=\s*([^;]+);/i', $text, $m) === 1
+                    && preg_match('/\b(Database|Initial Catalog|User Id|Integrated Security)\s*=/i', $text) === 1
+                ) {
+                    $hits[] = $m[1] . '=' . trim($m[2]);
+                }
+
+                return $hits;
+            },
+        ],
+        'credential' => [
+            'scope' => 'any',
+            'advice' => 'Replace the value with an environment placeholder; the secret belongs in .env or a secret store.',
+            'fn' => static function (string $text): array {
+                $pattern = '/([A-Za-z0-9_.\-]*(?:password|passwd|secret|token|api[_\-]?key|private[_\-]?key)[A-Za-z0-9_.\-]*)'
+                    . '[\'"\]]*\s*(?:=>|=|:)\s*(\S.*)$/i';
+                if (preg_match($pattern, $text, $m) !== 1) {
+                    return [];
+                }
+                $value = literalValue($m[2]);
+                if ($value === null || strlen($value) <= 3) {
+                    return [];
+                }
+
+                return [$m[1] . '=' . $value];
+            },
+        ],
+        'private_key' => [
+            'scope' => 'any',
+            'advice' => 'A private key never belongs in git. Rotate it and keep the new one outside the repository.',
+            'fn' => static fn (string $text): array => allMatches('/-----BEGIN [A-Z ]*PRIVATE KEY-----/', $text),
+        ],
+        'service_token' => [
+            'scope' => 'any',
+            'advice' => 'Revoke this token and read it from the environment instead.',
+            'fn' => static function (string $text): array {
+                $patterns = [
+                    '/\bgh[pousr]_[A-Za-z0-9]{30,}/',
+                    '/\bAKIA[0-9A-Z]{16}\b/',
+                    '/\bsk-[A-Za-z0-9_\-]{20,}/',
+                    '/\bxox[baprs]-[A-Za-z0-9\-]{10,}/',
+                ];
+                $hits = [];
+                foreach ($patterns as $pattern) {
+                    $hits = array_merge($hits, allMatches($pattern, $text));
+                }
+
+                return $hits;
+            },
+        ],
+        'high_entropy' => [
+            'scope' => 'any',
+            'advice' => 'A long opaque literal is almost always a key. Compute it, or read it from the environment.',
+            'fn' => static function (string $text, string $path): array {
+                $lockFiles = ['composer.lock', 'package-lock.json', 'yarn.lock', '.gitignore'];
+                if (in_array(basename($path), $lockFiles, true)) {
+                    return [];
+                }
+                if (preg_match('/\b(integrity|sha256|sha512|checksum|hash|reference|shasum)\b/i', $text) === 1) {
+                    return [];
+                }
+                if (preg_match('/(?:=>|=|:)\s*[\'"]([A-Za-z0-9+\/=_\-]{32,})[\'"]/', $text, $m) !== 1) {
+                    return [];
+                }
+
+                return [$m[1]];
+            },
+        ],
+        'absolute_path' => [
+            'scope' => 'any',
+            'advice' => 'Use a path relative to the project root, or read it from the environment.',
+            'fn' => static function (string $text): array {
+                $hits = allMatches('#(?:/Users/|/home/|/opt/www/|/var/www/)[A-Za-z0-9._\-/]*#', $text); // check-leaks:allow rule=absolute_path reason=the rule has to name the prefixes it looks for
+                $hits = array_merge($hits, allMatches('#(?<![A-Za-z0-9])[A-Za-z]:\\\\{1,2}[A-Za-z0-9_.\- ]+#', $text));
+                $hits = array_merge($hits, allMatches('#(?<![A-Za-z0-9])\\\\{2}[A-Za-z0-9._\-]+\\\\#', $text));
+
+                return $hits;
+            },
+        ],
+        'public_ip' => [
+            'scope' => 'any',
+            'advice' => 'Use a documentation address (192.0.2.x) or a host name from configuration.',
+            'fn' => static function (string $text): array {
+                $hits = [];
+                foreach (allMatches('/\b\d{1,3}(?:\.\d{1,3}){3}\b/', $text) as $candidate) {
+                    if (isReservedIpv4($candidate)) {
+                        continue;
+                    }
+                    $hits[] = $candidate;
+                }
+                foreach (ipv6Candidates($text) as $candidate) {
+                    if (isReservedIpv6($candidate)) {
+                        continue;
+                    }
+                    $hits[] = $candidate;
+                }
+
+                return $hits;
+            },
+        ],
+        'phone' => [
+            'scope' => 'outside-demo',
+            'advice' => 'A phone number belongs in a demo fixture with the reserved prefix, not in ordinary code.',
+            'fn' => static fn (string $text): array => phoneCandidates($text),
+        ],
+        'company_id' => [
+            'scope' => 'outside-demo',
+            'advice' => 'A company registration number belongs in a demo fixture, in the reserved range.',
+            'fn' => static fn (string $text): array => companyIdCandidates($text),
+        ],
+        'bank_account' => [
+            'scope' => 'any',
+            'advice' => 'Bank details never belong in a public repository, invented or not.',
+            'fn' => static fn (string $text): array => allMatches('/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/', $text),
+        ],
+        'national_id' => [
+            'scope' => 'any',
+            'advice' => 'A national identification number never belongs in a public repository.',
+            'fn' => static fn (string $text): array => allMatches('#\b\d{6}/\d{3,4}\b#', $text),
+        ],
+        'czech_text' => [
+            'scope' => 'any',
+            'advice' => 'Everything committed here is written in English; translations live in the localisation files.',
+            'fn' => static fn (string $text): array => allMatches('/' . $czech . '+/u', $text),
+        ],
+        'demo_email' => [
+            'scope' => 'demo',
+            'advice' => 'Demo addresses follow one convention: a mailbox on example.com, example.org or example.net.',
+            'fn' => static function (string $text) use ($config): array {
+                $hits = [];
+                foreach (emailsIn($text) as $email) {
+                    $domain = strtolower(substr($email, strpos($email, '@') + 1));
+                    if (!in_array($domain, array_map('strtolower', $config['demo_email_domains']), true)) {
+                        $hits[] = $email;
+                    }
+                }
+
+                return $hits;
+            },
+        ],
+        'demo_phone' => [
+            'scope' => 'demo',
+            'advice' => 'Demo phone numbers use the reserved prefix from ' . PUBLIC_CONFIG_NAME . '.',
+            'fn' => static function (string $text) use ($config): array {
+                $prefix = digitsOf($config['demo_phone_prefix']);
+                $hits = [];
+                foreach (phoneCandidates($text) as $candidate) {
+                    if ($prefix !== '' && str_starts_with(digitsOf($candidate), $prefix)) {
+                        continue;
+                    }
+                    $hits[] = $candidate;
+                }
+
+                return $hits;
+            },
+        ],
+        'demo_company_id' => [
+            'scope' => 'demo',
+            'advice' => 'Demo company numbers use the reserved range, 00000000 to 00000999.',
+            'fn' => static function (string $text): array {
+                $hits = [];
+                foreach (companyIdCandidates($text) as $candidate) {
+                    $digits = (string) preg_replace('/\D/', '', $candidate);
+                    if (strlen($digits) === 8 && (int) $digits <= 999) {
+                        continue;
+                    }
+                    $hits[] = $candidate;
+                }
+
+                return $hits;
+            },
+        ],
+        'demo_url' => [
+            'scope' => 'demo',
+            'advice' => 'Demo links point at example.com, example.org, example.net or localhost.',
+            'fn' => static function (string $text) use ($config): array {
+                $hits = [];
+                foreach (allMatches('#\bhttps?://([A-Za-z0-9._\-]+)#i', $text, 1) as $host) {
+                    $host = strtolower((string) preg_replace('/:\d+$/', '', $host));
+                    if (!in_array($host, array_map('strtolower', $config['demo_hosts']), true)) {
+                        $hits[] = $host;
+                    }
+                }
+
+                return $hits;
+            },
+        ],
+        'demo_name' => [
+            'scope' => 'demo',
+            'advice' => 'Demo people are named from the list in ' . PUBLIC_CONFIG_NAME . ', so nobody real ends up here.',
+            'fn' => static function (string $text) use ($config): array {
+                $pattern = '/\b(?:full[_\-]?name|first[_\-]?name|last[_\-]?name|person[_\-]?name|customer[_\-]?name'
+                    . '|contact[_\-]?name|owner[_\-]?name)\b\W{0,8}[\'"]([^\'"]+)[\'"]/i';
+                if (preg_match($pattern, $text, $m) !== 1) {
+                    return [];
+                }
+                $known = array_map('strtolower', $config['demo_names']);
+                foreach ($known as $name) {
+                    if (str_contains(strtolower($m[1]), $name)) {
+                        return [];
+                    }
+                }
+
+                return [$m[1]];
+            },
+        ],
+    ];
+}
+
+/**
+ * @return list<string>
+ */
+function emailsIn(string $text): array
+{
+    return allMatches('/[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+/', $text);
+}
+
+/**
+ * @return list<string>
+ */
+function phoneCandidates(string $text): array
+{
+    $patterns = [
+        '/(?:\+|00)\d{1,3}[ .\-]?\d{2,3}[ .\-]?\d{3}[ .\-]?\d{3,4}/',
+        '/(?<![\d.\-])\d{3}[ .\-]\d{3}[ .\-]\d{3}(?![\d.\-])/',
+        '/(?<![\d.\-])\d{9}(?![\d.\-])/',
+    ];
+    $hits = [];
+    foreach ($patterns as $pattern) {
+        foreach (allMatches($pattern, $text) as $hit) {
+            $hits[normaliseSpaces($hit)] = $hit;
+        }
+    }
+
+    return array_values($hits);
+}
+
+/**
+ * @return list<string>
+ */
+function companyIdCandidates(string $text): array
+{
+    $hits = allMatches('/\bCZ\d{8,10}\b/', $text);
+    if (preg_match('/\b(?:ico|dic|vat|vat[_\-]?id|company[_\-]?id|reg[_\-]?no)\b/i', $text) === 1) {
+        $hits = array_merge($hits, allMatches('/(?<!\d)\d{8}(?!\d)/', $text));
+    }
+
+    return array_values(array_unique($hits));
+}
+
+function normaliseSpaces(string $value): string
+{
+    return (string) preg_replace('/\s+/', ' ', trim($value));
+}
+
+function digitsOf(string $value): string
+{
+    return (string) preg_replace('/\D/', '', $value);
+}
+
+/**
+ * @return list<string>
+ */
+function allMatches(string $pattern, string $text, int $group = 0): array
+{
+    if (preg_match_all($pattern, $text, $matches) === false) {
+        return [];
+    }
+
+    return array_values(array_unique($matches[$group] ?? []));
+}
+
+function literalValue(string $raw): ?string
+{
+    $raw = trim($raw);
+    if (preg_match('/^([\'"])(.*?)\1/', $raw, $m) === 1) {
+        $value = $m[2];
+    } else {
+        $value = trim(rtrim($raw, ",;"));
+        if (preg_match('/^(\$|@|<|getenv|env\(|env\[|%env|\$\{|::|new |function|fn |array|\[|self::|static::)/i', $value) === 1) {
+            return null;
+        }
+        if (str_contains($value, '(') && str_contains($value, ')')) {
+            return null;
+        }
+    }
+    $placeholders = ['', 'null', '~', 'true', 'false', 'changeme', 'change_me', 'todo', 'xxx', '...'];
+    $normalised = strtolower(trim($value));
+    if (in_array($normalised, $placeholders, true)) {
+        return null;
+    }
+    if (preg_match('/^(%env\(|%[a-z0-9_.]+%$|\$\{|<[a-z]|_{3,})/i', $normalised) === 1) {
+        return null;
+    }
+
+    return $value;
+}
+
+function isReservedIpv4(string $ip): bool
+{
+    $parts = array_map('intval', explode('.', $ip));
+    foreach ($parts as $part) {
+        if ($part > 255) {
+            return true; // Not an address at all.
+        }
+    }
+    [$a, $b] = $parts;
+
+    return match (true) {
+        $a === 0, $a === 10, $a === 127 => true,
+        $a === 169 && $b === 254 => true,
+        $a === 172 && $b >= 16 && $b <= 31 => true,
+        $a === 192 && $b === 168 => true,
+        $a === 192 && $b === 0 && $parts[2] === 2 => true,
+        $a === 198 && $b === 51 && $parts[2] === 100 => true,
+        $a === 203 && $b === 0 && $parts[2] === 113 => true,
+        $a === 255 => true,
+        default => false,
+    };
+}
+
+/**
+ * @return list<string>
+ */
+function ipv6Candidates(string $text): array
+{
+    $full = allMatches('/(?<![0-9A-Za-z:.])(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(?![0-9A-Za-z:.])/', $text);
+    $compressed = allMatches(
+        '/(?<![0-9A-Za-z:.])(?:[0-9a-fA-F]{1,4}:){1,6}:(?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,5})?(?![0-9A-Za-z:.])/',
+        $text
+    );
+
+    return array_values(array_unique(array_merge($full, $compressed)));
+}
+
+function isReservedIpv6(string $ip): bool
+{
+    $lower = strtolower($ip);
+
+    return $lower === '::1'
+        || $lower === '::'
+        || str_starts_with($lower, '2001:db8:')
+        || str_starts_with($lower, 'fe80:')
+        || preg_match('/^f[cd][0-9a-f]{2}:/', $lower) === 1;
+}
+
+function maskFragment(string $rule, string $fragment): string
+{
+    if (preg_match('/^([A-Za-z0-9._%+\-]+)@([A-Za-z0-9.\-]+)$/', $fragment, $m) === 1) {
+        $local = substr($m[1], 0, 2);
+        $tld = strrchr($m[2], '.');
+
+        return $local . '***@***' . ($tld === false ? '' : $tld);
+    }
+    if (preg_match('#^([a-z]+)://#i', $fragment, $m) === 1) {
+        return $m[1] . '://***:***@***';
+    }
+    if (strlen($fragment) <= 4) {
+        return str_repeat('*', strlen($fragment));
+    }
+
+    return substr($fragment, 0, 2) . str_repeat('*', min(strlen($fragment) - 2, 12));
+}

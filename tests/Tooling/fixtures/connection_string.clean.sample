@@ -1,0 +1,2 @@
+// No credentials, so nothing to leak.
+$connection = 'mysql://localhost/trilobit';

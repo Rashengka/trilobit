@@ -1,0 +1,2 @@
+// The path comes from the environment, so nothing identifying is committed.
+$corpus = getenv('CORPUS_DIR');

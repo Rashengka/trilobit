@@ -1,0 +1,29 @@
+# Template for the local pattern file of bin/check-leaks.
+#
+# Copy it to the place the tool reads and fill it in:
+#
+#   mkdir -p ~/.config/trilobit
+#   cp .check-leaks.local.example ~/.config/trilobit/check-leaks.local
+#
+# This template is committed. The file you create from it is not, and it is
+# not listed in any ignore file either - it simply does not live inside the
+# repository. A committed list of forbidden words would be a list of the very
+# things it is meant to hide, and git would keep it forever.
+#
+# One pattern per line. Blank lines and lines starting with # are ignored.
+# Matching is a case-insensitive substring, so a fragment is enough and it is
+# found inside identifiers too, which is where such things usually slip in.
+#
+# What belongs here:
+#   - fragments of paths to source trees that are not yours to publish
+#   - names of the projects and companies you work for
+#   - class names, table names and domain terms taken from those projects
+#
+# Invented examples, to show the shape - delete them:
+#
+#   acme-legacy
+#   /srv/clients/acme
+#   WidgetInvoiceFacade
+#
+# The file must not be empty: an empty list would let everything through while
+# the run still looked green, so the tool exits with code 2 in that case too.

@@ -1,0 +1,2 @@
+// A mailbox on a domain that is not reserved for documentation.
+$notify = 'alice@leak-check-sample.zzz';

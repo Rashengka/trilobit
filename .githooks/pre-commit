@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+# Refuses a commit that would take content into the repository which does not
+# belong in a public one. Enable the hook once per clone:
+#
+#   git config core.hooksPath .githooks
+#
+# The hook only reads: it never touches the working tree or the index.
+
+set -e
+
+root=$(git rev-parse --show-toplevel)
+
+exec "$root/bin/check-leaks" --staged

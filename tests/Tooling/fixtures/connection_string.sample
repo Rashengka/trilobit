@@ -1,0 +1,2 @@
+// Credentials carried inside the URL.
+$connection = 'mysql://user:pw@db.invalid/x';
