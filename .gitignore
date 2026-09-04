@@ -9,3 +9,13 @@
 /.deptrac.cache
 /.php-cs-fixer.cache
 /.phpunit.cache/
+
+# Editor and OS state. None of it belongs to the project, and an IDE directory
+# in particular carries local paths and configured data sources, which is
+# exactly the kind of thing this repository must not publish.
+/.idea/
+/.vscode/
+/.fleet/
+/.zed/
+*.iml
+.DS_Store
