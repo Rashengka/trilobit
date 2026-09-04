@@ -29,6 +29,8 @@
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^13.3",
         "rector/rector": "^2.6",
+        "slevomat/coding-standard": "^8.31",
+        "squizlabs/php_codesniffer": "^4.0",
         "symfony/yaml": "^8.1"
     },
     "autoload": {
@@ -43,7 +45,8 @@
     },
     "config": {
         "allow-plugins": {
-            "phpstan/extension-installer": true
+            "phpstan/extension-installer": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
         },
         "sort-packages": true
     },
@@ -51,6 +54,7 @@
         "check": [
             "@leaks",
             "@cs",
+            "@cs:sniff",
             "@stan",
             "@deptrac",
             "@rector",
@@ -58,7 +62,11 @@
         ],
         "leaks": "bin/check-leaks --all",
         "cs": "php-cs-fixer check --diff",
-        "cs:fix": "php-cs-fixer fix",
+        "cs:fix": [
+            "php-cs-fixer fix",
+            "phpcbf"
+        ],
+        "cs:sniff": "phpcs",
         "stan": "phpstan analyse --memory-limit=512M",
         "deptrac": "deptrac analyse --fail-on-uncovered --report-uncovered",
         "rector": "rector process --dry-run",
@@ -68,7 +76,8 @@
         "check": "Runs the whole gate: leak guard, coding standard, static analysis, layer rules, refactoring check, tests.",
         "leaks": "Looks over every tracked file for content that does not belong in a public repository.",
         "cs": "Reports coding standard violations without changing anything.",
-        "cs:fix": "Applies the coding standard.",
+        "cs:fix": "Applies the coding standard, then whatever of the ruleset a machine can apply.",
+        "cs:sniff": "Reports the rules a formatter cannot express: naming, namespace hygiene, PSR-4.",
         "stan": "Static analysis at the maximum level, without a baseline.",
         "deptrac": "Checks that no layer depends on something it may not.",
         "rector": "Reports refactorings the project has agreed to, without applying them.",

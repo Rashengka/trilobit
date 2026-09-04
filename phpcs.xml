@@ -1,0 +1,144 @@
+<?xml version="1.0"?>
+<ruleset name="Trilobit">
+    <description>
+        The rules a formatter cannot express.
+
+        php-cs-fixer already decides what the code looks like, so this file
+        deliberately does not compete with it. Where the two overlap, the fixer
+        wins and the sniff is either configured to agree or switched off with
+        the reason written down next to it; every exclusion below names the
+        rule on the other side. What is left is the part php-cs-fixer has no
+        opinion about and PHPStan does not see: naming, namespace hygiene, dead
+        catch blocks, comparisons that hide an assignment, and the file a class
+        is allowed to live in.
+    </description>
+
+    <arg name="basepath" value="."/>
+    <arg name="extensions" value="php"/>
+    <arg name="parallel" value="8"/>
+    <arg name="colors"/>
+    <!-- p: progress. Warnings are not suppressed; they fail the gate like errors. -->
+    <arg value="p"/>
+
+    <file>src</file>
+    <file>tests</file>
+    <file>www</file>
+    <!--
+        Both scripts in bin/ are named one by one because neither carries a .php
+        extension, so the extensions filter above never reaches them through the
+        directory. Unlike php-cs-fixer, PHPStan and Rector, this file excludes
+        nothing: the leak guard and its test are top-level scripts with no class
+        in them, and PSR-12 is content with that.
+    -->
+    <file>bin/check-leaks</file>
+    <file>bin/trilobit</file>
+
+    <!--
+        The two soft rules PSR-12 carries as warnings, dealt with one by one
+        rather than by switching the warning tier off wholesale, so that a
+        warning from any other sniff still fails the gate.
+    -->
+    <rule ref="Generic.Files.LineLength">
+        <!--
+            A wrapped line is a formatting decision, and formatting decisions in
+            this project belong to php-cs-fixer, which holds no opinion on line
+            length - so nothing could apply this one automatically. It is also
+            unreachable in the two places it fires hardest: a Doctrine migration
+            is generated and committed as generated (one addSql line here is 359
+            characters), and the leak guard's table of patterns is one regular
+            expression per line on purpose.
+        -->
+        <severity>0</severity>
+    </rule>
+    <rule ref="PSR1.Files.SideEffects">
+        <!--
+            Both files are top-level scripts with no class in them, which is
+            what the sniff is complaining about and exactly what they are for:
+            the leak guard runs before the application exists, so it cannot be
+            loaded through an autoloader. Everywhere else the sniff still bites.
+        -->
+        <exclude-pattern>bin/check-leaks</exclude-pattern>
+        <exclude-pattern>tests/Tooling/CheckLeaksTest\.php</exclude-pattern>
+    </rule>
+
+    <rule ref="PSR12">
+        <!--
+            PER-CS 2.0 writes an empty function body as `{}` on the signature
+            line; PSR-12 wants the braces on lines of their own. php-cs-fixer's
+            single_line_empty_body rule applies the PER-CS form and is the
+            project's coding standard, so it wins. Left on, these two codes turn
+            `composer check` into a coin toss: phpcbf expands the braces and the
+            next `php-cs-fixer fix` collapses them again, forever.
+        -->
+        <exclude name="Squiz.WhiteSpace.ScopeClosingBrace.ContentBefore"/>
+        <exclude name="Squiz.Functions.MultiLineFunctionDeclaration.BraceOnSameLine"/>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Exceptions.ReferenceThrowableOnly"/>
+    <rule ref="SlevomatCodingStandard.Exceptions.DeadCatch"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.AssignmentInCondition"/>
+    <!-- Slevomat 8 keeps this one under Operators, not ControlStructures. -->
+    <rule ref="SlevomatCodingStandard.Operators.DisallowEqualOperators"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.RequireNullCoalesceOperator"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.LanguageConstructWithParentheses"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.NewWithParentheses"/>
+
+    <rule ref="SlevomatCodingStandard.Namespaces.UnusedUses">
+        <properties>
+            <!--
+                Without this the sniff reads only code, so an import used solely
+                by a generic type in a docblock looks unused - and PHPStan at
+                level max reads exactly those docblocks. Removing such an import
+                would break static analysis to satisfy a formatter.
+            -->
+            <property name="searchAnnotations" value="true"/>
+        </properties>
+    </rule>
+    <rule ref="SlevomatCodingStandard.Namespaces.UseFromSameNamespace"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.RequireOneNamespaceInFile"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.NamespaceDeclaration"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.NamespaceSpacing"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.UseSpacing"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.DisallowGroupUse"/>
+
+    <rule ref="SlevomatCodingStandard.Arrays.TrailingArrayComma"/>
+
+    <rule ref="SlevomatCodingStandard.TypeHints.DeclareStrictTypes">
+        <properties>
+            <!--
+                Slevomat writes `declare(strict_types = 1)` by default, while
+                PSR12.Files.DeclareStatement and php-cs-fixer's
+                declare_equal_normalize both write it without the spaces. Left
+                at the default, phpcbf loops fifty times over every single file
+                in the project and gives up without fixing anything, because two
+                sniffs in this very ruleset disagree. Zero is the PER-CS form.
+            -->
+            <property name="spacesCountAroundEqualsSign" value="0"/>
+        </properties>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.LongTypeHints"/>
+    <rule ref="SlevomatCodingStandard.TypeHints.NullableTypeForNullDefaultValue"/>
+    <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHintSpacing"/>
+    <rule ref="SlevomatCodingStandard.TypeHints.ParameterTypeHintSpacing"/>
+
+    <rule ref="SlevomatCodingStandard.PHP.TypeCast"/>
+
+    <rule ref="SlevomatCodingStandard.Commenting.ForbiddenAnnotations"/>
+    <rule ref="SlevomatCodingStandard.Commenting.EmptyComment"/>
+
+    <!--
+        The PSR-4 check: a type has to live in the file its name and namespace
+        point at. suin/phpcs-psr4-sniff is the usual package for this, but its
+        last release is from 2021 and it pins slevomat/coding-standard <8 and
+        php_codesniffer <4, so it cannot be installed next to either. This sniff
+        ships with slevomat and answers the same question.
+    -->
+    <rule ref="SlevomatCodingStandard.Files.TypeNameMatchesFileName">
+        <properties>
+            <property name="rootNamespaces" type="array">
+                <element key="src" value="Trilobit"/>
+                <element key="tests" value="Trilobit\Tests"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>
