@@ -177,13 +177,28 @@ function main(array $args): int
             $suppression['reason']
         ));
     }
-    foreach ($stale as $suppression) {
-        fwrite(STDERR, sprintf(
-            "stale suppression  %s:%d  [%s]  nothing to suppress on this line\n",
-            $suppression['path'],
-            $suppression['line'],
-            $suppression['rule']
-        ));
+    // In --history mode every line comes from a commit that is already written,
+    // so a stale suppression there is something nobody can act on. Reporting it
+    // would put permanent noise in the one check that runs before the repository
+    // is published, which is the last place the output can afford to be
+    // unreadable. The count still gets said, so that "not reported" cannot be
+    // mistaken for "not looked for".
+    if ($mode === 'history') {
+        if ($stale !== []) {
+            fwrite(STDERR, sprintf(
+                "%d stale suppression(s) in past commits, not listed - a commit that is already written cannot be fixed.\n",
+                count($stale)
+            ));
+        }
+    } else {
+        foreach ($stale as $suppression) {
+            fwrite(STDERR, sprintf(
+                "stale suppression  %s:%d  [%s]  nothing to suppress on this line\n",
+                $suppression['path'],
+                $suppression['line'],
+                $suppression['rule']
+            ));
+        }
     }
     if ($used !== []) {
         fwrite(STDERR, sprintf(
