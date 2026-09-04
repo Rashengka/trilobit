@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node bin/build-versions.mjs",
     "e2e": "playwright test",
-    "test:manifest": "node --test \"tests/frontend/*.test.mjs\""
+    "test:frontend": "node --test \"tests/frontend/*.test.mjs\""
   },
   "dependencies": {
     "naja": "3.3.3"

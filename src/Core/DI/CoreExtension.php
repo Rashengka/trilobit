@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Trilobit\Core\DI;
 
 use Nette\Application\Routers\RouteList;
+use Nette\Assets\Registry;
 use Nette\DI\CompilerExtension;
 use Nette\DI\Definitions\Reference;
 use Nette\DI\Definitions\ServiceDefinition;
+use Nette\DI\Definitions\Statement;
 use Nette\InvalidStateException;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Trilobit\Core\Admin\Menu\Menu;
+use Trilobit\Core\Asset\VersionedViteMapper;
 use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Console\MigrationsDiffCommand;
@@ -67,6 +70,12 @@ final class CoreExtension extends CompilerExtension
 
     /** The console's own tag; the value is the name the command answers to. */
     private const string TAG_CONSOLE_COMMAND = 'console.command';
+
+    /**
+     * The scope the Vite mapper is registered under in config/common.neon, and
+     * therefore the one the templates name in {asset 'vite:...'}.
+     */
+    private const string ASSET_SCOPE = 'vite';
 
     /**
      * Every port Core declares, and what stands in for it when no enabled
@@ -241,6 +250,8 @@ final class CoreExtension extends CompilerExtension
 
         $builder->removeDefinition(self::BRIDGE_DIFF_COMMAND);
 
+        $this->decorateViteMapper();
+
         // Has to run before taggedPorts() below: a port with no module
         // behind it gets its fallback registered and tagged here, so that
         // from taggedPorts()'s point of view a fallback is indistinguishable
@@ -252,6 +263,71 @@ final class CoreExtension extends CompilerExtension
         $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
         $this->service('ports')->setArguments([$this->taggedPorts()]);
+    }
+
+    /**
+     * Wraps the asset mapper Nette registered for the "vite" scope in the one
+     * that puts a version on the URL; see Trilobit\Core\Asset\
+     * VersionedViteMapper for why the built files are named without a hash and
+     * what has to make up for it.
+     *
+     * It is done by rewriting the addMapper() call rather than by registering
+     * a mapper of our own in config/common.neon, because that call is where
+     * the base URL of the application is resolved - a dynamic parameter, only
+     * known once there is a request - along with the manifest path and the
+     * address of a running dev server. A mapper written out by hand would have
+     * to restate all three, and would go quietly wrong on an installation
+     * served from a subdirectory.
+     *
+     * Both surprises are refused rather than absorbed: no such call, or more
+     * than one, means the bridge no longer looks the way this assumes, and an
+     * application that then serves unversioned assets would look perfectly
+     * healthy.
+     */
+    private function decorateViteMapper(): void
+    {
+        $builder = $this->getContainerBuilder();
+        $name = $builder->getByType(Registry::class);
+        if ($name === null) {
+            throw new InvalidStateException(sprintf(
+                'No %s is in the container, so the asset mapper could not be given its versioning. '
+                . 'It is registered by nette/assets from the "assets" section of config/common.neon.',
+                Registry::class,
+            ));
+        }
+
+        $definition = $builder->getDefinition($name);
+        if (!$definition instanceof ServiceDefinition) {
+            throw new InvalidStateException(sprintf(
+                "Service '%s' was replaced by a %s, so the mapper it is given can no longer be decorated.",
+                $name,
+                $definition::class,
+            ));
+        }
+
+        $decorated = 0;
+        foreach ($definition->getSetup() as $setup) {
+            // A setup call is stored as [the service it is called on, the
+            // method], which is why the entity is an array and not the method
+            // name on its own.
+            $entity = $setup->getEntity();
+            if (!is_array($entity) || $entity[1] !== 'addMapper' || ($setup->arguments[0] ?? null) !== self::ASSET_SCOPE) {
+                continue;
+            }
+
+            $setup->arguments[1] = new Statement(VersionedViteMapper::class, [$setup->arguments[1]]);
+            $decorated++;
+        }
+
+        if ($decorated !== 1) {
+            throw new InvalidStateException(sprintf(
+                "Expected exactly one addMapper('%s', ...) call on %s and found %d. "
+                . 'Asset versioning is wired by rewriting that call, so a release that changes its shape needs this changed with it.',
+                self::ASSET_SCOPE,
+                $name,
+                $decorated,
+            ));
+        }
     }
 
     /** @return array<string, bool> */
