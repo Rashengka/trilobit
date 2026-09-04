@@ -123,7 +123,28 @@
 
     <rule ref="SlevomatCodingStandard.PHP.TypeCast"/>
 
-    <rule ref="SlevomatCodingStandard.Commenting.ForbiddenAnnotations"/>
+    <rule ref="SlevomatCodingStandard.Commenting.ForbiddenAnnotations">
+        <properties>
+            <!--
+                The sniff forbids nothing until it is given a list, so a bare
+                reference to it would be a rule that looks enforced and is not.
+                The list is the bookkeeping git already answers, and answers
+                correctly: who wrote a line, when, and under which release.
+                Written in a docblock the same facts go stale silently.
+                @package and @license restate the namespace and the LICENSE file.
+            -->
+            <property name="forbiddenAnnotations" type="array">
+                <element value="@author"/>
+                <element value="@created"/>
+                <element value="@version"/>
+                <element value="@since"/>
+                <element value="@package"/>
+                <element value="@subpackage"/>
+                <element value="@copyright"/>
+                <element value="@license"/>
+            </property>
+        </properties>
+    </rule>
     <rule ref="SlevomatCodingStandard.Commenting.EmptyComment"/>
 
     <!--
