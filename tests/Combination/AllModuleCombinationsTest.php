@@ -9,12 +9,14 @@ use Dom\HTMLDocument;
 use Nette\Application\InvalidPresenterException;
 use Nette\Application\IPresenterFactory;
 use Nette\DI\Container;
+use Nette\Security\User as SignedIn;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Admin\Menu\MenuItem;
 use Trilobit\Core\Doctrine\TableName;
+use Trilobit\Core\Security\Identity;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
 
@@ -280,6 +282,68 @@ final class AllModuleCombinationsTest extends TestCase
             array_map(ucfirst(...), $enabled),
             array_map(static fn(MenuItem $item): string => $item->label, $menu->items()),
         );
+    }
+
+    /**
+     * The same claim as above, made against the page a person actually looks
+     * at rather than against the container behind it.
+     *
+     * This is the measured proof T07 is defined by, and it is made for every
+     * build the application can be shipped as: the administration menu holds
+     * exactly the entries the enabled modules contributed, each one labelled
+     * after its module and each one resolving through the router back into it.
+     * A build with no optional module has no menu at all - not an empty one -
+     * because a navigation with nothing in it is furniture with no purpose.
+     *
+     * Core contributes nothing here on purpose, which is what makes the count
+     * unambiguous; the way back to the overview is the mark in the banner. The
+     * identity is invented rather than read from a database: what is under test
+     * is which entries the build has, and needing a database to ask that would
+     * make this the slowest claim in the suite instead of one of the cheapest.
+     *
+     * @param list<string> $enabled
+     */
+    #[DataProviderExternal(Build::class, 'everyCombination')]
+    public function testTheRenderedAdministrationMenuHasOneEntryPerEnabledModule(array $enabled): void
+    {
+        $container = Build::container($enabled);
+        $container->getByType(SignedIn::class)->login(new Identity(1, ['administrator'], []));
+
+        try {
+            $document = HTMLDocument::createFromString(
+                Build::render($container, 'Core:Admin:Dashboard'),
+                LIBXML_NOERROR,
+            );
+
+            self::assertNotNull($document->querySelector('[data-testid="admin-layout"]'));
+
+            $menu = $document->querySelector('[data-testid="admin-menu"]');
+            if ($enabled === []) {
+                self::assertNull($menu, 'a build with no optional module drew a menu anyway');
+
+                return;
+            }
+
+            self::assertNotNull($menu, 'the enabled modules contributed entries and no menu was drawn');
+
+            $labels = [];
+            foreach ($menu->querySelectorAll('.c-nav__link') as $link) {
+                $label = $link->textContent ?? '';
+                $labels[] = $label;
+
+                $href = $link->getAttribute('href');
+                self::assertNotNull($href);
+                self::assertSame(
+                    ucfirst(strtolower($label)) . ':Front:Status',
+                    Build::match($container, $href)['presenter'] ?? null,
+                    'a menu entry does not resolve through the router into its module',
+                );
+            }
+
+            self::assertSame(array_map(ucfirst(...), $enabled), $labels);
+        } finally {
+            $container->getByType(SignedIn::class)->logout(clearIdentity: true);
+        }
     }
 
     private function refusalOf(Container $container, string $presenter): ?InvalidPresenterException

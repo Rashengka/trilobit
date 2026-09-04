@@ -1,0 +1,88 @@
+{templateType Trilobit\Core\Presentation\Admin\AdminTemplate}
+
+{*
+ * The chrome every administration page is drawn in.
+ *
+ * It is the same shell, the same components and the same tokens as the public
+ * side (src/Core/Presentation/Front/templates/@layout.latte). That is the point
+ * of a design system: the administration is not a second application with a
+ * look of its own to keep in step, it is the same one with different content in
+ * it - so a theme moves the navigation here exactly as it moves it there, and a
+ * component fixed in one place is fixed in both.
+ *
+ * The menu is what the enabled modules contributed and nothing else. The way
+ * back to the overview is the mark in the banner, the same way the way back to
+ * the front page is the mark in the public banner; that is what lets "one entry
+ * per enabled module" be something a test can count rather than a claim about
+ * which of the entries is Core's.
+ *}
+
+{import '../../components/site-header.latte'}
+{import '../../components/nav.latte'}
+{import '../../components/site-footer.latte'}
+{import '../../components/button.latte'}
+{import '../../components/badge.latte'}
+
+<!DOCTYPE html>
+<html lang="en" data-theme="{$theme}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{ifset $pageTitle}{$pageTitle} | {/ifset}{$siteName} administration</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/vnd.microsoft.icon" href="/favicon.ico" sizes="16x16 32x32">
+</head>
+<body class="l-shell" data-testid="admin-layout">
+
+<header class="l-shell__banner" data-testid="admin-header">
+    {include siteHeader,
+        brand: $siteName,
+        href: $overviewUrl,
+        tagline: 'Administration',
+        testId: 'admin-home-link'}
+
+    <div class="l-container l-cluster" n:if="$signedIn" data-testid="admin-account">
+        {include badge, label: $identityName, variant: 'accent', testId: 'admin-identity'}
+        {include badge, label: $identityEmail, testId: 'admin-identity-email'}
+
+        {include button,
+            label: 'Open the site',
+            href: $publicSiteUrl,
+            variant: 'quiet',
+            testId: 'admin-public-link'}
+
+        {include button,
+            label: 'Sign out',
+            href: $signOutUrl,
+            variant: 'quiet',
+            testId: 'admin-sign-out'}
+    </div>
+</header>
+
+{* Absent rather than empty while nobody is signed in: there is nothing to
+   navigate to before there is somebody navigating. *}
+<div class="l-shell__nav" n:if="$menu !== []">
+    {include nav, items: $menu, label: 'Administration', testId: 'admin-menu'}
+</div>
+
+<main class="l-shell__main" data-testid="admin-content">
+    <div class="l-container l-stack l-stack--loose">
+        {include content}
+    </div>
+</main>
+
+<div class="l-shell__footer" data-testid="admin-footer">
+    {embed block siteFooter}
+        {block siteFooterBody}<p>{$siteName} &mdash; administration.</p>{/block}
+    {/embed}
+</div>
+
+{* The same bundle the public side loads: Naja, the theme switch, and whatever
+   every page needs whichever module it belongs to. *}
+{block scripts}
+    {asset 'vite:assets/app.ts'}
+{/block}
+
+</body>
+</html>

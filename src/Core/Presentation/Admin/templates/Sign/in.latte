@@ -1,0 +1,68 @@
+{templateType Trilobit\Core\Presentation\Admin\SignInTemplate}
+
+{*
+ * The one page of the administration that answers to somebody who is not signed
+ * in.
+ *
+ * The form is written out with n:name rather than rendered by the framework's
+ * default renderer, because the controls have to sit inside the design system's
+ * own components - a renderer producing its own table of labels and inputs
+ * would be a second way of drawing a form, unthemed and untested.
+ *
+ * What went wrong arrives as a list of sentences the presenter read off the
+ * form, so this page is handed strings rather than a component to interrogate.
+ * There is one sentence and it never says which of the ways it was; see
+ * Trilobit\Core\Security\Authenticator.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/field.latte'}
+{import '../../../components/notice.latte'}
+
+{block content}
+    <div class="l-measure l-stack l-stack--loose">
+        {include pageHeading,
+            title: $headline,
+            lead: $lead,
+            testId: 'sign-in-headline',
+            leadTestId: 'sign-in-lead'}
+
+        {embed block panel, testId: 'sign-in-panel'}
+            {block panelTitle}Sign in{/block}
+
+            {block panelBody}
+                <form n:name="signIn" class="l-stack" data-testid="sign-in-form">
+                    {foreach $errors as $error}
+                        {include notice, message: $error, variant: 'danger', testId: 'sign-in-error'}
+                    {/foreach}
+
+                    {embed block field, testId: 'sign-in-address-field'}
+                        {block fieldLabel}<label n:name="email">Address</label>{/block}
+
+                        {block fieldControl}
+                            <input n:name="email" data-testid="sign-in-email">
+                        {/block}
+                    {/embed}
+
+                    {embed block field, testId: 'sign-in-secret-field'}
+                        {block fieldLabel}<label n:name="password">Password</label>{/block}
+
+                        {block fieldControl}
+                            <input n:name="password" data-testid="sign-in-password">
+                        {/block}
+                    {/embed}
+
+                    {* The one element on this page that carries a component's
+                       class instead of being drawn by the component. A submit
+                       control has to be the form's own element - n:name is
+                       resolved on the element itself - and c-button draws an
+                       element of its own, so the two cannot be the same one. *}
+                    <div class="l-cluster">
+                        <button n:name="send" class="c-button" data-testid="sign-in-submit">Sign in</button>
+                    </div>
+                </form>
+            {/block}
+        {/embed}
+    </div>
+{/block}
