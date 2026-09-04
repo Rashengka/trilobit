@@ -13,6 +13,15 @@ parameters:
     # a build the application has to support.
     modules: []
 
+    # The design system; see .ai/plans/01d-design-system.md.
+    trilobit:
+        # Which set of token values the pages start in. It has to name a file
+        # in assets/themes/, and a deployment that wants another one overrides
+        # this from config/local.neon - what the site looks like is not a code
+        # change. A visitor can switch it in the browser afterwards without a
+        # request, because the whole of a theme is one attribute on <html>.
+        theme: atrium
+
 extensions:
     core: Trilobit\Core\DI\CoreExtension
 

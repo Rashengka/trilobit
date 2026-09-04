@@ -16,8 +16,14 @@ namespace Trilobit\Core\Presentation\Front\Signpost;
  */
 final readonly class Signpost
 {
+    /**
+     * @param string $summary one sentence about what is behind the link, for
+     *     the places that have room for it. Optional, because a module that has
+     *     nothing to add should not be made to invent something.
+     */
     public function __construct(
         public string $label,
         public string $destination,
+        public string $summary = '',
     ) {}
 }

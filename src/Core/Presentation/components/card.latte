@@ -1,0 +1,21 @@
+{**
+ * c-card - a linked tile: something to look at, a title that is the link, and a
+ * sentence about it.
+ *
+ * The title's link covers the whole tile, so the tile is one target and a screen
+ * reader still reads one link with the title as its name. The media slot takes a
+ * short label rather than a picture while the application has no media library;
+ * the box it sits in keeps its shape either way, and the shape is a token.
+ *}
+
+{define card, string $title, string $href, string $text = '', string $media = '', ?string $testId = null}
+    <article class="c-card">
+        <div class="c-card__media" n:if="$media !== ''" aria-hidden="true">{$media}</div>
+
+        <div class="c-card__body">
+            <h3 class="c-card__title"><a class="c-card__link" href="{$href}" data-testid="{$testId}">{$title}</a></h3>
+
+            <p class="c-card__text" n:if="$text !== ''">{$text}</p>
+        </div>
+    </article>
+{/define}

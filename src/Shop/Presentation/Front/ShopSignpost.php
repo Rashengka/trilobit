@@ -20,6 +20,6 @@ final class ShopSignpost implements SignpostProvider
     /** @return iterable<Signpost> */
     public function provide(): iterable
     {
-        yield new Signpost('Shop', 'Shop:Front:Status:default');
+        yield new Signpost('Shop', 'Shop:Front:Status:default', 'The catalogue, the basket and what comes of them.');
     }
 }

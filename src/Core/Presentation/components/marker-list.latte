@@ -1,0 +1,15 @@
+{**
+ * c-marker-list - a handful of short statements, each one marked.
+ *
+ * The marker is drawn by the stylesheet rather than written into the markup, so
+ * a theme can make it a dot, a rule or nothing at all without the list of
+ * statements being touched.
+ *
+ * @param iterable<string> $items
+ *}
+
+{define markerList, iterable $items, ?string $testId = null}
+    <ul class="c-marker-list" data-testid="{$testId}">
+        <li class="c-marker-list__item" n:foreach="$items as $item">{$item}</li>
+    </ul>
+{/define}

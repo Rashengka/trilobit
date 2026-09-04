@@ -7,6 +7,7 @@ namespace Trilobit\Core\Presentation\Front;
 use Nette\Application\IPresenter;
 use Nette\Application\UI\Control;
 use Nette\Bridges\ApplicationLatte\Template;
+use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
 /**
  * What every front template may rely on, and therefore what the layout may
@@ -37,5 +38,22 @@ class FrontTemplate extends Template
 
     public string $siteName = 'Trilobit';
 
+    public string $siteTagline = 'Modular commerce, contacts and content.';
+
     public string $pageTitle = '';
+
+    /**
+     * The theme this page is rendered in, written onto <html> as data-theme.
+     * Filled in by FrontPresenter from configuration; the default is what
+     * assets/themes/ declares, not a name repeated here.
+     */
+    public string $theme = '';
+
+    /** @var list<string> every theme this installation has, for the switcher */
+    public array $themes = [];
+
+    public string $homeUrl = '';
+
+    /** @var list<NavigationItem> */
+    public array $navigation = [];
 }

@@ -1,0 +1,11 @@
+{**
+ * c-badge - a short label attached to something else: a state, a count, a name.
+ *
+ * It says what a thing is, never how loud it should be. "accent" is the variant
+ * for a badge that carries the page's own subject; a theme decides what that
+ * looks like.
+ *}
+
+{define badge, string $label, string $variant = 'plain', ?string $testId = null}
+    <span n:class="'c-badge', $variant === 'accent' ? 'c-badge--accent'" data-testid="{$testId}">{$label}</span>
+{/define}

@@ -1,0 +1,13 @@
+{**
+ * c-site-footer - the closing band: what this is, and under what licence.
+ *
+ * It carries a slot rather than a string, because a footer is the one place a
+ * later module will want to add a line of its own without the component growing
+ * a parameter for every possible line.
+ *}
+
+{define siteFooter, ?string $testId = null}
+    <div class="c-site-footer" data-testid="{$testId}">
+        <div class="l-container">{block siteFooterBody}{/block}</div>
+    </div>
+{/define}

@@ -1,0 +1,23 @@
+{**
+ * c-button - the one thing this page wants you to do, and the quieter things
+ * beside it.
+ *
+ * A destination makes it a link and no destination makes it a button, because
+ * the difference is what happens when it is used rather than how it looks. The
+ * variant names a role - the quiet one is the alternative to the main action -
+ * rather than an appearance, so a theme is free to draw either of them any way
+ * it likes.
+ *
+ * @param array<string, string|null> $attributes anything the caller has to hang
+ *     on the control itself: a data- hook, an aria- relationship. The component
+ *     adds none of its own, and a caller that needs one is not a reason to grow
+ *     a parameter per attribute.
+ *}
+
+{define button, string $label, string $href = '', string $variant = 'primary', ?string $testId = null, array $attributes = []}
+    <a
+        n:tag="$href === '' ? 'button' : 'a'"
+        n:class="'c-button', $variant === 'quiet' ? 'c-button--quiet'"
+        n:attr="$attributes + ['href' => $href ?: null, 'type' => $href === '' ? 'button' : null, 'data-testid' => $testId]"
+    >{$label}</a>
+{/define}
