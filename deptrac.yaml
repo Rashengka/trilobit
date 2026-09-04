@@ -1,0 +1,53 @@
+#
+# Which part of the source may know about which other part.
+#
+# The rule this file exists for is that no optional module may reach into
+# another one: a build without Crm has to keep working, and it cannot if Shop
+# refers to a Crm class. Grep would not do - it cannot tell a mention in a
+# comment from a real dependency, and it misses a fully qualified name used
+# without an import. deptrac reads the syntax tree instead.
+#
+# --fail-on-uncovered turns a directory nobody wrote a rule for into a failure,
+# so a new module cannot arrive without one. Modules join this file in the task
+# that creates them; today Core is the only layer there is.
+#
+
+deptrac:
+  paths:
+    - ./src
+    - ./tests
+
+  layers:
+    - name: Core
+      collectors:
+        - type: directory
+          value: src/Core/.*
+
+    # The suites are one layer rather than one per level. They may use the
+    # application; the application may not use them, and that is the only claim
+    # about them worth enforcing here.
+    - name: Tests
+      collectors:
+        - type: directory
+          value: tests/.*
+
+    # Everything that is not ours. Without this layer --fail-on-uncovered would
+    # report every use of Nette or PHPUnit, and the flag would have to be
+    # turned off - which is the flag that makes a module without a rule fail.
+    - name: Vendor
+      collectors:
+        - type: bool
+          must_not:
+            - type: classLike
+              value: ^Trilobit\\.*
+
+  ruleset:
+    # Core may know libraries and nothing else of ours. The absence of a module
+    # here is the rule: the moment one is added, a module has been named inside
+    # Core.
+    Core:
+      - Vendor
+    Tests:
+      - Core
+      - Vendor
+    Vendor: ~

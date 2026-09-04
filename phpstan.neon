@@ -1,0 +1,29 @@
+#
+# Static analysis at the maximum level from the first commit, with no baseline.
+#
+# There is no baseline and there will not be one: raising a threshold back up
+# is something nobody ever gets round to, so lowering it has to be impossible
+# rather than discouraged. tests/Architecture/NoBaselineTest fails if a
+# baseline file appears anywhere in the repository, this file included.
+#
+# The Nette and strict-rules extensions are wired in by
+# phpstan/extension-installer; they are not listed here on purpose, so that
+# there is one place where the set of extensions is decided - composer.json.
+#
+
+parameters:
+    level: max
+
+    paths:
+        - src
+        - tests
+        - www
+
+    excludePaths:
+        analyse:
+            # The guard's own test predates composer: it is a single script of
+            # top-level code with no autoloader, because it has to run before
+            # the application exists. Analysing it would mean rewriting it.
+            - tests/Tooling/CheckLeaksTest.php
+
+    tmpDir: var/cache/phpstan
