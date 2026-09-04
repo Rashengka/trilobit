@@ -5,6 +5,11 @@
 /vendor/
 /www/build/
 
+# Browser-suite output.
+/test-results/
+/playwright-report/
+/.playwright/
+
 # Tool caches.
 /.deptrac.cache
 /.php-cs-fixer.cache
