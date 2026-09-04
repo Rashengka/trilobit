@@ -19,3 +19,10 @@
 /.zed/
 *.iml
 .DS_Store
+
+# Local development stack. compose.yaml is the tracked one; this is the layer
+# Compose merges on top of it on this machine only.
+/compose.override.yaml
+/compose.override.yml
+/docker-compose.override.yaml
+/docker-compose.override.yml
