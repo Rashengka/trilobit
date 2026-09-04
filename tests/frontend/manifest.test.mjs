@@ -10,7 +10,7 @@
 // path when it is unset), and writes to a throwaway --outDir - never to
 // www/build, which a developer or another process may be relying on.
 //
-// Run with: npm run test:manifest
+// Run with: npm run test:frontend
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
