@@ -16,6 +16,12 @@ use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Contract\Activity\ActivityRecorder;
+use Trilobit\Core\Contract\Activity\NullActivityRecorder;
+use Trilobit\Core\Contract\Party\NullPartyDirectory;
+use Trilobit\Core\Contract\Party\PartyDirectory;
+use Trilobit\Core\Contract\Party\PartyLookup;
+use Trilobit\Core\Event\AuditListener;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
@@ -71,14 +77,47 @@ final class ApplicationSkeletonTest extends TestCase
         self::assertSame([], $this->container()->getByType(Menu::class)->items());
     }
 
-    public function testNoListenerIsRegisteredWithoutModules(): void
+    /**
+     * Core registers a listener of its own - AuditListener - regardless of
+     * which modules are enabled, so "no modules" leaves exactly that one
+     * rather than an empty collection.
+     */
+    public function testOnlyCoresOwnListenerIsRegisteredWithoutModules(): void
     {
-        self::assertSame([], $this->container()->getByType(ListenerCollection::class)->all());
+        self::assertContainsOnlyInstancesOf(
+            AuditListener::class,
+            $this->container()->getByType(ListenerCollection::class)->all(),
+        );
     }
 
-    public function testNoPortIsImplementedWithoutModules(): void
+    /**
+     * No module implements either port, so what is behind them is the null
+     * fallback Trilobit\Core\DI\CoreExtension registers for each - never an
+     * empty registry, because a caller takes the port as a plain constructor
+     * dependency and always needs an answer; see
+     * .ai/plans/01a-komunikace-modulu.md §2.
+     */
+    public function testEveryPortFallsBackToItsNullImplementationWithoutModules(): void
     {
-        self::assertSame([], $this->container()->getByType(PortRegistry::class)->all());
+        $ports = $this->container()->getByType(PortRegistry::class);
+
+        self::assertInstanceOf(NullPartyDirectory::class, $ports->get(PartyDirectory::class));
+        self::assertInstanceOf(NullActivityRecorder::class, $ports->get(ActivityRecorder::class));
+    }
+
+    /**
+     * The measurable claim T04 is defined by: a caller asking the container
+     * for the port directly, the way a module's own constructor would,
+     * receives the null implementation and not an exception - in a build
+     * with no module able to answer for real, which "without Crm" is a
+     * special case of.
+     */
+    public function testThePortResolvesToItsNullImplementationByType(): void
+    {
+        $directory = $this->container()->getByType(PartyDirectory::class);
+
+        self::assertInstanceOf(NullPartyDirectory::class, $directory);
+        self::assertNull($directory->find(new PartyLookup(email: 'person@example.com')));
     }
 
     public function testTheHomepageRendersInsideTheLayout(): void

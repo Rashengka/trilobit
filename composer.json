@@ -17,6 +17,7 @@
         "nettrine/dbal": "^0.10",
         "nettrine/migrations": "^0.10",
         "nettrine/orm": "^0.10",
+        "psr/event-dispatcher": "^1.0",
         "tracy/tracy": "^2.12"
     },
     "require-dev": {

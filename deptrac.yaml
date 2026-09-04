@@ -20,10 +20,25 @@ deptrac:
     - ./tests
 
   layers:
+    # Everything under src/Core except the one file named below, which is its
+    # own layer instead - a class cannot usefully sit in two layers at once
+    # (deptrac warns about exactly that and picks one for you), so the
+    # exclusion has to be written into this collector rather than left for the
+    # more specific layer to override.
     - name: Core
       collectors:
         - type: directory
-          value: src/Core/.*
+          value: src/Core/(?!Event/Dispatcher\.php).*
+
+    # Core's own PSR-14 dispatcher, named on its own so that a module reaching
+    # for it directly can be told apart from a module reaching for the rest of
+    # Core: the two are otherwise the same directory. See the class docblock
+    # of Trilobit\Core\Event\Dispatcher for why a module has to use a port
+    # instead of dispatching an event another module listens for.
+    - name: CoreEventDispatcher
+      collectors:
+        - type: directory
+          value: src/Core/Event/Dispatcher\.php
 
     # One layer per switchable module. They are listed in full rather than
     # collected by a pattern, because a module appearing here is meant to be a
@@ -62,15 +77,18 @@ deptrac:
               value: ^Trilobit\\.*
 
   ruleset:
-    # Core may know libraries and nothing else of ours. The absence of a module
-    # here is the rule: the moment one is added, a module has been named inside
-    # Core.
+    # Core may know libraries, and its own dispatcher, and nothing else of
+    # ours. The absence of a module here is the rule: the moment one is
+    # added, a module has been named inside Core.
     Core:
       - Vendor
+      - CoreEventDispatcher
 
     # A module may know Core and libraries. It may not know another module:
     # that is the rule this file exists for, and it is expressed by what is
-    # absent from these three lines.
+    # absent from these three lines. It may not know the dispatcher either -
+    # that omission is the rule CoreEventDispatcher exists for, and it is
+    # expressed the same way, by what is absent.
     Cms:
       - Core
       - Vendor
@@ -84,4 +102,7 @@ deptrac:
     Tests:
       - Core
       - Vendor
+      - CoreEventDispatcher
     Vendor: ~
+    CoreEventDispatcher:
+      - Vendor
