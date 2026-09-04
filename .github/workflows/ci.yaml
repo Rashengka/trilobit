@@ -11,17 +11,22 @@ name: CI
 
 on:
   push:
-    # Both names are listed because the repository has not been published yet
-    # and its default branch is not settled. Drop the one that turns out to be
-    # wrong rather than leaving a trigger that quietly never fires.
-    branches: [main, master]
+    # Every branch, because that is where the work happens: a push that runs
+    # nothing cannot be called verified, and until this said '**' the gate had
+    # never once run on a working branch. '**' matches branches at any depth
+    # and, unlike an unfiltered `push`, leaves tags alone.
+    branches: ['**']
   pull_request:
 
 permissions:
   contents: read
 
+# Keyed on the branch name rather than on github.ref, because the two triggers
+# above see the same commit under different refs: a push is refs/heads/x while
+# its pull request is refs/pull/N/merge. Keyed on the ref they land in separate
+# groups and every pull request runs the suite twice over one commit.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
