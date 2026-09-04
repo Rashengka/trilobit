@@ -90,7 +90,14 @@ jobs:
             printf '%s\n' "$PATTERNS" > "$HOME/.config/trilobit/check-leaks.local"
           else
             echo "::warning::CHECK_LEAKS_LOCAL is not available to this run; only the structural rules will run."
-            printf '%s\n' 'placeholder-no-private-pattern-list-available' > "$HOME/.config/trilobit/check-leaks.local"
+            # The guard refuses to report success on an empty list, so the file
+            # needs one pattern - and it has to be one that cannot occur in the
+            # repository. A literal placeholder cannot: whatever is written here
+            # is also written in this file, so the pattern would find its own
+            # definition and fail every run without the secret, which is exactly
+            # the run this branch exists to keep going.
+            printf 'no-private-pattern-list-%s-%s\n' "$(date +%s%N)" "${RANDOM}${RANDOM}" \
+              > "$HOME/.config/trilobit/check-leaks.local"
           fi
 
       # Without these the suites that need a database would skip, and a skipped
