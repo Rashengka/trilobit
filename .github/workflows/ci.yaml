@@ -21,12 +21,14 @@ on:
 permissions:
   contents: read
 
-# Keyed on the branch name rather than on github.ref, because the two triggers
-# above see the same commit under different refs: a push is refs/heads/x while
-# its pull request is refs/pull/N/merge. Keyed on the ref they land in separate
-# groups and every pull request runs the suite twice over one commit.
+# Keyed on github.ref, which puts the push and the pull request of one commit in
+# separate groups on purpose. They look like the same run over the same code and
+# they are not: a push builds the branch head, a pull request builds the branch
+# merged into its base. The second is the one that catches "green on the branch,
+# broken once master moved underneath it", so cancelling either loses a result
+# nobody else produces. Only successive pushes to one ref supersede each other.
 concurrency:
-  group: ci-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
