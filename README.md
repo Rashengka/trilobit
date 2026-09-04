@@ -13,6 +13,10 @@ three modules that are empty apart from a page saying they are here, and one
 table per module so that switching a module off is something a test can watch
 happen to a real database.
 
+There is an administration at `/admin`: accounts that can sign in to it, and a
+menu holding exactly what the enabled modules contributed. See "The
+administration" below.
+
 There is also a design system: a set of components every page is drawn out of,
 two themes that change the palette and the layout without a rebuild, and a style
 guide at `/_styleguide` that shows the components by rendering them the way the
@@ -21,11 +25,13 @@ application does. See "The design system" below.
 | path | what it is |
 |---|---|
 | `www/index.php` | the front controller; the document root is `www/`, nothing above it is reachable |
-| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build` |
+| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:account` makes somebody who can sign in |
 | `src/Core/Bootstrap.php` | turns a checkout into a compiled container |
 | `src/Core/Module/` | what a module's name implies, and which modules this build has |
-| `src/Core/DI/CoreExtension.php` | the four places a module hands something to Core |
+| `src/Core/DI/CoreExtension.php` | the five places a module hands something to Core |
+| `src/Core/Security/` | who may sign in, and what the session then carries |
 | `src/Core/Presentation/Front/` | the homepage, the shared layout and the base every public page is built on |
+| `src/Core/Presentation/Admin/` | the administration at `/admin`: signing in, the overview, and the base every administration page is built on |
 | `src/Core/Presentation/components/` | the components every page is built out of, one Latte block per file |
 | `src/Core/Presentation/Styleguide/` | the page that shows those components, at `/_styleguide` |
 | `assets/base.css`, `assets/themes/` | the design system: structure in one file, values in one file per theme |
@@ -40,11 +46,15 @@ application does. See "The design system" below.
 | `bin/check-leaks` | the guard that keeps private content out of a public repository |
 | `tests/` | one directory per level of test, listed in `phpunit.xml` |
 
-Catalogue, contacts and pages are not here. Each module has one entity, and in
-three of them it is a marker carrying nothing but the date it was installed: a
-module that maps no entity owns no table, and a module that owns no table cannot
-be used to show that switching it off leaves its data alone. They go away with
-their migrations once the modules have entities of their own.
+Catalogue, contacts and pages are not here. The three switchable modules have
+one entity each, and it is a marker carrying nothing but the date it was
+installed: a module that maps no entity owns no table, and a module that owns no
+table cannot be used to show that switching it off leaves its data alone. They
+go away with their migrations once the modules have entities of their own.
+
+Core's own entities are real. It owns accounts, roles, settings and a media
+library - the four things every build has whichever modules are switched on, and
+the only tables a module is allowed to point a foreign key at.
 
 ## Modules
 
@@ -74,8 +84,9 @@ path is claimed by nobody and the router says so. There is no catch-all route
 for it to be caught by.
 
 A module hands things to Core by tagging a service, never by Core naming the
-module. Today that is routes and administration menu entries; event listeners
-and ports use the same mechanism and are waiting for something to carry.
+module. Today that is routes, homepage signposts and administration menu
+entries; event listeners and ports use the same mechanism and are waiting for
+something to carry.
 
 After changing the file, run `bin/trilobit app:warmup`. It rewrites
 `var/build/modules.json` and `var/build/sources.css`, which is how the parts
@@ -146,6 +157,10 @@ refuses to resolve one, because a merged bundle is a file neither side wrote.
 `npm run e2e` runs Playwright. On a machine with Google Chrome installed it
 uses that one, so nothing has to be downloaded; set `PLAYWRIGHT_CHANNEL` to
 choose another, or leave it unset on a build server to use Playwright's own.
+Unlike `composer check`, it writes to the database this checkout is configured
+for: `tests/e2e/administration.spec.ts` brings the migrations up to date and
+makes itself an account under a reserved documentation address, because a
+password in a public repository is a disclosure git keeps forever.
 `npm run test:frontend` runs what is claimed about the build itself under
 Node's own runner, because `composer test` has no Node to run it with.
 
@@ -228,6 +243,56 @@ The page carries a switcher for the theme and for the light/dark mode. Neither
 choice is remembered between page loads; what a build starts in is
 `trilobit.theme` in `config/common.neon`.
 
+## The administration
+
+`/admin` is Core's own and is in every build. It holds the sign-in page, the
+overview, and a menu made of whatever the enabled modules contributed.
+
+Make somebody who can sign in:
+
+```sh
+bin/trilobit app:account you@example.com --name 'Your Name'
+```
+
+The password is generated and printed once. It is never an argument - an
+argument is in the shell history of the machine it was typed on and in that
+machine's process list while the command runs - and what is stored is a hash of
+it, made by `Nette\Security\Passwords`. Run the command again for an address
+that already exists and it replaces the password rather than refusing, which is
+what somebody who has lost theirs needs and what a deployment script calling it
+every time needs.
+
+Three decisions are worth stating.
+
+**A visitor who is not signed in is redirected, never refused.** They have done
+nothing wrong, and 403 on a page that exists tells somebody who is guessing that
+it does. `tests/Integration/Admin/AdministrationTest` asserts the status code as
+well as the destination, because a 500 carrying a `Location` header would
+satisfy "goes to the sign-in page" and nothing else about it.
+
+**The menu holds exactly what the modules contributed.** Core puts nothing in
+it; the way back to the overview is the mark in the banner, the same way the way
+back to the front page is the mark in the public banner. That is what lets
+counting the entries answer a question about the modules rather than about Core,
+and the count is asserted for all eight builds the application can be shipped as
+- against the rendered page, not against the container behind it - in
+`tests/Combination/AllModuleCombinationsTest`. Today a module's entry points at
+that module's own public page, because no module has an administration section
+yet; when one does, that is one line in its `<Module>Menu`.
+
+**Roles and permissions are carried, not yet enforced.** An account holds roles,
+a role carries a list of permissions, and the identity in the session carries
+both - the overview shows them. Nothing checks one, because there is no page in
+the administration that some accounts may open and others may not. The first
+module that contributes one is when that changes.
+
+The sign-in form carries no CSRF token of its own. nette/forms 3.3 deprecates
+its token control as redundant beside the check the framework now makes on every
+signal - the request has to come from this site, read off the browser's
+`Sec-Fetch-Site` header - and a second mechanism beside the first is one more to
+keep in step. `tests/e2e/administration.spec.ts` signs in through a real browser,
+which is the only place that check can be seen working.
+
 ## The database
 
 Every table carries the name of the module that owns it: `core_user`,
@@ -304,10 +369,13 @@ cp .env.example .env
 docker compose up -d
 bin/trilobit migrations:migrate
 bin/trilobit app:warmup
+bin/trilobit app:account you@example.com
 ```
 
 `app:warmup` writes down which modules this build is made of, for the parts
-that never start PHP. The scripts and the stylesheet are already in the clone,
+that never start PHP. `app:account` makes somebody who can sign in to `/admin`
+and prints their password once; see "The administration" above. The scripts and
+the stylesheet are already in the clone,
 under `www/build`; run `npm ci && npm run build` only once you change something
 under `assets/` or `src/*/assets/`, or once you switch a module on or off -
 `www/build` is built for the modules `config/modules.neon` names.
@@ -318,7 +386,9 @@ Then serve `www/`:
 php -S localhost:8000 -t www
 ```
 
-`http://localhost:8000/` answers with the homepage. For a real deployment point
+`http://localhost:8000/` answers with the homepage and
+`http://localhost:8000/admin` with the sign-in page; the last line above printed
+the password to use there, once. For a real deployment point
 the document root at `www/` and leave the rest of the checkout outside it;
 `www/.htaccess` covers Apache.
 
