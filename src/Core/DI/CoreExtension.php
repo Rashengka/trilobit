@@ -30,7 +30,9 @@ use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
+use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Routing\RouterFactory;
+use Trilobit\Core\Routing\StyleguideRoutes;
 
 /**
  * The always-enabled part of the application, and the five places a module
@@ -173,6 +175,22 @@ final class CoreExtension extends CompilerExtension
                 $this->designParameterString('theme'),
             ]);
 
+        // The style guide is a page, so it is switched on the way a module is:
+        // by whether its services are registered at all. Nothing downstream
+        // asks whether it is on - with these two absent there is no route to
+        // it and no link to it, so a request ends as 404 (decision D4).
+        if ($this->designParameterBool('styleguide')) {
+            $builder->addDefinition($this->prefix('styleguideRoutes'))
+                ->setFactory(StyleguideRoutes::class)
+                ->setAutowired(false)
+                ->addTag(self::TAG_ROUTE_PROVIDER);
+
+            $builder->addDefinition($this->prefix('styleguideSignpost'))
+                ->setFactory(StyleguideSignpost::class)
+                ->setAutowired(false)
+                ->addTag(self::TAG_SIGNPOST_PROVIDER);
+        }
+
         $builder->addDefinition($this->prefix('listeners'))
             ->setFactory(ListenerCollection::class, [[]]);
 
@@ -291,6 +309,20 @@ final class CoreExtension extends CompilerExtension
         if (!is_string($value)) {
             throw new InvalidStateException(sprintf(
                 "Parameter 'trilobit.%s' has to be a string; got %s.",
+                $name,
+                get_debug_type($value),
+            ));
+        }
+
+        return $value;
+    }
+
+    private function designParameterBool(string $name): bool
+    {
+        $value = $this->designParameter($name);
+        if (!is_bool($value)) {
+            throw new InvalidStateException(sprintf(
+                "Parameter 'trilobit.%s' has to be true or false; got %s. NEON reads an unquoted 'no' as a string.",
                 $name,
                 get_debug_type($value),
             ));

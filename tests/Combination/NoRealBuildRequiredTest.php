@@ -51,10 +51,23 @@ final class NoRealBuildRequiredTest extends TestCase
         self::assertDirectoryDoesNotExist($build, 'the real build directory is still here; this test proves nothing');
 
         $modules = ModuleList::of(['cms' => true, 'crm' => true, 'shop' => true], Bootstrap::rootDirectory());
-        $container = Boot::container($modules);
+
+        // The style guide is switched on here because it is the page carrying
+        // the most components, and therefore the page most likely to be the one
+        // that grows a dependency on something only a real build produces.
+        $container = Boot::container($modules, styleguide: true);
 
         $home = HTMLDocument::createFromString(Build::render($container, 'Core:Front:Home'), LIBXML_NOERROR);
         self::assertNotNull($home->querySelector('[data-testid="layout"]'));
+
+        $styleguide = HTMLDocument::createFromString(
+            Build::render($container, 'Core:Styleguide:Overview'),
+            LIBXML_NOERROR,
+        );
+        self::assertNotNull(
+            $styleguide->querySelector('[data-styleguide-component]'),
+            'the style guide did not render without a real www/build',
+        );
 
         foreach (Build::SWITCHABLE as $module) {
             $document = HTMLDocument::createFromString(

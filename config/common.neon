@@ -22,6 +22,14 @@ parameters:
         # request, because the whole of a theme is one attribute on <html>.
         theme: atrium
 
+        # Whether this build has a style guide at /_styleguide.
+        #
+        # On while developing and off in production, where it would be a page
+        # with nothing behind it. Off means the route is never registered, so
+        # the path is claimed by nobody and the answer is 404 rather than 403:
+        # a tool that is not here has nothing to admit to.
+        styleguide: %debugMode%
+
 extensions:
     core: Trilobit\Core\DI\CoreExtension
 
