@@ -13,6 +13,7 @@ use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Event\ListenerCollection;
+use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Core\Routing\RouterFactory;
 
@@ -55,6 +56,23 @@ final class CoreExtension extends CompilerExtension
     {
         $builder = $this->getContainerBuilder();
 
+        // Which modules the build is made of is settled before the container
+        // exists, so it arrives as a parameter. Handing it back out as a
+        // service is what lets the parts inside the container answer the same
+        // question without reading the configuration file a second time.
+        //
+        // It is read out of the builder rather than written as %modules%,
+        // because a parameter reference in a definition put together in code is
+        // not expanded the way one written in a configuration file is. Taking
+        // the value here also means a malformed one is a compile error with a
+        // sentence attached rather than a type error somewhere downstream.
+        $builder->addDefinition($this->prefix('modules'))
+            ->setType(ModuleList::class)
+            ->setFactory(ModuleList::class . '::of', [
+                $this->parameterArray('modules'),
+                $this->parameterString('rootDir'),
+            ]);
+
         $builder->addDefinition($this->prefix('routerFactory'))
             ->setFactory(RouterFactory::class, [[]]);
 
@@ -82,6 +100,47 @@ final class CoreExtension extends CompilerExtension
         $this->service('adminMenu')->setArguments([$this->taggedServices(self::TagAdminMenuProvider)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TagEventListener)]);
         $this->service('ports')->setArguments([$this->taggedPorts()]);
+    }
+
+    /** @return array<string, bool> */
+    private function parameterArray(string $name): array
+    {
+        $value = $this->getContainerBuilder()->parameters[$name] ?? null;
+        if (!is_array($value)) {
+            throw new InvalidStateException(sprintf(
+                "Parameter '%s' has to be an array of module names; got %s.",
+                $name,
+                get_debug_type($value),
+            ));
+        }
+
+        $modules = [];
+        foreach ($value as $module => $enabled) {
+            if (!is_string($module) || !is_bool($enabled)) {
+                throw new InvalidStateException(sprintf(
+                    "Parameter '%s' has to map a module name to true or false.",
+                    $name,
+                ));
+            }
+
+            $modules[$module] = $enabled;
+        }
+
+        return $modules;
+    }
+
+    private function parameterString(string $name): string
+    {
+        $value = $this->getContainerBuilder()->parameters[$name] ?? null;
+        if (!is_string($value)) {
+            throw new InvalidStateException(sprintf(
+                "Parameter '%s' has to be a string; got %s. It is set by the boot.",
+                $name,
+                get_debug_type($value),
+            ));
+        }
+
+        return $value;
     }
 
     private function service(string $name): ServiceDefinition

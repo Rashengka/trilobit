@@ -1,0 +1,13 @@
+{templateType Trilobit\Shop\Presentation\Front\StatusDefaultTemplate}
+
+{block content}
+    <h1 data-testid="module-status-headline">
+        <span data-testid="module-status-name">{$moduleName}</span> is part of this build
+    </h1>
+
+    <p data-testid="module-status-summary" n:if="$summary !== ''">{$summary}</p>
+
+    <p>
+        <a n:href=":Core:Front:Home:default" data-testid="module-status-home-link">Back to the homepage</a>
+    </p>
+{/block}

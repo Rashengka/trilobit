@@ -6,6 +6,13 @@
 # config/local.neon.example. Neither of those is in the repository.
 #
 
+parameters:
+    # Overwritten by the boot with whatever config/modules.neon declares. The
+    # empty default is here so that this file describes a complete
+    # configuration on its own, and because a build with no optional module is
+    # a build the application has to support.
+    modules: []
+
 extensions:
     core: Trilobit\Core\DI\CoreExtension
 

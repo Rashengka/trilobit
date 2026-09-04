@@ -1,0 +1,18 @@
+#
+# What the Cms module adds to the configuration.
+#
+# The boot loads this file only when the module is switched on, so everything
+# in it is absent from a build without the module - including the presenter
+# mapping below, which is why a link into a switched-off module fails loudly
+# instead of resolving to a blank page.
+#
+
+application:
+    # Both halves are needed and both are absent from a build without this
+    # module: the scan is how its presenters become services at all, and the
+    # mapping is how a presenter name is turned into one of them.
+    scanDirs:
+        - %rootDir%/src/Cms/Presentation
+
+    mapping:
+        Cms: Trilobit\Cms\Presentation\*\*Presenter

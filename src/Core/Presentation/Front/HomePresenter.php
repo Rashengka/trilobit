@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Front;
 
-use Nette\Application\UI\Presenter;
 use Nette\Application\UI\Template;
 
 /**
@@ -14,7 +13,7 @@ use Nette\Application\UI\Template;
  * any set of modules has to answer here with 200 and with the layout around
  * it, whether or not any module is switched on.
  */
-final class HomePresenter extends Presenter
+final class HomePresenter extends FrontPresenter
 {
     private const array Highlights = [
         'Modules that can be switched on and off one at a time.',

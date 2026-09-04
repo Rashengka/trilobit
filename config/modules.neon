@@ -1,0 +1,25 @@
+#
+# The single source of truth about which modules this installation is made of.
+#
+# A module switched off here registers no service, no route and no menu entry,
+# and once there are entities it will register no mapping and no migration
+# directory either. It is absent from the compiled container rather than hidden
+# from the interface, so "switched off" is something a test can measure and not
+# something a customer has to take on trust.
+#
+# Core is not in this list and cannot be: it is the part every other part is
+# written against, so a flag for it would be a flag that has to stay true.
+#
+# Each name here is one lower-case word that has to match a directory under
+# src/ carrying a DI/<Name>Extension.php; tests/Architecture fails when the two
+# disagree in either direction. After changing this file, run
+# `bin/trilobit app:warmup` so that the generated files under var/build say the
+# same thing.
+#
+
+parameters:
+    trilobit:
+        modules:
+            cms: true
+            crm: true
+            shop: true

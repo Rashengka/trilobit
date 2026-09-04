@@ -8,8 +8,10 @@
 # without an import. deptrac reads the syntax tree instead.
 #
 # --fail-on-uncovered turns a directory nobody wrote a rule for into a failure,
-# so a new module cannot arrive without one. Modules join this file in the task
-# that creates them; today Core is the only layer there is.
+# so a new module cannot arrive without one. That flag catches a class in no
+# layer; tests/Architecture/DeptracCoversEverythingTest catches the other half
+# of the same mistake, a layer with no line in the ruleset - which deptrac
+# reads as "may depend on nothing" and therefore lets past.
 #
 
 deptrac:
@@ -22,6 +24,24 @@ deptrac:
       collectors:
         - type: directory
           value: src/Core/.*
+
+    # One layer per switchable module. They are listed in full rather than
+    # collected by a pattern, because a module appearing here is meant to be a
+    # line somebody wrote on purpose.
+    - name: Cms
+      collectors:
+        - type: directory
+          value: src/Cms/.*
+
+    - name: Crm
+      collectors:
+        - type: directory
+          value: src/Crm/.*
+
+    - name: Shop
+      collectors:
+        - type: directory
+          value: src/Shop/.*
 
     # The suites are one layer rather than one per level. They may use the
     # application; the application may not use them, and that is the only claim
@@ -47,6 +67,20 @@ deptrac:
     # Core.
     Core:
       - Vendor
+
+    # A module may know Core and libraries. It may not know another module:
+    # that is the rule this file exists for, and it is expressed by what is
+    # absent from these three lines.
+    Cms:
+      - Core
+      - Vendor
+    Crm:
+      - Core
+      - Vendor
+    Shop:
+      - Core
+      - Vendor
+
     Tests:
       - Core
       - Vendor

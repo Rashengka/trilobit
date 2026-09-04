@@ -15,14 +15,18 @@ use Nette\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Admin\Menu\Menu;
-use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Port\PortRegistry;
+use Trilobit\Tests\Boot;
 
 /**
  * The skeleton, seen through a real compiled container rather than through a
  * constructor call: the container has to compile, the collection points have
  * to arrive empty, and the homepage has to answer with the layout around it.
+ *
+ * The build under test is Core on its own, whatever config/modules.neon says.
+ * That is the claim worth making here - Core does not need a module to work -
+ * and it is the build no combination of modules can accidentally repair.
  */
 #[CoversNothing]
 final class ApplicationSkeletonTest extends TestCase
@@ -98,14 +102,7 @@ final class ApplicationSkeletonTest extends TestCase
     private function container(): Container
     {
         if (!self::$container instanceof Container) {
-            self::$container = Bootstrap::boot();
-
-            // Booting the application installs Tracy's global error and
-            // exception handlers, which is right for the application and wrong
-            // inside a test runner: left in place they would swallow what the
-            // next case is trying to observe. The suite hands them back.
-            restore_error_handler();
-            restore_exception_handler();
+            self::$container = Boot::coreAlone();
         }
 
         return self::$container;
