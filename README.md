@@ -27,6 +27,7 @@ happen to a real database.
 | `src/Core/Doctrine/` | the naming rule tables follow, and the filter that keeps a switched-off module's tables out of reach |
 | `config/modules.neon` | which modules this installation is made of |
 | `config/` | `common.neon` for every environment, `services.neon` for this checkout |
+| `vite.config.ts`, `assets/` | the front-end build; see "Front-end assets" below |
 | `compose.yaml` | the database to develop and test against |
 | `bin/check-leaks` | the guard that keeps private content out of a public repository |
 | `tests/` | one directory per level of test, listed in `phpunit.xml` |
@@ -83,6 +84,24 @@ configuration and the source tree disagree about which modules exist, and
 `deptrac analyse --fail-on-uncovered` fails if a directory under `src/` has no
 rule. The one rule that matters is the one expressed by absence - a module may
 depend on Core and on libraries, and never on another module.
+
+## Front-end assets
+
+`npm run build` bundles the shared code every page loads (`assets/app.ts` -
+Naja, and `assets/app.css`'s Tailwind import) plus one bundle per switched-on
+module (`src/<Name>/assets/entry.ts`), through Vite. `npm run dev` starts
+Vite's dev server instead; which one a page actually gets is decided by
+`{asset 'vite:...'}` in the Latte templates and needs no `if ($devMode)`
+anywhere in the application.
+
+A module that is off contributes no bundle. `vite.config.ts` reads
+`var/build/modules.json` - the same file `bin/trilobit app:warmup` writes for
+the stylesheet build - and only lists an entry point for a module that file
+names; a checkout with no `var/build/modules.json` fails the build with a
+message naming the command to run, rather than bundling every module's code
+regardless of `config/modules.neon`.
+
+`npm run e2e` runs Playwright.
 
 ## The database
 

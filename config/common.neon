@@ -31,6 +31,13 @@ extensions:
     nettrine.orm: Nettrine\ORM\DI\OrmExtension
     nettrine.migrations: Nettrine\Migrations\DI\MigrationsExtension
 
+    # "assets" is not listed here: Nette\Bootstrap\Configurator already
+    # registers it, wired to %baseUrl% (autodetected from the request),
+    # %wwwDir% and %debugMode% - which is also what makes ViteMapper look for
+    # a running dev server only outside production. Registering it again under
+    # the same name is a compile error ("already used or reserved"); the
+    # "assets:" section below only configures the one it already added.
+
 console:
     name: Trilobit
 
@@ -62,6 +69,25 @@ session:
 
 tracy:
     showBar: %debugMode%
+
+#
+# Front-end assets, built by Vite. See .ai/plans/01b-frontend.md.
+#
+# The mapper is registered under the scope "vite" rather than "default", so
+# that {asset 'vite:assets/app.ts'} in a template names the mapper it is
+# using, not a magic prefix ViteMapper reserves for itself - Nette\Assets\
+# Registry parses everything before the colon as a mapper id, whichever one
+# is registered there.
+#
+assets:
+    mapping:
+        vite:
+            type: vite
+
+            # Resolved against the default basePath, %wwwDir%, and matches
+            # vite.config.ts's own build.outDir - where the manifest
+            # `npm run build` writes lives: www/build/.vite/manifest.json.
+            path: build
 
 #
 # The database.

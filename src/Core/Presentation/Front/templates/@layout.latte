@@ -23,5 +23,13 @@
     <p>{$siteName} &mdash; open source, MIT.</p>
 </footer>
 
+{* The shared bundle: Naja and whatever every page needs regardless of which
+   module it belongs to. A module's own layout overrides this block and pulls
+   the shared bundle back in with {include parent} before adding its own entry
+   point - see the @layout.latte next to each module's own presenters. *}
+{block scripts}
+    {asset 'vite:assets/app.ts'}
+{/block}
+
 </body>
 </html>
