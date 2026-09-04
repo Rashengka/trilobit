@@ -1,0 +1,269 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The style guide, drawn with the components it is a guide to.
+ *
+ * Everything below the theme switcher is an {include} of a file in
+ * src/Core/Presentation/components/ - the same files the homepage and the
+ * modules include. Nothing here reproduces a component's markup, because a
+ * catalogue that reproduced it would go on showing the old shape after the
+ * component changed and nobody would know.
+ *
+ * The two {define}s at the top are the page's own furniture (the .sg-* classes
+ * in assets/base.css), not components: they frame the specimens and are used
+ * nowhere else. They are what makes the page measurable - every specimen carries
+ * data-styleguide-component and data-styleguide-variant, which is what
+ * tests/Template/StyleguideShowsEveryComponentTest reads to prove that a
+ * registered component has an example here.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../../components/site-header.latte'}
+{import '../../../components/nav.latte'}
+{import '../../../components/site-footer.latte'}
+{import '../../../components/page-heading.latte'}
+{import '../../../components/card.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/badge.latte'}
+{import '../../../components/marker-list.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/swatch.latte'}
+
+{define sgSection, Trilobit\Core\Presentation\Component\Component $component}
+    <section class="sg-section l-stack" data-styleguide-component="{$component->name}">
+        <h2 class="sg-section__name">{$component->name}</h2>
+
+        <p class="sg-section__summary">{$component->summary}</p>
+
+        <div class="l-stack">{block sgSectionBody}{/block}</div>
+    </section>
+{/define}
+
+{define sgSpecimen, string $variant}
+    <div class="sg-specimen" data-styleguide-variant="{$variant}">
+        <div class="sg-specimen__stage">{block sgSpecimenStage}{/block}</div>
+
+        <p class="sg-specimen__label">{$variant}</p>
+    </div>
+{/define}
+
+{block content}
+    {include pageHeading,
+        title: 'Style guide',
+        lead: 'Every component this application is built out of, rendered by the application itself.',
+        testId: 'styleguide-headline'}
+
+    <div class="l-stack" data-testid="theme-switcher">
+        <div class="l-cluster">
+            <span class="text-sm text-ink-muted">Theme</span>
+
+            {foreach $themes as $available}
+                {include button,
+                    label: $available,
+                    variant: $available === $theme ? 'primary' : 'quiet',
+                    testId: 'theme-choice-' . $available,
+                    attributes: ['data-theme-choice' => $available]}
+            {/foreach}
+        </div>
+
+        <div class="l-cluster">
+            <span class="text-sm text-ink-muted">Mode</span>
+
+            {foreach ['system' => 'System', 'light' => 'Light', 'dark' => 'Dark'] as $mode => $label}
+                {include button,
+                    label: $label,
+                    variant: 'quiet',
+                    testId: 'theme-mode-choice-' . $mode,
+                    attributes: ['data-theme-mode-choice' => $mode]}
+            {/foreach}
+        </div>
+    </div>
+
+    {embed block panel, testId: 'styleguide-tokens'}
+        {block panelTitle}Colour tokens{/block}
+
+        {block panelBody}
+            <div class="l-grid">
+                {foreach $colourTokens as $token => $role}
+                    {include swatch, name: $token, role: $role, testId: 'swatch-' . $token}
+                {/foreach}
+            </div>
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-site-header']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include siteHeader, brand: 'Trilobit', href: '#'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with a tagline'}
+                {block sgSpecimenStage}
+                    {include siteHeader,
+                        brand: 'Trilobit',
+                        href: '#',
+                        tagline: 'Modular commerce, contacts and content.'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-nav']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include nav, items: $sampleNavigation, label: 'Specimen'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-site-footer']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block siteFooter}
+                        {block siteFooterBody}<p>Trilobit &mdash; open source, MIT.</p>{/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-page-heading']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include pageHeading,
+                        title: 'Trilobite field guide',
+                        lead: 'How to tell one segmented fossil from the next without a hand lens.'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'without a lead'}
+                {block sgSpecimenStage}
+                    {include pageHeading, title: 'Trilobite field guide'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'as a section heading'}
+                {block sgSpecimenStage}
+                    {include pageHeading,
+                        title: 'Segments and lobes',
+                        lead: 'Three lobes along one axis, which is where the name comes from.',
+                        level: 'h3'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-card']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    <div class="l-grid">
+                        {include card,
+                            title: 'Ammonite mug',
+                            href: '#',
+                            text: 'Stoneware, spiral in relief, holds three hundred millilitres.',
+                            media: 'A'}
+
+                        {include card,
+                            title: 'Crinoid print',
+                            href: '#',
+                            text: 'Ink on cotton paper, unframed, four hundred by five hundred.',
+                            media: 'C'}
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'without media'}
+                {block sgSpecimenStage}
+                    <div class="l-grid">
+                        {include card,
+                            title: 'Brachiopod cast',
+                            href: '#',
+                            text: 'Plaster, hand finished, one of a numbered run of forty.'}
+                    </div>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-button']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'primary'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Add to basket', href: '#'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'quiet'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Keep looking', href: '#', variant: 'quiet'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'without a destination'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Recalculate'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-badge']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'plain'}
+                {block sgSpecimenStage}
+                    {include badge, label: 'Draft'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'accent'}
+                {block sgSpecimenStage}
+                    {include badge, label: 'In this build', variant: 'accent'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-marker-list']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include markerList, items: $statements}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-panel']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block panel}
+                        {block panelTitle}What a panel is for{/block}
+
+                        {block panelBody}
+                            <p>Anything that belongs together and wants an edge drawn round it.</p>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-swatch']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include swatch, name: '--color-accent', role: 'the action a page is about'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

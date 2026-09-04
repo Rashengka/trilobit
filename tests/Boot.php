@@ -42,10 +42,22 @@ final class Boot
 
     private static bool $handlersTaken = false;
 
-    public static function container(?ModuleList $modules = null): Container
+    /**
+     * @param bool $styleguide whether this build has the style guide page.
+     *     Stated rather than left to the default, because the default is
+     *     %debugMode%: on where there is a .env and off in a fresh clone, so a
+     *     suite taking it would assert one thing on a developer's machine and
+     *     another in CI.
+     */
+    public static function container(?ModuleList $modules = null, bool $styleguide = false): Container
     {
         $configurator = Bootstrap::configurator($modules);
         $configurator->addConfig([
+            'parameters' => [
+                'trilobit' => [
+                    'styleguide' => $styleguide,
+                ],
+            ],
             'assets' => [
                 'mapping' => [
                     'vite' => [
