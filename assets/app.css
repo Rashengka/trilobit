@@ -1,2 +1,21 @@
+/*
+ * The one stylesheet the browser loads, assembled in the order the cascade
+ * needs it.
+ *
+ * Tailwind comes first, because it declares the layers everything below sorts
+ * itself into. Then the generated list of directories Tailwind scans for class
+ * names - a switched-off module contributes no line there, so it contributes no
+ * CSS either. Then the themes, which are values and nothing else. Then
+ * base.css, which is structure and nothing else.
+ *
+ * Adding a theme is one line here and one file beside the others; see
+ * .ai/plans/01d-design-system.md.
+ */
+
 @import "tailwindcss";
 @import "../var/build/sources.css";
+
+@import "./themes/atrium.css";
+@import "./themes/ledger.css";
+
+@import "./base.css";

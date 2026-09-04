@@ -1,0 +1,131 @@
+/*
+ * Atrium - the theme the application ships with.
+ *
+ * A theme is nothing but values. Every declaration below is a token; not one
+ * selector of structure appears here, and not one component is named. What the
+ * tokens are used for is assets/base.css's business, and the split is checked
+ * rather than trusted: tests/Architecture/BaseCssHoldsNoLiteralsTest fails on a
+ * colour or a length written into base.css.
+ *
+ * These are the defaults, so they are declared in Tailwind's `@theme` block
+ * rather than under a selector. Tailwind emits them as custom properties on
+ * :root itself - which is why there is no hand-written :root block anywhere in
+ * this project duplicating them - and generates its own utilities from the ones
+ * whose names fall in a namespace it recognises (--color-*, --text-*, --radius-*,
+ * --shadow-*, --font-*, --spacing). `static` is what keeps the rest: without it
+ * Tailwind emits only the variables some utility ended up using, and every
+ * --layout-* token here is used by base.css alone.
+ *
+ * A second theme does not repeat this block. It re-declares the same property
+ * names under [data-theme="..."], so switching one attribute on <html> switches
+ * the whole set at run time, with no rebuild - see assets/themes/ledger.css.
+ *
+ * Light and dark are one theme and not two (decision D7). Every colour is a
+ * light-dark() pair, resolved against the used color-scheme, and base.css maps
+ * data-theme-mode onto that scheme. Adding a mode therefore costs one argument
+ * per colour rather than a second copy of the theme.
+ */
+
+@theme static {
+    /* ---- Typography -------------------------------------------------- */
+
+    /* System stacks: a webfont would be a network request the page cannot make
+       offline, and this project has no brand face to serve. */
+    --font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', roboto, helvetica, arial, sans-serif;
+    --font-display: var(--font-body);
+    --font-mono: ui-monospace, sfmono-regular, menlo, consolas, monospace;
+
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.375rem;
+    --text-2xl: 1.75rem;
+    --text-3xl: 2.5rem;
+
+    --leading-tight: 1.15;
+    --leading-normal: 1.6;
+    --tracking-display: -0.015em;
+    --font-weight-display: 650;
+
+    /* ---- Palette ------------------------------------------------------ */
+
+    --color-canvas: light-dark(oklch(0.98 0.006 245), oklch(0.19 0.014 255));
+    --color-canvas-sunken: light-dark(oklch(0.94 0.012 245), oklch(0.24 0.016 255));
+    --color-surface: light-dark(oklch(1 0 0), oklch(0.23 0.015 255));
+    --color-surface-hover: light-dark(oklch(0.95 0.014 245), oklch(0.28 0.018 255));
+
+    --color-ink: light-dark(oklch(0.24 0.02 255), oklch(0.95 0.008 245));
+    --color-ink-muted: light-dark(oklch(0.51 0.019 255), oklch(0.74 0.014 245));
+    --color-line: light-dark(oklch(0.89 0.012 245), oklch(0.33 0.018 255));
+
+    --color-accent: light-dark(oklch(0.58 0.13 215), oklch(0.72 0.12 215));
+    --color-accent-hover: light-dark(oklch(0.5 0.14 215), oklch(0.79 0.11 215));
+    --color-accent-ink: light-dark(oklch(0.99 0.01 215), oklch(0.18 0.03 215));
+    --color-focus: light-dark(oklch(0.58 0.13 215), oklch(0.78 0.12 215));
+
+    --color-banner: light-dark(oklch(1 0 0), oklch(0.22 0.015 255));
+    --color-banner-ink: var(--color-ink);
+    --color-nav: light-dark(oklch(1 0 0), oklch(0.22 0.015 255));
+    --color-nav-ink: var(--color-ink-muted);
+    --color-nav-ink-active: var(--color-ink);
+    --color-nav-marker: var(--color-accent);
+
+    /* ---- Spacing ------------------------------------------------------ */
+
+    /* Tailwind derives every one of its own spacing utilities from this, so a
+       theme that wants a denser page changes one number. */
+    --spacing: 0.25rem;
+
+    --space-3xs: 0.125rem;
+    --space-2xs: 0.3rem;
+    --space-xs: 0.5rem;
+    --space-sm: 0.75rem;
+    --space-md: 1.125rem;
+    --space-lg: 1.75rem;
+    --space-xl: 2.75rem;
+    --space-2xl: 4.5rem;
+
+    /* ---- Shape and depth ---------------------------------------------- */
+
+    --radius-sm: 0.375rem;
+    --radius-md: 0.625rem;
+    --radius-lg: 0.875rem;
+    --radius-pill: 9999px;
+
+    --border-hairline: 1px;
+    --border-marker: 2px;
+
+    --shadow-raised: 0 1px 2px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
+        0 8px 24px light-dark(oklch(0.24 0.02 255 / 0.07), oklch(0 0 0 / 0.35));
+
+    --motion-fast: 120ms ease;
+
+    /* ---- Layout -------------------------------------------------------- */
+
+    /*
+     * The tokens decision D6 turns on. The page shell is one grid whose areas,
+     * columns and rows are read from here, so a theme can move the navigation
+     * without a template being touched and without the order of the elements in
+     * the HTML changing. Atrium puts the navigation under the banner, across the
+     * full width.
+     */
+    --layout-shell-areas: 'banner' 'nav' 'main' 'footer';
+    --layout-shell-columns: minmax(0, 1fr);
+    --layout-shell-rows: auto auto 1fr auto;
+    --layout-shell-min-size: 100dvh;
+
+    --layout-nav-size: auto;
+    --layout-nav-direction: row;
+    --layout-nav-wrap: wrap;
+    --layout-nav-gap: 0.25rem;
+    --layout-nav-padding: 0.5rem 0;
+    --layout-nav-marker-block-end: 2px;
+    --layout-nav-marker-inline-start: 0px;
+
+    --layout-content-width: 72rem;
+    --layout-measure: 46rem;
+    --layout-gutter: 1.5rem;
+
+    --layout-card-min: 17rem;
+    --layout-card-media-ratio: 16 / 9;
+}

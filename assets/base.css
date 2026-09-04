@@ -1,0 +1,498 @@
+/*
+ * The shape of everything, and the value of nothing.
+ *
+ * This file holds the reset, the layout primitives, the components and a
+ * handful of utilities. What it must never hold is a value: no colour, no
+ * length, no type scale, no shadow. Every one of those is read out of a token
+ * that assets/themes/<name>.css declares, which is what lets a theme change how
+ * the application looks - and, through the --layout-* tokens, where the parts of
+ * the page sit - by swapping one attribute on <html> at run time.
+ *
+ * That claim is enforced rather than intended: tests/Architecture/
+ * BaseCssHoldsNoLiteralsTest reads this file and fails on `#rrggbb`, `rgb(`,
+ * `hsl(`, `oklch(`, a named colour, or a number carrying an absolute unit. One
+ * colour written in here "just for now" always looks harmless, and a month later
+ * the separation is gone.
+ *
+ * Two things that look like values are not. Zero has no unit to theme, and a
+ * ratio such as 100% or 1fr describes a relationship between parts rather than a
+ * size - "as wide as its container" stays true in every theme.
+ *
+ * Class names say what a thing is, never what it looks like (decision D3):
+ *
+ *   l-*   layout primitives - a shell, a container, a stack, a grid
+ *   c-*   components, mirrored one-for-one by a Latte block in
+ *         src/Core/Presentation/components/ and by an entry in
+ *         Trilobit\Core\Presentation\Component\ComponentRegistry
+ *   sg-*  the style guide page's own furniture, which is not part of the
+ *         vocabulary the rest of the application draws on
+ *   u-*   utilities
+ *
+ * Inside a component no Tailwind utility is used, on purpose and only there: a
+ * utility written into the markup is a decision about appearance that a theme
+ * cannot overrule. Page templates use utilities freely for spacing and layout.
+ */
+
+@layer base {
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    * {
+        margin: 0;
+    }
+
+    /*
+     * Light and dark are one theme with two modes (decision D7). Every themed
+     * colour is a light-dark() pair, so the mode is decided by the used
+     * color-scheme and nothing else: left to the operating system by default,
+     * pinned by data-theme-mode when a person has chosen. This is the plumbing,
+     * which is the same whichever theme is on; the pairs themselves are values
+     * and live in the theme files.
+     */
+    :root {
+        color-scheme: light dark;
+    }
+
+    :root[data-theme-mode='light'] {
+        color-scheme: light;
+    }
+
+    :root[data-theme-mode='dark'] {
+        color-scheme: dark;
+    }
+
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        background-color: var(--color-canvas);
+        color: var(--color-ink);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-normal);
+        -webkit-font-smoothing: antialiased;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: var(--font-display);
+        font-size: inherit;
+        font-weight: var(--font-weight-display);
+        letter-spacing: var(--tracking-display);
+        line-height: var(--leading-tight);
+    }
+
+    a {
+        color: inherit;
+        text-decoration-color: var(--color-accent);
+        text-underline-offset: var(--space-3xs);
+    }
+
+    img,
+    picture,
+    svg,
+    video {
+        display: block;
+        max-inline-size: 100%;
+    }
+
+    ul,
+    ol {
+        list-style: none;
+        padding-inline-start: 0;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+        color: inherit;
+        font: inherit;
+    }
+
+    :focus-visible {
+        outline: var(--border-marker) solid var(--color-focus);
+        outline-offset: var(--space-3xs);
+    }
+}
+
+@layer components {
+    /* ==== Layout primitives ============================================= */
+
+    /*
+     * The page shell, and the single reason a theme can move the navigation.
+     *
+     * Every region is placed by name into a grid whose areas, columns and rows
+     * are tokens. The template writes banner, navigation, content and footer in
+     * that order and never in another; a theme decides whether that becomes four
+     * stacked rows or a column beside three. Nothing here knows which.
+     */
+    .l-shell {
+        display: grid;
+        grid-template-areas: var(--layout-shell-areas);
+        grid-template-columns: var(--layout-shell-columns);
+        grid-template-rows: var(--layout-shell-rows);
+        min-block-size: var(--layout-shell-min-size);
+    }
+
+    .l-shell__banner {
+        grid-area: banner;
+    }
+
+    .l-shell__nav {
+        grid-area: nav;
+    }
+
+    .l-shell__main {
+        grid-area: main;
+        padding-block: var(--space-xl);
+    }
+
+    .l-shell__footer {
+        grid-area: footer;
+    }
+
+    /* The readable column: as wide as the theme allows, never wider than the
+       space there is. */
+    .l-container {
+        inline-size: min(100%, var(--layout-content-width));
+        margin-inline: auto;
+        padding-inline: var(--layout-gutter);
+    }
+
+    .l-stack {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .l-stack--loose {
+        gap: var(--space-xl);
+    }
+
+    .l-cluster {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+    }
+
+    /* Columns that fit rather than columns that were counted: the card width is
+       a token, so the number of columns is a consequence of the theme and of the
+       viewport, and no breakpoint has to be written down here. */
+    .l-grid {
+        display: grid;
+        gap: var(--space-lg);
+        grid-template-columns: repeat(auto-fit, minmax(min(var(--layout-card-min), 100%), 1fr));
+    }
+
+    .l-measure {
+        max-inline-size: var(--layout-measure);
+    }
+
+    /* ==== Components ==================================================== */
+
+    .c-site-header {
+        align-items: baseline;
+        background-color: var(--color-banner);
+        border-block-end: var(--border-hairline) solid var(--color-line);
+        color: var(--color-banner-ink);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-sm) var(--space-md);
+        justify-content: space-between;
+        padding-block: var(--space-md);
+    }
+
+    .c-site-header__brand {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: var(--font-weight-display);
+        letter-spacing: var(--tracking-display);
+        text-decoration: none;
+    }
+
+    .c-site-header__tagline {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+    }
+
+    .c-nav {
+        background-color: var(--color-nav);
+        block-size: 100%;
+        color: var(--color-nav-ink);
+    }
+
+    .c-nav__list {
+        display: flex;
+        flex-direction: var(--layout-nav-direction);
+        flex-wrap: var(--layout-nav-wrap);
+        gap: var(--layout-nav-gap);
+        padding: var(--layout-nav-padding);
+    }
+
+    .c-nav__link {
+        border-block-end: var(--layout-nav-marker-block-end) solid transparent;
+        border-inline-start: var(--layout-nav-marker-inline-start) solid transparent;
+        border-radius: var(--radius-sm);
+        color: var(--color-nav-ink);
+        display: block;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+        text-decoration: none;
+        transition: background-color var(--motion-fast), color var(--motion-fast);
+    }
+
+    .c-nav__link:hover {
+        background-color: var(--color-surface-hover);
+        color: var(--color-nav-ink-active);
+    }
+
+    .c-nav__link[aria-current='page'] {
+        border-block-end-color: var(--color-nav-marker);
+        border-inline-start-color: var(--color-nav-marker);
+        color: var(--color-nav-ink-active);
+        font-weight: var(--font-weight-display);
+    }
+
+    .c-site-footer {
+        background-color: var(--color-banner);
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        padding-block: var(--space-lg);
+    }
+
+    .c-page-heading {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .c-page-heading__title {
+        font-size: var(--text-3xl);
+    }
+
+    .c-page-heading__lead {
+        color: var(--color-ink-muted);
+        font-size: var(--text-lg);
+        max-inline-size: var(--layout-measure);
+    }
+
+    .c-card {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-raised);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .c-card__media {
+        aspect-ratio: var(--layout-card-media-ratio);
+        background-color: var(--color-canvas-sunken);
+        color: var(--color-ink-muted);
+        display: grid;
+        font-family: var(--font-display);
+        font-size: var(--text-2xl);
+        place-items: center;
+    }
+
+    .c-card__body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2xs);
+        padding: var(--space-md);
+    }
+
+    .c-card__title {
+        font-size: var(--text-lg);
+    }
+
+    /* The title's link covers the whole card, so the card is one target and the
+       accessible name is still the title alone. */
+    .c-card__link {
+        text-decoration: none;
+    }
+
+    .c-card__link::after {
+        content: '';
+        inset: 0;
+        position: absolute;
+    }
+
+    .c-card__text {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+    }
+
+    .c-button {
+        align-items: center;
+        background-color: var(--color-accent);
+        border: var(--border-hairline) solid transparent;
+        border-radius: var(--radius-pill);
+        color: var(--color-accent-ink);
+        cursor: pointer;
+        display: inline-flex;
+        font-weight: var(--font-weight-display);
+        gap: var(--space-2xs);
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-md);
+        text-decoration: none;
+        transition: background-color var(--motion-fast);
+    }
+
+    .c-button:hover {
+        background-color: var(--color-accent-hover);
+    }
+
+    .c-button--quiet {
+        background-color: transparent;
+        border-color: var(--color-line);
+        color: var(--color-ink);
+    }
+
+    .c-button--quiet:hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-badge {
+        background-color: var(--color-canvas-sunken);
+        border-radius: var(--radius-pill);
+        color: var(--color-ink-muted);
+        display: inline-block;
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+        padding-block: var(--space-3xs);
+        padding-inline: var(--space-xs);
+    }
+
+    .c-badge--accent {
+        background-color: var(--color-accent);
+        color: var(--color-accent-ink);
+    }
+
+    .c-marker-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .c-marker-list__item {
+        align-items: baseline;
+        display: grid;
+        gap: var(--space-sm);
+        grid-template-columns: auto 1fr;
+    }
+
+    .c-marker-list__item::before {
+        background-color: var(--color-accent);
+        block-size: var(--space-xs);
+        border-radius: var(--radius-pill);
+        content: '';
+        inline-size: var(--space-xs);
+    }
+
+    .c-panel {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        padding: var(--space-lg);
+    }
+
+    .c-panel__title {
+        font-size: var(--text-xl);
+        margin-block-end: var(--space-sm);
+    }
+
+    .c-swatch {
+        align-items: center;
+        display: flex;
+        gap: var(--space-sm);
+    }
+
+    .c-swatch__sample {
+        block-size: var(--space-xl);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        flex: none;
+        inline-size: var(--space-xl);
+    }
+
+    .c-swatch__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+    }
+
+    .c-swatch__role {
+        color: var(--color-ink-muted);
+        display: block;
+        font-family: var(--font-body);
+        font-size: var(--text-sm);
+    }
+
+    /* ==== The style guide's own furniture ================================ */
+
+    /*
+     * Not components. These style the page that shows the components, and
+     * nothing else uses them - which is why they carry their own prefix and are
+     * not in the registry. They are still built from tokens, because the style
+     * guide is themed along with everything else.
+     */
+    .sg-section {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        padding-block-start: var(--space-lg);
+    }
+
+    .sg-section__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-xl);
+    }
+
+    .sg-section__summary {
+        color: var(--color-ink-muted);
+        max-inline-size: var(--layout-measure);
+    }
+
+    .sg-specimen {
+        border: var(--border-hairline) dashed var(--color-line);
+        border-radius: var(--radius-md);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+        padding: var(--space-md);
+    }
+
+    .sg-specimen__label {
+        color: var(--color-ink-muted);
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        order: 1;
+    }
+
+    .sg-specimen__stage {
+        order: 0;
+    }
+}
+
+@layer utilities {
+    /* Present to a screen reader, absent from the page. */
+    .u-visually-hidden {
+        block-size: var(--border-hairline);
+        clip-path: inset(50%);
+        inline-size: var(--border-hairline);
+        overflow: hidden;
+        position: absolute;
+        white-space: nowrap;
+    }
+}
