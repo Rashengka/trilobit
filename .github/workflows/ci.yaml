@@ -1,0 +1,71 @@
+#
+# The gate, on every supported PHP version.
+#
+# It runs `composer check` and nothing else, so that there is one definition of
+# what green means and it lives in composer.json. A workflow that listed the
+# steps itself would be a second definition, and the two would drift apart
+# without anybody noticing.
+#
+
+name: CI
+
+on:
+  push:
+    # Both names are listed because the repository has not been published yet
+    # and its default branch is not settled. Drop the one that turns out to be
+    # wrong rather than leaving a trigger that quietly never fires.
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: composer check on PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4', '8.5']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          ini-values: zend.assertions=1
+
+      - uses: ramsey/composer-install@v3
+
+      # The leak guard refuses to report success without its list of private
+      # patterns, and that list is deliberately not in the repository - a
+      # committed list of forbidden words would be the disclosure it prevents.
+      #
+      # On a run that can see the secret the real list is used. On one that
+      # cannot - a pull request from a fork - a placeholder keeps the structural
+      # rules running and the step says out loud which half did not, so that a
+      # green tick is never mistaken for the full check. The half that cannot
+      # run here is the half the pre-commit hook already ran on the machine the
+      # commit was written on.
+      - name: Configure the leak guard
+        env:
+          PATTERNS: ${{ secrets.CHECK_LEAKS_LOCAL }}
+        run: |
+          mkdir -p "$HOME/.config/trilobit"
+          if [ -n "$PATTERNS" ]; then
+            printf '%s\n' "$PATTERNS" > "$HOME/.config/trilobit/check-leaks.local"
+          else
+            echo "::warning::CHECK_LEAKS_LOCAL is not available to this run; only the structural rules will run."
+            printf '%s\n' 'placeholder-no-private-pattern-list-available' > "$HOME/.config/trilobit/check-leaks.local"
+          fi
+
+      - name: composer check
+        run: composer check
