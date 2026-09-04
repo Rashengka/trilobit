@@ -1,0 +1,39 @@
+# The database to develop and test against.
+#
+# There is one tested target and it is MariaDB 11 LTS. Not "MySQL or MariaDB":
+# the generated DDL differs between them and Doctrine has a separate platform
+# for each, so claiming both would mean neither had been checked. What is
+# tested is what the documentation says, and this file is what it is tested on.
+#
+#   docker compose up -d
+#
+# Every value comes from .env, the same file the application reads, so the two
+# cannot drift apart. The port is published because the application runs on the
+# host rather than in a container here; set TRILOBIT_DB_PORT in .env when
+# something else on the machine already answers on 3306.
+
+services:
+    database:
+        image: mariadb:11.8
+        restart: unless-stopped
+        environment:
+            MARIADB_DATABASE: ${TRILOBIT_DB_NAME:-trilobit}
+            MARIADB_USER: ${TRILOBIT_DB_USER:-trilobit}
+            MARIADB_PASSWORD: ${TRILOBIT_DB_PASSWORD:-trilobit}
+            # Only docker/mariadb/init uses it, to widen the application
+            # user's grant far enough that the suites can make their own
+            # schemas. Nothing outside this machine reaches this container.
+            MARIADB_ROOT_PASSWORD: ${TRILOBIT_DB_PASSWORD:-trilobit}
+        ports:
+            - '${TRILOBIT_DB_PORT:-3306}:3306'
+        volumes:
+            - database:/var/lib/mysql
+            - ./docker/mariadb/init:/docker-entrypoint-initdb.d:ro
+        healthcheck:
+            test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+            interval: 5s
+            timeout: 5s
+            retries: 20
+
+volumes:
+    database:

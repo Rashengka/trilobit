@@ -7,9 +7,11 @@ shop, CRM, content - on one shared spine, each of them switchable on its own.
 
 ## What is here today
 
-The spine, the mechanism that switches modules on and off, and the gate around
-both. There is a homepage, three modules that are empty apart from a page
-saying they are here, and no database yet.
+The spine, the mechanism that switches modules on and off, the data layer that
+mechanism reaches into, and the gate around all of it. There is a homepage,
+three modules that are empty apart from a page saying they are here, and one
+table per module so that switching a module off is something a test can watch
+happen to a real database.
 
 | path | what it is |
 |---|---|
@@ -19,16 +21,21 @@ saying they are here, and no database yet.
 | `src/Core/Module/` | what a module's name implies, and which modules this build has |
 | `src/Core/DI/CoreExtension.php` | the four places a module hands something to Core |
 | `src/Core/Presentation/Front/` | the homepage, the shared layout and the base every public page is built on |
-| `src/Cms/`, `src/Crm/`, `src/Shop/` | the three switchable modules, each with its own extension, route and page |
+| `src/Cms/`, `src/Crm/`, `src/Shop/` | the three switchable modules, each with its own extension, route, page, entity and migration |
+| `src/*/Domain/` | the entities of a module; the mapping is registered by the module, never centrally |
+| `src/*/Migrations/` | the migrations of a module, one namespace each |
+| `src/Core/Doctrine/` | the naming rule tables follow, and the filter that keeps a switched-off module's tables out of reach |
 | `config/modules.neon` | which modules this installation is made of |
 | `config/` | `common.neon` for every environment, `services.neon` for this checkout |
+| `compose.yaml` | the database to develop and test against |
 | `bin/check-leaks` | the guard that keeps private content out of a public repository |
 | `tests/` | one directory per level of test, listed in `phpunit.xml` |
 
-Entities and migrations are not here yet. Catalogue, contacts and pages are not
-here either: the three modules carry the wiring every module has and nothing
-else, because the wiring is what decides what "switched off" means, and it is
-worth having right before there is anything to switch off.
+Catalogue, contacts and pages are not here. Each module has one entity, and in
+three of them it is a marker carrying nothing but the date it was installed: a
+module that maps no entity owns no table, and a module that owns no table cannot
+be used to show that switching it off leaves its data alone. They go away with
+their migrations once the modules have entities of their own.
 
 ## Modules
 
@@ -77,13 +84,66 @@ configuration and the source tree disagree about which modules exist, and
 rule. The one rule that matters is the one expressed by absence - a module may
 depend on Core and on libraries, and never on another module.
 
+## The database
+
+Every table carries the name of the module that owns it: `core_user`,
+`shop_marker`, `cms_page`. That reads like a convention and it is the mechanism
+the whole idea of a switchable module rests on.
+
+A build without a module never loads that module's mapping, so nothing in it
+knows those tables should exist - while the customer's database still has them,
+full of records. Left alone, a schema comparator reads that as "tables with
+nothing in the model to justify them" and writes a migration that drops them.
+The only thing that can tell it otherwise is the name, so a build is given a
+filter over the tables it may see, assembled from the modules it is made of.
+`tests/Integration/Doctrine/DisabledModuleSchemaTest` states the claim and then
+takes the filter off the same connection to show the drop appearing without it.
+
+Each module registers its own mapping and its own migrations directory from its
+own configuration file, so a build without the module has neither. Migrations
+are recorded by full class name in a shared table, which is what lets a module
+be switched back on and be brought up to date on its own.
+
+### Generating a migration
+
+Schema is generated, never written:
+
+```sh
+bin/trilobit migrations:diff --namespace='Trilobit\Shop\Migrations'
+bin/trilobit migrations:migrate
+```
+
+The generator refuses to run in two situations, both of them things Doctrine
+cannot know about on its own.
+
+It refuses when any module is switched off, because the mapping of that module
+is not loaded and a change to its entities would simply be absent from the
+comparison - the migration would look finished, and what was missing would have
+left no trace. Switch everything on, generate, switch back.
+
+And it requires `--namespace`, and takes it as more than a destination:
+Doctrine's own `--namespace` decides which directory the file is written to and
+nothing else, so a migration asked for in one module's namespace would be
+written with every table in the mapping in it - including tables belonging to
+modules that could later be switched off. The namespace picks the comparison
+too, through the table prefix the module owns.
+
+What comes out is committed as it came out. A description and a docblock are
+added by hand; the statements, their order and the class name are not touched.
+A migration is worth trusting because it is provably what Doctrine derived from
+the mapping, and a hand-written one loses that even when the SQL is identical.
+
+One thing to expect: `bin/trilobit orm:validate-schema` reports the migrations
+bookkeeping table (`core_migration`) as a difference, because the object mapper
+knows nothing about it. `migrations:diff` excludes it and is the tool of record.
+
 ## Requirements
 
 - PHP 8.4 or newer. Both 8.4 and 8.5 run in CI.
 - Composer.
-- MariaDB 11 LTS, once there is a database to talk to. It is the only tested
-  target: the generated DDL differs between dialects, so "MySQL or MariaDB"
-  would mean neither of them verified.
+- MariaDB 11 LTS. It is the only tested target: the generated DDL differs
+  between dialects, so "MySQL or MariaDB" would mean neither of them verified.
+  `compose.yaml` starts the right one.
 
 ## Installation
 
@@ -92,6 +152,8 @@ git clone https://github.com/Rashengka/trilobit.git
 cd trilobit
 composer install
 cp .env.example .env
+docker compose up -d
+bin/trilobit migrations:migrate
 ```
 
 Then serve `www/`:
@@ -113,7 +175,15 @@ Two settings are worth knowing about:
 - `TRILOBIT_DEBUG=1` turns on the debug bar and the detailed error page. It is
   a variable rather than a check on the visitor's address, because an address
   check is unreliable in production and would mean an address written into a
-  public repository.
+  public repository. Set it while working on the checkout: with it off the
+  framework never rechecks the compiled container, so a change to a compiler
+  extension has no effect until `var/tmp` is cleared. A change to a `.neon`
+  file is picked up either way - the boot puts what those files say into the
+  cache key.
+- The database settings say where MariaDB is. Left empty they fall back to what
+  `config/common.neon` names beside them, which is what `compose.yaml` starts;
+  fill them in for anything else. Tests that need a database say so and skip
+  when none answers, so a run without one looks different from a run with one.
 
 `config/local.neon` is optional and applies to one machine; see
 `config/local.neon.example`.
@@ -176,8 +246,8 @@ notices is missing.
 | `unit` | plain objects and functions | container, database, filesystem, network |
 | `architecture` | reading the sources and the configuration | running the application |
 | `template` | compiling and rendering Latte | container, database |
-| `integration` | a real container, later a real database | a browser |
-| `combination` | booting each combination of modules | anything past booting |
+| `integration` | a real container and a real database | a browser |
+| `combination` | booting each combination of modules and running its migrations | anything past booting and migrating |
 | `install` | a fresh clone, installed from scratch | writing into your working copy |
 | `tooling` | the leak guard | - |
 
@@ -186,6 +256,14 @@ case, because the guard has to work before Composer does. `LeakGuardTest` runs
 it as a child process so that `composer check` covers it too.
 
 Run one suite with `vendor/bin/phpunit --testsuite unit`.
+
+The suites that need a database make a schema of their own per test class and
+drop it afterwards, so two of them can never read each other's tables. Locally
+that needs the grant `docker/mariadb/init` makes on a fresh volume; a checkout
+whose database volume predates that file needs `docker compose down -v` once.
+The schema in a test is built by running the migrations rather than from the
+mapping - a schema built from metadata would be right every time and would
+never once have shown that the migrations themselves are complete.
 
 ## Licence
 

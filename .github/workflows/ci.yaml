@@ -34,6 +34,31 @@ jobs:
       matrix:
         php: ['8.4', '8.5']
 
+    # The database the suites run against. It is the one the application is
+    # written for and the one compose.yaml starts locally, because a suite that
+    # runs somewhere else is a suite testing a different application: a
+    # migration is written in the dialect it was generated against.
+    #
+    # The suites make a schema of their own per test class, so the account they
+    # use has to be allowed to. On a developer's machine that is a narrow grant
+    # in docker/mariadb/init; a service container takes no initialisation
+    # scripts, so here it is the container's own superuser instead. It lives
+    # for the length of one job, answers only inside it, and holds nothing but
+    # what these suites put there.
+    services:
+      database:
+        image: mariadb:11.8
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+          MARIADB_DATABASE: trilobit
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
     steps:
       - uses: actions/checkout@v4
 
@@ -41,6 +66,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
+          extensions: pdo_mysql
           ini-values: zend.assertions=1
 
       - uses: ramsey/composer-install@v3
@@ -67,5 +93,12 @@ jobs:
             printf '%s\n' 'placeholder-no-private-pattern-list-available' > "$HOME/.config/trilobit/check-leaks.local"
           fi
 
+      # Without these the suites that need a database would skip, and a skipped
+      # test is a claim that quietly stopped being made.
       - name: composer check
+        env:
+          TRILOBIT_DB_HOST: 127.0.0.1
+          TRILOBIT_DB_PORT: '3306'
+          TRILOBIT_DB_NAME: trilobit
+          TRILOBIT_DB_USER: root
         run: composer check
