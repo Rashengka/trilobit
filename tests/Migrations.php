@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Tests;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\Migrations\Tools\Console\Command\MigrateCommand;
 use Nette\DI\Container;
@@ -36,6 +37,12 @@ final class Migrations
 
         $output = $tester->getDisplay() . $tester->getErrorOutput();
         Assert::assertSame(Command::SUCCESS, $status, 'the migrations did not run: ' . $output);
+
+        // The migrator leaves the connection where a fresh process would
+        // simply end: this server commits a transaction implicitly on every
+        // schema statement, so what the client believes about how deep it is
+        // no longer matches. Whoever uses the build next opens a new one.
+        $container->getByType(Connection::class)->close();
 
         return $output;
     }
