@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Front;
 
 use Nette\Application\UI\Template;
+use Trilobit\Core\Presentation\Front\Signpost\SignpostLink;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 
 /**
@@ -43,7 +44,7 @@ final class HomePresenter extends FrontPresenter
         $template->headline = 'Trilobit';
         $template->tagline = 'A modular e-shop, CRM and CMS built on Nette and Latte.';
         $template->highlights = self::HIGHLIGHTS;
-        $template->signposts = $this->signposts->items();
+        $template->signposts = $this->signpostLinks();
     }
 
     /**
@@ -54,5 +55,31 @@ final class HomePresenter extends FrontPresenter
     protected function createTemplate(?string $class = null): Template
     {
         return parent::createTemplate($class ?? HomeDefaultTemplate::class);
+    }
+
+    /**
+     * The addresses are produced by the router here rather than in the
+     * template, because a template that asks for a link has to be handed the
+     * presenter to ask, and because a signpost into a page this build has no
+     * route for should fail while the page is being prepared.
+     *
+     * @return list<SignpostLink>
+     */
+    private function signpostLinks(): array
+    {
+        $links = [];
+        foreach ($this->signposts->items() as $signpost) {
+            $links[] = new SignpostLink(
+                $signpost->label,
+                // The leading colon makes the destination absolute; without it
+                // Nette would resolve it inside Core, the module this presenter
+                // lives in.
+                $this->link(':' . $signpost->destination),
+                $signpost->summary,
+                'signpost-' . strtolower($signpost->label),
+            );
+        }
+
+        return $links;
     }
 }

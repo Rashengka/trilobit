@@ -1,22 +1,37 @@
 {templateType Trilobit\Core\Presentation\Front\HomeDefaultTemplate}
 
+{*
+ * The front page: what this is, what it stands on, and the way into every part
+ * of it this build has.
+ *
+ * Every visible thing here is a component from src/Core/Presentation/components/
+ * (decision D3). The page itself only decides which components appear and in
+ * what order, and reaches for a layout primitive - l-grid - to arrange them. It
+ * makes no decision about how any of them looks, which is what leaves that
+ * decision to the theme.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/marker-list.latte'}
+{import '../../../components/card.latte'}
+
 {block content}
-    <h1 data-testid="homepage-headline">{$headline}</h1>
+    {include pageHeading,
+        title: $headline,
+        lead: $tagline,
+        testId: 'homepage-headline',
+        leadTestId: 'homepage-tagline'}
 
-    <p data-testid="homepage-tagline">{$tagline}</p>
+    {include markerList, items: $highlights, testId: 'homepage-highlights'}
 
-    <ul data-testid="homepage-highlights" n:if="$highlights !== []">
-        <li n:foreach="$highlights as $highlight" data-testid="homepage-highlight">{$highlight}</li>
-    </ul>
-
-    <nav data-testid="homepage-signposts" n:if="$signposts !== []">
-        <ul>
-            <li n:foreach="$signposts as $signpost">
-                {* The leading colon makes the destination absolute, the way
-                   @layout.latte's own home link does - without it Nette would
-                   resolve it inside Core, the module HomePresenter lives in. *}
-                <a n:href="':' . $signpost->destination" data-testid="signpost-{$signpost->label|lower}">{$signpost->label}</a>
-            </li>
-        </ul>
+    <nav class="l-grid" aria-label="Sections" data-testid="homepage-signposts" n:if="$signposts !== []">
+        {foreach $signposts as $signpost}
+            {include card,
+                title: $signpost->label,
+                href: $signpost->href,
+                text: $signpost->summary,
+                media: ($signpost->label|slice: 0, 1),
+                testId: $signpost->testId}
+        {/foreach}
     </nav>
 {/block}

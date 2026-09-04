@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Front;
 
-use Trilobit\Core\Presentation\Front\Signpost\Signpost;
+use Trilobit\Core\Presentation\Front\Signpost\SignpostLink;
 
 /**
  * What Core:Front:Home:default renders with.
@@ -18,6 +18,6 @@ final class HomeDefaultTemplate extends FrontTemplate
     /** @var list<string> */
     public array $highlights = [];
 
-    /** @var list<Signpost> */
+    /** @var list<SignpostLink> */
     public array $signposts = [];
 }

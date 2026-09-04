@@ -1,0 +1,16 @@
+{**
+ * c-panel - a boxed area of a page, with a heading and whatever belongs under
+ * it.
+ *
+ * It takes slots rather than parameters, because what goes inside a panel is
+ * arbitrary and a component that accepted it as a string would be a component
+ * that had to escape it back out again. Use it with {embed block panel}.
+ *}
+
+{define panel, ?string $testId = null}
+    <section class="c-panel" data-testid="{$testId}">
+        <h2 class="c-panel__title">{block panelTitle}{/block}</h2>
+
+        <div class="c-panel__body">{block panelBody}{/block}</div>
+    </section>
+{/define}

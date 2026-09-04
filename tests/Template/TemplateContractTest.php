@@ -11,15 +11,22 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionProperty;
+use Trilobit\Core\Presentation\Component\ComponentRegistry;
 
 /**
  * CLAUDE.md §8: a template a presenter renders carries {templateType}, and
  * the class it names is the one the presenter actually hands to Latte.
  *
- * @layout.latte is excluded throughout: nothing renders it directly, a
- * presenter's own template does by way of FrontPresenter::
- * formatLayoutTemplateFiles(), and it draws on FrontTemplate rather than a
- * template of its own.
+ * Two kinds of file are excluded, and both because no presenter renders them.
+ * @layout.latte is drawn by a presenter's own template by way of
+ * FrontPresenter::formatLayoutTemplateFiles(), and it draws on FrontTemplate
+ * rather than on a template class of its own. The component files under
+ * ComponentRegistry::DIRECTORY are libraries of {define} blocks that other
+ * templates include; they have no template class because they have no page.
+ *
+ * The components are not thereby unchecked - they are held to the claim that
+ * fits them, which is that every parameter of every block is typed, by
+ * Trilobit\Tests\Template\ComponentRegistryTest.
  */
 #[CoversNothing]
 final class TemplateContractTest extends TestCase
@@ -29,8 +36,14 @@ final class TemplateContractTest extends TestCase
     {
         $root = dirname(__DIR__, 2);
 
+        $components = $root . '/' . ComponentRegistry::DIRECTORY;
+
         foreach (Finder::findFiles('*.latte')->exclude('@layout.latte')->from($root . '/src') as $file) {
             $path = (string) $file;
+            if (str_starts_with($path, $components . '/')) {
+                continue;
+            }
+
             yield substr($path, strlen($root) + 1) => [$path];
         }
     }

@@ -1,0 +1,22 @@
+{**
+ * c-swatch - one design token, shown as the thing it produces next to the name
+ * it is asked for by.
+ *
+ * @param string $name the custom property, e.g. --color-accent
+ *
+ * The sample is painted by reading the token out of the cascade rather than by
+ * being handed a colour, which is what makes the style guide show the theme that
+ * is actually on instead of a picture of one that was true when somebody wrote
+ * it down.
+ *}
+
+{define swatch, string $name, string $role, ?string $testId = null}
+    <div class="c-swatch" data-testid="{$testId}">
+        <div class="c-swatch__sample" style="background-color: var({$name})" aria-hidden="true"></div>
+
+        <p class="c-swatch__name">
+            {$name}
+            <span class="c-swatch__role">{$role}</span>
+        </p>
+    </div>
+{/define}

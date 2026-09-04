@@ -20,6 +20,6 @@ final class CmsSignpost implements SignpostProvider
     /** @return iterable<Signpost> */
     public function provide(): iterable
     {
-        yield new Signpost('Cms', 'Cms:Front:Status:default');
+        yield new Signpost('Cms', 'Cms:Front:Status:default', 'Pages, menus and the blocks they are built out of.');
     }
 }

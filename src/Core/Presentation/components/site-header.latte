@@ -1,0 +1,17 @@
+{**
+ * c-site-header - the band across the top of every page: who this is, and the
+ * way back to the start.
+ *
+ * Where the band sits relative to the navigation is not this component's
+ * business. The shell places it into a grid area named "banner" and a theme
+ * decides where that area is, which is how assets/themes/ledger.css moves the
+ * navigation beside it without a line of this file changing.
+ *}
+
+{define siteHeader, string $brand, string $href, string $tagline = '', ?string $testId = null}
+    <div class="c-site-header l-container">
+        <a class="c-site-header__brand" href="{$href}" data-testid="{$testId}">{$brand}</a>
+
+        <p class="c-site-header__tagline" n:if="$tagline !== ''">{$tagline}</p>
+    </div>
+{/define}

@@ -1,0 +1,15 @@
+{**
+ * c-page-heading - the title of a page and the sentence under it.
+ *
+ * The heading level is a parameter because the same shape is a page title on one
+ * page and a section title on another, and the level a screen reader needs is a
+ * question about the document rather than about the design.
+ *}
+
+{define pageHeading, string $title, string $lead = '', string $level = 'h1', ?string $testId = null, ?string $leadTestId = null}
+    <header class="c-page-heading">
+        <h1 n:tag="$level" class="c-page-heading__title" data-testid="{$testId}">{$title}</h1>
+
+        <p class="c-page-heading__lead" n:if="$lead !== ''" data-testid="{$leadTestId}">{$lead}</p>
+    </header>
+{/define}

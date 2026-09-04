@@ -20,6 +20,6 @@ final class CrmSignpost implements SignpostProvider
     /** @return iterable<Signpost> */
     public function provide(): iterable
     {
-        yield new Signpost('Crm', 'Crm:Front:Status:default');
+        yield new Signpost('Crm', 'Crm:Front:Status:default', 'Contacts, the companies behind them and what was agreed.');
     }
 }

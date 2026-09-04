@@ -1,13 +1,33 @@
 {templateType Trilobit\Crm\Presentation\Front\StatusDefaultTemplate}
 
+{*
+ * Scaffolding, and drawn out of the same components every other page is drawn
+ * out of: the point of a page that says nothing is to prove that the shared
+ * chrome, the presenter mapping and the template lookup all work for a module
+ * that is switched on. Its appearance follows the theme like everything else,
+ * so it costs nothing to keep once the module has real pages.
+ *}
+
+{import '../../../../../Core/Presentation/components/badge.latte'}
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+
 {block content}
-    <h1 data-testid="module-status-headline">
-        <span data-testid="module-status-name">{$moduleName}</span> is part of this build
-    </h1>
+    <div class="l-stack">
+        {include badge, label: $moduleName, variant: 'accent', testId: 'module-status-name'}
 
-    <p data-testid="module-status-summary" n:if="$summary !== ''">{$summary}</p>
+        {include pageHeading,
+            title: $moduleName . ' is part of this build',
+            lead: $summary,
+            testId: 'module-status-headline',
+            leadTestId: 'module-status-summary'}
+    </div>
 
-    <p>
-        <a n:href=":Core:Front:Home:default" data-testid="module-status-home-link">Back to the homepage</a>
-    </p>
+    <div class="l-cluster">
+        {include button,
+            label: 'Back to the homepage',
+            href: $homeUrl,
+            variant: 'quiet',
+            testId: 'module-status-home-link'}
+    </div>
 {/block}

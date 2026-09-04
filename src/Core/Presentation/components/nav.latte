@@ -1,0 +1,27 @@
+{**
+ * c-nav - the primary navigation: the homepage plus one entry for every module
+ * this build is made of.
+ *
+ * The markup is a plain list in a fixed order, and it is the same list whatever
+ * the theme is. Whether it reads as a row under the banner or as a column beside
+ * the page is decided by --layout-nav-direction and by which grid area the shell
+ * drops it into, both of them tokens - see assets/themes/ledger.css, which moves
+ * it without this file knowing.
+ *
+ * @param iterable<Trilobit\Core\Presentation\Front\Navigation\NavigationItem> $items
+ *}
+
+{define nav, iterable $items, string $label, ?string $testId = null}
+    <nav class="c-nav" aria-label="{$label}" data-testid="{$testId}">
+        <ul class="c-nav__list">
+            <li n:foreach="$items as $item">
+                <a
+                    class="c-nav__link"
+                    href="{$item->href}"
+                    n:attr="aria-current: $item->current ? 'page' : null"
+                    data-testid="{$item->testId}"
+                >{$item->label}</a>
+            </li>
+        </ul>
+    </nav>
+{/define}

@@ -1,32 +1,59 @@
 {templateType Trilobit\Core\Presentation\Front\FrontTemplate}
 
+{*
+ * The chrome every public page is drawn in.
+ *
+ * Two things here carry the design system. The first is data-theme on <html>:
+ * every value in the page is read out of a token, and the tokens are declared
+ * once per theme, so that one attribute decides the whole appearance and can be
+ * changed in a live browser - see assets/themes/ledger.css.
+ *
+ * The second is that the four regions below are written in one fixed order -
+ * banner, navigation, content, footer - and carry nothing but their role. They
+ * are placed into a grid whose areas are a token, so a theme can move the
+ * navigation to the side of the page without this file changing and without the
+ * order of the elements changing either. Reordering by theme is deliberately not
+ * something this design system does; see .ai/plans/01d-design-system.md.
+ *}
+
+{import '../../components/site-header.latte'}
+{import '../../components/nav.latte'}
+{import '../../components/site-footer.latte'}
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="{$theme}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{ifset $pageTitle}{$pageTitle} | {/ifset}{$siteName}</title>
 </head>
-<body data-testid="layout">
+<body class="l-shell" data-testid="layout">
 
-<header data-testid="layout-header">
-    {* The leading colon makes the destination absolute; without it Nette would
-       resolve it inside the module the current presenter happens to be in. *}
-    <a n:href=":Core:Front:Home:default" data-testid="layout-home-link">{$siteName}</a>
+<header class="l-shell__banner" data-testid="layout-header">
+    {include siteHeader, brand: $siteName, href: $homeUrl, tagline: $siteTagline, testId: 'layout-home-link'}
 </header>
 
-<main data-testid="layout-content">
-    {include content}
+<div class="l-shell__nav">
+    {include nav, items: $navigation, label: 'Primary', testId: 'layout-nav'}
+</div>
+
+<main class="l-shell__main" data-testid="layout-content">
+    <div class="l-container l-stack l-stack--loose">
+        {include content}
+    </div>
 </main>
 
-<footer data-testid="layout-footer">
-    <p>{$siteName} &mdash; open source, MIT.</p>
-</footer>
+<div class="l-shell__footer" data-testid="layout-footer">
+    {embed block siteFooter}
+        {block siteFooterBody}<p>{$siteName} &mdash; open source, MIT.</p>{/block}
+    {/embed}
+</div>
 
-{* The shared bundle: Naja and whatever every page needs regardless of which
-   module it belongs to. A module's own layout overrides this block and pulls
-   the shared bundle back in with {include parent} before adding its own entry
-   point - see the @layout.latte next to each module's own presenters. *}
+{* The shared bundle: Naja, the theme switcher and whatever every page needs
+   regardless of which module it belongs to. A module's own layout overrides this
+   block and pulls the shared bundle back in with {include parent} before adding
+   its own entry point - see the @layout.latte next to each module's own
+   presenters. *}
 {block scripts}
     {asset 'vite:assets/app.ts'}
 {/block}

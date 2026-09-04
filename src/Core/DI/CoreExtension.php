@@ -27,6 +27,8 @@ use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
+use Trilobit\Core\Presentation\Component\ComponentRegistry;
+use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Routing\RouterFactory;
 
@@ -157,6 +159,20 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('signposts'))
             ->setFactory(SignpostList::class, [[]]);
 
+        // The design system. The register is a list somebody maintains; which
+        // themes exist is read off the filesystem, because a theme is a file
+        // and a configured list would be a second thing to keep in step with
+        // it. Both are always in the container: they describe how the
+        // application is drawn, which is true of every build.
+        $builder->addDefinition($this->prefix('components'))
+            ->setFactory(ComponentRegistry::class);
+
+        $builder->addDefinition($this->prefix('design'))
+            ->setFactory(DesignSystem::class . '::of', [
+                $this->parameterString('rootDir'),
+                $this->designParameterString('theme'),
+            ]);
+
         $builder->addDefinition($this->prefix('listeners'))
             ->setFactory(ListenerCollection::class, [[]]);
 
@@ -245,6 +261,42 @@ final class CoreExtension extends CompilerExtension
         }
 
         return $modules;
+    }
+
+    /**
+     * One setting out of the trilobit.* group in config/common.neon.
+     *
+     * The design system's two settings live under a parameter rather than in
+     * this extension's own configuration section, because that is where the
+     * one setting of the same kind that came before them lives - which module
+     * this build is made of - and because a deployment turns the style guide
+     * off from config/local.neon without knowing what an extension is called.
+     */
+    private function designParameter(string $name): mixed
+    {
+        $group = $this->getContainerBuilder()->parameters['trilobit'] ?? null;
+        if (!is_array($group) || !array_key_exists($name, $group)) {
+            throw new InvalidStateException(sprintf(
+                "Parameter 'trilobit.%s' is missing; config/common.neon is where it is declared.",
+                $name,
+            ));
+        }
+
+        return $group[$name];
+    }
+
+    private function designParameterString(string $name): string
+    {
+        $value = $this->designParameter($name);
+        if (!is_string($value)) {
+            throw new InvalidStateException(sprintf(
+                "Parameter 'trilobit.%s' has to be a string; got %s.",
+                $name,
+                get_debug_type($value),
+            ));
+        }
+
+        return $value;
     }
 
     private function parameterString(string $name): string
