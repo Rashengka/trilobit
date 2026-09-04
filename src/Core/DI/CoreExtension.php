@@ -14,6 +14,7 @@ use Nette\Schema\Schema;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
+use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\WarmupCommand;
 use Trilobit\Core\Doctrine\SchemaAssetsFilter;
 use Trilobit\Core\Event\ListenerCollection;
@@ -48,6 +49,17 @@ final class CoreExtension extends CompilerExtension
 
     /** Services tagged with this implement a Core port; the tag value is the interface. */
     public const string TagPort = 'trilobit.port';
+
+    /** The console's own tag; the value is the name the command answers to. */
+    private const string TagConsoleCommand = 'console.command';
+
+    /**
+     * The migration generator registered by the Nette-to-Doctrine bridge,
+     * which Core replaces with its own. Named here so that a bridge release
+     * that moves it fails loudly on the next compile rather than quietly
+     * leaving the unguarded generator in place.
+     */
+    private const string BridgeDiffCommand = 'nettrine.migrations.diffCommand';
 
     public function getConfigSchema(): Schema
     {
@@ -97,6 +109,18 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('warmupCommand'))
             ->setFactory(WarmupCommand::class);
 
+        // Doctrine's migration generator, with the two things a build made of
+        // modules has to establish first; see the class. It replaces the one
+        // the bridge registers rather than sitting beside it, because the
+        // console picks a command by name and two services answering to the
+        // same name would be decided by the order they happen to be defined
+        // in - which is to say by nothing.
+        $builder->addDefinition($this->prefix('migrationsDiffCommand'))
+            ->setType(MigrationsDiffCommand::class)
+            ->setFactory(MigrationsDiffCommand::class)
+            ->setAutowired(false)
+            ->addTag(self::TagConsoleCommand, 'migrations:diff');
+
         $builder->addDefinition($this->prefix('routerFactory'))
             ->setFactory(RouterFactory::class, [[]]);
 
@@ -120,6 +144,17 @@ final class CoreExtension extends CompilerExtension
      */
     public function beforeCompile(): void
     {
+        $builder = $this->getContainerBuilder();
+        if (!$builder->hasDefinition(self::BridgeDiffCommand)) {
+            throw new InvalidStateException(sprintf(
+                "'%s' is not in the container, so the unguarded migration generator could not be taken out of it. "
+                . 'It is registered by the Nette-to-Doctrine bridge; a release that renames it needs this name changed with it.',
+                self::BridgeDiffCommand,
+            ));
+        }
+
+        $builder->removeDefinition(self::BridgeDiffCommand);
+
         $this->service('routerFactory')->setArguments([$this->taggedServices(self::TagRouteProvider)]);
         $this->service('adminMenu')->setArguments([$this->taggedServices(self::TagAdminMenuProvider)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TagEventListener)]);
