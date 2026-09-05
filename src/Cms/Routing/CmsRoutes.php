@@ -22,4 +22,17 @@ final class CmsRoutes implements RouteProvider
     {
         $routes->addRoute('cms', 'Cms:Front:Status:default');
     }
+
+    /**
+     * Nothing, and it is not an oversight: every declared module's own name
+     * is reserved by Core whether the module is switched on or off, so the
+     * route above is covered without this saying so a second time. A route
+     * this module adds somewhere else in the address space belongs here.
+     *
+     * @return list<string>
+     */
+    public function reservedSegments(): array
+    {
+        return [];
+    }
 }

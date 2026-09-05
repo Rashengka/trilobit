@@ -67,6 +67,12 @@ final class RouterFactoryTest extends TestCase
                 $routes->addRoute('', 'Demo:Front:Catalogue:default');
                 $routes->addRoute('catalogue', 'Demo:Front:Catalogue:default');
             }
+
+            /** @return list<string> */
+            public function reservedSegments(): array
+            {
+                return ['catalogue'];
+            }
         };
     }
 }
