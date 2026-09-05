@@ -100,6 +100,12 @@ final class TenantFromHostTest extends TestCase
 
         $application = $container->getByType(Application::class);
 
+        // Stated rather than left to the default, for the reason Boot gives about %debugMode%:
+        // Nette turns catching on wherever debug is off, so a machine with a .env would let the
+        // refusal through and a fresh clone would draw an error page instead - the case would
+        // then assert one thing here and another in CI, which is what it did.
+        $application->catchExceptions = false;
+
         $this->expectException(TenancyRefused::class);
 
         $application->run();
