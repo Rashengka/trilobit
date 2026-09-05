@@ -17,6 +17,11 @@ There is an administration at `/admin`: accounts that can sign in to it, and a
 menu holding exactly what the enabled modules contributed. See "The
 administration" below.
 
+Public addresses are here too, and finished before there is any content to put
+at them: one register in Core that a page and a product both claim addresses in,
+so that neither carries the name of its module in a URL. See "Public addresses"
+below.
+
 There is also a design system: a set of components every page is drawn out of,
 two themes that change the palette and the layout without a rebuild, and a style
 guide at `/_styleguide` that shows the components by rendering them the way the
@@ -31,6 +36,8 @@ application does. See "The design system" below.
 | `src/Core/DI/CoreExtension.php` | the five places a module hands something to Core |
 | `src/Core/Security/` | who may sign in, and what the session then carries |
 | `src/Core/Presentation/Front/` | the homepage, the shared layout and the base every public page is built on |
+| `src/Core/Content/` | the register of public addresses: what may be saved, what answers where |
+| `src/Core/Routing/` | the four layers of the address space, most specific first |
 | `src/Core/Presentation/Admin/` | the administration at `/admin`: signing in, the overview, and the base every administration page is built on |
 | `src/Core/Presentation/components/` | the components every page is built out of, one Latte block per file |
 | `src/Core/Presentation/Styleguide/` | the page that shows those components, at `/_styleguide` |
@@ -103,6 +110,92 @@ configuration and the source tree disagree about which modules exist, and
 `deptrac analyse --fail-on-uncovered` fails if a directory under `src/` has no
 rule. The one rule that matters is the one expressed by absence - a module may
 depend on Core and on libraries, and never on another module.
+
+## Public addresses
+
+Pages, categories and products share one address space and none of them carries
+the name of the module it belongs to: `/about` and `/bikes/mountain/mountain-bike-x`
+sit beside each other at the root of the site. That is what makes the address a
+person reads independent of how the application happens to be divided up.
+
+The router is built from the most specific thing to the least, and the order is
+the whole design:
+
+| layer | what answers | where it is written |
+|---|---|---|
+| 0 | the root, `/` | `Trilobit\Core\Routing\RouterFactory` |
+| 1 | static routes - `/admin/...`, `/_styleguide`, a module's own pages | one `RouteProvider` per module |
+| 2 | short addresses of a record - `/r/12` - which answer 301 and draw nothing | `Trilobit\Core\Routing\ShortLinks` |
+| 3 | everything else, looked up in the register of public addresses | `Trilobit\Core\Routing\ContentRouter`, always last |
+
+### The register
+
+`core_content_path` holds one row per address: the whole path, the kind of
+content and the owning module's own identifier for it, a label, and the address
+above it in the tree. The whole path rather than one segment of it, because
+reading is the hot path and has to cost one lookup over a unique index whatever
+the depth. The parent beside it, so that the tree stays a tree for breadcrumbs
+and for renaming a branch. There is no limit on how deeply content may nest;
+the limit is on how long an address may be, which is what the index can carry.
+
+A module writes into it through `Trilobit\Core\Content\PathRegistry` and says
+which kinds of content it draws through
+`Trilobit\Core\Content\ContentTypeProvider`. Core holds no list of modules:
+an address whose kind nothing in this build publishes is not routed at all, and
+its row waits in the register for the module to come back.
+
+### What is refused, and when
+
+Everything is settled while somebody is saving, never while somebody is
+reading. An address settled at read time would be settled by the order the
+modules happen to be registered in, and that order changes when one of them is
+switched off.
+
+- **An address under a beginning something else answers at.** A page called
+  `admin` is refused rather than saved and then never reachable.
+  `Trilobit\Core\Content\ReservedSegments` holds Core's own beginnings, every
+  declared module's name whether it is switched on or not, and whatever a route
+  provider declares. `tests/Architecture/ReservedSegmentsCoverEveryRouteTest`
+  walks the router that was actually built and fails on a static route whose
+  beginning nobody reserved, so a new route without a reservation fails the
+  build.
+- **An address somebody else holds**, and one longer than the unique index can
+  carry.
+- **Any spelling but the stored one.** Addresses are lower case, without
+  diacritics, with single slashes between the segments and none at either end.
+  Every other spelling of an address that answers is redirected to it, 301.
+
+### More than one address for one thing
+
+A product is reachable at one address per category it belongs to, and every one
+of them answers with the page rather than a redirect - a redirect would take
+away the context the link was given in. One of them is the permalink; the rest
+name it in `<link rel="canonical">`, and only the permalink belongs in a
+sitemap. Which one it is, is a decision somebody makes through
+`PathRegistry::makeCanonical()`; filing a product into another category never
+moves it.
+
+The trail of breadcrumbs is drawn from the address the visitor arrived at, so
+the same product shows a different trail depending on how it was reached. That
+is the same decision seen from the other side, and the reason more than one
+address is worth having at all.
+
+### Moving an address
+
+`PathRegistry::rename()` moves an address and everything filed under it, and
+leaves every address it vacates behind as a permanent redirect. Without that,
+every rename quietly breaks every link from outside while the application looks
+perfectly healthy.
+
+### Linking into another module
+
+A page pointing at a product stores a type and an identifier - never a class,
+never a foreign key - and asks
+`Trilobit\Core\Contract\Content\ContentLinkResolver` to turn it into a link
+when it renders. In a build without the module that owns the product the port
+answers null and no anchor is drawn: not an empty one, and not an error. That
+is the half nobody meets while everything happens to be switched on, so it is
+the half with a test.
 
 ## Front-end assets
 
