@@ -27,4 +27,10 @@ final class StyleguideRoutes implements RouteProvider
     {
         $routes->addRoute(self::PATH, 'Core:Styleguide:Overview:default');
     }
+
+    /** @return list<string> */
+    public function reservedSegments(): array
+    {
+        return [self::PATH];
+    }
 }

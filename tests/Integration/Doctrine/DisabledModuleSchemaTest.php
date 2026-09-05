@@ -115,6 +115,7 @@ final class DisabledModuleSchemaTest extends TestCase
         self::assertSame([
             'cms_marker',
             'core_audit_entry',
+            'core_content_path',
             'core_media_file',
             'core_migration',
             'core_role',

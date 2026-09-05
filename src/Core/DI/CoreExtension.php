@@ -20,6 +20,8 @@ use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Console\AccountCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\WarmupCommand;
+use Trilobit\Core\Content\PathRegistry;
+use Trilobit\Core\Content\ReservedSegments;
 use Trilobit\Core\Contract\Activity\ActivityRecorder;
 use Trilobit\Core\Contract\Activity\NullActivityRecorder;
 use Trilobit\Core\Contract\Party\NullPartyDirectory;
@@ -176,6 +178,15 @@ final class CoreExtension extends CompilerExtension
             ->setAutowired(false)
             ->addTag(self::TAG_CONSOLE_COMMAND, 'migrations:diff');
 
+        // The public address space: which beginnings content may never take,
+        // and the register of what answers where. Both are in every build -
+        // the address space is Core's, and a module only ever writes into it.
+        $builder->addDefinition($this->prefix('reservedSegments'))
+            ->setFactory(ReservedSegments::class . '::of', ['@' . $this->prefix('modules'), []]);
+
+        $builder->addDefinition($this->prefix('pathRegistry'))
+            ->setFactory(PathRegistry::class);
+
         $builder->addDefinition($this->prefix('routerFactory'))
             ->setFactory(RouterFactory::class, [[]]);
 
@@ -285,6 +296,10 @@ final class CoreExtension extends CompilerExtension
         // from a module that implemented the port itself.
         PortFallback::register($builder, self::PORTS, $this->prefix('port'), self::TAG_PORT);
 
+        $this->service('reservedSegments')->setArguments([
+            '@' . $this->prefix('modules'),
+            $this->taggedServices(self::TAG_ROUTE_PROVIDER),
+        ]);
         $this->service('routerFactory')->setArguments([$this->taggedServices(self::TAG_ROUTE_PROVIDER)]);
         $this->service('adminMenu')->setArguments([$this->taggedServices(self::TAG_ADMIN_MENU_PROVIDER)]);
         $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);

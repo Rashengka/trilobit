@@ -34,4 +34,16 @@ final class AdminRoutes implements RouteProvider
         $routes->addRoute(self::SIGN_OUT_PATH, 'Core:Admin:Sign:out');
         $routes->addRoute(self::PATH, 'Core:Admin:Dashboard:default');
     }
+
+    /**
+     * Declared here as well as in Trilobit\Core\Content\ReservedSegments,
+     * which holds it as one of Core's own: the constant is the one place the
+     * path is written, so the two cannot disagree.
+     *
+     * @return list<string>
+     */
+    public function reservedSegments(): array
+    {
+        return [self::PATH];
+    }
 }

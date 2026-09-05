@@ -158,6 +158,11 @@ class ContentPath
         $this->label = $label;
     }
 
+    public function fileUnder(?self $parent): void
+    {
+        $this->parent = $parent;
+    }
+
     /**
      * Turns this address into a permanent redirect to another one.
      *
