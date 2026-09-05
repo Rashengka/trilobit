@@ -19,12 +19,14 @@ use Nette\Http\UrlScript;
 use Nette\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
+use Trilobit\Core\Content\PathRefused;
 use Trilobit\Core\Content\PathRegistry;
 use Trilobit\Core\Contract\Content\ContentRef;
 use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Double\Content\DemoContentTypes;
 use Trilobit\Tests\Double\DemoModule;
+use Trilobit\Tests\Double\Routing\DemoRoutes;
 use Trilobit\Tests\Double\StandInHttpRequest;
 use Trilobit\Tests\Migrations;
 
@@ -231,6 +233,34 @@ final class PublicAddressTest extends TestCase
         self::assertSame('Mountain bikes', $document->querySelector('[data-testid="demo-heading"]')?->textContent);
         self::assertNull($document->querySelector('[data-testid="related-link"]'));
         self::assertNull($document->querySelector('a[href=""]'), 'a dead anchor is worse than no anchor');
+    }
+
+    /**
+     * Decision R9: a short address is a redirect and not a second address for
+     * the same record - it answers 301 into the backoffice with the identifier
+     * intact, and never draws anything.
+     */
+    public function testAShortAddressRedirectsIntoTheBackoffice(): void
+    {
+        self::assertSame(
+            self::HOST . '/' . DemoRoutes::RECORDS . '/12',
+            $this->redirectFrom($this->catalogue(), '/' . DemoRoutes::SHORT . '/12'),
+        );
+    }
+
+    /**
+     * Decision R6 again, from the side that costs something: a short prefix
+     * takes a beginning out of the public address space for good, so content
+     * cannot be saved under it even though nothing is registered there.
+     */
+    public function testContentCannotBeSavedUnderAShortPrefix(): void
+    {
+        $registry = $this->catalogue()->getByType(PathRegistry::class);
+
+        $this->expectException(PathRefused::class);
+        $this->expectExceptionMessage(sprintf("cannot start with '%s'", DemoRoutes::SHORT));
+
+        $registry->register(new ContentRef(DemoContentTypes::SECTION, '9'), DemoRoutes::SHORT, 'A section called r');
     }
 
     /** @return list<string> */
