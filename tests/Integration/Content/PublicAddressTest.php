@@ -22,7 +22,6 @@ use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Content\PathRegistry;
 use Trilobit\Core\Contract\Content\ContentRef;
 use Trilobit\Core\Routing\AdminRoutes;
-use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Double\Content\DemoContentTypes;
 use Trilobit\Tests\Double\DemoModule;
@@ -67,7 +66,7 @@ final class PublicAddressTest extends TestCase
         $content = $document->querySelector('[data-testid="demo-content"]');
         self::assertNotNull($content);
         self::assertSame('Mountain bikes', $document->querySelector('[data-testid="demo-heading"]')?->textContent);
-        self::assertSame('category', $content->getAttribute('data-kind'));
+        self::assertSame('section', $content->getAttribute('data-kind'));
         self::assertSame('2', $content->getAttribute('data-content-id'));
     }
 
@@ -78,7 +77,7 @@ final class PublicAddressTest extends TestCase
         $match = $this->match($container, '/bikes/mountain');
 
         self::assertSame(DemoModule::PAGE, $match['presenter'] ?? null);
-        self::assertSame('category', $match['action'] ?? null);
+        self::assertSame('section', $match['action'] ?? null);
     }
 
     public function testAnAddressNobodyClaimedIsNotRouted(): void
@@ -194,17 +193,44 @@ final class PublicAddressTest extends TestCase
     /**
      * The register outlives the module that wrote into it, so an address whose
      * type nothing in this build draws is not routed rather than routed to an
-     * error - the row is waiting for the module to come back.
+     * error - the row is waiting for the module to come back, and the rest of
+     * the address space is untouched by its absence.
      */
     public function testAnAddressOfATypeNoEnabledModuleDrawsIsNotRouted(): void
     {
-        $this->catalogue();
+        $container = $this->catalogue(withProducts: false);
 
-        // The same schema, read by a build that has no module publishing that
-        // kind of content.
-        $container = Boot::container();
+        self::assertNull($this->route($container, '/bikes/mountain/mountain-bike-x'));
+        self::assertNotNull($this->route($container, '/bikes/mountain'));
+    }
 
-        self::assertNull($this->route($container, '/bikes/mountain'));
+    /**
+     * Decision R3: a page points at another module's content by type and
+     * identifier, and the module turns that into a link. Nothing in the page
+     * names the module.
+     */
+    public function testAPageDrawsALinkIntoAModuleThatIsPresent(): void
+    {
+        $link = $this->page($this->catalogue(), '/bikes/mountain')->querySelector('[data-testid="related-link"]');
+
+        self::assertNotNull($link);
+        self::assertSame('/bikes/mountain/mountain-bike-x', $link->getAttribute('href'));
+        self::assertSame('Mountain bike X', $link->textContent);
+    }
+
+    /**
+     * Decision R3, and the half nobody meets while every module happens to be
+     * switched on: with the owning module absent the port answers null, and
+     * the page has to come back whole and without an anchor - not with an
+     * empty one, and not with an error.
+     */
+    public function testAPageLinkingIntoAModuleThatIsAbsentDrawsNoLinkAndNoError(): void
+    {
+        $document = $this->page($this->catalogue(withProducts: false), '/bikes/mountain');
+
+        self::assertSame('Mountain bikes', $document->querySelector('[data-testid="demo-heading"]')?->textContent);
+        self::assertNull($document->querySelector('[data-testid="related-link"]'));
+        self::assertNull($document->querySelector('a[href=""]'), 'a dead anchor is worse than no anchor');
     }
 
     /** @return list<string> */
@@ -288,22 +314,26 @@ final class PublicAddressTest extends TestCase
     }
 
     /**
-     * A catalogue three levels deep with one product filed in two of its
-     * categories - the smallest shape that every decision about the address
-     * space says something about.
+     * Sections two deep with one product filed in two of them - the smallest
+     * shape every decision about the address space says something about.
+     *
+     * The rows are written whether or not this build has the module that owns
+     * products, because that is the situation a customer's database is really
+     * in: the register keeps what was put there, and switching a module off
+     * takes away the pages rather than the rows.
      */
-    private function catalogue(): Container
+    private function catalogue(bool $withProducts = true): Container
     {
         $this->schema = Database::schemaFor(self::class);
-        $container = DemoModule::container();
+        $container = DemoModule::container($withProducts);
         Migrations::run($container);
 
         $registry = $container->getByType(PathRegistry::class);
-        $registry->register(new ContentRef(DemoContentTypes::CATEGORY, '1'), 'bikes', 'Bikes');
-        $registry->register(new ContentRef(DemoContentTypes::CATEGORY, '2'), 'bikes/mountain', 'Mountain bikes', 'bikes');
-        $registry->register(new ContentRef(DemoContentTypes::CATEGORY, '3'), 'sale', 'Sale');
+        $registry->register(new ContentRef(DemoContentTypes::SECTION, '1'), 'bikes', 'Bikes');
+        $registry->register(new ContentRef(DemoContentTypes::SECTION, '2'), 'bikes/mountain', 'Mountain bikes', 'bikes');
+        $registry->register(new ContentRef(DemoContentTypes::SECTION, '3'), 'sale', 'Sale');
 
-        $product = new ContentRef(DemoContentTypes::PRODUCT, '7');
+        $product = DemoModule::relatedContent();
         $registry->register($product, 'bikes/mountain/mountain-bike-x', 'Mountain bike X', 'bikes/mountain');
         $registry->register($product, 'sale/mountain-bike-x', 'Mountain bike X', 'sale');
 

@@ -25,6 +25,8 @@ use Trilobit\Core\Content\PathRegistry;
 use Trilobit\Core\Content\ReservedSegments;
 use Trilobit\Core\Contract\Activity\ActivityRecorder;
 use Trilobit\Core\Contract\Activity\NullActivityRecorder;
+use Trilobit\Core\Contract\Content\ContentLinkResolver;
+use Trilobit\Core\Contract\Content\NullContentLinkResolver;
 use Trilobit\Core\Contract\Party\NullPartyDirectory;
 use Trilobit\Core\Contract\Party\PartyDirectory;
 use Trilobit\Core\Doctrine\SchemaAssetsFilter;
@@ -98,6 +100,7 @@ final class CoreExtension extends CompilerExtension
     private const array PORTS = [
         PartyDirectory::class => NullPartyDirectory::class,
         ActivityRecorder::class => NullActivityRecorder::class,
+        ContentLinkResolver::class => NullContentLinkResolver::class,
     ];
 
     /**

@@ -1,0 +1,35 @@
+{templateType Trilobit\Tests\Double\Front\DemoDefaultTemplate}
+
+{*
+ * A section page of the module that is in every build. It draws nothing but
+ * what the mechanism under test produces: the trail from the address the
+ * visitor arrived at, and a link to a piece of content another module owns.
+ *
+ * The link is drawn only when something resolved it. In a build without the
+ * module that owns that content the port answers null, and what has to happen
+ * then is that no anchor is drawn at all - not an empty one, and not an error.
+ *}
+
+{block content}
+    <h1 data-testid="demo-heading">{$heading}</h1>
+
+    {include trail}
+
+    <p data-testid="demo-content" data-kind="section" data-content-id="{$contentId}" data-content-path="{$contentPath}">
+        A section.
+    </p>
+
+    <p n:if="$related !== null">
+        <a href="{$related->url}" data-testid="related-link">{$related->label}</a>
+    </p>
+{/block}
+
+{define trail}
+    <nav aria-label="Breadcrumb" data-testid="breadcrumbs">
+        <ol>
+            <li n:foreach="$breadcrumbs as $crumb" data-testid="breadcrumb">
+                <a n:tag-if="!$crumb->isCurrent" href="{$crumb->url}">{$crumb->label}</a>
+            </li>
+        </ol>
+    </nav>
+{/define}

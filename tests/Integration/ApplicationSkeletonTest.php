@@ -19,6 +19,8 @@ use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Contract\Activity\ActivityRecorder;
 use Trilobit\Core\Contract\Activity\NullActivityRecorder;
+use Trilobit\Core\Contract\Content\ContentLinkResolver;
+use Trilobit\Core\Contract\Content\NullContentLinkResolver;
 use Trilobit\Core\Contract\Party\NullPartyDirectory;
 use Trilobit\Core\Contract\Party\PartyDirectory;
 use Trilobit\Core\Contract\Party\PartyLookup;
@@ -110,6 +112,7 @@ final class ApplicationSkeletonTest extends TestCase
 
         self::assertInstanceOf(NullPartyDirectory::class, $ports->get(PartyDirectory::class));
         self::assertInstanceOf(NullActivityRecorder::class, $ports->get(ActivityRecorder::class));
+        self::assertInstanceOf(NullContentLinkResolver::class, $ports->get(ContentLinkResolver::class));
     }
 
     /**
