@@ -1,1 +1,2 @@
 $support = $settings->supportPhone();
+$this->addSql('ALTER TABLE core_domain ADD CONSTRAINT FK_7F57D529033212A FOREIGN KEY (tenant_id) REFERENCES core_tenant (id)');

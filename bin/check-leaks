@@ -1058,14 +1058,24 @@ function emailsIn(string $text): array
 }
 
 /**
+ * A phone number is never written with a letter up against it, and the two
+ * patterns made of bare digits now say so.
+ *
+ * Without that boundary a run of nine digits inside a hexadecimal identifier
+ * reads as a number: Doctrine names a foreign key FK_7F57D529033212A, and the
+ * digits in the middle of that are nine in a row, so every generated migration
+ * was a finding. The answer is the boundary rather than a suppression comment
+ * on each generated file - a rule that has to be excused once per generated
+ * file is a rule somebody eventually excuses where it was right.
+ *
  * @return list<string>
  */
 function phoneCandidates(string $text): array
 {
     $patterns = [
         '/(?:\+|00)\d{1,3}[ .\-]?\d{2,3}[ .\-]?\d{3}[ .\-]?\d{3,4}/',
-        '/(?<![\d.\-])\d{3}[ .\-]\d{3}[ .\-]\d{3}(?![\d.\-])/',
-        '/(?<![\d.\-])\d{9}(?![\d.\-])/',
+        '/(?<![\dA-Za-z.\-])\d{3}[ .\-]\d{3}[ .\-]\d{3}(?![\dA-Za-z.\-])/',
+        '/(?<![\dA-Za-z.\-])\d{9}(?![\dA-Za-z.\-])/',
     ];
     $hits = [];
     foreach ($patterns as $pattern) {
