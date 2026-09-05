@@ -47,7 +47,21 @@ export default defineConfig({
     webServer: {
         // PHP's own server, because the claims here are about what the browser
         // does with the page and not about how it was served.
-        command: `php -S 127.0.0.1:${port} -t www`,
+        //
+        // The installation is made before the server starts rather than in a
+        // spec, because Playwright asks for the base URL to answer before it
+        // runs any of them: an installation with no tenant answers nothing at
+        // all - there is no default tenant on purpose - so a suite that
+        // installed itself in a hook never got as far as the hook. Both
+        // commands may be run again on an installation that already has them:
+        // the migration is a no-op and the tenant only gains the hosts it is
+        // missing, which is what lets a developer keep one database between
+        // runs.
+        command: [
+            'php bin/trilobit migrations:migrate --no-interaction',
+            `php bin/trilobit app:tenant 'Trilobit E2E' 127.0.0.1`,
+            `php -S 127.0.0.1:${port} -t www`,
+        ].join(' && '),
         url: baseURL,
         reuseExistingServer: process.env.CI === undefined,
         // Stated rather than taken from .env, so that the style guide is on
