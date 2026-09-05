@@ -9,30 +9,23 @@ use Trilobit\Core\Content\ContentTypeProvider;
 use Trilobit\Tests\Double\DemoModule;
 
 /**
- * A module that publishes content, without there being a module.
+ * The module that is in every build here: it publishes sections, which nest,
+ * and its pages link out to content another module owns.
  *
- * The mechanism under test is the register of public addresses and the
- * catch-all that reads it, and both are finished before the first module has
- * anything to put in them. Standing in for that module here rather than
- * inventing a content entity inside one is the difference between testing the
- * mechanism and testing a guess about what will later be built on it.
- *
- * The two kinds are the two shapes the register has to handle: something that
- * is a step in the tree, and something that hangs off one and may hang off
- * several at once.
+ * It stands in for the content side of the application the way
+ * Trilobit\Tests\Double\Content\DemoCatalogueTypes stands in for the shop
+ * side. Neither exists yet, and the mechanism they will both write into is
+ * finished before either does - so the suites stand in for them rather than
+ * inventing entities inside a real module, which would be a guess about what
+ * is later built, committed to src/ and then in the way.
  */
 final class DemoContentTypes implements ContentTypeProvider
 {
-    public const string CATEGORY = 'demo.category';
-
-    public const string PRODUCT = 'demo.product';
+    public const string SECTION = 'demo.section';
 
     /** @return list<ContentType> */
     public function contentTypes(): array
     {
-        return [
-            new ContentType(self::CATEGORY, DemoModule::PAGE, 'category'),
-            new ContentType(self::PRODUCT, DemoModule::PAGE, 'product'),
-        ];
+        return [new ContentType(self::SECTION, DemoModule::PAGE, 'section')];
     }
 }
