@@ -7,6 +7,7 @@ namespace Trilobit\Core\Domain\Audit;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Trilobit\Core\Event\EntityChanged;
+use Trilobit\Core\Tenancy\Shared;
 
 /**
  * One row of the audit trail: what changed, and when.
@@ -22,6 +23,7 @@ use Trilobit\Core\Event\EntityChanged;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_audit_entry')]
+#[Shared(because: 'the trail records what the installation did, including what happened before any tenant was entered; giving it the dimension is its own change and is not this one')]
 class AuditEntry
 {
     #[ORM\Id]

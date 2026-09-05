@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Trilobit\Core\Tenancy\Shared;
 
 /**
  * Somebody who can sign in.
@@ -28,6 +29,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_user')]
+#[Shared(because: 'an account is global and belonging to a tenant is a relationship; see Trilobit\Core\Domain\Tenancy\Membership')]
 class User
 {
     #[ORM\Id]

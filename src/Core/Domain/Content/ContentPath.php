@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Domain\Content;
 
 use Doctrine\ORM\Mapping as ORM;
+use Trilobit\Core\Domain\Tenancy\Tenant;
 
 /**
  * One public address, and what answers at it.
@@ -39,9 +40,19 @@ use Doctrine\ORM\Mapping as ORM;
  * A row whose `movedTo` is filled in is an address that used to be live and
  * now answers 301. It is kept out of the tree - `parent` is null on it - so
  * that walking the tree only ever meets addresses that answer.
+ *
+ * **An address is unique within a tenant and a language, and not on its own.**
+ * Two businesses both have a page at /kontakt, and one business whose language
+ * is settled by the domain it was reached at has the same address in two
+ * languages - so all three columns are in the index, and the two that are not
+ * the path are the reason it is one index rather than two migrations. The same
+ * goes for the canonical address: a permalink is one per content per language
+ * per tenant.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_content_path')]
+#[ORM\UniqueConstraint(name: 'uniq_address', columns: ['tenant_id', 'language', 'path'])]
+#[ORM\UniqueConstraint(name: 'uniq_canonical', columns: ['tenant_id', 'language', 'canonical_of'])]
 class ContentPath
 {
     /** What the unique index over a utf8mb4 column can carry, and therefore the longest address there can be. */
@@ -52,6 +63,9 @@ class ContentPath
     public const int MAX_CONTENT_ID_LENGTH = 64;
 
     public const int MAX_LABEL_LENGTH = 191;
+
+    /** Long enough for a language and a region, which is as specific as a tag here ever gets. */
+    public const int MAX_LANGUAGE_LENGTH = 12;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -67,7 +81,7 @@ class ContentPath
      * one canonical row per content". A partial index would say it more
      * directly and MariaDB has none.
      */
-    #[ORM\Column(length: 191, unique: true, nullable: true)]
+    #[ORM\Column(length: 191, nullable: true)]
     private ?string $canonicalOf = null;
 
     /** Where this address moved to, or null while it is live. */
@@ -76,7 +90,21 @@ class ContentPath
     private ?self $movedTo = null;
 
     public function __construct(
-        #[ORM\Column(length: self::MAX_PATH_LENGTH, unique: true)]
+        /** Whose address this is. Two businesses share no address space at all. */
+        #[ORM\ManyToOne(targetEntity: Tenant::class)]
+        #[ORM\JoinColumn(nullable: false)]
+        private Tenant $tenant,
+        /**
+         * Which language this address is in.
+         *
+         * Nothing reads it yet - the register answers the same way it did
+         * before, in one language. It is written now because it is in the
+         * unique index above, and an index is migrated once or twice depending
+         * only on whether the column was there the first time.
+         */
+        #[ORM\Column(length: self::MAX_LANGUAGE_LENGTH)]
+        private string $language,
+        #[ORM\Column(length: self::MAX_PATH_LENGTH)]
         private string $path,
         /** Which kind of content this is, namespaced by the module that owns it: `blog.article`. */
         #[ORM\Column(length: self::MAX_TYPE_LENGTH)]
@@ -95,6 +123,16 @@ class ContentPath
     public function id(): ?int
     {
         return $this->id;
+    }
+
+    public function tenant(): Tenant
+    {
+        return $this->tenant;
+    }
+
+    public function language(): string
+    {
+        return $this->language;
     }
 
     public function path(): string

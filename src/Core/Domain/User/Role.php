@@ -6,6 +6,7 @@ namespace Trilobit\Core\Domain\User;
 
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Trilobit\Core\Tenancy\Shared;
 
 /**
  * A named set of permissions, granted to accounts rather than to people.
@@ -22,6 +23,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_role')]
+#[Shared(because: 'a role is part of the application rather than of a business, and a tenant that wants one of its own gets a row that names it - see Trilobit\Core\Domain\Tenancy\Membership')]
 class Role
 {
     #[ORM\Id]

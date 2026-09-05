@@ -29,6 +29,7 @@ use Trilobit\Tests\Double\DemoModule;
 use Trilobit\Tests\Double\Routing\DemoRoutes;
 use Trilobit\Tests\Double\StandInHttpRequest;
 use Trilobit\Tests\Migrations;
+use Trilobit\Tests\Tenants;
 
 /**
  * The public address space end to end: a request goes in, the register decides
@@ -357,6 +358,7 @@ final class PublicAddressTest extends TestCase
         $this->schema = Database::schemaFor(self::class);
         $container = DemoModule::container($withProducts);
         Migrations::run($container);
+        Tenants::enter($container, 'Ammonite Bikes', Tenants::HOST);
 
         $registry = $container->getByType(PathRegistry::class);
         $registry->register(new ContentRef(DemoContentTypes::SECTION, '1'), 'bikes', 'Bikes');

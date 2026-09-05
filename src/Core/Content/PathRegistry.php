@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Trilobit\Core\Contract\Content\ContentRef;
 use Trilobit\Core\Domain\Content\ContentPath;
+use Trilobit\Core\Tenancy\Tenancy;
 
 /**
  * The register of public addresses, from both sides: what answers where, and
@@ -30,12 +31,31 @@ use Trilobit\Core\Domain\Content\ContentPath;
  * are the old addresses recreated as redirects. In one pass the database would
  * be asked to hold two rows at the same address for the length of a
  * transaction, and would refuse.
+ *
+ * The register is one address space per tenant. Reading is scoped by
+ * Trilobit\Core\Tenancy\TenantFilter, so nothing in here restates the tenant
+ * in a criterion - a query that had to remember would be a query the next
+ * person forgets - and writing takes it from Trilobit\Core\Tenancy\Tenancy,
+ * because a filter is not consulted on an insert. Two businesses therefore
+ * both have a page at /kontakt and neither can reach the other's.
  */
 final readonly class PathRegistry implements PathLookup
 {
+    /**
+     * The language every row is written and read in until T13b gives the
+     * register more than one.
+     *
+     * The column is in the unique index from the day the index exists, so that
+     * the index is migrated once; nothing chooses between languages yet, and a
+     * constant is the honest way to say that. **Exit condition:** the moment a
+     * caller may say which language it means.
+     */
+    public const string LANGUAGE = 'en';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ReservedSegments $reserved,
+        private Tenancy $tenancy,
     ) {}
 
     public function find(string $path): ?Address
@@ -76,7 +96,7 @@ final readonly class PathRegistry implements PathLookup
             $parent = $this->rowAt($parentPath) ?? throw PathRefused::noSuchParent($path, $parentPath);
         }
 
-        $row = new ContentPath($path, $ref->type, $ref->id, $label, $parent);
+        $row = new ContentPath($this->tenancy->tenant(), self::LANGUAGE, $path, $ref->type, $ref->id, $label, $parent);
         if (!$this->canonicalRowOf($ref) instanceof ContentPath) {
             $row->makeCanonical();
         }
@@ -160,7 +180,7 @@ final readonly class PathRegistry implements PathLookup
         $this->entityManager->flush();
 
         foreach ($renamed as $was => $row) {
-            $trail = new ContentPath($was, $row->type(), $row->contentId(), $row->label());
+            $trail = new ContentPath($row->tenant(), $row->language(), $was, $row->type(), $row->contentId(), $row->label());
             $trail->moveTo($row);
             $this->entityManager->persist($trail);
         }

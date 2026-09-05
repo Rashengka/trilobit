@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\DI;
 
+use Nette\Application\Application;
 use Nette\Application\Routers\RouteList;
 use Nette\Assets\Registry;
 use Nette\DI\CompilerExtension;
@@ -19,6 +20,7 @@ use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Console\AccountCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
+use Trilobit\Core\Console\TenantCommand;
 use Trilobit\Core\Console\WarmupCommand;
 use Trilobit\Core\Content\ContentTypes;
 use Trilobit\Core\Content\PathRegistry;
@@ -46,6 +48,9 @@ use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
+use Trilobit\Core\Tenancy\HostTenants;
+use Trilobit\Core\Tenancy\Tenancy;
+use Trilobit\Core\Tenancy\TenantFromHost;
 
 /**
  * The always-enabled part of the application, and the five places a module
@@ -169,6 +174,14 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('authenticator'))
             ->setFactory(Authenticator::class);
 
+        // The first command a new installation runs: without a tenant and a
+        // host of its own, every request is refused rather than served by a
+        // default one.
+        $builder->addDefinition($this->prefix('tenantCommand'))
+            ->setFactory(TenantCommand::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_CONSOLE_COMMAND, 'app:tenant');
+
         $builder->addDefinition($this->prefix('accountCommand'))
             ->setFactory(AccountCommand::class)
             ->setAutowired(false)
@@ -185,6 +198,24 @@ final class CoreExtension extends CompilerExtension
             ->setFactory(MigrationsDiffCommand::class)
             ->setAutowired(false)
             ->addTag(self::TAG_CONSOLE_COMMAND, 'migrations:diff');
+
+        // Whose request this is. It is in every build and has no default:
+        // asking before a tenant has been entered is an error rather than an
+        // answer, because the answer would be everybody's rows. See
+        // Trilobit\Core\Tenancy\Tenancy.
+        $builder->addDefinition($this->prefix('tenancy'))
+            ->setFactory(Tenancy::class);
+
+        $builder->addDefinition($this->prefix('hostTenants'))
+            ->setFactory(HostTenants::class);
+
+        // Hung on the application's startup in beforeCompile() below, which is
+        // where it has to be: the framework runs those before it asks the
+        // router anything, and the register the router reads is one address
+        // space per tenant.
+        $builder->addDefinition($this->prefix('tenantFromHost'))
+            ->setFactory(TenantFromHost::class)
+            ->setAutowired(false);
 
         // The public address space: which beginnings content may never take,
         // and the register of what answers where. Both are in every build -
@@ -310,6 +341,7 @@ final class CoreExtension extends CompilerExtension
         $builder->removeDefinition(self::BRIDGE_DIFF_COMMAND);
 
         $this->decorateViteMapper();
+        $this->settleTheTenantBeforeRouting();
 
         // Has to run before taggedPorts() below: a port with no module
         // behind it gets its fallback registered and tagged here, so that
@@ -330,6 +362,43 @@ final class CoreExtension extends CompilerExtension
         $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
         $this->service('ports')->setArguments([$this->taggedPorts()]);
+    }
+
+    /**
+     * Puts the tenant lookup in front of everything the application does with
+     * a request.
+     *
+     * Nette\Application\Application runs onStartup before it asks the router
+     * what the path means, so this is what makes "the tenant is known first" a
+     * fact of the framework's own order rather than a habit of whoever writes
+     * the next presenter.
+     *
+     * The absence of an application is refused rather than absorbed: a build
+     * that served requests without settling the tenant would look perfectly
+     * healthy and would be answering out of whichever tenant had a row.
+     */
+    private function settleTheTenantBeforeRouting(): void
+    {
+        $builder = $this->getContainerBuilder();
+        $name = $builder->getByType(Application::class);
+        if ($name === null) {
+            throw new InvalidStateException(sprintf(
+                'No %s is in the container, so the tenant could not be settled in front of routing. '
+                . 'It is registered by nette/application.',
+                Application::class,
+            ));
+        }
+
+        $definition = $builder->getDefinition($name);
+        if (!$definition instanceof ServiceDefinition) {
+            throw new InvalidStateException(sprintf(
+                "Service '%s' was replaced by a %s, so nothing can be hung on its startup.",
+                $name,
+                $definition::class,
+            ));
+        }
+
+        $definition->addSetup('$onStartup[]', [new Reference($this->prefix('tenantFromHost'))]);
     }
 
     /**

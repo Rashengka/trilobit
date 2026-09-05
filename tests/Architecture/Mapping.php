@@ -51,7 +51,7 @@ final class Mapping
     }
 
     /**
-     * Every entity whose source is in $directory, mapped the way the
+     * Every entity whose source is in $directories, mapped the way the
      * application maps its own and over the same connection, so that no test
      * has to repeat which platform the project is written against.
      *
@@ -59,14 +59,19 @@ final class Mapping
      * be shown to be a rule that looked: the same rule is run over a shape the
      * application deliberately does not contain.
      *
+     * More than one directory is taken because a fixture that has to point at
+     * a real entity - the tenant, say - can only be mapped alongside it; a
+     * fixture pointing at a copy would be a rule tested against a shape the
+     * application does not have.
+     *
      * @return list<ClassMetadata<object>>
      */
-    public static function inDirectory(string $directory): array
+    public static function inDirectory(string ...$directories): array
     {
         // Put together by hand rather than through ORMSetup, which insists on a
         // cache implementation this project has no other reason to depend on.
         $configuration = new Configuration();
-        $configuration->setMetadataDriverImpl(new AttributeDriver([$directory]));
+        $configuration->setMetadataDriverImpl(new AttributeDriver(array_values($directories)));
         $configuration->setProxyDir(Bootstrap::rootDirectory() . '/var/tmp');
         $configuration->setProxyNamespace('Trilobit\Tests\Proxy');
         $configuration->enableNativeLazyObjects(true);

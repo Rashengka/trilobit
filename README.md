@@ -30,7 +30,7 @@ application does. See "The design system" below.
 | path | what it is |
 |---|---|
 | `www/index.php` | the front controller; the document root is `www/`, nothing above it is reachable |
-| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:account` makes somebody who can sign in |
+| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:tenant` makes a business and the hosts it answers at, `app:account` makes somebody who can sign in |
 | `src/Core/Bootstrap.php` | turns a checkout into a compiled container |
 | `src/Core/Module/` | what a module's name implies, and which modules this build has |
 | `src/Core/DI/CoreExtension.php` | the five places a module hands something to Core |
@@ -111,6 +111,78 @@ configuration and the source tree disagree about which modules exist, and
 rule. The one rule that matters is the one expressed by absence - a module may
 depend on Core and on libraries, and never on another module.
 
+## Tenants and domains
+
+One installation runs several businesses, and which one a request belongs to is
+settled from the host it arrived at, before its path is routed. Two businesses
+therefore both have a page at `/kontakt`, both have media called `logo.png`,
+and neither can read a row of the other's.
+
+One business answers at as many hosts as it likes and they are aliases of each
+other - another entrance to the same site, not a second site. A host is unique
+across the whole installation, because two businesses claiming one host is not
+a collision to resolve at read time; it is the question "whose request is this"
+having two answers.
+
+**A host nobody claims is refused.** There is no default business and no
+fallback, on purpose: serving an unknown host out of some business hands one of
+them the site of another, and looks exactly like a working page while it does
+so. Development is not an exception and gets no switch - `localhost` is written
+into `core_domain` like any other host, so a developer's machine takes the path
+a visitor takes.
+
+```sh
+bin/trilobit app:tenant 'Your Business' localhost www.example.com
+```
+
+### What belongs to a business and what does not
+
+| table | whose |
+|---|---|
+| `core_content_path`, `core_media_file`, `core_tenant_membership`, `core_domain` | the business's |
+| `core_setting` | the installation's - a setting is true of the installation, not of one business |
+| `core_user`, `core_role` | the installation's - see below |
+| `core_audit_entry` | the installation's, for now |
+
+An account is global and belonging to a business is a relationship:
+`core_user.email` is unique across the installation, and `core_tenant_membership`
+says which person holds which role in which business. What follows from that is
+the point of it - a permission cannot be written down without saying where it
+applies, so rights cannot seep from one business into another by being recorded
+somewhere that has no business in it.
+
+### The guard
+
+The column is only worth having if no query can leave it out. A query that
+forgets the business does not fail: it answers with rows, and they are somebody
+else's. So `Trilobit\Core\Tenancy\TenantFilter`, a Doctrine filter, puts the
+condition into every query over a table that belongs to one, and refuses to
+build a constraint at all before it is settled which business this is - a
+filter that stood down when it had nothing to compare against would be absent
+exactly where it was needed.
+
+The default is deny. An entity belongs to a business unless it carries
+`#[Shared(because: '...')]`, which has to be written on purpose and states the
+reason, so an entity nobody thought about is one the filter cannot scope.
+`tests/Architecture/EveryTenantedEntityIsScopedTest` asks that of every mapped
+entity at build time rather than at the first query: adding an entity to `src/`
+with neither the association nor the attribute fails it by name.
+
+Switching business also empties the object manager, because an object already
+loaded is handed back without a query - past a filter that only ever sees SQL.
+
+### Language
+
+Every address carries the language it is in, and every business says which of
+three ways its addresses tell you: a translated slug, a prefix in the path, or
+the domain. It is one column with three values rather than a set of flags, so a
+combination has nowhere to be written down.
+
+Nothing reads either of them yet - the register answers in one language, as it
+did before. They exist now because the unique index over an address is
+`(tenant, language, path)`, and an index is migrated once or twice depending
+only on whether the columns were there the first time.
+
 ## Public addresses
 
 Pages, categories and products share one address space and none of them carries
@@ -130,9 +202,11 @@ the whole design:
 
 ### The register
 
-`core_content_path` holds one row per address: the whole path, the kind of
-content and the owning module's own identifier for it, a label, and the address
-above it in the tree. The whole path rather than one segment of it, because
+`core_content_path` holds one row per address: the business it belongs to, the
+language it is in, the whole path, the kind of content and the owning module's
+own identifier for it, a label, and the address above it in the tree. An
+address is unique within a business and a language, which is what lets two
+businesses both have a page at `/kontakt`. The whole path rather than one segment of it, because
 reading is the hot path and has to cost one lookup over a unique index whatever
 the depth. The parent beside it, so that the tree stays a tree for breadcrumbs
 and for renaming a branch. There is no limit on how deeply content may nest;
@@ -462,11 +536,15 @@ cp .env.example .env
 docker compose up -d
 bin/trilobit migrations:migrate
 bin/trilobit app:warmup
+bin/trilobit app:tenant 'Your Business' localhost
 bin/trilobit app:account you@example.com
 ```
 
 `app:warmup` writes down which modules this build is made of, for the parts
-that never start PHP. `app:account` makes somebody who can sign in to `/admin`
+that never start PHP. `app:tenant` makes the business requests belong to and
+the hosts it answers at - without it every request is refused, because a host
+that names no business is never served by a default one; see "Tenants and
+domains" above. `app:account` makes somebody who can sign in to `/admin`
 and prints their password once; see "The administration" above. The scripts and
 the stylesheet are already in the clone,
 under `www/build`; run `npm ci && npm run build` only once you change something

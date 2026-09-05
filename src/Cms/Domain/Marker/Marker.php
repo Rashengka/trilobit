@@ -6,6 +6,7 @@ namespace Trilobit\Cms\Domain\Marker;
 
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use Trilobit\Core\Tenancy\Shared;
 
 /**
  * The one table the Cms module owns until it owns real ones.
@@ -24,6 +25,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'cms_marker')]
+#[Shared(because: 'a row says this module\'s schema was installed, which is a fact about the installation and about no tenant')]
 class Marker
 {
     #[ORM\Id]

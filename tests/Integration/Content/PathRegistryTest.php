@@ -15,6 +15,7 @@ use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
+use Trilobit\Tests\Tenants;
 
 /**
  * The register of public addresses against the database it is stored in.
@@ -313,6 +314,7 @@ final class PathRegistryTest extends TestCase
         $this->schema = Database::schemaFor(self::class);
         $container = Boot::coreAlone();
         Migrations::run($container);
+        Tenants::enter($container);
 
         return $container->getByType(PathRegistry::class);
     }
