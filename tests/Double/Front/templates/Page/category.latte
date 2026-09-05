@@ -1,0 +1,27 @@
+{templateType Trilobit\Tests\Double\Front\DemoDefaultTemplate}
+
+{*
+ * A category page of the module that does not exist yet. It draws nothing but
+ * what the mechanism under test produces: the trail from the address the
+ * visitor arrived at, and the identifier the register handed over.
+ *}
+
+{block content}
+    <h1 data-testid="demo-heading">{$heading}</h1>
+
+    {include trail}
+
+    <p data-testid="demo-content" data-kind="category" data-content-id="{$contentId}" data-content-path="{$contentPath}">
+        A category.
+    </p>
+{/block}
+
+{define trail}
+    <nav aria-label="Breadcrumb" data-testid="breadcrumbs">
+        <ol>
+            <li n:foreach="$breadcrumbs as $crumb" data-testid="breadcrumb">
+                <a n:tag-if="!$crumb->isCurrent" href="{$crumb->url}">{$crumb->label}</a>
+            </li>
+        </ol>
+    </nav>
+{/define}

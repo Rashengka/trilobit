@@ -28,6 +28,13 @@
     <title>{ifset $pageTitle}{$pageTitle} | {/ifset}{$siteName}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="icon" type="image/vnd.microsoft.icon" href="/favicon.ico" sizes="16x16 32x32">
+    {* The permalink of what this page draws. One piece of content may answer
+       at several addresses - a product at one per category it belongs to - and
+       all of them return the page rather than a redirect, because redirecting
+       would take away the context the link was given in. This is what tells a
+       search engine which of them to index. A page reached by a static route
+       has none and draws nothing. *}
+    <link n:if="$canonicalUrl !== ''" rel="canonical" href="{$canonicalUrl}">
 </head>
 <body class="l-shell" data-testid="layout">
 

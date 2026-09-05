@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Content;
 
+use Trilobit\Core\Contract\Content\ContentRef;
+
 /**
  * Reading the register of public addresses, which is all the router and the
  * pages ever do with it.
@@ -19,4 +21,14 @@ interface PathLookup
 {
     /** What answers at $path, or null when nobody claims it. */
     public function find(string $path): ?Address;
+
+    /**
+     * The permalink of one piece of content, or null when it has no address
+     * at all.
+     *
+     * It is what a link points at unless the caller is already standing on
+     * another address of the same content, and it is the only address a
+     * sitemap is told about.
+     */
+    public function canonicalPathOf(ContentRef $ref): ?string;
 }

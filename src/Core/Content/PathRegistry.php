@@ -87,6 +87,11 @@ final readonly class PathRegistry implements PathLookup
         return $this->addressOf($row);
     }
 
+    public function canonicalPathOf(ContentRef $ref): ?string
+    {
+        return $this->canonicalRowOf($ref)?->path();
+    }
+
     /** Which of the addresses of $ref is the permalink; a decision, never a side effect of one. */
     public function makeCanonical(ContentRef $ref, string $path): void
     {

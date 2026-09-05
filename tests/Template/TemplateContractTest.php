@@ -103,9 +103,22 @@ final class TemplateContractTest extends TestCase
         $presenterClass = $namespace . '\\' . $classMatch[1];
         self::assertTrue(class_exists($presenterClass), sprintf('%s does not autoload as %s', $file, $presenterClass));
 
+        preg_match_all('/\$template->([A-Za-z_][A-Za-z0-9_]*)\s*=[^=]/', $source, $assignments);
+        $assigned = array_unique($assignments[1]);
+
         if (preg_match('/\?\?\s*([A-Za-z0-9_\\\\]+)::class/', $source, $templateMatch) !== 1) {
             // A presenter with no createTemplate() override renders with the
-            // framework's own Template and has no properties to check.
+            // framework's own Template. With nothing assigned on it there is
+            // nothing to check and the claim holds trivially - a presenter
+            // that redirects and draws no page is the case. With something
+            // assigned there is a gap, and it is reported as one rather than
+            // passed over in silence.
+            if ($assigned === []) {
+                self::assertSame([], $assigned);
+
+                return;
+            }
+
             self::markTestSkipped(sprintf('%s does not override createTemplate()', $presenterClass));
         }
 
@@ -117,9 +130,7 @@ final class TemplateContractTest extends TestCase
             $public[] = $property->getName();
         }
 
-        preg_match_all('/\$template->([A-Za-z_][A-Za-z0-9_]*)\s*=[^=]/', $source, $assignments);
-
-        foreach (array_unique($assignments[1]) as $property) {
+        foreach ($assigned as $property) {
             self::assertContains(
                 $property,
                 $public,
