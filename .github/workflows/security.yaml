@@ -1,0 +1,87 @@
+#
+# Dependency vulnerability audit, on every push and pull request.
+#
+# It is not a step of `composer check`: that gate is the one definition of
+# green and has to run offline, in a container with no network access at all -
+# an audit asks a remote registry for known advisories, which would turn a
+# gate meant to answer "does it build and is it correct" into something that
+# fails on an airport wifi for a reason that has nothing to do with the code.
+# This workflow answers a different question - "is it safe" - and is allowed
+# to need the network for it.
+#
+# Neither audit needs the dependencies installed, only their lock file: both
+# tools read composer.lock / package-lock.json directly, so there is no
+# `composer install` or `npm ci` here.
+#
+
+name: Security
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+# Keyed on github.ref for the same reason as ci.yaml and e2e.yaml: a push and a
+# pull request for the same commit build different trees and must not cancel
+# one another.
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: dependency vulnerability audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # The gate: a high or critical advisory in a package the running
+      # application actually loads fails the build, with no ignore-severity
+      # available for those two levels. --ignore-severity hides matching
+      # advisories from the report as well as from the exit code (verified
+      # against Composer's Auditor source), so low/medium are excluded here on
+      # purpose - they still get shown, just by the report-only step below,
+      # which is the one place a human can see them without them blocking
+      # anyone.
+      - name: composer audit (production dependencies)
+        run: composer audit --locked --no-dev --ignore-severity=low --ignore-severity=medium
+
+      # Everything composer knows about, dev tools included, every severity
+      # listed. This never fails the job - a linter or test runner with a low
+      # or medium finding is not the same risk as one in code that runs in
+      # production, and a gate that is red for something nobody can fix before
+      # upstream ships a patch is a gate people learn to ignore, taking the
+      # next real finding down with it.
+      - name: composer audit (full dependency tree, report only)
+        if: always()
+        continue-on-error: true
+        run: composer audit --locked
+
+      # --audit-level only changes the exit code, not what gets printed (npm
+      # still lists info/low/moderate findings) - unlike Composer's
+      # --ignore-severity, so a single command already does both jobs for the
+      # production tree.
+      - name: npm audit (production dependencies)
+        if: always()
+        run: npm audit --omit=dev --audit-level=high
+
+      # The full tree, devDependencies included: build tooling, not code that
+      # ships. Report only, same reasoning as the composer step above.
+      - name: npm audit (full dependency tree, report only)
+        if: always()
+        continue-on-error: true
+        run: npm audit
