@@ -7,6 +7,7 @@ namespace Trilobit\Tests\Unit\Core\Content;
 use Nette\Application\Routers\RouteList;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Trilobit\Core\Content\PublicPath;
 use Trilobit\Core\Content\ReservedSegments;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Routing\AdminRoutes;
@@ -55,6 +56,39 @@ final class ReservedSegmentsTest extends TestCase
 
         self::assertTrue($reserved->isReserved('c'));
         self::assertTrue($reserved->isReserved('s'));
+    }
+
+    /**
+     * A reservation is recognised in the spelling it was declared in and in the
+     * one normalising makes of it, because both arrive here.
+     *
+     * The style guide is the case that made this necessary and it is not a
+     * corner: its path begins with an underscore on purpose, so that no page or
+     * product can ever be called that - and normalising rewrites anything
+     * outside the English alphabet, so a request for it is held against the
+     * list spelled `styleguide`. A list that knew only what was declared
+     * answered no, and the caller had to know to ask twice. Knowing both here
+     * is what stops the next caller from having to know it.
+     */
+    public function testAReservationIsRecognisedInBothItsSpellings(): void
+    {
+        $reserved = ReservedSegments::of($this->modules([]), []);
+
+        self::assertTrue($reserved->isReserved(StyleguideRoutes::PATH));
+        self::assertTrue($reserved->isReserved(PublicPath::normalize(StyleguideRoutes::PATH)));
+    }
+
+    /**
+     * And in any other spelling of what was asked for, which is the same
+     * knowledge used from the other end: the caller hands over what a visitor
+     * typed, not something it had to tidy up first.
+     */
+    public function testAReservationIsRecognisedHoweverItWasTypedFor(): void
+    {
+        $reserved = ReservedSegments::of($this->modules(['alpha' => true]), []);
+
+        self::assertTrue($reserved->isReserved('ALPHA'));
+        self::assertTrue($reserved->isReserved(strtoupper(StyleguideRoutes::PATH)));
     }
 
     public function testAnythingNobodyClaimedIsFreeForContent(): void
