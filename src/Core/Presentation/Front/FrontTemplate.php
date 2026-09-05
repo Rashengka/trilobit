@@ -54,6 +54,17 @@ class FrontTemplate extends Template
 
     public string $homeUrl = '';
 
+    /**
+     * The permalink of what this page draws, absolute, or empty where the page
+     * has none.
+     *
+     * The shared layout writes it into the head of the document, so that a
+     * product reachable through every category it belongs to is one page to a
+     * search engine and several to a visitor - decision R12. A page reached by
+     * a static route leaves it empty and no element is drawn.
+     */
+    public string $canonicalUrl = '';
+
     /** @var list<NavigationItem> */
     public array $navigation = [];
 }

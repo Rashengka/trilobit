@@ -48,8 +48,12 @@ final class Boot
      *     %debugMode%: on where there is a .env and off in a fresh clone, so a
      *     suite taking it would assert one thing on a developer's machine and
      *     another in CI.
+     * @param array<string, mixed> $config anything else this build is to be
+     *     given - a service a module would have registered, say. It is the one
+     *     way a suite can stand in for a module that has not been written yet
+     *     without a directory under src/ pretending to be one.
      */
-    public static function container(?ModuleList $modules = null, bool $styleguide = false): Container
+    public static function container(?ModuleList $modules = null, bool $styleguide = false, array $config = []): Container
     {
         $configurator = Bootstrap::configurator($modules);
         $configurator->addConfig([
@@ -66,6 +70,10 @@ final class Boot
                 ],
             ],
         ]);
+
+        if ($config !== []) {
+            $configurator->addConfig($config);
+        }
 
         if (!self::$handlersTaken) {
             self::$handlersTaken = true;

@@ -20,6 +20,7 @@ use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Console\AccountCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\WarmupCommand;
+use Trilobit\Core\Content\ContentTypes;
 use Trilobit\Core\Content\PathRegistry;
 use Trilobit\Core\Content\ReservedSegments;
 use Trilobit\Core\Contract\Activity\ActivityRecorder;
@@ -38,6 +39,7 @@ use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Routing\AdminRoutes;
+use Trilobit\Core\Routing\ContentRouter;
 use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
@@ -73,6 +75,9 @@ final class CoreExtension extends CompilerExtension
 
     /** Services tagged with this implement a Core port; the tag value is the interface. */
     public const string TAG_PORT = 'trilobit.port';
+
+    /** Services tagged with this say which kinds of content they publish; see Trilobit\Core\Content\ContentTypeProvider. */
+    public const string TAG_CONTENT_TYPE_PROVIDER = 'trilobit.content_type_provider';
 
     /** The console's own tag; the value is the name the command answers to. */
     private const string TAG_CONSOLE_COMMAND = 'console.command';
@@ -187,8 +192,21 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('pathRegistry'))
             ->setFactory(PathRegistry::class);
 
+        // Which kinds of content this build can draw, and the catch-all that
+        // reads the register in front of them. Both are always registered:
+        // with no module enabled the collection is empty, the catch-all finds
+        // nothing to draw, and every address falls through unrouted - which is
+        // the same answer as having no catch-all at all, arrived at without a
+        // condition on a module being present.
+        $builder->addDefinition($this->prefix('contentTypes'))
+            ->setFactory(ContentTypes::class, [[]]);
+
+        $builder->addDefinition($this->prefix('contentRouter'))
+            ->setFactory(ContentRouter::class)
+            ->setAutowired(false);
+
         $builder->addDefinition($this->prefix('routerFactory'))
-            ->setFactory(RouterFactory::class, [[]]);
+            ->setFactory(RouterFactory::class, [[], '@' . $this->prefix('contentRouter')]);
 
         $builder->addDefinition($this->prefix('router'))
             ->setType(RouteList::class)
@@ -300,7 +318,11 @@ final class CoreExtension extends CompilerExtension
             '@' . $this->prefix('modules'),
             $this->taggedServices(self::TAG_ROUTE_PROVIDER),
         ]);
-        $this->service('routerFactory')->setArguments([$this->taggedServices(self::TAG_ROUTE_PROVIDER)]);
+        $this->service('contentTypes')->setArguments([$this->taggedServices(self::TAG_CONTENT_TYPE_PROVIDER)]);
+        $this->service('routerFactory')->setArguments([
+            $this->taggedServices(self::TAG_ROUTE_PROVIDER),
+            new Reference($this->prefix('contentRouter')),
+        ]);
         $this->service('adminMenu')->setArguments([$this->taggedServices(self::TAG_ADMIN_MENU_PROVIDER)]);
         $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
