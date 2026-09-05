@@ -12,6 +12,7 @@ use Trilobit\Tests\Boot;
 use Trilobit\Tests\Double\Content\DemoCatalogueTypes;
 use Trilobit\Tests\Double\Content\DemoContentTypes;
 use Trilobit\Tests\Double\Content\DemoLinkResolver;
+use Trilobit\Tests\Double\Routing\DemoRoutes;
 
 /**
  * A build with two modules in it that publish content, one of which can be
@@ -58,6 +59,11 @@ final class DemoModule
             // The request the visitor made, in place of the one the test
             // runner was started with; see the class.
             'http.request' => ['factory' => StandInHttpRequest::class],
+            'demo.routes' => [
+                'factory' => DemoRoutes::class,
+                'autowired' => false,
+                'tags' => [CoreExtension::TAG_ROUTE_PROVIDER],
+            ],
             'demo.contentTypes' => [
                 'factory' => DemoContentTypes::class,
                 'autowired' => false,
