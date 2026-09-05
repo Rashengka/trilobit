@@ -10,11 +10,13 @@ use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Domain\Media\MediaFile;
 use Trilobit\Core\Domain\Setting\Setting;
+use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
+use Trilobit\Tests\Tenants;
 
 /**
  * The four entities Core owns, written to a database that was built by running
@@ -35,6 +37,14 @@ use Trilobit\Tests\Migrations;
 final class CoreEntitiesTest extends TestCase
 {
     private string $schema = '';
+
+    /**
+     * The tenant everything written here belongs to.
+     *
+     * Media is tenanted, so a suite that writes a file has to say whose it is
+     * - the same sentence a request says by arriving at a host.
+     */
+    private ?Tenant $tenant = null;
 
     protected function tearDown(): void
     {
@@ -99,6 +109,7 @@ final class CoreEntitiesTest extends TestCase
         $entityManager = $this->emptyDatabase();
 
         $entityManager->persist(new MediaFile(
+            $this->tenant(),
             'media/2026/09/ammonite.jpg',
             'ammonite.jpg',
             'image/jpeg',
@@ -128,6 +139,7 @@ final class CoreEntitiesTest extends TestCase
         $entityManager = $this->emptyDatabase();
 
         $entityManager->persist(new MediaFile(
+            $this->tenant(),
             'media/2026/09/terms.pdf',
             'terms.pdf',
             'application/pdf',
@@ -145,11 +157,20 @@ final class CoreEntitiesTest extends TestCase
         self::assertSame('', $read->alt());
     }
 
+    /** The tenant this case is working inside; there is always one by the time anything is written. */
+    private function tenant(): Tenant
+    {
+        self::assertInstanceOf(Tenant::class, $this->tenant);
+
+        return $this->tenant;
+    }
+
     private function emptyDatabase(): EntityManagerInterface
     {
         $this->schema = Database::schemaFor(self::class);
         $container = Boot::coreAlone();
         Migrations::run($container);
+        $this->tenant = Tenants::enter($container);
 
         return $container->getByType(EntityManagerInterface::class);
     }

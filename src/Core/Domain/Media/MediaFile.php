@@ -6,6 +6,7 @@ namespace Trilobit\Core\Domain\Media;
 
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use Trilobit\Core\Domain\Tenancy\Tenant;
 
 /**
  * A file somebody uploaded, as the application refers to it.
@@ -21,6 +22,12 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * Width and height are optional because not everything a shop uploads is a
  * picture: a price list is a file with a size and no dimensions.
+ *
+ * Media belongs to a tenant and is never shared, so every read of this table
+ * is scoped by Trilobit\Core\Tenancy\TenantFilter. The path stays unique
+ * across the whole installation all the same: it names a file on disk, and two
+ * rows naming one file is the hazard above whichever tenants they belong to.
+ * What a tenant is kept from seeing is the row, which is what the filter does.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_media_file')]
@@ -32,6 +39,10 @@ class MediaFile
     private ?int $id = null;
 
     public function __construct(
+        /** Whose file this is. Media is never shared between two businesses. */
+        #[ORM\ManyToOne(targetEntity: Tenant::class)]
+        #[ORM\JoinColumn(nullable: false)]
+        private Tenant $tenant,
         /** Relative to the public directory, so that moving an installation does not rewrite every row. */
         #[ORM\Column(length: 255, unique: true)]
         private string $path,
@@ -55,6 +66,11 @@ class MediaFile
     public function id(): ?int
     {
         return $this->id;
+    }
+
+    public function tenant(): Tenant
+    {
+        return $this->tenant;
     }
 
     public function path(): string

@@ -6,6 +6,7 @@ namespace Trilobit\Core\Domain\Tenancy;
 
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use Trilobit\Core\Tenancy\Shared;
 
 /**
  * One of the businesses this installation runs, and the thing almost every
@@ -25,6 +26,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_tenant')]
+#[Shared(because: 'it is what tenancy is measured against; a filter over it would compare a row with itself, and who may see which tenant is a question about permissions rather than about the dimension')]
 class Tenant
 {
     public const int MAX_NAME_LENGTH = 191;

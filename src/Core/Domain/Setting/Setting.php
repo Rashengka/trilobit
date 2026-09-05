@@ -7,6 +7,7 @@ namespace Trilobit\Core\Domain\Setting;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Trilobit\Core\Tenancy\Shared;
 
 /**
  * One thing about this installation that an administrator may change, kept
@@ -25,6 +26,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_setting')]
+#[Shared(because: 'what a setting says is true of the installation, not of one of the businesses running on it')]
 class Setting
 {
     #[ORM\Id]

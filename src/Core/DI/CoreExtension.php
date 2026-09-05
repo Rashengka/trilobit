@@ -46,6 +46,7 @@ use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
+use Trilobit\Core\Tenancy\Tenancy;
 
 /**
  * The always-enabled part of the application, and the five places a module
@@ -185,6 +186,13 @@ final class CoreExtension extends CompilerExtension
             ->setFactory(MigrationsDiffCommand::class)
             ->setAutowired(false)
             ->addTag(self::TAG_CONSOLE_COMMAND, 'migrations:diff');
+
+        // Whose request this is. It is in every build and has no default:
+        // asking before a tenant has been entered is an error rather than an
+        // answer, because the answer would be everybody's rows. See
+        // Trilobit\Core\Tenancy\Tenancy.
+        $builder->addDefinition($this->prefix('tenancy'))
+            ->setFactory(Tenancy::class);
 
         // The public address space: which beginnings content may never take,
         // and the register of what answers where. Both are in every build -

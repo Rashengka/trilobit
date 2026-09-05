@@ -148,6 +148,18 @@ nettrine.orm:
         default:
             connection: default
 
+            # The tenant goes into every query over a table that belongs to
+            # one, and it is enabled here rather than switched on where it is
+            # needed: a filter somebody has to remember to turn on is absent
+            # exactly where it was forgotten, and a query with no tenant in it
+            # comes back with rows rather than with an error. See
+            # Trilobit\Core\Tenancy\TenantFilter, which refuses to build a
+            # constraint before a tenant has been entered.
+            filters:
+                tenant:
+                    class: Trilobit\Core\Tenancy\TenantFilter
+                    enabled: true
+
             # Proxies are PHP's own lazy objects rather than generated
             # classes. The project is on PHP 8.4 anyway, Doctrine deprecates
             # every other answer, and the alternative is a package pulled in

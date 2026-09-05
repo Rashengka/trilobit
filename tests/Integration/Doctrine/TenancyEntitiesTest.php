@@ -7,6 +7,7 @@ namespace Trilobit\Tests\Integration\Doctrine;
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Nette\DI\Container;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Domain\Tenancy\Domain;
@@ -18,6 +19,7 @@ use Trilobit\Core\Domain\User\User;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
+use Trilobit\Tests\Tenants;
 
 /**
  * The tenant, the hosts it answers at, and the way a person belongs to it,
@@ -35,6 +37,8 @@ final class TenancyEntitiesTest extends TestCase
 {
     private string $schema = '';
 
+    private ?Container $container = null;
+
     protected function tearDown(): void
     {
         if ($this->schema !== '') {
@@ -46,11 +50,7 @@ final class TenancyEntitiesTest extends TestCase
     {
         $entityManager = $this->emptyDatabase();
 
-        $tenant = $this->tenant('Ammonite Bikes');
-        $entityManager->persist($tenant);
-        $entityManager->persist(new Domain('example.com', $tenant));
-        $entityManager->persist(new Domain('example.org', $tenant));
-        $entityManager->flush();
+        Tenants::enter($this->container(), 'Ammonite Bikes', 'example.com', 'example.org');
         $entityManager->clear();
 
         $hosts = [];
@@ -72,12 +72,8 @@ final class TenancyEntitiesTest extends TestCase
     {
         $entityManager = $this->emptyDatabase();
 
-        $first = $this->tenant('Ammonite Bikes');
-        $second = $this->tenant('Brachiopod Books');
-        $entityManager->persist($first);
-        $entityManager->persist($second);
-        $entityManager->persist(new Domain('example.com', $first));
-        $entityManager->flush();
+        Tenants::enter($this->container(), 'Ammonite Bikes', 'example.com');
+        $second = Tenants::create($this->container(), 'Brachiopod Books');
 
         $entityManager->persist(new Domain('example.com', $second));
 
@@ -95,8 +91,8 @@ final class TenancyEntitiesTest extends TestCase
     {
         $entityManager = $this->emptyDatabase();
 
-        $bikes = $this->tenant('Ammonite Bikes');
-        $books = $this->tenant('Brachiopod Books');
+        $bikes = Tenants::enter($this->container(), 'Ammonite Bikes');
+        $books = Tenants::create($this->container(), 'Brachiopod Books');
         $account = new User(
             'alice@example.com',
             'not a real hash',
@@ -106,7 +102,7 @@ final class TenancyEntitiesTest extends TestCase
         $administrator = new Role('administrator', 'Administrator', ['administration']);
         $editor = new Role('editor', 'Editor', ['content.write']);
 
-        foreach ([$bikes, $books, $account, $administrator, $editor] as $entity) {
+        foreach ([$account, $administrator, $editor] as $entity) {
             $entityManager->persist($entity);
         }
 
@@ -115,18 +111,31 @@ final class TenancyEntitiesTest extends TestCase
         $entityManager->flush();
         $entityManager->clear();
 
-        $held = [];
-        foreach ($entityManager->getRepository(Membership::class)->findAll() as $membership) {
-            $held[$membership->tenant()->name()] = $membership->role()->code();
+        // Read from inside each tenant in turn, because that is the only way
+        // memberships are ever read: the filter scopes this table like every
+        // other tenanted one, so "all of them" always means "all of this
+        // tenant's".
+        self::assertSame(['administrator'], $this->rolesHeldIn($bikes));
+        self::assertSame(['editor'], $this->rolesHeldIn($books));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function rolesHeldIn(Tenant $tenant): array
+    {
+        Tenants::switchTo($this->container(), $tenant);
+
+        $codes = [];
+        foreach ($this->container()->getByType(EntityManagerInterface::class)->getRepository(Membership::class)->findAll() as $membership) {
             self::assertSame('alice@example.com', $membership->user()->email());
+            self::assertSame($tenant->name(), $membership->tenant()->name());
+            $codes[] = $membership->role()->code();
         }
 
-        ksort($held);
+        sort($codes);
 
-        self::assertSame(
-            ['Ammonite Bikes' => 'administrator', 'Brachiopod Books' => 'editor'],
-            $held,
-        );
+        return $codes;
     }
 
     /** Granting the same role in the same tenant twice is refused by the index, not by whoever remembers. */
@@ -134,7 +143,7 @@ final class TenancyEntitiesTest extends TestCase
     {
         $entityManager = $this->emptyDatabase();
 
-        $tenant = $this->tenant('Ammonite Bikes');
+        $tenant = Tenants::enter($this->container(), 'Ammonite Bikes');
         $account = new User(
             'alice@example.com',
             'not a real hash',
@@ -143,7 +152,7 @@ final class TenancyEntitiesTest extends TestCase
         );
         $role = new Role('administrator', 'Administrator', ['administration']);
 
-        foreach ([$tenant, $account, $role] as $entity) {
+        foreach ([$account, $role] as $entity) {
             $entityManager->persist($entity);
         }
 
@@ -181,17 +190,19 @@ final class TenancyEntitiesTest extends TestCase
         self::assertSame(LanguageStrategy::Domain, $read->languageStrategy());
     }
 
-    private function tenant(string $name): Tenant
-    {
-        return new Tenant($name, new DateTimeImmutable('2026-09-05T08:00:00+00:00'));
-    }
-
     private function emptyDatabase(): EntityManagerInterface
     {
         $this->schema = Database::schemaFor(self::class);
-        $container = Boot::coreAlone();
-        Migrations::run($container);
+        $this->container = Boot::coreAlone();
+        Migrations::run($this->container);
 
-        return $container->getByType(EntityManagerInterface::class);
+        return $this->container->getByType(EntityManagerInterface::class);
+    }
+
+    private function container(): Container
+    {
+        self::assertInstanceOf(Container::class, $this->container);
+
+        return $this->container;
     }
 }

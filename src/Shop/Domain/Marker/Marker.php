@@ -6,6 +6,7 @@ namespace Trilobit\Shop\Domain\Marker;
 
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use Trilobit\Core\Tenancy\Shared;
 
 /**
  * The one table the Shop module owns until it owns real ones.
@@ -24,6 +25,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'shop_marker')]
+#[Shared(because: 'a row says this module\'s schema was installed, which is a fact about the installation and about no tenant')]
 class Marker
 {
     #[ORM\Id]
