@@ -79,16 +79,12 @@ final readonly class ContentRouter implements Router
             return null;
         }
 
-        // Both spellings are held against the reserved list, and the requested
-        // one is why: normalising rewrites anything outside the English
-        // alphabet, so a reserved beginning that is not itself a storable
-        // address - `_styleguide`, whose underscore is exactly what keeps it
-        // out of the way of content - arrives here as something else and would
-        // no longer match. It would then be looked up in the register on every
-        // request for it, which is a query for an address that can never be
-        // there, and in a build where the style guide is switched off a page
-        // nobody claims would reach the database instead of ending as 404.
-        if ($this->isReserved($requested) || $this->isReserved($path)) {
+        // Asked with the beginning as it was typed, once. Which spellings of a
+        // reservation count is Trilobit\Core\Content\ReservedSegments' to know,
+        // and it holds every one of them; a caller weighing up two spellings
+        // here would be a caller that has to remember to, and the next one
+        // would not.
+        if ($this->reserved->isReserved(PublicPath::firstSegment(trim($requested, '/')))) {
             return null;
         }
 
@@ -150,18 +146,6 @@ final readonly class ContentRouter implements Router
         );
 
         return $refUrl->getBaseUrl() . $path . ($query === [] ? '' : '?' . http_build_query($query));
-    }
-
-    /**
-     * Whether something other than content answers at the beginning of $path.
-     *
-     * Lower-cased rather than normalised, because normalising is what this
-     * question has to survive: the point is to recognise the beginning as it
-     * was asked for.
-     */
-    private function isReserved(string $path): bool
-    {
-        return $this->reserved->isReserved(strtolower(PublicPath::firstSegment(trim($path, '/'))));
     }
 
     /**
