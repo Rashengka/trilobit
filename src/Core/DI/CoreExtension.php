@@ -44,6 +44,7 @@ use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
+use Trilobit\Core\Presentation\Link\Destinations;
 use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\ContentRouter;
 use Trilobit\Core\Routing\RouterFactory;
@@ -277,6 +278,13 @@ final class CoreExtension extends CompilerExtension
         // application is drawn, which is true of every build.
         $builder->addDefinition($this->prefix('components'))
             ->setFactory(ComponentRegistry::class);
+
+        // Whether this build has the page a stored destination names. It is
+        // Core's because the question is about the build rather than about any
+        // one module, and it is in every build because a row naming a module
+        // outlives that module being switched off; see the class.
+        $builder->addDefinition($this->prefix('destinations'))
+            ->setFactory(Destinations::class);
 
         $builder->addDefinition($this->prefix('design'))
             ->setFactory(DesignSystem::class . '::of', [
