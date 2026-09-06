@@ -24,7 +24,7 @@
 {import '../../components/badge.latte'}
 
 <!DOCTYPE html>
-<html lang="en" data-theme="{$theme}">
+<html lang="en" n:attr="$preferences->attributes()">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -33,7 +33,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="icon" type="image/vnd.microsoft.icon" href="/favicon.ico" sizes="16x16 32x32">
 </head>
-<body class="l-shell" data-testid="admin-layout">
+<body class="l-shell" data-testid="admin-layout" data-preference-url="{$preferenceUrl}">
 
 <header class="l-shell__banner" data-testid="admin-header">
     {include siteHeader,

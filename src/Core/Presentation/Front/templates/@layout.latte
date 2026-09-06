@@ -3,10 +3,13 @@
 {*
  * The chrome every public page is drawn in.
  *
- * Two things here carry the design system. The first is data-theme on <html>:
- * every value in the page is read out of a token, and the tokens are declared
- * once per theme, so that one attribute decides the whole appearance and can be
- * changed in a live browser - see assets/themes/ledger.css.
+ * Two things here carry the design system. The first is the preferences written
+ * onto <html>: every value in the page is read out of a token, and the tokens
+ * are declared once per theme, so that one attribute decides the whole
+ * appearance and can be changed in a live browser - see
+ * assets/themes/ledger.css. They are written by the server, out of what this
+ * device last chose, which is what makes the first paint already right rather
+ * than corrected a moment later (decision D8).
  *
  * The second is that the four regions below are written in one fixed order -
  * banner, navigation, content, footer - and carry nothing but their role. They
@@ -21,7 +24,7 @@
 {import '../../components/site-footer.latte'}
 
 <!DOCTYPE html>
-<html lang="en" data-theme="{$theme}">
+<html lang="en" n:attr="$preferences->attributes()">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,7 +43,7 @@
        has none and draws nothing. *}
     <link n:if="$canonicalUrl !== ''" rel="canonical" href="{$canonicalUrl}">
 </head>
-<body class="l-shell" data-testid="layout">
+<body class="l-shell" data-testid="layout" data-preference-url="{$preferenceUrl}">
 
 <header class="l-shell__banner" data-testid="layout-header">
     {include siteHeader, brand: $siteName, href: $homeUrl, tagline: $siteTagline, testId: 'layout-home-link'}

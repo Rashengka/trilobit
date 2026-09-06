@@ -7,6 +7,7 @@ namespace Trilobit\Core\Presentation\Admin;
 use Nette\Application\IPresenter;
 use Nette\Application\UI\Control;
 use Nette\Bridges\ApplicationLatte\Template;
+use Trilobit\Core\Preference\Preferences;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
 /**
@@ -36,8 +37,15 @@ class AdminTemplate extends Template
 
     public string $pageTitle = '';
 
-    /** Written onto <html> as data-theme; the administration is themed like everything else. */
-    public string $theme = '';
+    /**
+     * Written onto <html> as one attribute each; the administration is themed
+     * and remembered like everything else, out of the same device and the same
+     * profile.
+     */
+    public Preferences $preferences;
+
+    /** Where the switch says that somebody chose something; see PreferenceRoutes. */
+    public string $preferenceUrl = '';
 
     /**
      * Whatever the enabled modules contributed, already turned into addresses.

@@ -7,6 +7,7 @@ namespace Trilobit\Core\Domain\User;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Trilobit\Core\Tenancy\Shared;
 
@@ -43,6 +44,30 @@ class User
 
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $lastLoginAt = null;
+
+    /**
+     * How this person likes the application drawn - the theme, the light or
+     * dark mode, and whatever is added to
+     * Trilobit\Core\Preference\PreferenceCatalogue after them.
+     *
+     * One column rather than one per preference, because the list is expected
+     * to grow and each of those would otherwise be a migration; and on the
+     * account rather than in a table of its own, because a preference has no
+     * life apart from the person holding it.
+     *
+     * Only what somebody actually chose is in here. A preference that is absent
+     * means "no opinion", which is what lets a profile take over the choice a
+     * device was carrying when its owner signs in for the first time (decision
+     * D8).
+     *
+     * Nullable so that the column could be added to a table that already had
+     * rows without a data step: null is what a row written before the column
+     * existed says, and "nothing chosen" is exactly what that means.
+     *
+     * @var array<string, string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $preferences = null;
 
     /**
      * Cascaded on persist so that saving an account saves the roles created
@@ -123,6 +148,29 @@ class User
     public function signedIn(DateTimeImmutable $at): void
     {
         $this->lastLoginAt = $at;
+    }
+
+    /**
+     * What this person chose about the way the application is drawn, and
+     * nothing they were merely given.
+     *
+     * @return array<string, string>
+     */
+    public function preferences(): array
+    {
+        return $this->preferences ?? [];
+    }
+
+    /**
+     * Neither the name nor the value is checked here. What may be preferred is
+     * a fact about the build rather than about the person, and it is answered
+     * in one place - Trilobit\Core\Preference\PreferenceCatalogue - which also
+     * has to answer it for values that are already stored. A second copy of the
+     * rule on the entity would be a second copy to keep in step.
+     */
+    public function prefer(string $name, string $value): void
+    {
+        $this->preferences = [...$this->preferences ?? [], $name => $value];
     }
 
     /**

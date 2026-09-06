@@ -6,6 +6,7 @@ namespace Trilobit\Core\Content;
 
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Routing\AdminRoutes;
+use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouteProvider;
 use Trilobit\Core\Routing\StyleguideRoutes;
 
@@ -51,6 +52,7 @@ final readonly class ReservedSegments
      */
     private const array ALWAYS = [
         AdminRoutes::PATH,
+        PreferenceRoutes::PATH,
         StyleguideRoutes::PATH,
     ];
 

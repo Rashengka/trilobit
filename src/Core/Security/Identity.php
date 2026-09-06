@@ -32,6 +32,8 @@ final class Identity extends SimpleIdentity
 
     private const string PERMISSIONS = 'permissions';
 
+    private const string PREFERENCES = 'preferences';
+
     public static function of(User $account): self
     {
         $id = $account->id();
@@ -43,6 +45,7 @@ final class Identity extends SimpleIdentity
             self::EMAIL => $account->email(),
             self::NAME => $account->name(),
             self::PERMISSIONS => $account->permissions(),
+            self::PREFERENCES => $account->preferences(),
         ]);
     }
 
@@ -74,5 +77,34 @@ final class Identity extends SimpleIdentity
         }
 
         return array_values(array_filter($permissions, is_string(...)));
+    }
+
+    /**
+     * What this person has chosen about the way the application is drawn, as it
+     * stood when they signed in.
+     *
+     * It is carried here so that the moment of signing in - where the profile
+     * takes over from the device (decision D8) - costs no query. It is a
+     * snapshot like everything else on an identity, so a change made later in
+     * the session is written to the account and not back into here; nothing
+     * reads it again before the next sign-in, which rebuilds it.
+     *
+     * @return array<string, string>
+     */
+    public function preferences(): array
+    {
+        $preferences = $this->getData()[self::PREFERENCES] ?? [];
+        if (!is_array($preferences)) {
+            return [];
+        }
+
+        $chosen = [];
+        foreach ($preferences as $name => $value) {
+            if (is_string($name) && is_string($value)) {
+                $chosen[$name] = $value;
+            }
+        }
+
+        return $chosen;
     }
 }

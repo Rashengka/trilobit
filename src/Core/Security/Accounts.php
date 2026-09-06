@@ -29,6 +29,18 @@ final readonly class Accounts
         return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
     }
 
+    /**
+     * The account behind an identity in the session.
+     *
+     * Null is an answer rather than a fault: an identity outlives the row it
+     * was made from, so a session held open across an account being removed
+     * asks for one that is no longer there.
+     */
+    public function withId(int $id): ?User
+    {
+        return $this->entityManager->getRepository(User::class)->find($id);
+    }
+
     public function roleWithCode(string $code): ?Role
     {
         return $this->entityManager->getRepository(Role::class)->findOneBy(['code' => $code]);

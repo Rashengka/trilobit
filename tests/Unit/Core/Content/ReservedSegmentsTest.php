@@ -11,6 +11,7 @@ use Trilobit\Core\Content\PublicPath;
 use Trilobit\Core\Content\ReservedSegments;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Routing\AdminRoutes;
+use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouteProvider;
 use Trilobit\Core\Routing\StyleguideRoutes;
 
@@ -106,7 +107,10 @@ final class ReservedSegmentsTest extends TestCase
             [$this->provider(['alpha', 'c']), $this->provider(['c'])],
         );
 
-        self::assertSame([StyleguideRoutes::PATH, AdminRoutes::PATH, 'alpha', 'c'], $reserved->all());
+        self::assertSame(
+            [PreferenceRoutes::PATH, StyleguideRoutes::PATH, AdminRoutes::PATH, 'alpha', 'c'],
+            $reserved->all(),
+        );
     }
 
     /** @param array<string, bool> $modules */

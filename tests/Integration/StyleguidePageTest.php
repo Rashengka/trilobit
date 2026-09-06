@@ -89,8 +89,8 @@ final class StyleguidePageTest extends TestCase
         );
 
         $offered = [];
-        foreach ($document->querySelectorAll('[data-theme-choice]') as $choice) {
-            $offered[] = $choice->getAttribute('data-theme-choice');
+        foreach ($document->querySelectorAll('[data-preference="theme"]') as $choice) {
+            $offered[] = $choice->getAttribute('data-preference-value');
         }
 
         $files = glob(Bootstrap::rootDirectory() . '/assets/themes/*.css');

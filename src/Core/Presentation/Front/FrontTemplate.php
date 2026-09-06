@@ -7,6 +7,7 @@ namespace Trilobit\Core\Presentation\Front;
 use Nette\Application\IPresenter;
 use Nette\Application\UI\Control;
 use Nette\Bridges\ApplicationLatte\Template;
+use Trilobit\Core\Preference\Preferences;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
 /**
@@ -53,11 +54,22 @@ class FrontTemplate extends Template
     public string $metaDescription = '';
 
     /**
-     * The theme this page is rendered in, written onto <html> as data-theme.
-     * Filled in by FrontPresenter from configuration; the default is what
-     * assets/themes/ declares, not a name repeated here.
+     * What this page is drawn with - the theme, the light or dark mode -
+     * written onto <html> as one attribute each.
+     *
+     * Filled in by FrontPresenter out of whatever this device remembers, over
+     * the defaults this build was configured with. It is the whole object
+     * rather than one property per preference so that adding a third is a line
+     * in Trilobit\Core\Preference\PreferenceCatalogue and nothing here.
+     *
+     * It has no default because there is no sensible one: a page drawn without
+     * it would have no tokens at all, and failing while the page is being
+     * prepared is better than rendering something colourless.
      */
-    public string $theme = '';
+    public Preferences $preferences;
+
+    /** Where the switch says that somebody chose something; see PreferenceRoutes. */
+    public string $preferenceUrl = '';
 
     /** @var list<string> every theme this installation has, for the switcher */
     public array $themes = [];
