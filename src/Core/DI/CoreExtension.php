@@ -15,6 +15,7 @@ use Nette\DI\Definitions\Statement;
 use Nette\InvalidStateException;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
+use Nette\Security\User as SignedIn;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Asset\VersionedViteMapper;
 use Trilobit\Core\Build\BuildManifest;
@@ -40,6 +41,8 @@ use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
+use Trilobit\Core\Preference\PreferenceCatalogue;
+use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
@@ -48,6 +51,7 @@ use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Presentation\Link\Destinations;
 use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\ContentRouter;
+use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
@@ -300,6 +304,22 @@ final class CoreExtension extends CompilerExtension
                 $this->designParameterString('theme'),
             ]);
 
+        // What somebody may decide for themselves about the way the
+        // application is drawn, and where that decision is kept (decision D8).
+        // Both are in every build: the switch is part of the chrome, not of a
+        // module, and the address it writes to has to exist wherever the
+        // chrome does.
+        $builder->addDefinition($this->prefix('preferences'))
+            ->setFactory(PreferenceCatalogue::class . '::of', ['@' . $this->prefix('design')]);
+
+        $builder->addDefinition($this->prefix('rememberedPreferences'))
+            ->setFactory(RememberedPreferences::class);
+
+        $builder->addDefinition($this->prefix('preferenceRoutes'))
+            ->setFactory(PreferenceRoutes::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ROUTE_PROVIDER);
+
         // The style guide is a page, so it is switched on the way a module is:
         // by whether its services are registered at all. Nothing downstream
         // asks whether it is on - with these two absent there is no route to
@@ -368,6 +388,7 @@ final class CoreExtension extends CompilerExtension
 
         $this->decorateViteMapper();
         $this->settleTheTenantBeforeRouting();
+        $this->letTheProfileWinWhenSomebodySignsIn();
         $this->runTheMigrationsInTheOrderTheyWereWritten();
 
         // Has to run before taggedPorts() below: a port with no module
@@ -389,6 +410,47 @@ final class CoreExtension extends CompilerExtension
         $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
         $this->service('ports')->setArguments([$this->taggedPorts()]);
+    }
+
+    /**
+     * Hangs decision D8's ordering on the moment somebody signs in: what the
+     * person carries takes over from what the device remembered, except where
+     * the person carries nothing.
+     *
+     * It is hung on the framework's own event rather than written into the
+     * sign-in page, because a second way of signing in - a link in an e-mail, a
+     * single sign-on - would otherwise be a second place to remember this, and
+     * forgetting it there would look like nothing at all: the theme would
+     * simply be the device's.
+     *
+     * The absence of the service is refused rather than absorbed, for the same
+     * reason as everywhere else in this class: a build that quietly stopped
+     * synchronising would look perfectly healthy.
+     */
+    private function letTheProfileWinWhenSomebodySignsIn(): void
+    {
+        $builder = $this->getContainerBuilder();
+        $name = $builder->getByType(SignedIn::class);
+        if ($name === null) {
+            throw new InvalidStateException(sprintf(
+                'No %s is in the container, so a profile could not be made to win over the device it signs in from. '
+                . 'It is registered by nette/security.',
+                SignedIn::class,
+            ));
+        }
+
+        $definition = $builder->getDefinition($name);
+        if (!$definition instanceof ServiceDefinition) {
+            throw new InvalidStateException(sprintf(
+                "Service '%s' was replaced by a %s, so nothing can be hung on it signing somebody in.",
+                $name,
+                $definition::class,
+            ));
+        }
+
+        $definition->addSetup('$onLoggedIn[]', [
+            [new Reference($this->prefix('rememberedPreferences')), 'whenSomebodySignsIn'],
+        ]);
     }
 
     /**

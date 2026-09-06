@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Front;
 
 use Nette\Application\UI\Presenter;
+use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 use Trilobit\Core\Presentation\Front\Signpost\Signpost;
@@ -36,14 +37,17 @@ abstract class FrontPresenter extends Presenter
 
     private DesignSystem $design;
 
+    private RememberedPreferences $remembered;
+
     public function injectSignposts(SignpostList $signposts): void
     {
         $this->signposts = $signposts;
     }
 
-    public function injectDesign(DesignSystem $design): void
+    public function injectAppearance(DesignSystem $design, RememberedPreferences $remembered): void
     {
         $this->design = $design;
+        $this->remembered = $remembered;
     }
 
     /** @return non-empty-list<string> */
@@ -58,11 +62,16 @@ abstract class FrontPresenter extends Presenter
     /**
      * What the layout needs, filled in for every page rather than by every page.
      *
-     * The theme ends up as one attribute on <html>, which is the whole of how a
-     * theme is chosen: everything below it in assets/base.css reads tokens, and
-     * the tokens are re-declared per theme. Swapping that attribute in the
+     * The preferences end up as attributes on <html>, which is the whole of how
+     * a theme is chosen: everything below them in assets/base.css reads tokens,
+     * and the tokens are re-declared per theme. Swapping an attribute in the
      * browser swaps the palette and the position of the navigation with no
      * request and no rebuild - see assets/themes/ledger.css.
+     *
+     * They are read off the device rather than out of the database, which is
+     * what lets the first render already be right; the profile of somebody
+     * signed in has written itself onto the device at the moment they signed in
+     * (decision D8). See Trilobit\Core\Preference\RememberedPreferences.
      */
     protected function beforeRender(): void
     {
@@ -77,7 +86,8 @@ abstract class FrontPresenter extends Presenter
             ));
         }
 
-        $template->theme = $this->design->defaultTheme;
+        $template->preferences = $this->remembered->forThisRequest();
+        $template->preferenceUrl = $this->link(':Core:Preference:Choice:remember');
         $template->themes = $this->design->themes;
         $template->homeUrl = $this->link(':Core:Front:Home:default');
         $template->navigation = $this->navigation();

@@ -107,16 +107,30 @@
         lead: 'Every component this application is built out of, rendered by the application itself.',
         testId: 'styleguide-headline'}
 
+    {*
+     * The switch. A control says which preference it sets and to what, and
+     * nothing else: assets/app.ts moves the attribute on <html> and tells the
+     * server, so a third preference is one more control here and no more
+     * script. The state a control is drawn in comes from the server too, which
+     * is what makes a reload show what was chosen rather than what the build
+     * starts in - decision D8.
+     *}
     <div class="l-stack" data-testid="theme-switcher">
         <div class="l-cluster">
             <span class="text-sm text-ink-muted">Theme</span>
 
             {foreach $themes as $available}
+                {var bool $chosen = $available === $preferences->value('theme')}
+
                 {include button,
                     label: $available,
-                    variant: $available === $theme ? 'primary' : 'quiet',
+                    variant: $chosen ? 'primary' : 'quiet',
                     testId: 'theme-choice-' . $available,
-                    attributes: ['data-theme-choice' => $available]}
+                    attributes: [
+                        'data-preference' => 'theme',
+                        'data-preference-value' => $available,
+                        'aria-pressed' => $chosen ? 'true' : 'false',
+                    ]}
             {/foreach}
         </div>
 
@@ -124,11 +138,17 @@
             <span class="text-sm text-ink-muted">Mode</span>
 
             {foreach ['system' => 'System', 'light' => 'Light', 'dark' => 'Dark'] as $mode => $label}
+                {var bool $chosen = $mode === $preferences->value('theme-mode')}
+
                 {include button,
                     label: $label,
-                    variant: 'quiet',
+                    variant: $chosen ? 'primary' : 'quiet',
                     testId: 'theme-mode-choice-' . $mode,
-                    attributes: ['data-theme-mode-choice' => $mode]}
+                    attributes: [
+                        'data-preference' => 'theme-mode',
+                        'data-preference-value' => $mode,
+                        'aria-pressed' => $chosen ? 'true' : 'false',
+                    ]}
             {/foreach}
         </div>
     </div>

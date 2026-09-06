@@ -8,7 +8,7 @@ use Nette\Application\UI\Presenter;
 use Nette\Application\UI\Template;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Admin\Menu\MenuItem;
-use Trilobit\Core\Presentation\Design\DesignSystem;
+use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 use Trilobit\Core\Security\Identity;
 
@@ -39,13 +39,13 @@ use Trilobit\Core\Security\Identity;
  */
 abstract class AdminPresenter extends Presenter
 {
-    private DesignSystem $design;
+    private RememberedPreferences $remembered;
 
     private Menu $menu;
 
-    public function injectAdministration(DesignSystem $design, Menu $menu): void
+    public function injectAdministration(RememberedPreferences $remembered, Menu $menu): void
     {
-        $this->design = $design;
+        $this->remembered = $remembered;
         $this->menu = $menu;
     }
 
@@ -103,7 +103,8 @@ abstract class AdminPresenter extends Presenter
 
         $identity = $this->getUser()->getIdentity();
 
-        $template->theme = $this->design->defaultTheme;
+        $template->preferences = $this->remembered->forThisRequest();
+        $template->preferenceUrl = $this->link(':Core:Preference:Choice:remember');
         $template->overviewUrl = $this->link(':Core:Admin:Dashboard:default');
         $template->signOutUrl = $this->link(':Core:Admin:Sign:out');
         $template->publicSiteUrl = $this->link(':Core:Front:Home:default');
