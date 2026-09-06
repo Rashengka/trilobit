@@ -53,11 +53,13 @@ application does. See "The design system" below.
 | `bin/check-leaks` | the guard that keeps private content out of a public repository |
 | `tests/` | one directory per level of test, listed in `phpunit.xml` |
 
-Catalogue, contacts and pages are not here. The three switchable modules have
-one entity each, and it is a marker carrying nothing but the date it was
-installed: a module that maps no entity owns no table, and a module that owns no
-table cannot be used to show that switching it off leaves its data alone. They
-go away with their migrations once the modules have entities of their own.
+Pages are here; a catalogue and contacts are not. `Cms` owns the pages a site
+says things on and the menus they are listed in, and its administration is at
+`/admin/cms`. `Crm` and `Shop` still have one entity each, and it is a marker
+carrying nothing but the date it was installed: a module that maps no entity
+owns no table, and a module that owns no table cannot be used to show that
+switching it off leaves its data alone. Each marker goes away with its
+migration once its module has entities of its own, the way `cms_marker` did.
 
 Core's own entities are real. It owns accounts, roles, settings and a media
 library - the four things every build has whichever modules are switched on, and
@@ -271,6 +273,34 @@ answers null and no anchor is drawn: not an empty one, and not an error. That
 is the half nobody meets while everything happens to be switched on, so it is
 the half with a test.
 
+## Pages and menus
+
+`Cms` is the first module with content of its own. A page is what somebody
+wrote, kept in `cms_page`, and where it answers, kept in Core's register - so
+there is no slug column beside it, because the register is the one table an
+address is unique in across every module. A page is written at `/admin/cms/pages`
+and answers wherever the register leads to it.
+
+A page that is not published answers 404. Its address stays claimed while it is
+a draft, so nothing else can take it while it is being written, and from
+outside the installation there is nothing there - which is the only answer that
+does not tell a stranger something is being written.
+
+A menu is arranged at `/admin/cms/menus`, and an entry leads to one of three
+things: a page of this site, held as a relation; an address written out; or a
+page of some module, held as a presenter's name. The third can name a module
+that is switched off, which is exactly why it is text and not a foreign key -
+the row waits for the module to come back, the way a row in the register does.
+
+Such an entry is left out of the site. Asking the framework for a link into a
+module that is not in the build does not stop the page: it draws a broken href
+and carries on, so the page looks finished and the menu does not work. The
+entry is therefore dropped while the page is being prepared, by
+`Trilobit\Core\Presentation\Link\Destinations`, which asks whether this build
+has the page at all. The administration does the opposite and shows the entry
+with a word about why the site leaves it out, because whoever arranged it is
+the only person who can decide what should happen to it.
+
 ## Front-end assets
 
 `npm run build` bundles the shared code every page loads (`assets/app.ts` -
@@ -479,6 +509,13 @@ Each module registers its own mapping and its own migrations directory from its
 own configuration file, so a build without the module has neither. Migrations
 are recorded by full class name in a shared table, which is what lets a module
 be switched back on and be brought up to date on its own.
+
+Pending migrations run in the order they were written, not in the order their
+class names sort in. A name here carries the module's namespace, so the
+alphabet would otherwise decide which module goes first - and an installation
+starting from an empty schema would try to create a module's table with a
+foreign key into one of Core's that does not exist yet. See
+`Trilobit\Core\Doctrine\ChronologicalComparator`.
 
 ### Generating a migration
 
