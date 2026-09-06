@@ -113,7 +113,8 @@ final class DisabledModuleSchemaTest extends TestCase
         sort($tables);
 
         self::assertSame([
-            'cms_marker',
+            'cms_menu_item',
+            'cms_page',
             'core_audit_entry',
             'core_content_path',
             'core_domain',

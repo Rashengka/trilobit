@@ -108,7 +108,14 @@ final class EveryTenantedEntityIsScopedTest extends TestCase
         sort($scoped);
 
         self::assertSame(
-            ['core_content_path', 'core_domain', 'core_media_file', 'core_tenant_membership'],
+            [
+                'cms_menu_item',
+                'cms_page',
+                'core_content_path',
+                'core_domain',
+                'core_media_file',
+                'core_tenant_membership',
+            ],
             $scoped,
         );
     }
