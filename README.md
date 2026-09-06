@@ -436,9 +436,49 @@ in production, and `config/local.neon` overrides either. Off means the route is
 never registered, so the path is claimed by nobody and the answer is 404 rather
 than 403: a tool that is not there has nothing to admit to.
 
-The page carries a switcher for the theme and for the light/dark mode. Neither
-choice is remembered between page loads; what a build starts in is
-`trilobit.theme` in `config/common.neon`.
+The page carries a switcher for the theme and for the light/dark mode.
+
+### What somebody prefers, and where it is kept
+
+The two switches are preferences, and a preference is one entry in
+`Trilobit\Core\Preference\PreferenceCatalogue`. Its name decides everything
+else: `theme` is drawn as `data-theme` on `<html>` and kept in a cookie called
+`trilobit-theme`, `theme-mode` as `data-theme-mode` in `trilobit-theme-mode`.
+Adding a third is that one entry, a control in a template, and a rule in the
+theme files - not a column and not a migration.
+
+A choice is kept in two places, and they answer different questions:
+
+| who | where |
+|---|---|
+| a device | one cookie per preference, `HttpOnly`, written by the server |
+| a person | `core_user.preferences`, one JSON column |
+
+The page is always drawn out of the cookies, so the first paint is already
+right. A change writes the cookie, and the account too when somebody is signed
+in. Signing in lets the profile win over the device - a device may be borrowed -
+except for a preference the profile has no opinion about, which it takes over
+from the device instead, so a theme picked before registering is not lost by
+registering. Signing out changes nothing: a device keeps the look it had.
+
+Only a deliberate choice is ever stored. Somebody who has not touched the
+switches has no cookie and no row, and follows `trilobit.theme` in
+`config/common.neon` - which is what keeps a remembered choice from silently
+disagreeing with what a deployment configured. A stored value naming a theme the
+build no longer has is dropped rather than honoured, so removing or renaming a
+theme returns the people who chose it to configuration instead of leaving them
+on a page whose tokens nothing declares.
+
+One cookie per preference rather than one holding them all, because a single one
+would have to be read, changed and written back: two choices made in the same
+round trip would both read the old one and the second would drop the first,
+invisibly, because the switch has already changed the page in front of the
+person. `assets/app.ts` sends the changes one at a time for the same reason,
+which is what keeps the account from losing one of a pair the same way.
+
+`tests/e2e/preference.spec.ts` tells the whole of that as one story in a real
+browser, and `Trilobit\Tests\Integration\Preference\RememberedPreferencesTest`
+holds each rule on its own.
 
 ## The administration
 
