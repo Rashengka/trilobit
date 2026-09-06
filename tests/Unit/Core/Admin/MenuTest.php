@@ -44,6 +44,44 @@ final class MenuTest extends TestCase
         ));
     }
 
+    public function testAModuleIsTheFirstSegmentOfTheDestinationLowerCased(): void
+    {
+        self::assertSame('cms', new MenuItem('Pages', 'Cms:Admin:Page:default')->module());
+        self::assertSame('shop', new MenuItem('Shop', 'Shop:Front:Status:default')->module());
+    }
+
+    /**
+     * The signpost's own source: exactly the entries of one module, in the
+     * same order the bar itself draws them in - see
+     * src/Core/Presentation/Admin/AdminPresenter.php and
+     * .ai/plans/10-menu-submenu-a-rozcestniky.md, M2.
+     */
+    public function testItemsOfReturnsExactlyOneModulesEntriesInMenuOrder(): void
+    {
+        $menu = new Menu([
+            $this->provider(
+                new MenuItem('Menus', 'Cms:Admin:Menu:default', 20),
+                new MenuItem('Pages', 'Cms:Admin:Page:default', 10),
+            ),
+            $this->provider(new MenuItem('Products', 'Shop:Admin:Product:default')),
+        ]);
+
+        self::assertSame(['Pages', 'Menus'], array_map(
+            static fn(MenuItem $item): string => $item->label,
+            $menu->itemsOf('cms'),
+        ));
+    }
+
+    /** A module with nothing in the bar has nothing for a signpost either - the case M2 turns into no page at all. */
+    public function testItemsOfAModuleWithNoEntriesIsEmpty(): void
+    {
+        $menu = new Menu([
+            $this->provider(new MenuItem('Products', 'Shop:Admin:Product:default')),
+        ]);
+
+        self::assertSame([], $menu->itemsOf('cms'));
+    }
+
     private function provider(MenuItem ...$items): MenuProvider
     {
         return new readonly class (array_values($items)) implements MenuProvider {

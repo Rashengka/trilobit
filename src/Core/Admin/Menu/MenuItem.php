@@ -19,4 +19,21 @@ final readonly class MenuItem
         public string $destination,
         public int $weight = 100,
     ) {}
+
+    /**
+     * The module this entry belongs to: the first segment of the destination,
+     * lower-cased.
+     *
+     * It is the whole of what Core knows about where an entry leads, and the
+     * same segment Trilobit\Core\Doctrine\TableName reads off a table name on
+     * the other side of the application - see also
+     * tests/Combination/AllModuleCombinationsTest::modulesOf(), which took this
+     * step first and is left as it was rather than made to call this, since a
+     * test asserting a production class's own answer should not share the
+     * method it is checking.
+     */
+    public function module(): string
+    {
+        return strtolower(explode(':', $this->destination, 2)[0]);
+    }
 }

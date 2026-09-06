@@ -1,0 +1,20 @@
+{templateType Trilobit\Cms\Presentation\Admin\SignpostTemplate}
+
+{*
+ * The signpost: the way into every part of this section, drawn from exactly
+ * the rows the administration bar itself reads - see
+ * Trilobit\Cms\Presentation\Admin\SignpostPresenter.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/signpost.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'cms-signpost-headline',
+        leadTestId: 'cms-signpost-lead'}
+
+    {include signpost, items: $items, label: 'Cms', testId: 'cms-signpost'}
+{/block}

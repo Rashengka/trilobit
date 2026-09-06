@@ -33,6 +33,13 @@ final class CmsRoutes implements RouteProvider
     {
         $routes->addRoute('cms', 'Cms:Front:Status:default');
 
+        // The signpost: the way into every section this module contributed
+        // to the administration menu, drawn from the same MenuItem rows the
+        // bar itself is built from (M2 in
+        // .ai/plans/10-menu-submenu-a-rozcestniky.md), rather than a page of
+        // links written by hand that could drift away from it.
+        $routes->addRoute(self::ADMIN_PATH, 'Cms:Admin:Signpost:default');
+
         // The form for a new page comes before the one that takes an
         // identifier: the other way round, `add` would be read as the
         // identifier of a page and refused for not being a number.
