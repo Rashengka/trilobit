@@ -43,6 +43,16 @@ class FrontTemplate extends Template
     public string $pageTitle = '';
 
     /**
+     * The sentence a search engine shows under the title, or empty where the
+     * page has nothing to add to what is already on it.
+     *
+     * Empty draws no element rather than an empty one: a description that says
+     * nothing is worse than none at all, because a search engine believes it
+     * and shows it.
+     */
+    public string $metaDescription = '';
+
+    /**
      * The theme this page is rendered in, written onto <html> as data-theme.
      * Filled in by FrontPresenter from configuration; the default is what
      * assets/themes/ declares, not a name repeated here.

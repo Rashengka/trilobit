@@ -26,6 +26,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{ifset $pageTitle}{$pageTitle} | {/ifset}{$siteName}</title>
+    {* What a search engine shows under the title, drawn only where the page
+       has something to say beyond what is already on it: an empty description
+       is worse than none, because it is believed and shown. *}
+    <meta n:if="$metaDescription !== ''" name="description" content="{$metaDescription}">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="icon" type="image/vnd.microsoft.icon" href="/favicon.ico" sizes="16x16 32x32">
     {* The permalink of what this page draws. One piece of content may answer
