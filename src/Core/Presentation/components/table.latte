@@ -1,0 +1,35 @@
+{**
+ * c-table - rows and columns, inside the frame that catches their overflow.
+ *
+ * It takes slots rather than a list of rows, because a cell holds whatever the
+ * page has to put in it: a link, a badge, a button. A component that accepted
+ * rows as strings would be a component that had to unescape them again.
+ *
+ * The frame is not decoration. A table wider than the space it has scrolls
+ * inside this element, so the page keeps its banner and its navigation where
+ * they were - see .ai/plans/09-chrome-a-sirka-obsahu.md, L4. That is why every
+ * table in the application is drawn with this block and never as a bare
+ * <table>.
+ *
+ * The caption is required and not optional, because the frame scrolls and a
+ * scrollable region has to have a name for anybody arriving at it by keyboard.
+ * A page whose own heading already says what the table is passes
+ * captionVisible: false, and the caption stays for a screen reader.
+ *
+ * A cell that holds what a row lets you do with it carries c-table__actions; a
+ * cell holding a figure carries c-table__number.
+ *}
+
+{define table, string $caption, bool $captionVisible = false, ?string $testId = null}
+    <div class="c-table" data-testid="{$testId}">
+        <div class="c-table__viewport" tabindex="0" role="region" aria-label="{$caption}">
+            <table class="c-table__grid">
+                <caption n:class="'c-table__caption', !$captionVisible ? 'u-visually-hidden'">{$caption}</caption>
+
+                <thead>{block tableHead}{/block}</thead>
+
+                <tbody>{block tableBody}{/block}</tbody>
+            </table>
+        </div>
+    </div>
+{/define}

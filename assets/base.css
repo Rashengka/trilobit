@@ -694,6 +694,83 @@
         margin-inline-start: var(--space-xl);
     }
 
+    /*
+     * A table, and the frame it scrolls inside.
+     *
+     * The frame is the whole point. A report with a column for every day of a
+     * month is wider than any screen at any content width, and a table left to
+     * overflow on its own takes the document with it: the banner and the
+     * navigation slide off to the left as well, and getting back to them means
+     * scrolling the whole page back. So the horizontal overflow is caught one
+     * element in, and the document never grows (.ai/plans/09, L4). It is a
+     * property of the content rather than of the layout, which is why it lives
+     * on the component and not on a width token.
+     *
+     * The viewport is a focusable, named region because something that scrolls
+     * has to be reachable by somebody with no pointer, and a scrollable region
+     * with no accessible name is announced as nothing in particular.
+     *
+     * Nothing here counts rows. The rule between two rows is drawn by the row
+     * that follows, so ten rows and ten thousand cost the same and the last one
+     * needs no exception.
+     */
+    .c-table {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+
+    .c-table__viewport {
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+    }
+
+    .c-table__grid {
+        inline-size: 100%;
+    }
+
+    .c-table__caption {
+        color: var(--color-ink-muted);
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    .c-table__grid :is(th, td) {
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+        vertical-align: baseline;
+    }
+
+    .c-table__grid thead th {
+        background-color: var(--color-canvas-sunken);
+        border-block-end: var(--border-hairline) solid var(--color-line);
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+        white-space: nowrap;
+    }
+
+    .c-table__grid tbody tr + tr :is(th, td) {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+    }
+
+    /* Whatever a row lets you do with it: at the end of the row, as narrow as
+       its content, and never broken onto a second line. The 1% is not a width
+       but an instruction - a table gives a column that asks for less than it
+       can have exactly what it needs. */
+    .c-table__actions {
+        inline-size: 1%;
+        text-align: end;
+        white-space: nowrap;
+    }
+
+    /* Figures line up under each other when the digits are all one width. */
+    .c-table__number {
+        font-variant-numeric: tabular-nums;
+        text-align: end;
+    }
+
     /* ==== The style guide's own furniture ================================ */
 
     /*
