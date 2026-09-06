@@ -134,3 +134,27 @@
     --layout-card-min: 17rem;
     --layout-card-media-ratio: 16 / 9;
 }
+
+/*
+ * Atrium stacks the navigation under the banner as a full-width row (see
+ * --layout-shell-areas above). Both bands now cover the full width of the
+ * region they sit in: the banner's colour moved onto .l-shell__banner, and
+ * c-nav paints its own and fills its grid area once nothing narrows it. So
+ * there is nothing left to widen here.
+ * What still needs aligning is the *content* inside each band: the brand and
+ * tagline sit in .l-container, so the link list is kept to the same column.
+ * Without this rule the list would hug the viewport's edge on a wide screen
+ * while the brand sits centred above it.
+ *
+ * Ledger does not need this: there the nav is the side column itself
+ * (--layout-nav-size), already exactly as wide as its grid area calls for, so
+ * the list already fills the column edge to edge, and the padding is applied
+ * on the list already through --layout-nav-padding.
+ * Scoped to [data-theme='atrium'] rather than left bare, so the rule cannot
+ * leak into a theme it was never measured against.
+ */
+[data-theme='atrium'] .c-nav__list {
+    inline-size: min(100%, var(--layout-content-width));
+    margin-inline: auto;
+    padding-inline: var(--layout-gutter);
+}
