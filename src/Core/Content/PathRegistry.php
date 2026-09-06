@@ -129,6 +129,26 @@ final readonly class PathRegistry implements PathLookup
     }
 
     /**
+     * Says what the register is to call $ref from now on, at every address it
+     * answers at.
+     *
+     * The label is the register's own copy of a title, kept so that drawing a
+     * trail across two modules' content costs no call into a module that may
+     * not be in this build. A copy has to be told when the original changes,
+     * or a renamed page keeps its old name in every breadcrumb and every menu
+     * above it - while looking perfectly right on the page itself, which is
+     * why nobody notices.
+     */
+    public function describe(ContentRef $ref, string $label): void
+    {
+        foreach ($this->rows()->findBy(['type' => $ref->type, 'contentId' => $ref->id]) as $row) {
+            $row->describeAs($label);
+        }
+
+        $this->entityManager->flush();
+    }
+
+    /**
      * Moves an address, and everything filed under it, leaving each old
      * address behind as a permanent redirect to where it went.
      *
