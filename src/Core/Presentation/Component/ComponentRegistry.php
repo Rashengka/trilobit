@@ -92,6 +92,12 @@ final class ComponentRegistry
                 ['default'],
             ),
             new Component(
+                'c-prose',
+                'Running text made of the elements a browser already knows, given back the rhythm and the '
+                . 'list markers the reset takes away everywhere else.',
+                ['default'],
+            ),
+            new Component(
                 'c-swatch',
                 'One design token, shown as the thing it produces next to the name it is asked for by.',
                 ['default'],

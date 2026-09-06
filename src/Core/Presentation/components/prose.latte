@@ -1,0 +1,18 @@
+{**
+ * c-prose - running text made of the elements a browser already knows.
+ *
+ * Everywhere else in this application the rhythm between blocks comes from
+ * .l-stack and a list has no marker, because the navigation is a list too. Text
+ * that somebody wrote as a document needs the opposite of both, and asking for
+ * it by name is what keeps the two apart.
+ *
+ * It takes a slot rather than a string: what goes in is a document, and a
+ * component that took it as a parameter would have to escape it back out.
+ * Whether the markup inside may be trusted is the caller's business - today the
+ * page an editor types is escaped text with its line breaks kept, and
+ * .ai/plans/12-controly-v-uzivatelskem-obsahu.md is where that changes.
+ *}
+
+{define prose, ?string $testId = null}
+    <div class="c-prose" data-testid="{$testId}">{block proseBody}{/block}</div>
+{/define}

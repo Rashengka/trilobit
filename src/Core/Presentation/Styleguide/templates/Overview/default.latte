@@ -9,10 +9,10 @@
  * catalogue that reproduced it would go on showing the old shape after the
  * component changed and nobody would know.
  *
- * The two {define}s at the top are the page's own furniture (the .sg-* classes
- * in assets/base.css), not components: they frame the specimens and are used
- * nowhere else. They are what makes the page measurable - every specimen carries
- * data-styleguide-component and data-styleguide-variant, which is what
+ * The {define}s at the top are the page's own furniture (the .sg-* classes in
+ * assets/base.css), not components: they frame the specimens and are used
+ * nowhere else. They are what makes the page measurable - every specimen
+ * carries data-styleguide-component and data-styleguide-variant, which is what
  * tests/Template/StyleguideShowsEveryComponentTest reads to prove that a
  * registered component has an example here.
  *
@@ -30,6 +30,7 @@
 {import '../../../components/notice.latte'}
 {import '../../../components/marker-list.latte'}
 {import '../../../components/panel.latte'}
+{import '../../../components/prose.latte'}
 {import '../../../components/swatch.latte'}
 
 {define sgSection, Trilobit\Core\Presentation\Component\Component $component}
@@ -300,6 +301,41 @@
 
                         {block panelBody}
                             <p>Anything that belongs together and wants an edge drawn round it.</p>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgSection, component: $components['c-prose']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block prose}
+                        {block proseBody}
+                            <p class="l-measure">
+                                Everywhere else the space between blocks comes from the layout and a
+                                list has no marker. Here both come back, because this is a document
+                                rather than an arrangement of parts.
+                            </p>
+
+                            <h3>What that costs</h3>
+
+                            <p class="l-measure">
+                                Only that a page has to say so. The elements themselves are the ones
+                                the browser already knows.
+                            </p>
+
+                            <ul class="l-measure">
+                                <li>A list item gets its marker back.</li>
+                                <li>A heading takes more room above it than below.</li>
+                                <li>The first and last block sit flush with whatever frames them.</li>
+                            </ul>
+
+                            <hr>
+
+                            <p class="l-measure"><small>Everything written above was invented for this page.</small></p>
                         {/block}
                     {/embed}
                 {/block}

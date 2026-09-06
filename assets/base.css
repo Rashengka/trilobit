@@ -27,10 +27,6 @@
  *   sg-*  the style guide page's own furniture, which is not part of the
  *         vocabulary the rest of the application draws on
  *   u-*   utilities
- *
- * Inside a component no Tailwind utility is used, on purpose and only there: a
- * utility written into the markup is a decision about appearance that a theme
- * cannot overrule. Page templates use utilities freely for spacing and layout.
  */
 
 @layer base {
@@ -84,10 +80,41 @@
     h5,
     h6 {
         font-family: var(--font-display);
-        font-size: inherit;
         font-weight: var(--font-weight-display);
         letter-spacing: var(--tracking-display);
         line-height: var(--leading-tight);
+    }
+
+    /*
+     * The six levels read off the six steps of the type scale the themes
+     * declare, in the one order they come in. A component that wants a size of
+     * its own says so on its own class and wins by specificity, which is what
+     * every heading in this application does today - so this is what a heading
+     * nobody wrote a component for falls back to, rather than the body size it
+     * used to inherit.
+     */
+    h1 {
+        font-size: var(--text-3xl);
+    }
+
+    h2 {
+        font-size: var(--text-2xl);
+    }
+
+    h3 {
+        font-size: var(--text-xl);
+    }
+
+    h4 {
+        font-size: var(--text-lg);
+    }
+
+    h5 {
+        font-size: var(--text-base);
+    }
+
+    h6 {
+        font-size: var(--text-sm);
     }
 
     a {
@@ -96,10 +123,19 @@
         text-underline-offset: var(--space-3xs);
     }
 
+    /*
+     * Never wider than the space there is, and never a shape other than its
+     * own. max-inline-size alone is half the rule: a picture carrying width and
+     * height attributes - which it should, so the page does not jump while it
+     * loads - keeps the height it was given while the width is taken away from
+     * it, and arrives squashed. block-size: auto gives the height back to the
+     * aspect ratio.
+     */
     img,
     picture,
     svg,
     video {
+        block-size: auto;
         display: block;
         max-inline-size: 100%;
     }
@@ -121,6 +157,140 @@
     :focus-visible {
         outline: var(--border-marker) solid var(--color-focus);
         outline-offset: var(--space-3xs);
+    }
+
+    /*
+     * ==== The elements nobody wrote a component for =======================
+     *
+     * Markup arrives from places no component covers: a page an editor typed, a
+     * table in the administration, a snippet in a piece of documentation. Left
+     * alone it would be drawn by the browser, which knows nothing about either
+     * theme - a fixed yellow behind <mark> and a fixed grey rule for <hr> look
+     * wrong in half the four combinations of theme and mode.
+     *
+     * What is deliberately absent is spacing. The reset above takes every
+     * margin away and .l-stack puts the rhythm back, so an element that
+     * reintroduced a margin of its own would fight the layout everywhere it was
+     * used. Running text that does want a rhythm asks for it by name, and that
+     * is what .c-prose is.
+     */
+
+    hr {
+        block-size: 0;
+        border: 0;
+        border-block-start: var(--border-hairline) solid var(--color-line);
+    }
+
+    small {
+        font-size: var(--text-sm);
+    }
+
+    b,
+    strong {
+        font-weight: var(--font-weight-strong);
+    }
+
+    /* An abbreviation with no title says nothing a reader could look up, so
+       only the one that carries an explanation is marked as carrying one. */
+    abbr[title] {
+        cursor: help;
+        text-decoration: underline dotted;
+        text-decoration-color: var(--color-line);
+        text-underline-offset: var(--space-3xs);
+    }
+
+    mark {
+        background-color: var(--color-highlight);
+        color: var(--color-highlight-ink);
+        padding-inline: var(--space-3xs);
+    }
+
+    blockquote {
+        border-inline-start: var(--border-marker) solid var(--color-line);
+        color: var(--color-ink-muted);
+        padding-inline-start: var(--space-md);
+    }
+
+    figure {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2xs);
+    }
+
+    figcaption {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+    }
+
+    dt {
+        font-weight: var(--font-weight-strong);
+    }
+
+    dd {
+        color: var(--color-ink-muted);
+    }
+
+    /*
+     * Code is set in the monospaced face at a size of its own rather than at
+     * --text-sm. Which size sits level with the body text depends on how the
+     * two faces a theme picked compare, and that is a fact about the theme
+     * rather than a step on the type scale.
+     */
+    code,
+    kbd,
+    samp,
+    pre {
+        font-family: var(--font-mono);
+        font-size: var(--text-code);
+    }
+
+    code,
+    kbd {
+        border-radius: var(--radius-sm);
+        padding-block: var(--space-3xs);
+        padding-inline: var(--space-2xs);
+    }
+
+    code {
+        background-color: var(--color-canvas-sunken);
+    }
+
+    /* A key, drawn as the inverse of whatever mode is on, so that it reads as
+       something to press in both of them. */
+    kbd {
+        background-color: var(--color-ink);
+        color: var(--color-canvas);
+    }
+
+    /*
+     * A block of code is the same overflow problem a wide table has, and it is
+     * answered the same way: the block scrolls inside its own frame and the
+     * document does not grow. See .c-table below and .ai/plans/09, L4.
+     */
+    pre {
+        background-color: var(--color-canvas-sunken);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        padding: var(--space-md);
+    }
+
+    /* Inside a block the inline decoration would draw a second box round the
+       first. */
+    pre code {
+        background-color: transparent;
+        border-radius: 0;
+        padding: 0;
+    }
+
+    table {
+        border-collapse: collapse;
+    }
+
+    caption,
+    th {
+        text-align: start;
     }
 }
 
@@ -485,6 +655,45 @@
         font-size: var(--text-sm);
     }
 
+    /*
+     * Running text somebody else wrote: a page out of the editor, a long
+     * description, a piece of documentation. Inside it the native elements get
+     * back the two things the reset took away from them - the rhythm between
+     * blocks and the marker on a list item - and neither of those may be given
+     * back globally: the primary navigation is a list too, and so is
+     * c-marker-list, whose mark is drawn by this stylesheet on purpose.
+     *
+     * The rhythm is put on the gap between siblings rather than under each
+     * block, so the first and last child sit flush against whatever the caller
+     * framed them with.
+     */
+    .c-prose {
+        display: flow-root;
+    }
+
+    .c-prose > * + * {
+        margin-block-start: var(--space-md);
+    }
+
+    /* A heading belongs to what follows it, so the larger gap goes above it and
+       the ordinary one stays below. */
+    .c-prose > * + :is(h2, h3, h4, h5, h6) {
+        margin-block-start: var(--space-xl);
+    }
+
+    .c-prose :is(ul, ol) {
+        list-style: revert;
+        padding-inline-start: var(--space-xl);
+    }
+
+    .c-prose li + li {
+        margin-block-start: var(--space-2xs);
+    }
+
+    .c-prose dd {
+        margin-inline-start: var(--space-xl);
+    }
+
     /* ==== The style guide's own furniture ================================ */
 
     /*
@@ -527,6 +736,7 @@
     .sg-specimen__stage {
         order: 0;
     }
+
 }
 
 @layer utilities {

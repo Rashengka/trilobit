@@ -39,10 +39,16 @@
     --text-2xl: 1.5rem;
     --text-3xl: 2.125rem;
 
+    --text-code: 0.875rem;
+
     --leading-tight: 1.2;
     --leading-normal: 1.55;
     --tracking-display: 0.005em;
     --font-weight-display: 600;
+
+    /* Ledger sets its headings in a serif at 600; emphasis in the middle of a
+       sans-serif sentence needs more than that to be seen at all. */
+    --font-weight-strong: 700;
 
     /* ---- Palette ------------------------------------------------------ */
 
@@ -65,6 +71,11 @@
     --color-danger: light-dark(oklch(0.44 0.16 20), oklch(0.72 0.14 20));
     --color-danger-ink: light-dark(oklch(0.3 0.12 20), oklch(0.9 0.05 20));
     --color-danger-surface: light-dark(oklch(0.97 0.012 60), oklch(0.23 0.02 20));
+
+    /* A highlighter drawn across a printed page, which is warmer and quieter
+       than the browser's own yellow. */
+    --color-highlight: light-dark(oklch(0.9 0.11 90), oklch(0.42 0.09 85));
+    --color-highlight-ink: light-dark(oklch(0.26 0.04 60), oklch(0.95 0.015 85));
 
     --color-banner: light-dark(oklch(0.99 0.008 85), oklch(0.24 0.013 75));
     --color-banner-ink: var(--color-ink);
