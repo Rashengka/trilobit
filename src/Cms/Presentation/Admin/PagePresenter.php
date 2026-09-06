@@ -212,6 +212,9 @@ final class PagePresenter extends AdminPresenter
                 $page->isPublished() ? 'Published' : 'Draft',
                 $page->isPublished(),
                 $this->link('edit', ['id' => $id]),
+                $address === null
+                    ? ''
+                    : $this->getHttpRequest()->getUrl()->getBasePath() . $address,
             );
         }
 

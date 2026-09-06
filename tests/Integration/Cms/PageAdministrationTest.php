@@ -176,6 +176,68 @@ final class PageAdministrationTest extends TestCase
     }
 
     /**
+     * The list used to be a `<ul>` styled to look like a table, which is why it
+     * never lined up. It has to actually be one: a `<table>` with column
+     * headers, drawn by the shared c-table component (01d-design-system.md, D3)
+     * rather than markup invented again for this one page.
+     */
+    public function testTheListIsARealTableWithColumnHeaders(): void
+    {
+        $this->submit('add', $this->values());
+
+        $document = $this->pageOf($this->submit('default', []));
+
+        $table = $document->querySelector('[data-testid="cms-page-list"] table');
+        self::assertNotNull($table, 'the page list was expected to be drawn as a table, not a styled list');
+
+        $headings = [];
+        foreach ($document->querySelectorAll('[data-testid="cms-page-list"] thead th') as $heading) {
+            $headings[] = trim((string) $heading->textContent);
+        }
+
+        self::assertSame(['Title', 'Status', 'Address', 'Actions'], $headings);
+
+        $id = $this->onlyPage()->id();
+        $row = $document->querySelector(sprintf('[data-testid="cms-page-%d"]', $id));
+        self::assertNotNull($row, 'each page was expected to be a row, addressable by the same testid as before');
+        self::assertSame('TR', $row->tagName);
+    }
+
+    /**
+     * A link to see the page as a visitor would, from the list itself,
+     * rather than making an editor open the form first to find the address.
+     * It has to open in a new tab (so the editor keeps the list open) and it
+     * has to have its own accessible name - an icon alone reads as "link" on
+     * every row alike, which is no help in a list of twenty.
+     */
+    public function testTheListLinksToThePublicPageInANewTab(): void
+    {
+        $this->submit('add', $this->values());
+        $id = $this->onlyPage()->id();
+
+        $document = $this->pageOf($this->submit('default', []));
+
+        $link = $document->querySelector(sprintf('[data-testid="cms-page-view-%d"]', $id));
+        self::assertNotNull($link, 'the list was expected to link to the public page');
+
+        self::assertSame('/about-us', $link->getAttribute('href'));
+        self::assertSame('_blank', $link->getAttribute('target'));
+        self::assertStringContainsString(
+            'noopener',
+            (string) $link->getAttribute('rel'),
+            'target="_blank" without rel="noopener" lets the opened page reach back into this one',
+        );
+
+        $accessibleName = trim((string) $link->textContent);
+        self::assertNotSame('', $accessibleName, 'an icon alone has no accessible name');
+        self::assertStringContainsString(
+            'About us',
+            $accessibleName,
+            'the accessible name has to name the page, or every row reads as the same link',
+        );
+    }
+
+    /**
      * @param array<string, string> $overrides
      *
      * @return array<string, string>
