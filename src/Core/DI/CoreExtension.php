@@ -56,6 +56,8 @@ use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
+use Trilobit\Core\Security\Permissions;
+use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Tenancy\HostTenants;
 use Trilobit\Core\Tenancy\Tenancy;
 use Trilobit\Core\Tenancy\TenantFromHost;
@@ -189,6 +191,18 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('authenticator'))
             ->setFactory(Authenticator::class);
+
+        // What may be asked about, and the one way of asking it. The structure
+        // is read from a file of Core's own rather than configured, because
+        // which resources exist is a fact about the code that asks - a
+        // deployment cannot add one, since nothing would ever ask about it.
+        // Both are in every build: what somebody may do is not a module's
+        // question, and the answer has to exist before the first page wants it.
+        $builder->addDefinition($this->prefix('permissionStructure'))
+            ->setFactory(PermissionStructure::class . '::of', [$this->parameterString('rootDir')]);
+
+        $builder->addDefinition($this->prefix('permissions'))
+            ->setFactory(Permissions::class);
 
         // The first command a new installation runs: without a tenant and a
         // host of its own, every request is refused rather than served by a

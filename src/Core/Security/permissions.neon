@@ -1,0 +1,58 @@
+#
+# What may be asked about, and what may be asked of it.
+#
+# This file is the structure: which resources exist, which one each of them
+# falls under, and which of the privileges make sense on it. It is not who may
+# do what - that is an assignment, it belongs to a business rather than to the
+# application, and it stays in the database, on the roles a tenant makes for
+# itself out of the pairs written down here. Mixing the two into one source
+# would mean the structure could change while the application is running, and
+# the structure is exactly the part every request may share.
+#
+# NEON rather than JSON because it is the language the rest of the
+# configuration is written in, and because it has comments: a permission
+# nobody wrote a reason for is one nobody can decide about a year later.
+#
+# The keys are the values of Trilobit\Core\Security\Resource and the
+# privileges are the values of Trilobit\Core\Security\Privilege. Neither list
+# is repeated here - a name this file invents is refused when it is read, and
+# a case missing from this file is refused too, because registration walks the
+# enum and would otherwise register a resource nobody has said anything about.
+#
+# `parent` is Nette's own resource inheritance: a rule written on the parent
+# answers for the child as well, so "may open the administration" needs saying
+# once rather than once per section.
+#
+# Not every pair a role could be assembled from is checked somewhere yet, and
+# that is allowed on purpose: a piece may be defined before the first section
+# uses it. The other direction is the one that has to hold - a pair the code
+# asks about and this file does not have is an exception at the first
+# question, not a denial; see
+# tests/Architecture/EveryPermissionQuestionIsPredefinedTest.
+#
+
+# The administration as a whole. Opening it at all is the one thing asked of
+# it; everything narrower is asked of the section, which inherits from here.
+administration:
+    privileges: [view]
+
+# The accounts of the installation and the roles they hold. Purging is apart
+# from deleting because an account is switched off rather than removed, so that
+# what somebody did stays attributable - and undoing that is a different
+# decision from taking the account away.
+account:
+    parent: administration
+    privileges: [view, add, edit, delete, purge]
+
+# What the public site is drawn from. Ordering is its own privilege because a
+# menu is an ordering: somebody may be trusted to arrange what is there
+# without being trusted to change what it says.
+content:
+    parent: administration
+    privileges: [view, add, edit, delete, purge, export, change_priority]
+
+# Where a visitor is sent. Not a section of the administration and not under
+# it: it is a decision inside a page that answers to the public, so a role
+# that may overrule it is not thereby a role that may open anything.
+redirection:
+    privileges: [view, force_redirect]
