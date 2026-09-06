@@ -144,6 +144,8 @@
     }
 
     .l-shell__banner {
+        background-color: var(--color-banner);
+        border-block-end: var(--border-hairline) solid var(--color-line);
         grid-area: banner;
     }
 
@@ -202,8 +204,6 @@
 
     .c-site-header {
         align-items: baseline;
-        background-color: var(--color-banner);
-        border-block-end: var(--border-hairline) solid var(--color-line);
         color: var(--color-banner-ink);
         display: flex;
         flex-wrap: wrap;
