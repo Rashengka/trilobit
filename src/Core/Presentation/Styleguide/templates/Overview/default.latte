@@ -9,12 +9,20 @@
  * catalogue that reproduced it would go on showing the old shape after the
  * component changed and nobody would know.
  *
+ * The page has two catalogues, because the design system has two halves. The
+ * components are things somebody assembles, and they are checked by
+ * tests/Template/StyleguideShowsEveryComponentTest. The content groups are the
+ * elements a browser hands us before any class is written - a heading, a rule,
+ * a block of code, a table - which nobody assembles and which therefore cannot
+ * prove they exist by having a file; they are checked from both sides, by
+ * tests/Template/ContentGroupRegistryTest against assets/base.css and by
+ * tests/Template/StyleguideShowsEveryContentGroupTest against this page.
+ *
  * The {define}s at the top are the page's own furniture (the .sg-* classes in
  * assets/base.css), not components: they frame the specimens and are used
- * nowhere else. They are what makes the page measurable - every specimen
- * carries data-styleguide-component and data-styleguide-variant, which is what
- * tests/Template/StyleguideShowsEveryComponentTest reads to prove that a
- * registered component has an example here.
+ * nowhere else. They are what makes the page measurable - every section carries
+ * data-styleguide-component or data-styleguide-content and every specimen
+ * carries data-styleguide-variant, which is what those tests read.
  *
  * The example content is invented and has to stay invented.
  *}
@@ -44,9 +52,50 @@
     </section>
 {/define}
 
-{define sgSpecimen, string $variant}
+{define sgContentSection, Trilobit\Core\Presentation\Content\ContentGroup $group}
+    <section class="sg-section l-stack" data-styleguide-content="{$group->name}">
+        <h2 class="sg-section__name">{$group->name}</h2>
+
+        <p class="sg-section__summary">{$group->summary}</p>
+
+        <div class="l-stack">{block sgContentSectionBody}{/block}</div>
+    </section>
+{/define}
+
+{*
+ * Something to look at, for the specimens that need a picture.
+ *
+ * Drawn here rather than loaded, because an image file would be one more thing
+ * to keep beside the page and this one has to follow the ink of whichever theme
+ * is on - which it does by being filled with currentColor. It carries width and
+ * height so that the rule about images having to keep their own shape has
+ * something to keep.
+ *}
+{define sgSpecimenDrawing}
+    <svg
+        width="320"
+        height="180"
+        viewBox="0 0 320 180"
+        role="img"
+        aria-label="An invented specimen: seven segments narrowing from a head shield to a tail."
+    >
+        <rect x="1" y="1" width="318" height="178" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="2" />
+
+        <g fill="currentColor" fill-opacity="0.6">
+            <ellipse cx="160" cy="36" rx="60" ry="22" />
+            <ellipse cx="160" cy="66" rx="53" ry="12" />
+            <ellipse cx="160" cy="88" rx="46" ry="11" />
+            <ellipse cx="160" cy="108" rx="39" ry="10" />
+            <ellipse cx="160" cy="126" rx="31" ry="9" />
+            <ellipse cx="160" cy="142" rx="23" ry="8" />
+            <ellipse cx="160" cy="157" rx="14" ry="7" />
+        </g>
+    </svg>
+{/define}
+
+{define sgSpecimen, string $variant, bool $narrow = false}
     <div class="sg-specimen" data-styleguide-variant="{$variant}">
-        <div class="sg-specimen__stage">{block sgSpecimenStage}{/block}</div>
+        <div n:class="'sg-specimen__stage', $narrow ? 'sg-specimen__stage--narrow'">{block sgSpecimenStage}{/block}</div>
 
         <p class="sg-specimen__label">{$variant}</p>
     </div>
@@ -93,6 +142,275 @@
                     {include swatch, name: $token, role: $role, testId: 'swatch-' . $token}
                 {/foreach}
             </div>
+        {/block}
+    {/embed}
+
+    {*
+     * The elements a browser hands us before any class is written. They are
+     * catalogued the same way the components are and for the same reason: a
+     * paragraph about <mark> would render whether or not anything ever styled
+     * <mark>, so every group below names the rules it stands for and
+     * tests/Template/ContentGroupRegistryTest checks them against
+     * assets/base.css.
+     *}
+    {embed block sgContentSection, group: $contentGroups['reboot']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'a rule'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        <p>Segments counted from the front of the head shield.</p>
+
+                        <hr>
+
+                        <p>Segments counted from the back of the tail shield.</p>
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'emphasis and small print'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        <p>
+                            A specimen is <strong>complete</strong> when the head, the body and the tail
+                            are all present; anything else is <mark>a fragment</mark>, however good it
+                            looks. Measurements are given in <abbr title="millimetres">mm</abbr>.
+                        </p>
+
+                        <p><small>Every measurement on this page was invented for it.</small></p>
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'a quotation'}
+                {block sgSpecimenStage}
+                    <blockquote>
+                        Three lobes along one axis, which is where the name comes from, and not three
+                        parts from front to back, which is what everybody guesses.
+                    </blockquote>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'a list of terms'}
+                {block sgSpecimenStage}
+                    <dl class="l-stack">
+                        <div>
+                            <dt>Cephalon</dt>
+                            <dd>The head shield, and the part that survives on its own most often.</dd>
+                        </div>
+
+                        <div>
+                            <dt>Thorax</dt>
+                            <dd>The jointed middle, which is what let the animal roll up.</dd>
+                        </div>
+
+                        <div>
+                            <dt>Pygidium</dt>
+                            <dd>The tail shield, fused from segments the thorax never released.</dd>
+                        </div>
+                    </dl>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgContentSection, group: $contentGroups['typography']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'the heading scale'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        <h1>Heading one</h1>
+                        <h2>Heading two</h2>
+                        <h3>Heading three</h3>
+                        <h4>Heading four</h4>
+                        <h5>Heading five</h5>
+                        <h6>Heading six</h6>
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'running text'}
+                {block sgSpecimenStage}
+                    <p class="l-measure">
+                        Body text is set at the base step of the scale, at the line height the theme
+                        asks for, and kept to a measure a reader can come back from at the end of a
+                        line. The measure is a layout token rather than a property of the paragraph,
+                        so a page decides how wide its text runs and the text itself does not.
+                    </p>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgContentSection, group: $contentGroups['code']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'inline'}
+                {block sgSpecimenStage}
+                    <p>
+                        Switching the theme is one attribute: <code>data-theme="ledger"</code> on the
+                        <code>html</code> element, and nothing is rebuilt.
+                    </p>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'a key and sampled output'}
+                {block sgSpecimenStage}
+                    <p>
+                        Press <kbd>Tab</kbd> until the frame below is reached, then <kbd>Shift</kbd> +
+                        <kbd>Tab</kbd> to leave it again. A build that has nothing to say answers
+                        <samp>no drift</samp> and stops.
+                    </p>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'a block wider than its frame'}
+                {block sgSpecimenStage}
+                    <pre data-testid="styleguide-code-block"><code>docker compose exec php vendor/bin/phpunit --filter 'ContentGroupRegistryTest|StyleguideShowsEveryContentGroupTest' --testdox --colors=never --display-skipped</code></pre>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgContentSection, group: $contentGroups['images']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'at the size it was drawn'}
+                {block sgSpecimenStage}
+                    {include sgSpecimenDrawing}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'in a frame narrower than itself', narrow: true}
+                {block sgSpecimenStage}
+                    {include sgSpecimenDrawing}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgContentSection, group: $contentGroups['tables']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Three invented specimens'}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Specimen</th>
+                                <th scope="col">Period</th>
+                                <th scope="col">Found in</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Segmented disc</th>
+                                <td>Cambrian</td>
+                                <td>A quarry nobody named</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Rolled specimen</th>
+                                <td>Ordovician</td>
+                                <td>A road cutting</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shield</th>
+                                <td>Silurian</td>
+                                <td>A drawer in a museum</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'figures and an actions column'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Specimens, with what may be done to each'}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Specimen</th>
+                                <th scope="col" class="c-table__number">Length</th>
+                                <th scope="col" class="c-table__number">Segments</th>
+                                <th scope="col" class="c-table__actions">
+                                    <span class="u-visually-hidden">What may be done</span>
+                                </th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Segmented disc</th>
+                                <td class="c-table__number">118</td>
+                                <td class="c-table__number">11</td>
+                                <td class="c-table__actions">
+                                    {include button, label: 'Open', href: '#', variant: 'quiet'}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Rolled specimen</th>
+                                <td class="c-table__number">64</td>
+                                <td class="c-table__number">9</td>
+                                <td class="c-table__actions">
+                                    {include button, label: 'Open', href: '#', variant: 'quiet'}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shield</th>
+                                <td class="c-table__number">7</td>
+                                <td class="c-table__number">4</td>
+                                <td class="c-table__actions">
+                                    {include button, label: 'Open', href: '#', variant: 'quiet'}
+                                </td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {*
+             * The case .ai/plans/09-chrome-a-sirka-obsahu.md was written for: a
+             * column for every month, which is wider than the frame at any
+             * content width. It has to scroll here and leave the page alone.
+             *}
+            {embed block sgSpecimen, variant: 'wider than its frame'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Specimens catalogued on each day of the month', testId: 'styleguide-table-wide'}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Month</th>
+
+                                <th n:foreach="$tableColumns as $day" scope="col" class="c-table__number">{$day}</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr n:foreach="$tableRows as $label => $counts">
+                                <th scope="row">{$label}</th>
+
+                                <td n:foreach="$counts as $count" class="c-table__number">{$count}</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {embed block sgContentSection, group: $contentGroups['figures']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    <figure>
+                        {include sgSpecimenDrawing}
+
+                        <figcaption>
+                            An invented specimen, drawn rather than photographed, so that it costs the
+                            page no request and follows the ink of whichever theme is on.
+                        </figcaption>
+                    </figure>
+                {/block}
+            {/embed}
         {/block}
     {/embed}
 

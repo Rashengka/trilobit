@@ -41,6 +41,7 @@ use Trilobit\Core\Event\ListenerProvider;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
+use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
@@ -278,6 +279,13 @@ final class CoreExtension extends CompilerExtension
         // application is drawn, which is true of every build.
         $builder->addDefinition($this->prefix('components'))
             ->setFactory(ComponentRegistry::class);
+
+        // The other half of the same system: the elements a browser hands us
+        // before any class is written. They have no files to be counted, so
+        // this register is what both the style guide and the stylesheet are
+        // checked against.
+        $builder->addDefinition($this->prefix('contentGroups'))
+            ->setFactory(ContentGroupRegistry::class);
 
         // Whether this build has the page a stored destination names. It is
         // Core's because the question is about the build rather than about any

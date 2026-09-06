@@ -7,6 +7,8 @@ namespace Trilobit\Core\Presentation\Styleguide;
 use Nette\Application\UI\Template;
 use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
+use Trilobit\Core\Presentation\Content\ContentGroup;
+use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Front\FrontPresenter;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
@@ -51,6 +53,17 @@ final class OverviewPresenter extends FrontPresenter
         '--color-nav' => 'behind the navigation',
     ];
 
+    /**
+     * The rows of the table specimen that has to overflow, and the months they
+     * are labelled with.
+     *
+     * @var list<string>
+     */
+    private const array SAMPLE_TABLE_ROW_LABELS = ['January', 'February', 'March'];
+
+    /** How many columns that specimen has: one for each day of a long month. */
+    private const int DAYS_IN_A_LONG_MONTH = 31;
+
     /** @var list<string> */
     private const array SAMPLE_STATEMENTS = [
         'Every value on this page is read out of a token.',
@@ -60,6 +73,7 @@ final class OverviewPresenter extends FrontPresenter
 
     public function __construct(
         private readonly ComponentRegistry $components,
+        private readonly ContentGroupRegistry $contentGroups,
     ) {
         parent::__construct();
     }
@@ -77,8 +91,11 @@ final class OverviewPresenter extends FrontPresenter
 
         $template->pageTitle = 'Style guide';
         $template->components = $this->byName($this->components);
+        $template->contentGroups = $this->groupsByName($this->contentGroups);
         $template->colourTokens = self::COLOUR_TOKENS;
         $template->statements = self::SAMPLE_STATEMENTS;
+        $template->tableColumns = $this->sampleTableColumns();
+        $template->tableRows = $this->sampleTableRows();
         $template->sampleNavigation = $this->sampleNavigation();
     }
 
@@ -107,6 +124,59 @@ final class OverviewPresenter extends FrontPresenter
         }
 
         return $components;
+    }
+
+    /**
+     * A column for every day of a month, which is the shape
+     * .ai/plans/09-chrome-a-sirka-obsahu.md, L4 is written about: a report
+     * wider than any screen at any content width. The specimen has to be that
+     * shape and not merely a wide one, because a table that happens to fit on
+     * the machine somebody is looking at proves nothing about the frame that is
+     * supposed to catch it.
+     *
+     * @return list<string>
+     */
+    private function sampleTableColumns(): array
+    {
+        return array_map(strval(...), range(1, self::DAYS_IN_A_LONG_MONTH));
+    }
+
+    /**
+     * Invented counts, one per day. Derived rather than typed out: ninety-three
+     * numbers written by hand would be ninety-three chances to leave one out,
+     * and nothing about this specimen depends on which numbers they are.
+     *
+     * @return array<string, list<int>>
+     */
+    private function sampleTableRows(): array
+    {
+        $rows = [];
+        foreach (self::SAMPLE_TABLE_ROW_LABELS as $index => $label) {
+            $counts = [];
+            foreach (range(1, self::DAYS_IN_A_LONG_MONTH) as $day) {
+                $counts[] = $day * (3 + $index * 4) % 19;
+            }
+
+            $rows[$label] = $counts;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The groups of native elements, keyed the same way and for the same
+     * reason.
+     *
+     * @return array<string, ContentGroup>
+     */
+    private function groupsByName(ContentGroupRegistry $registry): array
+    {
+        $groups = [];
+        foreach ($registry->all() as $group) {
+            $groups[$group->name] = $group;
+        }
+
+        return $groups;
     }
 
     /**

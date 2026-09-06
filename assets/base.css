@@ -27,6 +27,17 @@
  *   sg-*  the style guide page's own furniture, which is not part of the
  *         vocabulary the rest of the application draws on
  *   u-*   utilities
+ *
+ * Beside those there are the elements a browser hands us before any class is
+ * written - a heading, a rule, a block of code, a table cell. They are styled
+ * by name in @layer base and are catalogued too: every one of them belongs to a
+ * group in Trilobit\Core\Presentation\Content\ContentGroupRegistry, and
+ * tests/Template/ContentGroupRegistryTest fails when a group claims a selector
+ * this file does not carry.
+ *
+ * Inside a component no Tailwind utility is used, on purpose and only there: a
+ * utility written into the markup is a decision about appearance that a theme
+ * cannot overrule. Page templates use utilities freely for spacing and layout.
  */
 
 @layer base {
@@ -814,6 +825,11 @@
         order: 0;
     }
 
+    /* A stage deliberately too small for what is put on it, so that a specimen
+       about behaving under pressure can show the pressure. */
+    .sg-specimen__stage--narrow {
+        max-inline-size: var(--layout-card-min);
+    }
 }
 
 @layer utilities {
