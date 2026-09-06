@@ -271,17 +271,29 @@ final class AllModuleCombinationsTest extends TestCase
      * failure now rather than a surprise when there is an administration to
      * render it in.
      *
+     * What is counted is which modules contributed, not how many entries each
+     * one did. A module with an administration worth the name has several
+     * sections, and tying the claim to one entry apiece would make the rule
+     * "a switched-off module contributes nothing" impossible to state without
+     * rewriting it every time a module grows a page. The module an entry
+     * belongs to is read off its destination, which is the only thing Core
+     * knows about it.
+     *
      * @param list<string> $enabled
      */
     #[DataProviderExternal(Build::class, 'everyCombination')]
-    public function testTheAdminMenuHasOneEntryPerEnabledModule(array $enabled): void
+    public function testTheAdminMenuHoldsEntriesFromExactlyTheEnabledModules(array $enabled): void
     {
-        $menu = Build::container($enabled)->getByType(Menu::class);
+        $items = Build::container($enabled)->getByType(Menu::class)->items();
 
-        self::assertSame(
-            array_map(ucfirst(...), $enabled),
-            array_map(static fn(MenuItem $item): string => $item->label, $menu->items()),
-        );
+        self::assertSame($enabled, $this->modulesOf(array_map(
+            static fn(MenuItem $item): string => $item->destination,
+            $items,
+        )));
+
+        foreach ($items as $item) {
+            self::assertNotSame('', $item->label, 'a menu entry with nothing to call it');
+        }
     }
 
     /**
@@ -326,24 +338,57 @@ final class AllModuleCombinationsTest extends TestCase
 
             self::assertNotNull($menu, 'the enabled modules contributed entries and no menu was drawn');
 
-            $labels = [];
+            $destinations = [];
             foreach ($menu->querySelectorAll('.c-nav__link') as $link) {
-                $label = $link->textContent ?? '';
-                $labels[] = $label;
+                self::assertNotSame('', $link->textContent ?? '', 'a menu entry with nothing to call it');
 
                 $href = $link->getAttribute('href');
                 self::assertNotNull($href);
-                self::assertSame(
-                    ucfirst(strtolower($label)) . ':Front:Status',
-                    Build::match($container, $href)['presenter'] ?? null,
-                    'a menu entry does not resolve through the router into its module',
+
+                $presenter = Build::match($container, $href)['presenter'] ?? null;
+                self::assertIsString(
+                    $presenter,
+                    'a menu entry was drawn as a link the router does not claim: ' . $href,
                 );
+
+                $destinations[] = $presenter;
             }
 
-            self::assertSame(array_map(ucfirst(...), $enabled), $labels);
+            self::assertSame(
+                $enabled,
+                $this->modulesOf($destinations),
+                'the drawn menu does not hold entries from exactly the enabled modules',
+            );
         } finally {
             $container->getByType(SignedIn::class)->logout(clearIdentity: true);
         }
+    }
+
+    /**
+     * Which modules a set of destinations belongs to, sorted and without
+     * repeats, so that the answer can be compared with the list of enabled
+     * ones however many entries each module contributed.
+     *
+     * A destination begins with the module's name - that is the whole of what
+     * Core knows about where an entry leads - so lower-casing the first
+     * segment is the same step Trilobit\Core\Doctrine\TableName takes on the
+     * other side of the application.
+     *
+     * @param list<string> $destinations
+     *
+     * @return list<string>
+     */
+    private function modulesOf(array $destinations): array
+    {
+        $modules = [];
+        foreach ($destinations as $destination) {
+            $modules[] = strtolower(explode(':', $destination)[0]);
+        }
+
+        $modules = array_values(array_unique($modules));
+        sort($modules);
+
+        return $modules;
     }
 
     private function refusalOf(Container $container, string $presenter): ?InvalidPresenterException

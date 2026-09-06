@@ -1,0 +1,122 @@
+{templateType Trilobit\Cms\Presentation\Admin\PagesTemplate}
+
+{*
+ * One page, written.
+ *
+ * The form is written out with n:name rather than handed to the framework's
+ * default renderer, so that every control sits inside the design system's own
+ * components - a renderer producing its own table of labels and inputs would
+ * be a second way of drawing a form, unthemed and untested. It is the same
+ * arrangement the sign-in page uses.
+ *
+ * Whatever the register refused - the address is taken, it begins with
+ * something reserved, it is spelled in a way addresses are not stored in -
+ * arrives as a list of sentences the presenter read off the form, so this page
+ * is handed strings rather than a component to interrogate.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/panel.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+{import '../../../../../Core/Presentation/components/field.latte'}
+{import '../../../../../Core/Presentation/components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'cms-page-headline',
+        leadTestId: 'cms-page-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'All pages', href: $listUrl, variant: 'quiet', testId: 'cms-page-back'}
+
+        {if $publicUrl !== ''}
+            {include button,
+                label: 'Open it on the site',
+                href: $publicUrl,
+                variant: 'quiet',
+                testId: 'cms-page-public'}
+        {/if}
+    </div>
+
+    {embed block panel, testId: 'cms-page-panel'}
+        {block panelTitle}The page{/block}
+
+        {block panelBody}
+            <form n:name="page" class="l-stack" data-testid="cms-page-form">
+                {foreach $errors as $error}
+                    {include notice, message: $error, variant: 'danger', testId: 'cms-page-error'}
+                {/foreach}
+
+                {embed block field, testId: 'cms-page-title-field'}
+                    {block fieldLabel}<label n:name="title">Title</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="title" data-testid="cms-page-title-input">
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-page-address-field'}
+                    {block fieldLabel}<label n:name="address">Address</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="address" data-testid="cms-page-address-input">
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-page-state-field'}
+                    {block fieldLabel}<label n:name="status">State</label>{/block}
+
+                    {block fieldControl}
+                        <select n:name="status" data-testid="cms-page-status-input"></select>
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-page-lead-field'}
+                    {block fieldLabel}<label n:name="perex">Lead</label>{/block}
+
+                    {block fieldControl}
+                        <textarea n:name="perex" rows="3" data-testid="cms-page-perex-input"></textarea>
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-page-body-field'}
+                    {block fieldLabel}<label n:name="content">Body</label>{/block}
+
+                    {block fieldControl}
+                        <textarea n:name="content" rows="12" data-testid="cms-page-content-input"></textarea>
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-page-seo-title-field'}
+                    {block fieldLabel}<label n:name="seoTitle">Title for search engines</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="seoTitle" data-testid="cms-page-seo-title-input">
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-page-seo-description-field'}
+                    {block fieldLabel}<label n:name="seoDescription">Description for search engines</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="seoDescription" data-testid="cms-page-seo-description-input">
+                    {/block}
+                {/embed}
+
+                {* The controls of a form have to be the form's own elements -
+                   n:name is resolved on the element itself - and c-button
+                   draws an element of its own, so these carry the component's
+                   class instead of being drawn by it. *}
+                <div class="l-cluster">
+                    <button n:name="send" class="c-button" data-testid="cms-page-save">Save</button>
+
+                    {if !$isNew}
+                        <button n:name="delete" class="c-button c-button--quiet" data-testid="cms-page-delete">Delete this page</button>
+                    {/if}
+                </div>
+            </form>
+        {/block}
+    {/embed}
+{/block}

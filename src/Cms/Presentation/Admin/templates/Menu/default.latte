@@ -1,0 +1,66 @@
+{templateType Trilobit\Cms\Presentation\Admin\MenuTemplate}
+
+{*
+ * Everything somebody arranged into a menu, the entries this build cannot draw
+ * included.
+ *
+ * The site leaves those out; this page says so out loud, because whoever
+ * arranged an entry is the only person who can decide whether the module
+ * should come back or the entry should go. An entry hidden in both places
+ * would be one nobody can find and nobody can remove.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/panel.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+{import '../../../../../Core/Presentation/components/badge.latte'}
+{import '../../../../../Core/Presentation/components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'cms-menus-headline',
+        leadTestId: 'cms-menus-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'Add an entry', href: $addUrl, testId: 'cms-menus-add'}
+    </div>
+
+    {embed block panel, testId: 'cms-menus-panel'}
+        {block panelTitle}Entries{/block}
+
+        {block panelBody}
+            {if $entries === []}
+                {include notice,
+                    message: 'Nothing has been arranged into a menu yet.',
+                    testId: 'cms-menus-empty'}
+            {else}
+                <ul class="l-stack" data-testid="cms-menu-list">
+                    <li n:foreach="$entries as $entry" class="l-cluster" data-testid="cms-menu-entry-{$entry->id}">
+                        {include button,
+                            label: $entry->label,
+                            href: $entry->editUrl,
+                            variant: 'quiet',
+                            testId: 'cms-menu-open-' . $entry->id}
+
+                        {include badge, label: $entry->menu, testId: 'cms-menu-name-' . $entry->id}
+
+                        {include badge, label: $entry->leadsTo, testId: 'cms-menu-target-' . $entry->id}
+
+                        {if !$entry->isVisible}
+                            {include badge, label: 'Hidden', testId: 'cms-menu-hidden-' . $entry->id}
+                        {/if}
+
+                        {if !$entry->isReachable}
+                            {include notice,
+                                message: 'Nothing in this build draws what this entry leads to, so the site leaves it out.',
+                                variant: 'danger',
+                                testId: 'cms-menu-unreachable-' . $entry->id}
+                        {/if}
+                    </li>
+                </ul>
+            {/if}
+        {/block}
+    {/embed}
+{/block}
