@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Front;
 
-use Trilobit\Core\Presentation\Front\Signpost\SignpostLink;
+use Trilobit\Core\Presentation\Component\SignpostLink;
 
 /**
  * What Core:Front:Home:default renders with.

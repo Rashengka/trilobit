@@ -566,6 +566,13 @@
         font-size: var(--text-sm);
     }
 
+    /* The grid itself is l-grid; this class is the component's own hook and
+       carries nothing else, because a signpost has no shape of its own beyond
+       the tiles it arranges. */
+    .c-signpost {
+        display: block;
+    }
+
     .c-button {
         align-items: center;
         background-color: var(--color-accent);

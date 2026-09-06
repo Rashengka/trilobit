@@ -7,6 +7,7 @@ namespace Trilobit\Core\Presentation\Styleguide;
 use Nette\Application\UI\Template;
 use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
+use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Front\FrontPresenter;
@@ -97,6 +98,7 @@ final class OverviewPresenter extends FrontPresenter
         $template->tableColumns = $this->sampleTableColumns();
         $template->tableRows = $this->sampleTableRows();
         $template->sampleNavigation = $this->sampleNavigation();
+        $template->sampleSignposts = $this->sampleSignposts();
         $template->fullWidthUrl = $this->link('fullWidth');
     }
 
@@ -225,6 +227,28 @@ final class OverviewPresenter extends FrontPresenter
             new NavigationItem('Overview', '#', true, 'sample-nav-overview'),
             new NavigationItem('Specimens', '#', false, 'sample-nav-specimens'),
             new NavigationItem('Tokens', '#', false, 'sample-nav-tokens'),
+        ];
+    }
+
+    /**
+     * Invented entries, in the shape both real sources hand the component:
+     * an address already resolved, and a sentence that is sometimes empty -
+     * an administration section's signpost has none to give, which is why
+     * one specimen omits it rather than every one carrying an invented sentence
+     * neither real source would have written for it.
+     *
+     * @return list<SignpostLink>
+     */
+    private function sampleSignposts(): array
+    {
+        return [
+            new SignpostLink(
+                'Field guide',
+                '#',
+                'Every named specimen this collection holds, with where each was found.',
+                'sample-signpost-field-guide',
+            ),
+            new SignpostLink('Loans', '#', '', 'sample-signpost-loans'),
         ];
     }
 }

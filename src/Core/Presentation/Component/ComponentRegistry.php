@@ -62,6 +62,11 @@ final class ComponentRegistry
                 ['default', 'without media'],
             ),
             new Component(
+                'c-signpost',
+                'The way into each part of something, drawn as a grid of linked tiles built out of c-card.',
+                ['default'],
+            ),
+            new Component(
                 'c-button',
                 'The one thing a page wants you to do, and the quieter things beside it.',
                 ['primary', 'quiet', 'without a destination'],

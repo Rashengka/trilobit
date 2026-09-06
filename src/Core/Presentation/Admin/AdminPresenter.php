@@ -9,6 +9,7 @@ use Nette\Application\UI\Template;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Admin\Menu\MenuItem;
 use Trilobit\Core\Preference\RememberedPreferences;
+use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 use Trilobit\Core\Security\Identity;
 
@@ -139,6 +140,37 @@ abstract class AdminPresenter extends Presenter
         }
 
         return $items;
+    }
+
+    /**
+     * The signpost for one section: exactly the bar's own entries for
+     * $module, resolved into addresses the same way navigation() resolves
+     * every entry.
+     *
+     * A module a presenter draws this for is trusted to know it has entries -
+     * see Trilobit\Core\Admin\Menu\Menu::itemsOf(), which the caller is
+     * expected to have checked is not empty before deciding to render a page
+     * at all (decision M2 in .ai/plans/10-menu-submenu-a-rozcestniky.md: a
+     * section with nothing to show gets no page, not an empty one).
+     *
+     * @return list<SignpostLink>
+     */
+    protected function signpostOf(string $module): array
+    {
+        $links = [];
+        foreach ($this->menu->itemsOf($module) as $item) {
+            $links[] = new SignpostLink(
+                $item->label,
+                // The leading colon makes the destination absolute; without it
+                // Nette would resolve it inside Core, the module this presenter
+                // lives in.
+                $this->link(':' . $item->destination),
+                '',
+                'admin-signpost-' . strtolower($item->label),
+            );
+        }
+
+        return $links;
     }
 
     /** A menu entry points at an action; the presenter is everything before it. */

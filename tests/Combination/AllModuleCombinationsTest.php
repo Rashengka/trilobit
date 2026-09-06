@@ -365,6 +365,86 @@ final class AllModuleCombinationsTest extends TestCase
     }
 
     /**
+     * The signpost at /admin/cms is the second place a section's entries are
+     * drawn, and it has to hold exactly what the bar itself holds for that
+     * module - built from Trilobit\Core\Admin\Menu\Menu::itemsOf(), not from a
+     * list written for this one page by hand. See M2 in
+     * .ai/plans/10-menu-submenu-a-rozcestniky.md: "the signpost of a section
+     * is the same menu, drawn differently."
+     *
+     * Cms is the only module with an entry into its own administration today -
+     * Shop and Crm point their one bar entry at their front page (see
+     * Trilobit\Shop\Admin\ShopMenu, Trilobit\Crm\Admin\CrmMenu) - which is why
+     * this asks by name rather than looping every switchable module the way the
+     * claims above do. A module with nothing in the bar has no route here
+     * either: there is no catch-all under /admin any more than there is one
+     * under the public address space, so a section nobody contributed to is
+     * simply not there to ask about.
+     *
+     * @param list<string> $enabled
+     */
+    #[DataProviderExternal(Build::class, 'everyCombination')]
+    public function testTheCmsSectionSignpostHoldsExactlyItsBarEntries(array $enabled): void
+    {
+        $container = Build::container($enabled);
+        $match = Build::match($container, '/admin/cms');
+
+        if (!in_array('cms', $enabled, true)) {
+            self::assertNull($match, 'cms is switched off and /admin/cms is still routed');
+
+            return;
+        }
+
+        self::assertNotNull($match, 'cms is enabled and /admin/cms is not routed');
+        self::assertSame('Cms:Admin:Signpost', $match['presenter'] ?? null);
+
+        $container->getByType(SignedIn::class)->login(new Identity(1, ['administrator'], []));
+
+        try {
+            $document = HTMLDocument::createFromString(
+                Build::render($container, 'Cms:Admin:Signpost'),
+                LIBXML_NOERROR,
+            );
+
+            $signpost = $document->querySelector('[data-testid="cms-signpost"]');
+            self::assertNotNull($signpost, 'the section has bar entries and drew no signpost');
+
+            $labels = [];
+            $presenters = [];
+            foreach ($signpost->querySelectorAll('.c-card__link') as $link) {
+                $labels[] = trim((string) $link->textContent);
+
+                $href = $link->getAttribute('href');
+                self::assertNotNull($href);
+                $presenters[] = Build::match($container, $href)['presenter'] ?? null;
+            }
+
+            $expected = $container->getByType(Menu::class)->itemsOf('cms');
+
+            self::assertSame(
+                array_map(static fn(MenuItem $item): string => $item->label, $expected),
+                $labels,
+                'the signpost does not show exactly the labels the bar shows for this section',
+            );
+            self::assertSame(
+                array_map($this->presenterOf(...), $expected),
+                $presenters,
+                'the signpost does not link to exactly the destinations the bar links to for this section',
+            );
+        } finally {
+            $container->getByType(SignedIn::class)->logout(clearIdentity: true);
+        }
+    }
+
+    /** A menu entry points at an action; the presenter is everything before it - the same split AdminPresenter makes. */
+    private function presenterOf(MenuItem $item): string
+    {
+        $separator = strrpos($item->destination, ':');
+
+        return $separator === false ? $item->destination : substr($item->destination, 0, $separator);
+    }
+
+    /**
      * Which modules a set of destinations belongs to, sorted and without
      * repeats, so that the answer can be compared with the list of enabled
      * ones however many entries each module contributed.

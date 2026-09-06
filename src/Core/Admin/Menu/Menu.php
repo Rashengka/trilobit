@@ -43,4 +43,25 @@ final class Menu
 
         return $this->items = $items;
     }
+
+    /**
+     * The entries of one module and no other, in the same order items()
+     * produces them - the source a section's signpost draws on, so that it
+     * can never hold anything the bar itself does not (decision M2 in
+     * .ai/plans/10-menu-submenu-a-rozcestniky.md: one data structure, two
+     * renderings).
+     *
+     * A module that contributed nothing gets back an empty list rather than an
+     * error, which is what lets the caller turn "nothing to show" into "no
+     * page" instead of into an empty one.
+     *
+     * @return list<MenuItem>
+     */
+    public function itemsOf(string $module): array
+    {
+        return array_values(array_filter(
+            $this->items(),
+            static fn(MenuItem $item): bool => $item->module() === $module,
+        ));
+    }
 }
