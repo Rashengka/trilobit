@@ -10,7 +10,12 @@ use Trilobit\Core\Presentation\Front\FrontTemplate;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
 /**
- * What Core:Styleguide:Overview:default renders with.
+ * What Core:Styleguide:Overview renders with, at either of its two actions.
+ *
+ * One class for both, because the second page is a page of the style guide
+ * rather than a second guide: it shows the one thing the first cannot show about
+ * itself, which is a page drawn at a width nobody chose. Splitting it would mean
+ * two classes differing by which half of the properties below they leave empty.
  */
 final class OverviewDefaultTemplate extends FrontTemplate
 {
@@ -34,4 +39,10 @@ final class OverviewDefaultTemplate extends FrontTemplate
 
     /** @var list<NavigationItem> */
     public array $sampleNavigation = [];
+
+    /** Where the page that insists on its own width lives, for the guide to point at. */
+    public string $fullWidthUrl = '';
+
+    /** And the way back from it. */
+    public string $styleguideUrl = '';
 }

@@ -134,7 +134,12 @@
     --layout-nav-marker-block-end: 0px;
     --layout-nav-marker-inline-start: 3px;
 
-    --layout-content-width: 58rem;
+    /* Narrower than atrium at every one of the three, the way this theme is
+       narrower at everything else. */
+    --layout-width-content: 58rem;
+    --layout-width-wide: 76rem;
+    --layout-width-full: 100%;
+
     --layout-measure: 38rem;
     --layout-gutter: 2rem;
 

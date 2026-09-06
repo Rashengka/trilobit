@@ -18,6 +18,13 @@
  * ratio such as 100% or 1fr describes a relationship between parts rather than a
  * size - "as wide as its container" stays true in every theme.
  *
+ * One token is declared here rather than by a theme: --layout-content-width,
+ * which the block below derives from the theme's three widths and the attribute
+ * on <html>. Deriving is not deciding - the three values it picks between are
+ * still the theme's - and the test above knows the difference: a token this file
+ * declares is exempt from "every theme has to declare it", and every token that
+ * declaration reads is checked as usual.
+ *
  * Class names say what a thing is, never what it looks like (decision D3):
  *
  *   l-*   layout primitives - a shell, a container, a stack, a grid
@@ -39,6 +46,48 @@
  * utility written into the markup is a decision about appearance that a theme
  * cannot overrule. Page templates use utilities freely for spacing and layout.
  */
+
+/*
+ * ==== How wide the content runs =========================================
+ *
+ * The three modes of .ai/plans/09-chrome-a-sirka-obsahu.md, L4, as the one place
+ * that decides what --layout-content-width means. Everything meant to line up
+ * with the content column reads that one token and follows it - .l-container
+ * below, and the link list atrium aligns against it - so a page has one content
+ * width rather than one per element that remembered to be told.
+ *
+ * The measurements are the theme's. --layout-width-content, -wide and -full are
+ * declared in assets/themes/, and all this does is say which of them the
+ * attribute on <html> selects; the attribute is written by the server for every
+ * rendering, chosen or not (Trilobit\Core\Preference\Preferences::attributes()).
+ * tests/Template/ContentWidthModesTest fails when a width this build offers has
+ * no rule here, because a mode with no rule is not an error in a browser - it is
+ * a page quietly drawn at the width the one before it had.
+ *
+ * **This block sits outside the layers on purpose, and it is the only thing in
+ * this file that does.** A theme declares its tokens unlayered (see
+ * assets/themes/ledger.css) and unlayered beats every layer whatever is in it,
+ * so the same three rules inside @layer components would be overruled by the
+ * theme they are reading from - in that one theme, and in no other, which is the
+ * kind of difference nobody looks for.
+ *
+ * The bare :root is what a document carrying no attribute at all falls back to.
+ * Without it an unset token would leave min(100%, ) invalid and the container
+ * with no maximum width, which looks like a design decision rather than like a
+ * missing attribute.
+ */
+:root,
+:root[data-content-width='content'] {
+    --layout-content-width: var(--layout-width-content);
+}
+
+:root[data-content-width='wide'] {
+    --layout-content-width: var(--layout-width-wide);
+}
+
+:root[data-content-width='full'] {
+    --layout-content-width: var(--layout-width-full);
+}
 
 @layer base {
     *,
@@ -343,8 +392,8 @@
         grid-area: footer;
     }
 
-    /* The readable column: as wide as the theme allows, never wider than the
-       space there is. */
+    /* The content column: as wide as the mode at the top of this file resolved
+       to, never wider than the space there is. */
     .l-container {
         inline-size: min(100%, var(--layout-content-width));
         margin-inline: auto;

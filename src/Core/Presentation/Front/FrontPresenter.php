@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Front;
 
 use Nette\Application\UI\Presenter;
+use Trilobit\Core\Preference\PreferenceCatalogue;
 use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
@@ -91,6 +92,54 @@ abstract class FrontPresenter extends Presenter
         $template->themes = $this->design->themes;
         $template->homeUrl = $this->link(':Core:Front:Home:default');
         $template->navigation = $this->navigation();
+    }
+
+    /**
+     * Draw this page at a width of its own, whatever the person reading it
+     * usually prefers.
+     *
+     * The ordering is deliberate and it is the way round that leaves the setting
+     * in charge: how wide the content runs is a person's choice, and this is the
+     * exception a page is allowed to make where it has a hard reason. The
+     * documented one is a report with a column for every day of a month, which
+     * overflows at any width and is unusable at a narrow one - a page like that
+     * cannot wait for somebody to remember to switch
+     * (.ai/plans/09-chrome-a-sirka-obsahu.md, L4).
+     *
+     * **It belongs to the action and not to the presenter.** One class answers
+     * at several addresses, and a monthly report and the form that asks which
+     * month may well be two of them; calling this from a render method is what
+     * makes the width a property of the page that was actually asked for. Hence
+     * also the moment: the preferences reach the template in beforeRender(),
+     * which the framework calls before the render method, so a call from an
+     * action method is too early and says so rather than being ignored.
+     *
+     * Nothing is written down. The person's setting is untouched and the switch
+     * goes on showing it - see Trilobit\Core\Preference\Preferences.
+     */
+    protected function overruleContentWidth(string $width): void
+    {
+        $template = $this->getTemplate();
+        if (!$template instanceof FrontTemplate) {
+            throw new \LogicException(sprintf(
+                'The template of %s has to be a %s.',
+                static::class,
+                FrontTemplate::class,
+            ));
+        }
+
+        if (!isset($template->preferences)) {
+            throw new \LogicException(sprintf(
+                '%s asked for a content width before there were any preferences to overrule; '
+                . 'that happens in beforeRender(), so call this from a render method rather than from an action.',
+                static::class,
+            ));
+        }
+
+        $template->preferences = $template->preferences->overruledWith(
+            PreferenceCatalogue::CONTENT_WIDTH,
+            $width,
+        );
     }
 
     /**

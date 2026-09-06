@@ -23,8 +23,15 @@ final class StyleguideRoutes implements RouteProvider
 {
     public const string PATH = '_styleguide';
 
+    /**
+     * The guide, and the page it keeps in order to show what a page insisting on
+     * a width of its own looks like (.ai/plans/09-chrome-a-sirka-obsahu.md, L4).
+     * Both are answered by one presenter, which is the thing that second page is
+     * there to demonstrate.
+     */
     public function provide(RouteList $routes): void
     {
+        $routes->addRoute(self::PATH . '/full-width', 'Core:Styleguide:Overview:fullWidth');
         $routes->addRoute(self::PATH, 'Core:Styleguide:Overview:default');
     }
 

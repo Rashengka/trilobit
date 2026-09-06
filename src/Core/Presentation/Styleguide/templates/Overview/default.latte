@@ -110,17 +110,25 @@
     {*
      * The switch. A control says which preference it sets and to what, and
      * nothing else: assets/app.ts moves the attribute on <html> and tells the
-     * server, so a third preference is one more control here and no more
+     * server, so a fourth preference is one more control here and no more
      * script. The state a control is drawn in comes from the server too, which
      * is what makes a reload show what was chosen rather than what the build
      * starts in - decision D8.
+     *
+     * It is preferred() and not value() that decides which control is pressed:
+     * the switch shows the person's own setting, which is not always the width
+     * the page it happens to be on is drawn at - see
+     * Trilobit\Core\Preference\Preferences.
+     *
+     * tests/Template/StyleguideOffersEveryPreferenceTest fails when this list
+     * and the catalogue part company in either direction.
      *}
     <div class="l-stack" data-testid="theme-switcher">
         <div class="l-cluster">
             <span class="text-sm text-ink-muted">Theme</span>
 
             {foreach $themes as $available}
-                {var bool $chosen = $available === $preferences->value('theme')}
+                {var bool $chosen = $available === $preferences->preferred('theme')}
 
                 {include button,
                     label: $available,
@@ -138,7 +146,7 @@
             <span class="text-sm text-ink-muted">Mode</span>
 
             {foreach ['system' => 'System', 'light' => 'Light', 'dark' => 'Dark'] as $mode => $label}
-                {var bool $chosen = $mode === $preferences->value('theme-mode')}
+                {var bool $chosen = $mode === $preferences->preferred('theme-mode')}
 
                 {include button,
                     label: $label,
@@ -151,6 +159,41 @@
                     ]}
             {/foreach}
         </div>
+
+        {*
+         * How much of the screen the content is given. The names are the
+         * modes themselves rather than sizes, because what each of them
+         * measures is the theme's to decide and changes when the theme does.
+         *}
+        <div class="l-cluster">
+            <span class="text-sm text-ink-muted">Width</span>
+
+            {foreach ['content' => 'Content', 'wide' => 'Wide', 'full' => 'Full'] as $mode => $label}
+                {var bool $chosen = $mode === $preferences->preferred('content-width')}
+
+                {include button,
+                    label: $label,
+                    variant: $chosen ? 'primary' : 'quiet',
+                    testId: 'content-width-choice-' . $mode,
+                    attributes: [
+                        'data-preference' => 'content-width',
+                        'data-preference-value' => $mode,
+                        'aria-pressed' => $chosen ? 'true' : 'false',
+                    ]}
+            {/foreach}
+        </div>
+
+        {*
+         * The other half of the arrangement, and the only place it can be
+         * seen: a page the application draws at a width of its own, whatever
+         * is chosen above. It is a second action of this very presenter,
+         * which is the point - a width belongs to the page and not to the
+         * class behind it.
+         *}
+        <p class="text-sm text-ink-muted">
+            A page may insist on a width of its own where it has to:
+            <a href="{$fullWidthUrl}" data-testid="styleguide-full-width-link">see one that does</a>.
+        </p>
     </div>
 
     {embed block panel, testId: 'styleguide-tokens'}

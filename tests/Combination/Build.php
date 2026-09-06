@@ -128,8 +128,12 @@ final class Build
      * Renders a page the way the application would, without an HTTP server in
      * the way. A response that is not text is a failure of the caller's
      * expectations, so it is reported as an exception rather than returned.
+     *
+     * The action is named because a presenter is not a page: one class answers
+     * at several addresses and they need not be drawn alike - see
+     * Trilobit\Tests\Integration\Preference\ContentWidthTest.
      */
-    public static function render(Container $container, string $presenterName): string
+    public static function render(Container $container, string $presenterName, string $action = 'default'): string
     {
         $presenter = $container->getByType(IPresenterFactory::class)->createPresenter($presenterName);
         if (!$presenter instanceof Presenter) {
@@ -137,7 +141,7 @@ final class Build
         }
 
         $presenter->autoCanonicalize = false;
-        $response = $presenter->run(new Request($presenterName, 'GET', ['action' => 'default']));
+        $response = $presenter->run(new Request($presenterName, 'GET', ['action' => $action]));
         if (!$response instanceof TextResponse) {
             throw new \LogicException(sprintf('%s answered with a %s.', $presenterName, $response::class));
         }

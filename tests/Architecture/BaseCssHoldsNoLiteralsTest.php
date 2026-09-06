@@ -114,11 +114,20 @@ final class BaseCssHoldsNoLiteralsTest extends TestCase
      * compared with each other in
      * Trilobit\Tests\Template\ThemesDeclareTheSameTokensTest; this is the third
      * side of the triangle.
+     *
+     * A token base.css declares itself is left out, and the exemption gives
+     * nothing away. Structure may derive a token from other tokens -
+     * --layout-content-width is one of the theme's three widths, picked by the
+     * attribute on <html> - and what that derivation reads is still a var() and
+     * still checked here. What it may not do is give the token a value, because
+     * a value is a literal and the rules above catch those first.
      */
     public function testEveryTokenItReadsIsDeclaredByEveryTheme(): void
     {
         preg_match_all('/var\(\s*(--[a-z0-9-]+)/i', self::declarations(), $matches);
-        $used = array_values(array_unique($matches[1]));
+        preg_match_all('/^\s*(--[a-z0-9-]+)\s*:/mi', self::declarations(), $declaredHere);
+
+        $used = array_values(array_diff(array_unique($matches[1]), $declaredHere[1]));
         self::assertNotSame([], $used, self::FILE . ' reads no token at all');
 
         foreach (self::themeFiles() as $theme => $source) {
