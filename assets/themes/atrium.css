@@ -137,9 +137,10 @@
 
 /*
  * Atrium stacks the navigation under the banner as a full-width row (see
- * --layout-shell-areas above). Both bands - c-site-header's and c-nav's - now
- * paint their background on the full-width grid region they sit in
- * (.l-shell__banner and .l-shell__nav), so there is nothing left to widen here.
+ * --layout-shell-areas above). Both bands now cover the full width of the
+ * region they sit in: the banner's colour moved onto .l-shell__banner, and
+ * c-nav paints its own and fills its grid area once nothing narrows it. So
+ * there is nothing left to widen here.
  * What still needs aligning is the *content* inside each band: the brand and
  * tagline sit in .l-container, so the link list is kept to the same column.
  * Without this rule the list would hug the viewport's edge on a wide screen
