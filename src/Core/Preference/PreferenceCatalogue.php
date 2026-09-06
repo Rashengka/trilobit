@@ -10,14 +10,14 @@ use Trilobit\Core\Presentation\Design\DesignSystem;
  * Which preferences this build has, and the one place a stored value is
  * checked against them.
  *
- * There are two of them today and the shape is the point: adding a third is one
- * entry here, one attribute selector in a theme file, and one more control -
- * not a migration and not a column. That is a deliberate middle position
- * between the two things this could have been. A column called `theme` would
- * have to be joined by a column called `content-width` (see
- * .ai/plans/09-chrome-a-sirka-obsahu.md, L4), one called `density` and one for
- * the narrowed menu, each with a migration behind it; a configurable settings
- * system would be a feature nobody asked for. What is here is a named list.
+ * There are three of them today and the shape is the point: adding a fourth is
+ * one entry here, one rule per answer in assets/base.css, one value per answer
+ * in each theme, and one more control - not a migration and not a column. That
+ * is a deliberate middle position between the two things this could have been. A
+ * column called `theme` would have to be joined by a column called
+ * `content-width`, one called `density` and one for the narrowed menu, each with
+ * a migration behind it; a configurable settings system would be a feature
+ * nobody asked for. What is here is a named list.
  *
  * The list is not configurable and should not become so. A preference is
  * something the stylesheet has a rule for, so inventing one at run time would
@@ -34,6 +34,8 @@ final readonly class PreferenceCatalogue
 
     public const string THEME_MODE = 'theme-mode';
 
+    public const string CONTENT_WIDTH = 'content-width';
+
     /**
      * Light and dark are variants inside a theme rather than themes of their
      * own (decision D7), and `system` is the third answer: leave it to the
@@ -44,6 +46,22 @@ final readonly class PreferenceCatalogue
      */
     private const array THEME_MODES = ['system', 'light', 'dark'];
 
+    /**
+     * How much of the screen the content is given: the reading column this
+     * application has always had, something between, and the whole region.
+     *
+     * Three named answers rather than a scale, because a number would be chosen
+     * by eye on every page and the layout would stop being a layout
+     * (.ai/plans/09-chrome-a-sirka-obsahu.md, L4). What each of them measures is
+     * a theme's business - see --layout-width-* in assets/themes/ - and which of
+     * them a page is drawn at is decided here, by the person reading it, unless
+     * that page insists otherwise; see
+     * Trilobit\Core\Preference\Preferences::overruledWith().
+     *
+     * @var non-empty-list<string>
+     */
+    private const array CONTENT_WIDTHS = ['content', 'wide', 'full'];
+
     /** @param non-empty-array<string, Preference> $preferences by name */
     private function __construct(private array $preferences) {}
 
@@ -52,6 +70,7 @@ final readonly class PreferenceCatalogue
         return new self([
             self::THEME => new Preference(self::THEME, $design->defaultTheme, $design->themes),
             self::THEME_MODE => new Preference(self::THEME_MODE, self::THEME_MODES[0], self::THEME_MODES),
+            self::CONTENT_WIDTH => new Preference(self::CONTENT_WIDTH, self::CONTENT_WIDTHS[0], self::CONTENT_WIDTHS),
         ]);
     }
 

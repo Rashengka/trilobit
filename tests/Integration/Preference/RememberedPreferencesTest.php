@@ -127,6 +127,31 @@ final class RememberedPreferencesTest extends TestCase
     }
 
     /**
+     * How wide the content is rides the mechanism the theme rides, and adding it
+     * was a line in the catalogue. It gets a cookie of its own, named after
+     * itself, written by the same call and read back by the same one - which is
+     * what "no second place to keep how somebody wants the application to look"
+     * amounts to in practice (.ai/plans/09-chrome-a-sirka-obsahu.md, L4).
+     */
+    public function testTheWidthSomebodyChoseIsKeptOnACookieOfItsOwn(): void
+    {
+        $cookie = $this->catalogue()->preference(PreferenceCatalogue::CONTENT_WIDTH)->cookie();
+        self::assertSame('trilobit-content-width', $cookie);
+
+        $this->remembered()->remember(PreferenceCatalogue::CONTENT_WIDTH, 'full', $this->visitor());
+
+        self::assertSame('full', $this->written()->cookie($cookie));
+
+        $device = $this->deviceNowSays();
+        self::assertSame('full', $device->value(PreferenceCatalogue::CONTENT_WIDTH));
+        self::assertSame(
+            $this->configuredTheme(),
+            $device->value(PreferenceCatalogue::THEME),
+            'choosing a width said something about the theme, so the two are not kept apart',
+        );
+    }
+
+    /**
      * A build that renames or removes a theme takes its holders back to
      * configuration rather than leaving them on an attribute no stylesheet
      * answers, which would be a page with no colours at all.

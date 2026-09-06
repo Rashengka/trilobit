@@ -408,6 +408,55 @@ is a `light-dark()` pair, `base.css` maps `data-theme-mode` onto `color-scheme`,
 and the browser resolves the rest. Adding a mode therefore costs one argument per
 colour instead of a second copy of the theme.
 
+### How wide the content runs
+
+The content column has three widths, named rather than numbered: `content` is the
+reading column the application has always had, `wide` is roomier, and `full` is
+the whole region the content sits in. Names rather than a scale, because a number
+would be chosen by eye on every page and the layout would stop being a layout.
+
+Each theme says what each of the three measures, in `--layout-width-content`,
+`--layout-width-wide` and `--layout-width-full`. `base.css` says which of them
+`--layout-content-width` takes, out of `data-content-width` on `<html>`, and
+everything meant to line up with the content column reads that one token -
+`.l-container`, and the link list `atrium` aligns against it - so a page has one
+content width rather than one per element that remembered to be told.
+
+Those three rules are the one thing in `base.css` that sits outside the cascade
+layers. A theme declares its tokens unlayered, and unlayered beats every layer
+whatever is in it, so the same rules inside `@layer components` would be
+overruled by the theme they are reading from - in that one theme and in no other,
+which is the kind of difference nobody goes looking for.
+
+A width offered but not drawn is a silent failure: the control appears, the click
+works, the attribute lands on `<html>`, and the page is drawn at whatever the one
+before it was. `tests/Template/ContentWidthModesTest` fails when a width this
+build offers has no rule taking it to a token of its own, and the two checks
+above - every token `base.css` reads is declared by every theme, and the themes
+declare the same set as each other - close the rest of the triangle.
+`tests/e2e/content-width.spec.ts` measures the three in both themes, in a window
+made wide enough that they cannot come out the same.
+
+#### Who chooses, and when a page overrules
+
+Which of the three a page is drawn at is the reader's setting, kept the way the
+theme is kept (below). A page may overrule it, and that is the exception rather
+than the rule: a report with a column for every day of a month overflows at any
+width and is unusable at a narrow one, and a page like that cannot wait for
+somebody to remember to switch.
+
+A page says so by calling `overruleContentWidth()` from its render method, which
+is what makes the width belong to the page rather than to the class behind it -
+one presenter answers at several addresses and they need not be drawn alike.
+`/_styleguide` and `/_styleguide/full-width` are two actions of one presenter and
+show exactly that.
+
+Nothing is written down when a page overrules. The reader's setting is untouched,
+the switch goes on showing it, and the next page is drawn at it again -
+`Trilobit\Core\Preference\Preferences` keeps "what this page is drawn at", "what
+the person prefers" and "what is worth remembering" apart on purpose, because the
+alternative is a report quietly turning into a setting.
+
 ### Components
 
 A component is a Latte block in a file of its own under
@@ -436,16 +485,22 @@ in production, and `config/local.neon` overrides either. Off means the route is
 never registered, so the path is claimed by nobody and the answer is 404 rather
 than 403: a tool that is not there has nothing to admit to.
 
-The page carries a switcher for the theme and for the light/dark mode.
+The page carries a switcher for the theme, for the light/dark mode and for how
+wide the content runs.
 
 ### What somebody prefers, and where it is kept
 
-The two switches are preferences, and a preference is one entry in
+The switches are preferences, and a preference is one entry in
 `Trilobit\Core\Preference\PreferenceCatalogue`. Its name decides everything
 else: `theme` is drawn as `data-theme` on `<html>` and kept in a cookie called
-`trilobit-theme`, `theme-mode` as `data-theme-mode` in `trilobit-theme-mode`.
-Adding a third is that one entry, a control in a template, and a rule in the
-theme files - not a column and not a migration.
+`trilobit-theme`, `theme-mode` as `data-theme-mode` in `trilobit-theme-mode`,
+`content-width` as `data-content-width` in `trilobit-content-width`. Adding a
+fourth is that one entry, a control in a template, and a rule per answer in
+`base.css` and in each theme - not a column and not a migration.
+`tests/Template/StyleguideOffersEveryPreferenceTest` fails when the catalogue and
+the controls part company either way round: an answer nobody can pick is a mode
+that does not exist, and a control for an answer the catalogue has not got posts
+a choice the server refuses while the page goes on looking right.
 
 A choice is kept in two places, and they answer different questions:
 

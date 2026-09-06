@@ -144,7 +144,16 @@
     --layout-nav-marker-block-end: 2px;
     --layout-nav-marker-inline-start: 0px;
 
-    --layout-content-width: 72rem;
+    /*
+     * One value per width the application offers, and assets/base.css decides
+     * which of them --layout-content-width takes from the attribute on <html>.
+     * Full is the region itself rather than a measurement, which is the one of
+     * the three a theme has nothing to say about.
+     */
+    --layout-width-content: 72rem;
+    --layout-width-wide: 90rem;
+    --layout-width-full: 100%;
+
     --layout-measure: 46rem;
     --layout-gutter: 1.5rem;
 

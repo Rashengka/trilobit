@@ -97,6 +97,38 @@ final class OverviewPresenter extends FrontPresenter
         $template->tableColumns = $this->sampleTableColumns();
         $template->tableRows = $this->sampleTableRows();
         $template->sampleNavigation = $this->sampleNavigation();
+        $template->fullWidthUrl = $this->link('fullWidth');
+    }
+
+    /**
+     * The second page of the guide, and the one claim the first cannot make
+     * about itself: a page drawn at a width the person reading it did not
+     * choose.
+     *
+     * It is an action of this same presenter deliberately. A width belongs to
+     * the page rather than to the class behind it - one class answers at several
+     * addresses, and here two of them are drawn differently in the same build,
+     * for the same visitor, at the same moment. See
+     * .ai/plans/09-chrome-a-sirka-obsahu.md, L4, and
+     * Trilobit\Core\Presentation\Front\FrontPresenter::overruleContentWidth().
+     */
+    public function renderFullWidth(): void
+    {
+        $template = $this->getTemplate();
+        if (!$template instanceof OverviewDefaultTemplate) {
+            throw new \LogicException(sprintf(
+                'The template of %s has to be a %s.',
+                self::class,
+                OverviewDefaultTemplate::class,
+            ));
+        }
+
+        $template->pageTitle = 'A page that insists';
+        $template->tableColumns = $this->sampleTableColumns();
+        $template->tableRows = $this->sampleTableRows();
+        $template->styleguideUrl = $this->link('default');
+
+        $this->overruleContentWidth('full');
     }
 
     /**

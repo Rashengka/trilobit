@@ -1,0 +1,68 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A page drawn at a width of its own, whatever the person reading it prefers.
+ *
+ * It exists so that the exception can be looked at rather than only described.
+ * How wide the content runs is a setting, and this is the one page in the
+ * checkout that overrules it - which is also what makes it the fixture
+ * tests/e2e/content-width.spec.ts measures the overruling against.
+ *
+ * Nothing in this file says how wide it is. The width is asked for by
+ * OverviewPresenter::renderFullWidth(), because it belongs to the action: the
+ * style guide's other page is answered by the same class and is drawn at
+ * whatever was chosen.
+ *
+ * There is deliberately no switch here. A control showing the setting beside a
+ * page that is not drawn at it is a question nobody needs to be asked; the way
+ * back to the switch is the link at the end.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/notice.latte'}
+{import '../../../components/table.latte'}
+{import '../../../components/button.latte'}
+
+{block content}
+    {include pageHeading,
+        title: 'A page that insists',
+        lead: 'Drawn at the full width of its region, whichever width is chosen for everything else.',
+        testId: 'full-width-headline'}
+
+    {include notice,
+        message: 'The width is asked for by the action that draws this page, and nothing about the '
+            . 'setting changes: the style guide is still drawn at whatever was chosen for it.',
+        testId: 'full-width-explanation'}
+
+    {*
+     * The case the arrangement was written for: a column for every day of a
+     * month. It is wider than the screen even here, which is why the frame it
+     * scrolls inside is a property of the table and not of the width - see
+     * .c-table in assets/base.css.
+     *}
+    {embed block table, caption: 'Specimens catalogued on each day of the month', testId: 'full-width-table'}
+        {block tableHead}
+            <tr>
+                <th scope="col">Month</th>
+
+                <th n:foreach="$tableColumns as $day" scope="col" class="c-table__number">{$day}</th>
+            </tr>
+        {/block}
+
+        {block tableBody}
+            <tr n:foreach="$tableRows as $label => $counts">
+                <th scope="row">{$label}</th>
+
+                <td n:foreach="$counts as $count" class="c-table__number">{$count}</td>
+            </tr>
+        {/block}
+    {/embed}
+
+    {include button,
+        label: 'Back to the style guide',
+        href: $styleguideUrl,
+        variant: 'quiet',
+        testId: 'full-width-back'}
+{/block}
