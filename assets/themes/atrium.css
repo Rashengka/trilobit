@@ -134,3 +134,22 @@
     --layout-card-min: 17rem;
     --layout-card-media-ratio: 16 / 9;
 }
+
+/*
+ * Atrium stacks the navigation under the banner as a full-width row (see
+ * --layout-shell-areas above), but the banner itself is c-site-header, which
+ * is also .l-container and therefore never wider than --layout-content-width.
+ * Without a matching rule here c-nav is left to fill its grid area edge to
+ * edge, so the two bands drift apart the moment the viewport is wider than
+ * the content column - exactly the misalignment this rule closes.
+ *
+ * Ledger does not need this: there the nav is the side column itself
+ * (--layout-nav-size), already exactly as wide as its grid area calls for.
+ * Scoped to [data-theme='atrium'] rather than left bare, so the rule cannot
+ * leak into a theme it was never measured against.
+ */
+[data-theme='atrium'] .c-nav {
+    inline-size: min(100%, var(--layout-content-width));
+    margin-inline: auto;
+    padding-inline: var(--layout-gutter);
+}
