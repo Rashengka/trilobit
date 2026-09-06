@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\DI;
 
+use Doctrine\Migrations\Version\Comparator;
 use Nette\Application\Application;
 use Nette\Application\Routers\RouteList;
 use Nette\Assets\Registry;
@@ -31,6 +32,7 @@ use Trilobit\Core\Contract\Content\ContentLinkResolver;
 use Trilobit\Core\Contract\Content\NullContentLinkResolver;
 use Trilobit\Core\Contract\Party\NullPartyDirectory;
 use Trilobit\Core\Contract\Party\PartyDirectory;
+use Trilobit\Core\Doctrine\ChronologicalComparator;
 use Trilobit\Core\Doctrine\SchemaAssetsFilter;
 use Trilobit\Core\Event\AuditListener;
 use Trilobit\Core\Event\Dispatcher;
@@ -115,6 +117,14 @@ final class CoreExtension extends CompilerExtension
      * leaving the unguarded generator in place.
      */
     private const string BRIDGE_DIFF_COMMAND = 'nettrine.migrations.diffCommand';
+
+    /**
+     * The migration runner's own service container, registered by the same
+     * bridge, and the one place the order pending migrations run in can be
+     * decided. Named here for the same reason the command above is: a release
+     * that moves it has to fail loudly on the next compile.
+     */
+    private const string BRIDGE_DEPENDENCY_FACTORY = 'nettrine.migrations.dependencyFactory';
 
     public function getConfigSchema(): Schema
     {
@@ -342,6 +352,7 @@ final class CoreExtension extends CompilerExtension
 
         $this->decorateViteMapper();
         $this->settleTheTenantBeforeRouting();
+        $this->runTheMigrationsInTheOrderTheyWereWritten();
 
         // Has to run before taggedPorts() below: a port with no module
         // behind it gets its fallback registered and tagged here, so that
@@ -362,6 +373,43 @@ final class CoreExtension extends CompilerExtension
         $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
         $this->service('ports')->setArguments([$this->taggedPorts()]);
+    }
+
+    /**
+     * Replaces the order Doctrine would run pending migrations in.
+     *
+     * Doctrine compares migration names, and a name here is a whole class name
+     * with the module's namespace in it, so the alphabet decides which module
+     * goes first - see Trilobit\Core\Doctrine\ChronologicalComparator for what
+     * that costs a fresh installation. It is done by handing the dependency
+     * factory a service rather than by configuration, because the factory is
+     * where that choice lives and the bridge exposes no key for it.
+     *
+     * The absence of the factory is refused rather than absorbed: a build that
+     * quietly kept the alphabetical order would look perfectly healthy until
+     * somebody installed it from empty.
+     */
+    private function runTheMigrationsInTheOrderTheyWereWritten(): void
+    {
+        $builder = $this->getContainerBuilder();
+        if (!$builder->hasDefinition(self::BRIDGE_DEPENDENCY_FACTORY)) {
+            throw new InvalidStateException(sprintf(
+                "'%s' is not in the container, so the migrations could not be put in the order they were written. "
+                . 'It is registered by the Nette-to-Doctrine bridge; a release that renames it needs this name changed with it.',
+                self::BRIDGE_DEPENDENCY_FACTORY,
+            ));
+        }
+
+        $definition = $builder->getDefinition(self::BRIDGE_DEPENDENCY_FACTORY);
+        if (!$definition instanceof ServiceDefinition) {
+            throw new InvalidStateException(sprintf(
+                "Service '%s' was replaced by a %s, so nothing can be set on it.",
+                self::BRIDGE_DEPENDENCY_FACTORY,
+                $definition::class,
+            ));
+        }
+
+        $definition->addSetup('setService', [Comparator::class, new Statement(ChronologicalComparator::class)]);
     }
 
     /**
