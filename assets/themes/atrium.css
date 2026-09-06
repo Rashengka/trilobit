@@ -42,10 +42,21 @@
     --text-2xl: 1.75rem;
     --text-3xl: 2.5rem;
 
+    /* Not a step on the scale above. Which size the monospaced face has to be
+       set at to sit level with the body face depends on the two faces this
+       theme picked, so it is a value the theme owes base.css rather than a
+       size somebody chose. */
+    --text-code: 0.9375rem;
+
     --leading-tight: 1.15;
     --leading-normal: 1.6;
     --tracking-display: -0.015em;
     --font-weight-display: 650;
+
+    /* Emphasis inside running text, kept apart from the display weight: a
+       theme that wanted quieter headings should not thereby get quieter
+       emphasis in the middle of a sentence. */
+    --font-weight-strong: 700;
 
     /* ---- Palette ------------------------------------------------------ */
 
@@ -67,6 +78,12 @@
     --color-danger: light-dark(oklch(0.55 0.17 27), oklch(0.7 0.15 27));
     --color-danger-ink: light-dark(oklch(0.33 0.11 27), oklch(0.93 0.04 27));
     --color-danger-surface: light-dark(oklch(0.96 0.03 27), oklch(0.27 0.05 27));
+
+    /* Behind a <mark>. A browser's own highlight is one fixed yellow in every
+       theme and both modes, and base.css may not name a colour to replace it,
+       so the pair has to come from here. */
+    --color-highlight: light-dark(oklch(0.92 0.13 95), oklch(0.45 0.1 95));
+    --color-highlight-ink: light-dark(oklch(0.28 0.05 95), oklch(0.97 0.02 95));
 
     --color-banner: light-dark(oklch(1 0 0), oklch(0.22 0.015 255));
     --color-banner-ink: var(--color-ink);

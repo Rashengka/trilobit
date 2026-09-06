@@ -92,6 +92,18 @@ final class ComponentRegistry
                 ['default'],
             ),
             new Component(
+                'c-prose',
+                'Running text made of the elements a browser already knows, given back the rhythm and the '
+                . 'list markers the reset takes away everywhere else.',
+                ['default'],
+            ),
+            new Component(
+                'c-table',
+                'Rows and columns inside the frame that catches their overflow, so that a table too wide for '
+                . 'the space it has scrolls and the page around it stays where it was.',
+                ['default', 'with a visible caption'],
+            ),
+            new Component(
                 'c-swatch',
                 'One design token, shown as the thing it produces next to the name it is asked for by.',
                 ['default'],
