@@ -23,5 +23,7 @@ final readonly class PageSummary
         public string $status,
         public bool $isPublished,
         public string $editUrl,
+        /** Where a visitor would see it, or '' while the page has no address yet. */
+        public string $publicUrl,
     ) {}
 }
