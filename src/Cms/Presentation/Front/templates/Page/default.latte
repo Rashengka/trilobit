@@ -1,0 +1,32 @@
+{templateType Trilobit\Cms\Presentation\Front\PageDefaultTemplate}
+
+{*
+ * A page somebody wrote, at whichever address the register leads here by.
+ *
+ * The menu above it is what an editor arranged, minus every entry this build
+ * cannot draw - the deciding is done in the presenter, because a template has
+ * no way to ask whether a module is here. What arrives is a list of addresses,
+ * so this file draws a menu the same way the shared layout draws the primary
+ * navigation: with the same component, out of the same kind of item.
+ *
+ * The body is what the editor typed. It is escaped and its line breaks are
+ * kept, and it is deliberately not markup: a text somebody pastes into a form
+ * is not a document this application has agreed to render.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/nav.latte'}
+
+{block content}
+    <div n:if="$menu !== []" data-testid="cms-menu-region">
+        {include nav, items: $menu, label: 'Pages', testId: 'cms-menu'}
+    </div>
+
+    {include pageHeading,
+        title: $heading,
+        lead: $perex,
+        testId: 'cms-page-title',
+        leadTestId: 'cms-page-perex'}
+
+    <div class="l-measure l-stack" n:if="$body !== ''" data-testid="cms-page-body">{$body|breaklines}</div>
+{/block}
