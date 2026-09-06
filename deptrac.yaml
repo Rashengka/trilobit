@@ -58,13 +58,39 @@ deptrac:
         - type: directory
           value: src/Shop/.*
 
-    # The suites are one layer rather than one per level. They may use the
-    # application; the application may not use them, and that is the only claim
-    # about them worth enforcing here.
+    # One layer per module's own suites, mirroring the layers above. A suite
+    # is allowed to name the module it is about and Core, and nothing else of
+    # ours - so a test written for one module that reaches for another fails
+    # here exactly as the module itself would. Without this, either every
+    # suite could name every module, or no suite could name any.
+    #
+    # The directories need not exist: a module whose suites are still to be
+    # written has an empty layer, which is the state the rule has to be
+    # written down in if it is to be there on the day somebody adds the first
+    # file.
+    - name: CmsTests
+      collectors:
+        - type: directory
+          value: tests/[A-Za-z0-9_]+/Cms/.*
+
+    - name: CrmTests
+      collectors:
+        - type: directory
+          value: tests/[A-Za-z0-9_]+/Crm/.*
+
+    - name: ShopTests
+      collectors:
+        - type: directory
+          value: tests/[A-Za-z0-9_]+/Shop/.*
+
+    # Everything else under tests/. They may use the application; the
+    # application may not use them, and that is the only claim about them
+    # worth enforcing here. The module suites above are excluded rather than
+    # left to overlap - a class cannot usefully sit in two layers at once.
     - name: Tests
       collectors:
         - type: directory
-          value: tests/.*
+          value: tests/(?![A-Za-z0-9_]+/(?:Cms|Crm|Shop)/).*
 
     # Everything that is not ours. Without this layer --fail-on-uncovered would
     # report every use of Nette or PHPUnit, and the flag would have to be
@@ -97,6 +123,26 @@ deptrac:
       - Vendor
     Shop:
       - Core
+      - Vendor
+
+    # A module's suites may name that module, Core, the shared test harness
+    # under tests/ - the boot, the database, the doubles - and libraries. What
+    # is absent is another module, which is the whole reason these three
+    # layers exist rather than one.
+    CmsTests:
+      - Cms
+      - Core
+      - Tests
+      - Vendor
+    CrmTests:
+      - Core
+      - Crm
+      - Tests
+      - Vendor
+    ShopTests:
+      - Core
+      - Shop
+      - Tests
       - Vendor
 
     Tests:

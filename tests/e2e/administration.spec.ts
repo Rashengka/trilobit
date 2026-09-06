@@ -46,6 +46,20 @@ function enabledModules(): string[] {
     return manifest.modules.map((module) => module.name);
 }
 
+/**
+ * Which module a menu entry leads into, read off its address.
+ *
+ * Two shapes, because entries lead to two places: a module's own public page
+ * (`/shop`) and a section of its administration (`/admin/cms/pages`). The
+ * second one is what R10 fixes - the backoffice has one root and the module is
+ * the first segment under it.
+ */
+function moduleOfHref(href: string): string {
+    const segments = href.split('/').filter((segment) => segment !== '');
+
+    return (segments[0] === 'admin' ? segments[1] : segments[0]) ?? '';
+}
+
 function trilobit(...arguments_: string[]): string {
     return execFileSync('php', ['bin/trilobit', ...arguments_], { encoding: 'utf8' });
 }
@@ -102,14 +116,30 @@ test('signing in opens the administration, and signing out closes it again', asy
     await expect(page.getByTestId('admin-identity')).toHaveText(displayName);
     await expect(page.getByTestId('admin-identity-email')).toHaveText(email);
 
-    // Exactly what the enabled modules contributed, in a real page. The same
-    // claim is made for all eight builds in the combination suite; this is the
-    // one build a browser can be pointed at.
-    const modules = enabledModules();
-    await expect(page.getByTestId('admin-menu').locator('.c-nav__link')).toHaveCount(modules.length);
-    for (const module of modules) {
-        await expect(page.getByTestId(`admin-menu-${module}`)).toBeVisible();
+    // Entries from exactly the enabled modules, in a real page. The same claim
+    // is made for all eight builds in the combination suite; this is the one
+    // build a browser can be pointed at.
+    //
+    // What is counted is which modules are represented, not how many entries
+    // each one contributed: a module with an administration worth the name has
+    // several sections, and one entry apiece would make the rule impossible to
+    // state without rewriting it every time a module grows a page.
+    const links = page.getByTestId('admin-menu').locator('.c-nav__link');
+    const drawn = await links.evaluateAll((elements) =>
+        elements.map((element) => ({
+            href: element.getAttribute('href') ?? '',
+            label: element.textContent?.trim() ?? '',
+        })),
+    );
+
+    expect(drawn.length).toBeGreaterThan(0);
+    for (const entry of drawn) {
+        expect(entry.href, 'a menu entry drawn without an address').not.toBe('');
+        expect(entry.label, 'a menu entry with nothing to call it').not.toBe('');
     }
+
+    const represented = [...new Set(drawn.map((entry) => moduleOfHref(entry.href)))].sort();
+    expect(represented).toEqual([...enabledModules()].sort());
 
     // The session survives a navigation of its own, which is the half a single
     // redirect after signing in would not have shown.

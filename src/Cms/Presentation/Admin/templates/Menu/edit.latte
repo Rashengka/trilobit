@@ -1,0 +1,113 @@
+{templateType Trilobit\Cms\Presentation\Admin\MenuTemplate}
+
+{*
+ * One entry of a menu, arranged.
+ *
+ * The kind and the value it leads to are two controls rather than one, because
+ * they are two different things: one is a page of this site and is held as a
+ * relation, the other two are text and can name something this build does not
+ * have. The form asks for both and refuses the combinations the domain has no
+ * way to hold.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/panel.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+{import '../../../../../Core/Presentation/components/field.latte'}
+{import '../../../../../Core/Presentation/components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'cms-menu-headline',
+        leadTestId: 'cms-menu-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'All entries', href: $listUrl, variant: 'quiet', testId: 'cms-menu-back'}
+    </div>
+
+    {embed block panel, testId: 'cms-menu-panel'}
+        {block panelTitle}The entry{/block}
+
+        {block panelBody}
+            <form n:name="entry" class="l-stack" data-testid="cms-menu-form">
+                {foreach $errors as $error}
+                    {include notice, message: $error, variant: 'danger', testId: 'cms-menu-error'}
+                {/foreach}
+
+                {embed block field, testId: 'cms-menu-name-field'}
+                    {block fieldLabel}<label n:name="menu">Menu</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="menu" data-testid="cms-menu-name-input">
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-menu-label-field'}
+                    {block fieldLabel}<label n:name="label">Label</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="label" data-testid="cms-menu-label-input">
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-menu-kind-field'}
+                    {block fieldLabel}<label n:name="targetType">Leads to</label>{/block}
+
+                    {block fieldControl}
+                        <select n:name="targetType" data-testid="cms-menu-kind-input"></select>
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-menu-page-field'}
+                    {block fieldLabel}<label n:name="page">Which page</label>{/block}
+
+                    {block fieldControl}
+                        <select n:name="page" data-testid="cms-menu-page-input"></select>
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-menu-target-field'}
+                    {block fieldLabel}<label n:name="target">Address or presenter</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="target" data-testid="cms-menu-target-input">
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-menu-parent-field'}
+                    {block fieldLabel}<label n:name="parent">Under</label>{/block}
+
+                    {block fieldControl}
+                        <select n:name="parent" data-testid="cms-menu-parent-input"></select>
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-menu-position-field'}
+                    {block fieldLabel}<label n:name="position">Position</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="position" data-testid="cms-menu-position-input">
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-menu-visible-field'}
+                    {block fieldLabel}<label n:name="visible">Shown on the site</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="visible" data-testid="cms-menu-visible-input">
+                    {/block}
+                {/embed}
+
+                <div class="l-cluster">
+                    <button n:name="send" class="c-button" data-testid="cms-menu-save">Save</button>
+
+                    {if !$isNew}
+                        <button n:name="delete" class="c-button c-button--quiet" data-testid="cms-menu-delete">Delete this entry</button>
+                    {/if}
+                </div>
+            </form>
+        {/block}
+    {/embed}
+{/block}

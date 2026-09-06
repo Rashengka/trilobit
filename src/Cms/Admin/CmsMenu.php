@@ -10,16 +10,17 @@ use Trilobit\Core\Admin\Menu\MenuProvider;
 /**
  * What the Cms module puts in the administration menu.
  *
- * It points at the module's own page for now, because a menu entry pointing at
- * a presenter that does not exist yet is an entry that throws the moment
- * somebody renders the menu. When the module grows an administration, this is
- * the one line that changes.
+ * Two entries rather than one, because they are two jobs done at different
+ * times: a page is written once, and where it is listed is rearranged whenever
+ * the site grows. A build without this module registers neither, which is why
+ * Core never has to know that either of them exists.
  */
 final class CmsMenu implements MenuProvider
 {
     /** @return iterable<MenuItem> */
     public function provide(): iterable
     {
-        yield new MenuItem('Cms', 'Cms:Front:Status:default');
+        yield new MenuItem('Pages', 'Cms:Admin:Page:default');
+        yield new MenuItem('Menus', 'Cms:Admin:Menu:default');
     }
 }

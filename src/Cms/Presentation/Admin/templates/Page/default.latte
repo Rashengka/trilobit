@@ -1,0 +1,59 @@
+{templateType Trilobit\Cms\Presentation\Admin\PagesTemplate}
+
+{*
+ * Every page this site has, whether or not a visitor may see it.
+ *
+ * The address is shown beside each one because it is not part of the page:
+ * it is a row in Core's register, and the register is where two modules'
+ * content is kept from colliding. A page with no address yet says so rather
+ * than showing nothing, which would read as a page at the root.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/panel.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+{import '../../../../../Core/Presentation/components/badge.latte'}
+{import '../../../../../Core/Presentation/components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'cms-pages-headline',
+        leadTestId: 'cms-pages-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'Write a page', href: $addUrl, testId: 'cms-pages-add'}
+    </div>
+
+    {embed block panel, testId: 'cms-pages-panel'}
+        {block panelTitle}Pages{/block}
+
+        {block panelBody}
+            {if $pages === []}
+                {include notice,
+                    message: 'Nothing has been written yet.',
+                    testId: 'cms-pages-empty'}
+            {else}
+                <ul class="l-stack" data-testid="cms-page-list">
+                    <li n:foreach="$pages as $page" class="l-cluster" data-testid="cms-page-{$page->id}">
+                        {include button,
+                            label: $page->title,
+                            href: $page->editUrl,
+                            variant: 'quiet',
+                            testId: 'cms-page-open-' . $page->id}
+
+                        {include badge,
+                            label: $page->status,
+                            variant: $page->isPublished ? 'accent' : 'plain',
+                            testId: 'cms-page-status-' . $page->id}
+
+                        {include badge,
+                            label: $page->address,
+                            testId: 'cms-page-address-' . $page->id}
+                    </li>
+                </ul>
+            {/if}
+        {/block}
+    {/embed}
+{/block}
