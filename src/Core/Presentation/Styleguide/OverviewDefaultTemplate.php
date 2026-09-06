@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Styleguide;
 
 use Trilobit\Core\Presentation\Component\Component;
+use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Front\FrontTemplate;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
@@ -39,6 +40,9 @@ final class OverviewDefaultTemplate extends FrontTemplate
 
     /** @var list<NavigationItem> */
     public array $sampleNavigation = [];
+
+    /** @var list<SignpostLink> */
+    public array $sampleSignposts = [];
 
     /** Where the page that insists on its own width lives, for the guide to point at. */
     public string $fullWidthUrl = '';

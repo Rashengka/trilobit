@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Front;
 
 use Nette\Application\UI\Template;
-use Trilobit\Core\Presentation\Front\Signpost\SignpostLink;
+use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 
 /**

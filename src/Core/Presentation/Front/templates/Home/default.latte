@@ -13,7 +13,7 @@
 
 {import '../../../components/page-heading.latte'}
 {import '../../../components/marker-list.latte'}
-{import '../../../components/card.latte'}
+{import '../../../components/signpost.latte'}
 
 {block content}
     {include pageHeading,
@@ -24,14 +24,7 @@
 
     {include markerList, items: $highlights, testId: 'homepage-highlights'}
 
-    <nav class="l-grid" aria-label="Sections" data-testid="homepage-signposts" n:if="$signposts !== []">
-        {foreach $signposts as $signpost}
-            {include card,
-                title: $signpost->label,
-                href: $signpost->href,
-                text: $signpost->summary,
-                media: ($signpost->label|slice: 0, 1),
-                testId: $signpost->testId}
-        {/foreach}
-    </nav>
+    {if $signposts !== []}
+        {include signpost, items: $signposts, label: 'Sections', testId: 'homepage-signposts'}
+    {/if}
 {/block}

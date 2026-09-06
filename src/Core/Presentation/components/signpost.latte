@@ -1,0 +1,29 @@
+{**
+ * c-signpost - the way into each part of something, drawn as a grid of linked
+ * tiles built out of c-card.
+ *
+ * It exists because the same shape answers two different questions - the
+ * homepage's "where does a visitor go in" and an administration section's
+ * "what does this section hold" - and both are assembled from data rather
+ * than written into a template by hand: the front page reads
+ * Trilobit\Core\Presentation\Front\Signpost\SignpostList, an administration
+ * section reads Trilobit\Core\Admin\Menu\Menu::itemsOf(). One component for
+ * both keeps the two ways in from drawing the same idea two different ways.
+ *
+ * @param iterable<Trilobit\Core\Presentation\Component\SignpostLink> $items
+ *}
+
+{import 'card.latte'}
+
+{define signpost, iterable $items, string $label, ?string $testId = null}
+    <nav class="c-signpost l-grid" aria-label="{$label}" data-testid="{$testId}">
+        {foreach $items as $item}
+            {include card,
+                title: $item->label,
+                href: $item->href,
+                text: $item->summary,
+                media: ($item->label|slice: 0, 1),
+                testId: $item->testId}
+        {/foreach}
+    </nav>
+{/define}
