@@ -6,6 +6,9 @@ namespace Trilobit\Core\Presentation\Admin;
 
 use Nette\Application\UI\Template;
 use Trilobit\Core\Security\Identity;
+use Trilobit\Core\Security\Needs;
+use Trilobit\Core\Security\Privilege;
+use Trilobit\Core\Security\Resource;
 
 /**
  * The page the administration opens on: who is signed in, and what this build
@@ -16,7 +19,17 @@ use Trilobit\Core\Security\Identity;
  * contributed - so this page says the same thing in a build with three modules
  * and in a build with none, which is what makes it the page a build can always
  * be checked against.
+ *
+ * **Its gate is the administration itself and nothing narrower.** That pair is
+ * what src/Core/Security/permissions.neon says administering anything begins
+ * with - "opening it at all is the one thing asked of it" - and this page is
+ * where opening it lands, both from the menu and from signing in. A pair
+ * belonging to one section would be worse in both directions: somebody who may
+ * work on that section and nothing else would be the only person able to see
+ * the build's own overview, and everybody else would be refused on the page
+ * they arrive at the moment they sign in.
  */
+#[Needs(Resource::Administration, Privilege::View)]
 final class DashboardPresenter extends AdminPresenter
 {
     public function renderDefault(): void

@@ -6,6 +6,9 @@ namespace Trilobit\Cms\Presentation\Admin;
 
 use Nette\Application\UI\Template;
 use Trilobit\Core\Presentation\Admin\AdminPresenter;
+use Trilobit\Core\Security\Needs;
+use Trilobit\Core\Security\Privilege;
+use Trilobit\Core\Security\Resource;
 
 /**
  * The signpost at /admin/cms: the way into every section this module put on
@@ -24,7 +27,19 @@ use Trilobit\Core\Presentation\Admin\AdminPresenter;
  * contributes at least one entry. The empty-list branch below is what a
  * section with nothing to show turns into on the day that stops being true -
  * a 404, not a page announcing that it has nothing to say.
+ *
+ * **The pair it is gated on is the one the sections behind it are about**,
+ * rather than the administration as a whole. This page is a way into content
+ * and nothing else, so somebody trusted with content and nothing else has to
+ * be able to reach it; the other way round holds by itself, because
+ * src/Core/Security/permissions.neon makes content a child of the
+ * administration and a rule written on the parent answers for the child.
+ * **Exit condition:** the day this module's sections are about more than one
+ * resource, when a signpost drawn from every entry would be a page listing
+ * things some of the people reading it may not open - which is decision B3's
+ * question, asked of a signpost instead of the bar.
  */
+#[Needs(Resource::Content, Privilege::View)]
 final class SignpostPresenter extends AdminPresenter
 {
     private const string MODULE = 'cms';

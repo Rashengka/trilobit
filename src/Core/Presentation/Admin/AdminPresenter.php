@@ -6,23 +6,37 @@ namespace Trilobit\Core\Presentation\Admin;
 
 use Nette\Application\UI\Presenter;
 use Nette\Application\UI\Template;
+use Nette\Http\IResponse;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Admin\Menu\MenuItem;
 use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
+use Trilobit\Core\Security\Doorkeeper;
+use Trilobit\Core\Security\Gate;
 use Trilobit\Core\Security\Identity;
+use Trilobit\Core\Security\Needs;
+use Trilobit\Core\Security\OpenToEverybody;
 
 /**
  * The base every administration page is built on, whichever module it belongs
  * to.
  *
- * It does three things: it turns anybody who is not signed in away, it puts the
- * administration layout at the end of the template search, and it fills in what
- * that layout draws itself out of. A module writing an administration page
- * extends this and gets all three by doing so, rather than by remembering to
- * check something in every presenter it writes - which is the kind of check
- * that is eventually forgotten in exactly one place.
+ * It does three things: it enforces what each page declared about who may open
+ * it, it puts the administration layout at the end of the template search, and
+ * it fills in what that layout draws itself out of. A module writing an
+ * administration page extends this and gets all three by doing so, rather than
+ * by remembering to check something in every presenter it writes - which is
+ * the kind of check that is eventually forgotten in exactly one place.
+ *
+ * **Nothing opens that did not say who may open it.** A page carrying no
+ * Trilobit\Core\Security\Gate raises where it would have been drawn, and the
+ * sentence it raises with says what to write. It is a mistake in the source
+ * rather than a visitor doing something they may not, so it is loud rather
+ * than a refusal - and it is caught before that by
+ * Trilobit\Tests\Architecture\EveryAdministrationViewIsGatedTest, which asks
+ * the same question of every view in the build. What must never happen is the
+ * third possibility: a page nobody declared anything about quietly opening.
  *
  * **Turning away is a redirect, not an error.** A visitor who is not signed in
  * has done nothing wrong, and 403 on a page that exists tells somebody who is
@@ -31,12 +45,6 @@ use Trilobit\Core\Security\Identity;
  * request is a session started for every anonymous request to /admin.
  * **Exit condition:** the first module that adds a page worth being returned to
  * after signing in.
- *
- * **Signing in is the whole of the gate.** The roles and permissions an account
- * holds are carried on the identity and shown on the overview, and nothing
- * enforces one yet, because there is no page in the administration that some
- * accounts may open and others may not. **Exit condition:** the first module
- * that contributes one.
  */
 abstract class AdminPresenter extends Presenter
 {
@@ -44,10 +52,22 @@ abstract class AdminPresenter extends Presenter
 
     private Menu $menu;
 
+    private Doorkeeper $doorkeeper;
+
     public function injectAdministration(RememberedPreferences $remembered, Menu $menu): void
     {
         $this->remembered = $remembered;
         $this->menu = $menu;
+    }
+
+    /**
+     * Its own inject method rather than an argument of the one above, because
+     * it is the only thing here that runs before the page does. Whoever comes
+     * looking for what enforces the gates finds one name and one method.
+     */
+    public function injectGate(Doorkeeper $doorkeeper): void
+    {
+        $this->doorkeeper = $doorkeeper;
     }
 
     /** @return non-empty-list<string> */
@@ -60,22 +80,62 @@ abstract class AdminPresenter extends Presenter
     }
 
     /**
-     * Whether somebody has to be signed in before this page is drawn.
+     * The gate, enforced.
      *
-     * True everywhere but on the sign-in page itself, which is the one page of
-     * the administration that has to answer to a visitor who is not signed in.
+     * Nette calls this for the presenter class before startup() and again for
+     * every action*(), render*() and handle*() it goes on to call, so one
+     * override covers a page, its signals and the forms posted to it. Where it
+     * runs is also the trap: it runs *before* startup(), which is where being
+     * sent to the sign-in page used to live, so a gate that asked what
+     * somebody may do before asking who they are would answer 403 to a visitor
+     * it should be sending to sign in. Hence the two passes below, in that
+     * order - measured, not reasoned: redirecting from here does produce a
+     * 302, because Nette\Application\UI\Presenter::run() catches the
+     * AbortException that redirect() throws, and no action or render method is
+     * reached afterwards.
+     *
+     * A page with nothing declared about it raises rather than opening. That
+     * is checked for the class only: an action carrying no declaration of its
+     * own is covered by the class's, which is the ordinary case, while a class
+     * carrying none has nothing behind it at all - and, because a submitted
+     * form arrives through processSignal() and asks nothing of any method, a
+     * class-level declaration is the only thing standing in front of the
+     * forms on the page.
+     *
+     * @param \ReflectionClass<object>|\ReflectionMethod $element
      */
-    protected function requiresIdentity(): bool
+    public function checkRequirements(\ReflectionClass|\ReflectionMethod $element): void
     {
-        return true;
-    }
+        parent::checkRequirements($element);
 
-    protected function startup(): void
-    {
-        parent::startup();
+        $gates = $this->gatesOn($element);
+        if ($gates === [] && $element instanceof \ReflectionClass) {
+            throw new \LogicException(sprintf(
+                '%s draws pages of the administration and says nothing about who may open them. Write a '
+                    . '#[%s(Resource::Something, Privilege::Something)] above the class, and above any action '
+                    . 'that needs more than the rest of it; a page that answers to anybody says so with '
+                    . '#[%s(because: ...)].',
+                static::class,
+                Needs::class,
+                OpenToEverybody::class,
+            ));
+        }
 
-        if ($this->requiresIdentity() && !$this->getUser()->isLoggedIn()) {
-            $this->redirect(':Core:Admin:Sign:in');
+        // Identity first. A visitor who has not signed in holds no roles, so
+        // every gate below would refuse them - and being refused is not what
+        // should happen to somebody who has not been asked to sign in yet.
+        foreach ($gates as $gate) {
+            if ($gate->requiresIdentity() && !$this->getUser()->isLoggedIn()) {
+                $this->redirect(':Core:Admin:Sign:in');
+            }
+        }
+
+        // Then permission, of all of them: a declaration on an action narrows
+        // the one on the class and never widens it.
+        foreach ($gates as $gate) {
+            if (!$gate->admits($this->doorkeeper)) {
+                $this->error('This is not yours to open.', IResponse::S403_Forbidden);
+            }
         }
     }
 
@@ -171,6 +231,29 @@ abstract class AdminPresenter extends Presenter
         }
 
         return $links;
+    }
+
+    /**
+     * What was declared above $element, read as the interface and never as a
+     * list of attribute names.
+     *
+     * That is what lets a third kind of gate - the one asking
+     * Trilobit\Core\Security\Landlords rather than a resource and a privilege -
+     * be added without this method, or any declaration already written above a
+     * page, changing at all.
+     *
+     * @param \ReflectionClass<object>|\ReflectionMethod $element
+     *
+     * @return list<Gate>
+     */
+    private function gatesOn(\ReflectionClass|\ReflectionMethod $element): array
+    {
+        $gates = [];
+        foreach ($element->getAttributes(Gate::class, \ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
+            $gates[] = $attribute->newInstance();
+        }
+
+        return $gates;
     }
 
     /** A menu entry points at an action; the presenter is everything before it. */

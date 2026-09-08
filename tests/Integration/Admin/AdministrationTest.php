@@ -7,6 +7,7 @@ namespace Trilobit\Tests\Integration\Admin;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Dom\HTMLDocument;
+use Nette\Application\BadRequestException;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Request;
 use Nette\Application\Response;
@@ -14,6 +15,7 @@ use Nette\Application\Responses\RedirectResponse;
 use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Presenter;
 use Nette\DI\Container;
+use Nette\Http\IResponse;
 use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
 use Nette\Utils\Random;
@@ -55,6 +57,13 @@ final class AdministrationTest extends TestCase
 
     private const string DASHBOARD = 'Core:Admin:Dashboard';
 
+    /**
+     * A section of a module, named as a string because this suite may not
+     * reach into one - and does not need to. What is asked of it is the gate,
+     * which is Core's.
+     */
+    private const string PAGES = 'Cms:Admin:Page';
+
     private string $schema = '';
 
     private ?Container $container = null;
@@ -93,6 +102,12 @@ final class AdministrationTest extends TestCase
      * somewhere rather than shown a stack trace. The status code is asserted
      * as well as the destination, because a 500 carrying a Location header
      * would satisfy "goes to the sign-in page" and nothing else about it.
+     *
+     * It is also where the order of the gate is measured, and the order is the
+     * trap. A visitor who has not signed in holds no roles, so a gate that
+     * asked what they may do before asking who they are would answer 403 - on
+     * the page it was meant to be sending them to sign in on. A redirect here
+     * is that ordering holding.
      */
     public function testAnAnonymousVisitorIsSentToTheSignInPage(): void
     {
@@ -212,6 +227,52 @@ final class AdministrationTest extends TestCase
         self::assertStringNotContainsString('sign-in', $response->getUrl());
     }
 
+    /**
+     * The other half of the same order: somebody who really is signed in and
+     * really holds nothing here is refused rather than sent to sign in again.
+     *
+     * It is the account this installation's own administrator has - see
+     * Trilobit\Core\Security\Landlords - and being refused everywhere is
+     * correct for them until they have a section of their own, because they
+     * belong to no business and a role is something held in one. Sending them
+     * to the sign-in page instead would be the loop that page cannot break:
+     * they would sign in, arrive here, and be sent back.
+     */
+    public function testSomebodySignedInWhoHoldsNothingHereIsRefused(): void
+    {
+        $this->submitSignIn('bob@example.com', $this->password());
+        self::assertTrue($this->container()->getByType(SignedIn::class)->isLoggedIn());
+
+        $this->expectException(BadRequestException::class);
+        $this->expectExceptionCode(IResponse::S403_Forbidden);
+
+        $this->request(self::DASHBOARD, 'default');
+    }
+
+    /**
+     * A declaration above an action narrows the one above the presenter, and
+     * this is the pair that says so: the same person opens the list and is
+     * refused the form beside it.
+     *
+     * The person holds `administration:view` and nothing else, so the list is
+     * reached through the resource inheritance in
+     * src/Core/Security/permissions.neon - a rule written on the parent
+     * answers for the child - while writing a new page asks for a piece
+     * nobody gave them. A gate read from the class alone would open both.
+     */
+    public function testAnActionAsksForMoreThanThePresenterItIsOn(): void
+    {
+        $this->submitSignIn('alice@example.com', $this->password());
+
+        $list = $this->request(self::PAGES, 'default');
+        self::assertInstanceOf(TextResponse::class, $list);
+
+        $this->expectException(BadRequestException::class);
+        $this->expectExceptionCode(IResponse::S403_Forbidden);
+
+        $this->request(self::PAGES, 'add');
+    }
+
     private function submitSignIn(string $email, string $secret): Response
     {
         return $this->request(self::SIGN, 'in', ['do' => 'signIn-submit'], [
@@ -273,6 +334,14 @@ final class AdministrationTest extends TestCase
      * what `app:account --tenant` makes, which is the account tests/e2e signs in
      * as - a suite set up any other way would be exercising a shape nothing
      * produces.
+     *
+     * **The second account holds nothing here, and that is a shape the
+     * application really makes too.** `app:account` without a business makes
+     * the administrator of the installation, who belongs to no business and
+     * therefore holds no role in this one - so what the pages of the
+     * administration do about somebody like that has to be measured rather
+     * than assumed. Both accounts share one generated password, because what
+     * differs between them is what they hold and nothing else.
      */
     private function container(): Container
     {
@@ -296,6 +365,14 @@ final class AdministrationTest extends TestCase
             new DateTimeImmutable('2026-09-04T08:00:00+00:00'),
         );
         $container->getByType(Accounts::class)->save($account);
+
+        $holdingNothingHere = new User(
+            'bob@example.com',
+            $container->getByType(Passwords::class)->hash($this->generatedPassword),
+            'Bob Belemnite',
+            new DateTimeImmutable('2026-09-04T08:00:00+00:00'),
+        );
+        $container->getByType(Accounts::class)->save($holdingNothingHere);
 
         $entityManager = $container->getByType(EntityManagerInterface::class);
         $role = new Role('administrator', 'Administrator', ['administration:view']);

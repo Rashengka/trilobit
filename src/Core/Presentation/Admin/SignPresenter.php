@@ -8,13 +8,14 @@ use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Nette\Security\AuthenticationException;
 use Trilobit\Core\Security\Authenticator;
+use Trilobit\Core\Security\OpenToEverybody;
 
 /**
  * Coming in and going out.
  *
  * It is the one page of the administration that answers to somebody who is not
- * signed in, which is the whole of why requiresIdentity() is overridden here
- * and nowhere else.
+ * signed in, which is the whole of why the declaration above it is the open
+ * one and why it is the only page in the build carrying it.
  *
  * The form carries no CSRF token of its own. nette/forms 3.3 deprecates its
  * token control as redundant beside the check the framework now makes on every
@@ -25,6 +26,7 @@ use Trilobit\Core\Security\Authenticator;
  * Whatever went wrong, the message is one sentence that does not say which of
  * the ways it was; see Trilobit\Core\Security\Authenticator.
  */
+#[OpenToEverybody(because: 'coming in and going out are what somebody who cannot be asked to sign in first does')]
 final class SignPresenter extends AdminPresenter
 {
     public function actionIn(): void
@@ -58,12 +60,6 @@ final class SignPresenter extends AdminPresenter
         $template->headline = 'Sign in';
         $template->lead = 'The administration of this installation.';
         $template->errors = array_map(strval(...), $this->getComponent('signIn')->getOwnErrors());
-    }
-
-    /** The sign-in page is the one page of the administration that is not behind it. */
-    protected function requiresIdentity(): bool
-    {
-        return false;
     }
 
     /**

@@ -57,6 +57,7 @@ use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
 use Trilobit\Core\Security\Authorizator;
+use Trilobit\Core\Security\Doorkeeper;
 use Trilobit\Core\Security\Landlords;
 use Trilobit\Core\Security\Memberships;
 use Trilobit\Core\Security\Permissions;
@@ -222,6 +223,13 @@ final class CoreExtension extends CompilerExtension
         // and who may do it is rows.
         $builder->addDefinition($this->prefix('authorizator'))
             ->setFactory(Authorizator::class);
+
+        // What a declaration written above a page is asked of. One service
+        // rather than the gate reaching for what it needs itself: an attribute
+        // is built by the engine and can hold no services, so this is the seam
+        // a new kind of gate is added at. See Trilobit\Core\Security\Doorkeeper.
+        $builder->addDefinition($this->prefix('doorkeeper'))
+            ->setFactory(Doorkeeper::class);
 
         // The other scope, and a service of its own rather than a mode of the
         // one above. Administering the installation happens outside every

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Tests\Integration\Cms;
 
 use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
 use Dom\HTMLDocument;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Request;
@@ -22,10 +23,13 @@ use Trilobit\Cms\Application\Page\Pages;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Content\PathRegistry;
+use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Security\Accounts;
+use Trilobit\Core\Security\Grant;
+use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
@@ -299,7 +303,17 @@ final class PageAdministrationTest extends TestCase
         return $this->container()->getByType(Pages::class);
     }
 
-    /** A build with this module, a tenant to work inside, and somebody signed in to do the work. */
+    /**
+     * A build with this module, a tenant to work inside, and somebody signed
+     * in to do the work.
+     *
+     * **What that somebody holds, they hold in the business.** The role used
+     * to be granted on the account row, which names no business - so it was a
+     * right in all of them at once and, now that the pages of the
+     * administration are gated, an answer in none. It is made here the way
+     * `app:account --tenant` makes it: every piece this build offers, on a
+     * role, held through a membership.
+     */
     private function container(): Container
     {
         if ($this->container instanceof Container) {
@@ -312,7 +326,7 @@ final class PageAdministrationTest extends TestCase
             Bootstrap::rootDirectory(),
         ));
         Migrations::run($container);
-        Tenants::enter($container, 'Ammonite Bikes', Tenants::HOST);
+        $tenant = Tenants::enter($container, 'Ammonite Bikes', Tenants::HOST);
 
         $this->generatedPassword = Random::generate(24, 'a-zA-Z0-9');
         $account = new User(
@@ -321,8 +335,16 @@ final class PageAdministrationTest extends TestCase
             'Alice Ammonite',
             new DateTimeImmutable('2026-09-06T08:00:00+00:00'),
         );
-        $account->grant(new Role('administrator', 'Administrator', ['administration']));
         $container->getByType(Accounts::class)->save($account);
+
+        $entityManager = $container->getByType(EntityManagerInterface::class);
+        $role = new Role('administrator', 'Administrator', array_map(
+            static fn(Grant $piece): string => $piece->code(),
+            $container->getByType(PermissionStructure::class)->everyPair(),
+        ));
+        $entityManager->persist($role);
+        $entityManager->persist(new Membership($tenant, $account, $role));
+        $entityManager->flush();
 
         $container->getByType(SignedIn::class)->login('alice@example.com', $this->generatedPassword);
 

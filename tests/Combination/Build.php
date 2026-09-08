@@ -14,6 +14,7 @@ use Nette\Routing\Router;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Tests\Boot;
+use Trilobit\Tests\Double\Security\StandInAuthorizator;
 
 /**
  * One build of the application: a set of switched-on modules, the container
@@ -87,6 +88,17 @@ final class Build
      * schema would run the migrations somewhere else entirely, report success,
      * and leave the new schema empty.
      *
+     * **Every build here admits everybody**, and that is the one thing a
+     * reader of this suite has to know about it. The pages of the
+     * administration are behind gates, and a gate is answered out of what
+     * somebody holds in a business - rows, and therefore a schema and the
+     * migrations. Asking eight builds whether they start and what their menus
+     * hold would then cost eight databases, which would turn the cheapest
+     * suite in the project into the slowest and would be paying for an answer
+     * nobody asked it for here. What is given up is said out loud on
+     * Trilobit\Tests\Double\Security\StandInAuthorizator: nothing in this
+     * suite proves anything about admission, and nothing in it should try to.
+     *
      * @param list<string> $enabled
      */
     public static function freshly(array $enabled): Container
@@ -97,7 +109,10 @@ final class Build
             $modules[$module] = in_array($module, $enabled, true);
         }
 
-        return Boot::container(ModuleList::of($modules, $root));
+        return Boot::container(
+            ModuleList::of($modules, $root),
+            config: ['services' => ['core.authorizator' => StandInAuthorizator::class]],
+        );
     }
 
     /**

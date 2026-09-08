@@ -6,11 +6,15 @@ namespace Trilobit\Cms\Presentation\Admin;
 
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
+use Nette\Http\IResponse;
 use Trilobit\Cms\Application\Page\Pages;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Cms\Domain\Page\PageStatus;
 use Trilobit\Core\Content\PathRefused;
 use Trilobit\Core\Presentation\Admin\AdminPresenter;
+use Trilobit\Core\Security\Needs;
+use Trilobit\Core\Security\Privilege;
+use Trilobit\Core\Security\Resource;
 
 /**
  * Writing pages: the list of them, and the form one is written in.
@@ -29,7 +33,23 @@ use Trilobit\Core\Presentation\Admin\AdminPresenter;
  * **Deleting is a submit and never a link.** A link that deletes is a link
  * something else may follow - a prefetch, a crawler, a mistyped address - and
  * this one takes the page's addresses with it.
+ *
+ * **What each of those needs is declared where it is done.** Reading the list
+ * is the floor for the whole presenter; writing a new page and rewriting an
+ * existing one are narrower and say so above their own actions. The class-level
+ * pair is not decoration beside them: a submitted form arrives through
+ * processSignal(), which asks nothing of any method, so the floor and the
+ * action of the same request are the two things standing in front of every
+ * form on this page.
+ *
+ * **Deleting is asked about in the handler**, because it is not a view. It is
+ * a second button on the form of a page somebody may already edit, and an
+ * attribute cannot tell which button was pressed - so the one place that knows
+ * a deletion is happening is the place that has to ask. **Exit condition:** a
+ * declaration that can be written above a signal, at which point the question
+ * moves above delete() and stops being a line inside it.
  */
+#[Needs(Resource::Content, Privilege::View)]
 final class PagePresenter extends AdminPresenter
 {
     private const string FORM = 'page';
@@ -43,11 +63,13 @@ final class PagePresenter extends AdminPresenter
     }
 
     /** A new page is written in the same form an existing one is; only what happens on save differs. */
+    #[Needs(Resource::Content, Privilege::Add)]
     public function actionAdd(): void
     {
         $this->setView('edit');
     }
 
+    #[Needs(Resource::Content, Privilege::Edit)]
     public function actionEdit(int $id): void
     {
         $page = $this->pages->find($id);
@@ -181,8 +203,22 @@ final class PagePresenter extends AdminPresenter
         $this->redirect('default');
     }
 
+    /**
+     * Deleting asks for itself, here, rather than above the action.
+     *
+     * The action this arrives through is `edit`, and being trusted to rewrite
+     * a page is not the same as being trusted to take it away - a role
+     * assembled out of `content:edit` and no `content:delete` is exactly the
+     * one this pair exists for. The button is still drawn for them: hiding it
+     * without refusing it would be the wrong half, and drawing what somebody
+     * may not do is a question about menus rather than about gates.
+     */
     private function delete(): void
     {
+        if (!$this->getUser()->isAllowed(Resource::Content, Privilege::Delete)) {
+            $this->error('This is not yours to delete.', IResponse::S403_Forbidden);
+        }
+
         $page = $this->edited
             ?? throw new \LogicException('The delete button is only added to the form while a page is being edited.');
 
