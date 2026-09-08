@@ -30,8 +30,16 @@ use Trilobit\Tests\Migrations;
  *
  * What is asserted is the whole of what authentication has to get right: the
  * right password is accepted, a wrong one is not, an address nobody registered
- * is not, an account that has been switched off is not, and what comes back
- * carries the roles and permissions the account holds.
+ * is not, an account that has been switched off is not, and what comes back is
+ * the person rather than anything they may do.
+ *
+ * **Nothing here enters a business, and that is what makes the last claim
+ * measurable.** A role is held in one - see
+ * Trilobit\Core\Domain\Tenancy\Membership - so an account with a role granted
+ * on the account row itself holds nothing anywhere, and an identity made
+ * outside every business has to say so. What somebody holding a role in a
+ * business gets is asserted where a business exists, in
+ * Trilobit\Tests\Integration\Security\AskingThroughNetteTest.
  */
 #[CoversNothing]
 final class AuthenticationTest extends TestCase
@@ -54,8 +62,31 @@ final class AuthenticationTest extends TestCase
         self::assertInstanceOf(Identity::class, $identity);
         self::assertSame('alice@example.com', $identity->email());
         self::assertSame('Alice Ammonite', $identity->displayName());
-        self::assertSame(['administrator'], $identity->getRoles());
         self::assertSame(['administration'], $identity->permissions());
+    }
+
+    /**
+     * The account was granted a role directly, the way core_user_role lets it
+     * be, and the identity carries none - because that grant names no business
+     * and a right that names no business would be a right in all of them.
+     *
+     * The other half of the same sentence is that nothing was read for a
+     * business here either: no host settled one, so the set is empty rather
+     * than stale, and it says which business it is for by saying none.
+     */
+    public function testARoleGrantedOnTheAccountItselfIsNotOneTheIdentityCarries(): void
+    {
+        [$authenticator, $password, $accounts] = $this->accountThatCanSignIn();
+
+        $account = $accounts->withEmail('alice@example.com');
+        self::assertInstanceOf(User::class, $account);
+        self::assertSame(['administrator'], $account->roleCodes(), 'the grant this is about is really there');
+
+        $identity = $authenticator->authenticate('alice@example.com', $password);
+
+        self::assertInstanceOf(Identity::class, $identity);
+        self::assertSame([], $identity->getRoles());
+        self::assertNull($identity->rolesLoadedFor());
     }
 
     public function testAWrongPasswordIsRefused(): void

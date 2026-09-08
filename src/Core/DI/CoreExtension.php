@@ -56,7 +56,9 @@ use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
+use Trilobit\Core\Security\Authorizator;
 use Trilobit\Core\Security\Landlords;
+use Trilobit\Core\Security\Memberships;
 use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Tenancy\HostTenants;
@@ -204,6 +206,22 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('permissions'))
             ->setFactory(Permissions::class);
+
+        // Who holds which role in the tenant of this request, read in one
+        // place so that the shared cache of decision D6 has one place to be
+        // put in front of.
+        $builder->addDefinition($this->prefix('memberships'))
+            ->setFactory(Memberships::class);
+
+        // The same wiring as the authenticator above and for the same reason:
+        // Nette\Security\User takes an authorizator by type, so registering
+        // ours is the whole of what makes $user->isAllowed() answer instead of
+        // raising "Authorizator has not been set." nette/security registers one
+        // of its own only when security: declares roles or rules, and this
+        // build declares none - what may be asked about is a file of Core's,
+        // and who may do it is rows.
+        $builder->addDefinition($this->prefix('authorizator'))
+            ->setFactory(Authorizator::class);
 
         // The other scope, and a service of its own rather than a mode of the
         // one above. Administering the installation happens outside every

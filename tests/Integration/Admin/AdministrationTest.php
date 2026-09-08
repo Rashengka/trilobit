@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Tests\Integration\Admin;
 
 use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
 use Dom\HTMLDocument;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Request;
@@ -19,6 +20,7 @@ use Nette\Utils\Random;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
 use Trilobit\Core\Module\ModuleList;
@@ -27,6 +29,7 @@ use Trilobit\Core\Security\Authenticator;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
+use Trilobit\Tests\Tenants;
 
 /**
  * The administration, from outside it: who gets in, who is turned away, and
@@ -158,8 +161,32 @@ final class AdministrationTest extends TestCase
             'alice@example.com',
             $page->querySelector('[data-testid="admin-identity-email"]')?->textContent,
         );
-        self::assertNotNull($page->querySelector('[data-testid="admin-role-administrator"]'));
-        self::assertNotNull($page->querySelector('[data-testid="admin-permission-administration"]'));
+        self::assertNotNull(
+            $page->querySelector('[data-testid="admin-role-administrator"]'),
+            'the role held in this business is drawn, and it was read for this request rather than at sign-in',
+        );
+    }
+
+    /**
+     * The overview's other cluster is drawn from the permission snapshot on the
+     * identity, which is made out of the roles granted on the account row -
+     * and a person administering a business holds none of those, so the cluster
+     * is empty for every account this application now makes.
+     *
+     * It is asserted rather than left alone so that the gap is written down
+     * where somebody meets it. Nothing decides anything on that snapshot; it is
+     * drawn and no more.
+     * **Exit condition:** the overview is given what somebody may do here
+     * instead - which is the roles held in this business expanded into pairs,
+     * and therefore belongs with the model of decision D4 rather than beside it.
+     */
+    public function testTheOverviewDrawsNoPermissionsForSomebodyAdministeringABusiness(): void
+    {
+        $this->submitSignIn('alice@example.com', $this->password());
+
+        $page = $this->pageOf($this->request(self::DASHBOARD, 'default'));
+
+        self::assertNull($page->querySelector('[data-testid="admin-permission-administration"]'));
     }
 
     public function testSigningOutSendsYouBackToTheSignInPage(): void
@@ -236,7 +263,17 @@ final class AdministrationTest extends TestCase
         return $this->generatedPassword;
     }
 
-    /** A build with every module on, so that the menu the administration draws is not empty. */
+    /**
+     * A build with every module on, so that the menu the administration draws
+     * is not empty, and one business with one person administering it.
+     *
+     * The role is held through a membership and not granted on the account,
+     * because that is where a right lives: core_user_role names no business, so
+     * a role read off it would be a role in every business at once. It is also
+     * what `app:account --tenant` makes, which is the account tests/e2e signs in
+     * as - a suite set up any other way would be exercising a shape nothing
+     * produces.
+     */
     private function container(): Container
     {
         if ($this->container instanceof Container) {
@@ -249,6 +286,7 @@ final class AdministrationTest extends TestCase
             Bootstrap::rootDirectory(),
         ));
         Migrations::run($container);
+        $tenant = Tenants::enter($container, 'Ammonite Bikes');
 
         $this->generatedPassword = Random::generate(24, 'a-zA-Z0-9');
         $account = new User(
@@ -257,8 +295,13 @@ final class AdministrationTest extends TestCase
             'Alice Ammonite',
             new DateTimeImmutable('2026-09-04T08:00:00+00:00'),
         );
-        $account->grant(new Role('administrator', 'Administrator', ['administration']));
         $container->getByType(Accounts::class)->save($account);
+
+        $entityManager = $container->getByType(EntityManagerInterface::class);
+        $role = new Role('administrator', 'Administrator', ['administration:view']);
+        $entityManager->persist($role);
+        $entityManager->persist(new Membership($tenant, $account, $role));
+        $entityManager->flush();
 
         return $this->container = $container;
     }
