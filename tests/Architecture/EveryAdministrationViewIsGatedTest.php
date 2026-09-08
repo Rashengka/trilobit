@@ -136,6 +136,13 @@ final class EveryAdministrationViewIsGatedTest extends TestCase
                 'Core/Presentation/Admin/DashboardPresenter.php: default',
                 'Core/Presentation/Admin/SignPresenter.php: in',
                 'Core/Presentation/Admin/SignPresenter.php: out',
+                // The other administration: the section of the installation
+                // itself, which is a directory of its own rather than two more
+                // files beside the pages of a business's administration - see
+                // Trilobit\Tests\Architecture\InstallationSection, whose rules
+                // are about that place.
+                'Core/Presentation/Installation/BusinessesPresenter.php: default',
+                'Core/Presentation/Installation/SignpostPresenter.php: default',
             ],
             $drawn,
         );

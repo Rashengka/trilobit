@@ -16,9 +16,15 @@ use Nette\Application\Routers\RouteList;
  * leaving them unclaimed. Written out, a module adding an administration
  * section adds a route somebody can read.
  *
- * The three here are Core's own and are in every build, because Core cannot be
+ * The ones here are Core's own and are in every build, because Core cannot be
  * switched off - which is also why the administration is the one place a module
  * may assume exists.
+ *
+ * Two of them are the installation's own section, and it begins one segment
+ * under /admin rather than somewhere else entirely. The administration has one
+ * root and what is under it is a section, whether the section belongs to a
+ * module or, as this one does, to the installation itself; a second root would
+ * be a second thing to reserve and a second shape for a link to have.
  */
 final class AdminRoutes implements RouteProvider
 {
@@ -28,10 +34,15 @@ final class AdminRoutes implements RouteProvider
 
     public const string SIGN_OUT_PATH = 'admin/sign-out';
 
+    /** Where the section of the installation's own administrator begins. */
+    public const string INSTALLATION_PATH = 'admin/installation';
+
     public function provide(RouteList $routes): void
     {
         $routes->addRoute(self::SIGN_IN_PATH, 'Core:Admin:Sign:in');
         $routes->addRoute(self::SIGN_OUT_PATH, 'Core:Admin:Sign:out');
+        $routes->addRoute(self::INSTALLATION_PATH, 'Core:Installation:Signpost:default');
+        $routes->addRoute(self::INSTALLATION_PATH . '/businesses', 'Core:Installation:Businesses:default');
         $routes->addRoute(self::PATH, 'Core:Admin:Dashboard:default');
     }
 

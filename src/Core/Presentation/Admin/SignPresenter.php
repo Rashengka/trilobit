@@ -32,7 +32,7 @@ final class SignPresenter extends AdminPresenter
     public function actionIn(): void
     {
         if ($this->getUser()->isLoggedIn()) {
-            $this->redirect(':Core:Admin:Dashboard:default');
+            $this->redirect($this->landing());
         }
     }
 
@@ -108,6 +108,10 @@ final class SignPresenter extends AdminPresenter
             return;
         }
 
-        $this->redirect(':Core:Admin:Dashboard:default');
+        // Where somebody lands depends on which administration they have, and
+        // it has to: the account a fresh installation is set up with holds
+        // nothing in any business, so the overview of one is the page it would
+        // be refused on. See Trilobit\Core\Presentation\Admin\Landing.
+        $this->redirect($this->landing());
     }
 }

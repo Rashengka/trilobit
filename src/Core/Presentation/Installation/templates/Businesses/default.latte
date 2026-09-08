@@ -1,0 +1,78 @@
+{templateType Trilobit\Core\Presentation\Installation\BusinessesTemplate}
+
+{*
+ * Every business this installation runs.
+ *
+ * The name is the whole of what identifies one here; where it answers is not
+ * shown, and that is a decision rather than a gap - a host is a tenanted row,
+ * so reading them all at once would mean stepping around the filter that keeps
+ * one business's rows out of another's. See
+ * Trilobit\Core\Tenancy\Businesses.
+ *
+ * The date is formatted by a filter rather than in the presenter, because when
+ * a row was made is a question about how the page reads and not about what the
+ * page is drawn from.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/badge.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/notice.latte'}
+{import '../../../components/table.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'businesses-headline',
+        leadTestId: 'businesses-lead'}
+
+    <div class="l-cluster">
+        {include button,
+            label: 'Back to the installation',
+            href: $sectionUrl,
+            variant: 'quiet',
+            testId: 'businesses-section-link'}
+    </div>
+
+    {embed block panel, testId: 'businesses-panel'}
+        {block panelTitle}Businesses{/block}
+
+        {block panelBody}
+            {if $businesses === []}
+                {include notice,
+                    message: 'This installation runs no business yet. One is made with bin/trilobit app:tenant.',
+                    testId: 'businesses-empty'}
+            {else}
+                {embed block table, caption: 'Every business this installation runs', testId: 'business-list'}
+                    {block tableHead}
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Addresses say their language</th>
+                            <th scope="col">Added</th>
+                        </tr>
+                    {/block}
+
+                    {block tableBody}
+                        <tr n:foreach="$businesses as $business" data-testid="business-{$business->id}">
+                            <th scope="row" data-testid="business-name-{$business->id}">{$business->name}</th>
+
+                            <td>
+                                {include badge,
+                                    label: $business->languageStrategy,
+                                    testId: 'business-language-' . $business->id}
+                            </td>
+
+                            <td>
+                                <time datetime="{$business->createdAt|date: 'Y-m-d'}"
+                                    data-testid="business-added-{$business->id}"
+                                >{$business->createdAt|date: 'j F Y'}</time>
+                            </td>
+                        </tr>
+                    {/block}
+                {/embed}
+            {/if}
+        {/block}
+    {/embed}
+{/block}

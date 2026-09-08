@@ -48,17 +48,26 @@ class AdminTemplate extends Template
     public string $preferenceUrl = '';
 
     /**
-     * Whatever the enabled modules contributed, already turned into addresses.
+     * What the person reading this page may open, already turned into
+     * addresses.
      *
-     * Core contributes nothing to it. The way back to the overview is the mark
-     * in the header, the same way the way back to the front page is the mark
-     * in the public header - which is what lets "one entry per enabled module"
-     * be something a test can count.
+     * It is what the enabled modules contributed plus Core's own way into the
+     * section belonging to the installation, and then filtered by
+     * Trilobit\Core\Admin\Menu\ReachableMenu - so an entry that would refuse
+     * whoever is looking is not here to be clicked. The way back to where this
+     * person's administration begins is the mark in the header, the same way
+     * the way back to the front page is the mark in the public header.
      *
      * @var list<NavigationItem>
      */
     public array $menu = [];
 
+    /**
+     * Where this person's administration begins, which is what the mark in the
+     * banner leads to. It is the overview of a business for whoever
+     * administers one and the installation's own section for whoever
+     * administers that; see Trilobit\Core\Presentation\Admin\Landing.
+     */
     public string $overviewUrl = '';
 
     public string $signOutUrl = '';

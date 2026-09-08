@@ -16,7 +16,9 @@ use Nette\InvalidStateException;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Nette\Security\User as SignedIn;
+use Trilobit\Core\Admin\Menu\InstallationMenu;
 use Trilobit\Core\Admin\Menu\Menu;
+use Trilobit\Core\Admin\Menu\ReachableMenu;
 use Trilobit\Core\Asset\VersionedViteMapper;
 use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
@@ -43,6 +45,7 @@ use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Core\Preference\PreferenceCatalogue;
 use Trilobit\Core\Preference\RememberedPreferences;
+use Trilobit\Core\Presentation\Admin\Landing;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
@@ -62,6 +65,7 @@ use Trilobit\Core\Security\Landlords;
 use Trilobit\Core\Security\Memberships;
 use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
+use Trilobit\Core\Tenancy\Businesses;
 use Trilobit\Core\Tenancy\HostTenants;
 use Trilobit\Core\Tenancy\Tenancy;
 use Trilobit\Core\Tenancy\TenantFromHost;
@@ -274,6 +278,13 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('hostTenants'))
             ->setFactory(HostTenants::class);
 
+        // Which businesses this installation runs, for the section that is
+        // over all of them. It reads through the mapper like anything else,
+        // because the tenant is what tenancy is measured against rather than
+        // something measured by it; see Trilobit\Core\Tenancy\Businesses.
+        $builder->addDefinition($this->prefix('businesses'))
+            ->setFactory(Businesses::class);
+
         // Hung on the application's startup in beforeCompile() below, which is
         // where it has to be: the framework runs those before it asks the
         // router anything, and the register the router reads is one address
@@ -321,6 +332,31 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('adminMenu'))
             ->setFactory(Menu::class, [[]]);
+
+        // Core's own entry on the bar: the way into the section that belongs
+        // to the installation rather than to any business in it. It is
+        // contributed through the same tag a module uses, so that nothing has
+        // to know whose entry it is - and it is taken out again for anybody it
+        // would refuse, by the filter below.
+        $builder->addDefinition($this->prefix('installationMenu'))
+            ->setFactory(InstallationMenu::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ADMIN_MENU_PROVIDER);
+
+        // The menu as the person reading it may use it. Both the bar and a
+        // section's signpost are drawn through this one service, because they
+        // are one data structure drawn twice and a filter written into each
+        // drawing would be two places to disagree. See
+        // Trilobit\Core\Admin\Menu\ReachableMenu.
+        $builder->addDefinition($this->prefix('reachableMenu'))
+            ->setFactory(ReachableMenu::class);
+
+        // Which of the two administrations somebody is sent to after signing
+        // in, and what the mark in the banner leads back to. One service
+        // because it is one decision; see
+        // Trilobit\Core\Presentation\Admin\Landing.
+        $builder->addDefinition($this->prefix('landing'))
+            ->setFactory(Landing::class);
 
         $builder->addDefinition($this->prefix('signposts'))
             ->setFactory(SignpostList::class, [[]]);

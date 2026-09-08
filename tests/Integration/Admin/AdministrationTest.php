@@ -6,6 +6,7 @@ namespace Trilobit\Tests\Integration\Admin;
 
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Dom\Element;
 use Dom\HTMLDocument;
 use Nette\Application\BadRequestException;
 use Nette\Application\IPresenterFactory;
@@ -63,6 +64,11 @@ final class AdministrationTest extends TestCase
      * which is Core's.
      */
     private const string PAGES = 'Cms:Admin:Page';
+
+    /** The other scope: the section the administrator of the installation has, and the one page in it. */
+    private const string INSTALLATION = 'Core:Installation:Signpost';
+
+    private const string BUSINESSES = 'Core:Installation:Businesses';
 
     private string $schema = '';
 
@@ -273,6 +279,180 @@ final class AdministrationTest extends TestCase
         $this->request(self::PAGES, 'add');
     }
 
+    /**
+     * The two scopes meet nowhere, and this is the pair that says so from the
+     * inside: the same request, made by the two kinds of account this
+     * application makes, answered in opposite directions.
+     *
+     * It is asserted as a pair rather than as two tests, because either half
+     * alone would pass in an application where the section admitted everybody
+     * or nobody.
+     */
+    public function testTheInstallationSectionAdmitsItsAdministratorAndNobodyElse(): void
+    {
+        $this->submitSignIn('cora@example.com', $this->password());
+        self::assertInstanceOf(TextResponse::class, $this->request(self::INSTALLATION, 'default'));
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+        $this->submitSignIn('alice@example.com', $this->password());
+
+        $this->expectException(BadRequestException::class);
+        $this->expectExceptionCode(IResponse::S403_Forbidden);
+
+        $this->request(self::INSTALLATION, 'default');
+    }
+
+    /**
+     * The other direction of the same sentence. Somebody who administers the
+     * installation belongs to no business, so a page of a business's
+     * administration is not theirs to open - not because they were given too
+     * little, but because a role is held in a business and they are in none.
+     */
+    public function testTheInstallationsAdministratorIsRefusedTheAdministrationOfABusiness(): void
+    {
+        $this->submitSignIn('cora@example.com', $this->password());
+
+        $this->expectException(BadRequestException::class);
+        $this->expectExceptionCode(IResponse::S403_Forbidden);
+
+        $this->request(self::DASHBOARD, 'default');
+    }
+
+    /**
+     * Signing in has to land somebody where they may be, and the two kinds of
+     * account land in different places for that reason alone.
+     *
+     * The overview of a business is where an administrator of one belongs and
+     * is exactly what the other is refused, so sending both there would make
+     * the application look broken to the account a fresh installation is set
+     * up with.
+     */
+    public function testSigningInLandsEachKindOfAccountWhereItMayBe(): void
+    {
+        $business = $this->submitSignIn('alice@example.com', $this->password());
+        self::assertInstanceOf(RedirectResponse::class, $business);
+        self::assertStringEndsWith('/admin', $business->getUrl());
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+
+        $installation = $this->submitSignIn('cora@example.com', $this->password());
+        self::assertInstanceOf(RedirectResponse::class, $installation);
+        self::assertStringContainsString('/admin/installation', $installation->getUrl());
+    }
+
+    /** The businesses of this installation are what the section holds in this first version. */
+    public function testTheSectionListsTheBusinessesThisInstallationHas(): void
+    {
+        $this->submitSignIn('cora@example.com', $this->password());
+
+        $page = $this->pageOf($this->request(self::BUSINESSES, 'default'));
+
+        $list = $page->querySelector('[data-testid="business-list"]');
+        self::assertNotNull($list, 'the section drew no list of businesses');
+        self::assertStringContainsString('Ammonite Bikes', $list->textContent ?? '');
+    }
+
+    /**
+     * The menu draws nothing this person would be refused, and that is one
+     * filter rather than a habit kept in two places.
+     *
+     * Both directions are asserted here because the entry that has to go is a
+     * different entry for each of them: the administrator of a business must
+     * not be shown the way into the installation, and the administrator of the
+     * installation must not be shown the way into a business.
+     */
+    public function testTheMenuHoldsNothingThePersonReadingItWouldBeRefused(): void
+    {
+        $this->submitSignIn('alice@example.com', $this->password());
+        $business = $this->menuAddressesOn($this->request(self::DASHBOARD, 'default'));
+
+        self::assertNotSame([], $business, 'somebody administering a business was drawn no menu at all');
+        self::assertSame(
+            [],
+            array_values(array_filter($business, static fn(string $href): bool => str_contains($href, '/admin/installation'))),
+            'the bar offered the installation section to somebody who administers a business',
+        );
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+        $this->submitSignIn('cora@example.com', $this->password());
+        $installation = $this->menuAddressesOn($this->request(self::BUSINESSES, 'default'));
+
+        self::assertNotSame([], $installation, 'the administrator of the installation was drawn no menu at all');
+        self::assertSame(
+            [],
+            array_values(array_filter(
+                $installation,
+                static fn(string $href): bool => str_starts_with($href, '/admin') && !str_starts_with($href, '/admin/installation'),
+            )),
+            'the bar offered the administration of a business to somebody who is in none',
+        );
+    }
+
+    /**
+     * An entry leading somewhere no gate stands is drawn for everybody, which
+     * is a decision rather than an oversight: the destination is a page of the
+     * public site that a module put on the bar, and hiding a page anybody may
+     * open would be the filter answering a question nobody asked it.
+     *
+     * It is asserted from the account that holds nothing in this business,
+     * because that is where "hide what is refused" and "hide what has no gate"
+     * come apart.
+     */
+    public function testAnEntryLeadingSomewhereNoGateStandsIsDrawnForEverybody(): void
+    {
+        $this->submitSignIn('cora@example.com', $this->password());
+
+        $addresses = $this->menuAddressesOn($this->request(self::BUSINESSES, 'default'));
+
+        self::assertNotSame(
+            [],
+            array_values(array_filter($addresses, static fn(string $href): bool => !str_starts_with($href, '/admin'))),
+            'every entry leading outside the administration was dropped, and none of them is gated',
+        );
+    }
+
+    /**
+     * The section's signpost and the bar are one data structure drawn twice
+     * (decision M2), so what the filter takes out of one it takes out of the
+     * other - and what it leaves is the same in both.
+     */
+    public function testTheSectionSignpostHoldsExactlyWhatTheBarHoldsForIt(): void
+    {
+        $this->submitSignIn('cora@example.com', $this->password());
+
+        $page = $this->pageOf($this->request(self::INSTALLATION, 'default'));
+
+        $signpost = $page->querySelector('[data-testid="installation-signpost"]');
+        self::assertNotNull($signpost, 'the section drew no signpost');
+
+        $labels = [];
+        foreach ($signpost->querySelectorAll('.c-card__link') as $link) {
+            $labels[] = trim($link->textContent ?? '');
+        }
+
+        self::assertSame(['Businesses'], $labels);
+    }
+
+    /**
+     * Every address the administration bar of a drawn page leads to.
+     *
+     * @return list<string>
+     */
+    private function menuAddressesOn(Response $response): array
+    {
+        $menu = $this->pageOf($response)->querySelector('[data-testid="admin-menu"]');
+        if (!$menu instanceof Element) {
+            return [];
+        }
+
+        $addresses = [];
+        foreach ($menu->querySelectorAll('.c-nav__link') as $link) {
+            $addresses[] = $link->getAttribute('href') ?? '';
+        }
+
+        return $addresses;
+    }
+
     private function submitSignIn(string $email, string $secret): Response
     {
         return $this->request(self::SIGN, 'in', ['do' => 'signIn-submit'], [
@@ -336,12 +516,20 @@ final class AdministrationTest extends TestCase
      * produces.
      *
      * **The second account holds nothing here, and that is a shape the
-     * application really makes too.** `app:account` without a business makes
-     * the administrator of the installation, who belongs to no business and
-     * therefore holds no role in this one - so what the pages of the
-     * administration do about somebody like that has to be measured rather
-     * than assumed. Both accounts share one generated password, because what
-     * differs between them is what they hold and nothing else.
+     * application really makes too.** An account can hold nothing in this
+     * business without administering the installation - it may hold something
+     * in another one - so what the pages of the administration do about
+     * somebody like that has to be measured rather than assumed.
+     *
+     * **The third is the administrator of the installation**, which is what
+     * `app:account` makes when it is given no business: the flag on the row
+     * and no membership anywhere, because the two cannot be held by one
+     * account. It is a separate account from the second on purpose - holding
+     * nothing here and administering the installation are answered by
+     * different services and would otherwise be one fixture standing for both.
+     *
+     * All three share one generated password, because what differs between
+     * them is what they hold and nothing else.
      */
     private function container(): Container
     {
@@ -373,6 +561,15 @@ final class AdministrationTest extends TestCase
             new DateTimeImmutable('2026-09-04T08:00:00+00:00'),
         );
         $container->getByType(Accounts::class)->save($holdingNothingHere);
+
+        $administersTheInstallation = new User(
+            'cora@example.com',
+            $container->getByType(Passwords::class)->hash($this->generatedPassword),
+            'Cora Crinoid',
+            new DateTimeImmutable('2026-09-04T08:00:00+00:00'),
+            landlord: true,
+        );
+        $container->getByType(Accounts::class)->save($administersTheInstallation);
 
         $entityManager = $container->getByType(EntityManagerInterface::class);
         $role = new Role('administrator', 'Administrator', ['administration:view']);

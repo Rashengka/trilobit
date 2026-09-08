@@ -7,8 +7,8 @@ namespace Trilobit\Core\Presentation\Admin;
 use Nette\Application\UI\Presenter;
 use Nette\Application\UI\Template;
 use Nette\Http\IResponse;
-use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Admin\Menu\MenuItem;
+use Trilobit\Core\Admin\Menu\ReachableMenu;
 use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
@@ -50,14 +50,26 @@ abstract class AdminPresenter extends Presenter
 {
     private RememberedPreferences $remembered;
 
-    private Menu $menu;
+    private ReachableMenu $menu;
+
+    private Landing $landing;
 
     private Doorkeeper $doorkeeper;
 
-    public function injectAdministration(RememberedPreferences $remembered, Menu $menu): void
-    {
+    public function injectAdministration(
+        RememberedPreferences $remembered,
+        /**
+         * The menu already filtered down to what this person may open, rather
+         * than Trilobit\Core\Admin\Menu\Menu itself. Both drawings below take
+         * it from here, which is what makes the bar and a section's signpost
+         * one answer rather than two that agree until somebody changes one.
+         */
+        ReachableMenu $menu,
+        Landing $landing,
+    ): void {
         $this->remembered = $remembered;
         $this->menu = $menu;
+        $this->landing = $landing;
     }
 
     /**
@@ -166,7 +178,12 @@ abstract class AdminPresenter extends Presenter
 
         $template->preferences = $this->remembered->forThisRequest();
         $template->preferenceUrl = $this->link(':Core:Preference:Choice:remember');
-        $template->overviewUrl = $this->link(':Core:Admin:Dashboard:default');
+        // The mark in the banner is the way back, and where back is depends on
+        // which administration this person has: sending the installation's
+        // administrator to the overview of a business would be offering them a
+        // link they are refused on, which is the same mistake the menu filter
+        // exists to stop.
+        $template->overviewUrl = $this->link($this->landing->forThisPerson());
         $template->signOutUrl = $this->link(':Core:Admin:Sign:out');
         $template->publicSiteUrl = $this->link(':Core:Front:Home:default');
         $template->signedIn = $this->getUser()->isLoggedIn();
@@ -176,11 +193,28 @@ abstract class AdminPresenter extends Presenter
     }
 
     /**
+     * Where the administration begins for this person, for a page that has to
+     * send them there.
+     *
+     * It is here rather than injected again by the one page that needs it, so
+     * that the sign-in page and the banner cannot come to disagree about it -
+     * see Trilobit\Core\Presentation\Admin\Landing.
+     */
+    protected function landing(): string
+    {
+        return $this->landing->forThisPerson();
+    }
+
+    /**
      * The menu, as addresses rather than as presenter names.
      *
      * The router produces them here rather than in the template, so that an
      * entry pointing at a page this build has no route for fails while the page
      * is being prepared instead of rendering a link that leads nowhere.
+     *
+     * What is walked is Trilobit\Core\Admin\Menu\ReachableMenu and not the
+     * register behind it, so an entry leading somewhere this person would be
+     * refused is gone before a link is made of it.
      *
      * @return list<NavigationItem>
      */
@@ -208,10 +242,14 @@ abstract class AdminPresenter extends Presenter
      * every entry.
      *
      * A module a presenter draws this for is trusted to know it has entries -
-     * see Trilobit\Core\Admin\Menu\Menu::itemsOf(), which the caller is
-     * expected to have checked is not empty before deciding to render a page
+     * see Trilobit\Core\Admin\Menu\ReachableMenu::itemsOf(), which the caller
+     * is expected to have checked is not empty before deciding to render a page
      * at all (decision M2 in .ai/plans/10-menu-submenu-a-rozcestniky.md: a
      * section with nothing to show gets no page, not an empty one).
+     *
+     * It is filtered by the same service the bar is, which is what decision M2
+     * means by one data structure and two renderings: a signpost holding one
+     * tile the bar does not would look exactly like a signpost.
      *
      * @return list<SignpostLink>
      */

@@ -18,12 +18,13 @@ use Nette\Security\User as SignedIn;
  * Trilobit\Core\Security\Landlords instead. Every gate already written would
  * have to be edited to answer a question none of them asks.
  *
- * So the interface names this instead. Adding the third kind of gate is a new
- * attribute class and one more method here; nothing above any page changes,
- * and neither does
+ * So the interface names this instead. Adding the third kind of gate was a new
+ * attribute class and one more method here; nothing above any page changed,
+ * and neither did
  * Trilobit\Core\Presentation\Admin\AdminPresenter::checkRequirements(), which
- * knows only that gates admit or do not. **Exit condition:** the section of
- * decision B3, whose gate needs administersTheInstallation() beside mayDo().
+ * knows only that gates admit or do not. That is what the second method below
+ * is: Trilobit\Core\Security\AdministersTheInstallation was written against
+ * this class and against nothing else.
  *
  * It holds Nette\Security\User rather than
  * Trilobit\Core\Security\Permissions because the framework's own question is
@@ -36,6 +37,15 @@ final readonly class Doorkeeper
 {
     public function __construct(
         private SignedIn $signedIn,
+        /**
+         * The other scope, and it is asked of its own service rather than of
+         * the framework's user. There is no role, no resource and no privilege
+         * in that question, so there is nothing for
+         * Nette\Security\User::isAllowed() to walk - and the empty set of roles
+         * the identity of such a person carries would answer "no" without
+         * asking anybody, which is the shape of a quiet wrong answer.
+         */
+        private Landlords $landlords,
     ) {}
 
     /**
@@ -49,5 +59,20 @@ final readonly class Doorkeeper
     public function mayDo(Resource $resource, Privilege $privilege): bool
     {
         return $this->signedIn->isAllowed($resource, $privilege);
+    }
+
+    /**
+     * Whether the person making this request administers the installation
+     * itself.
+     *
+     * It is one line and it is the line that keeps the two scopes apart: the
+     * answer comes from Trilobit\Core\Security\Landlords, which reads the row
+     * every request, and never from the access list - which has no meaning
+     * outside a business and would have to be given a "no business" mode to
+     * pretend otherwise.
+     */
+    public function administersTheInstallation(): bool
+    {
+        return $this->landlords->isLandlord();
     }
 }

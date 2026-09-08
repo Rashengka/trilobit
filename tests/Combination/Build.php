@@ -13,7 +13,9 @@ use Nette\Http\UrlScript;
 use Nette\Routing\Router;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Core\Security\Landlords;
 use Trilobit\Tests\Boot;
+use Trilobit\Tests\Double\Security\NobodySignedIn;
 use Trilobit\Tests\Double\Security\StandInAuthorizator;
 
 /**
@@ -88,16 +90,25 @@ final class Build
      * schema would run the migrations somewhere else entirely, report success,
      * and leave the new schema empty.
      *
-     * **Every build here admits everybody**, and that is the one thing a
-     * reader of this suite has to know about it. The pages of the
-     * administration are behind gates, and a gate is answered out of what
-     * somebody holds in a business - rows, and therefore a schema and the
-     * migrations. Asking eight builds whether they start and what their menus
-     * hold would then cost eight databases, which would turn the cheapest
-     * suite in the project into the slowest and would be paying for an answer
-     * nobody asked it for here. What is given up is said out loud on
-     * Trilobit\Tests\Double\Security\StandInAuthorizator: nothing in this
-     * suite proves anything about admission, and nothing in it should try to.
+     * **Every build here admits everybody, and nobody here administers the
+     * installation**, and that is the one thing a reader of this suite has to
+     * know about it. The pages of the administration are behind gates, and a
+     * gate is answered out of what somebody holds in a business - rows, and
+     * therefore a schema and the migrations. Asking eight builds whether they
+     * start and what their menus hold would then cost eight databases, which
+     * would turn the cheapest suite in the project into the slowest and would
+     * be paying for an answer nobody asked it for here. What is given up is
+     * said out loud on Trilobit\Tests\Double\Security\StandInAuthorizator and
+     * on Trilobit\Tests\Double\Security\NobodySignedIn: nothing in this suite
+     * proves anything about admission, and nothing in it should try to.
+     *
+     * The second of the two is the newer and the less obvious. The menu is
+     * drawn through Trilobit\Core\Admin\Menu\ReachableMenu, which asks each
+     * entry's page who may open it - and the entry leading to the section of
+     * the installation's own administrator is answered by
+     * Trilobit\Core\Security\Landlords, out of the account row. Left to answer
+     * for real, this suite would read a table, which means it would pass where
+     * a database happened to have been migrated and fail where it had not.
      *
      * @param list<string> $enabled
      */
@@ -111,7 +122,17 @@ final class Build
 
         return Boot::container(
             ModuleList::of($modules, $root),
-            config: ['services' => ['core.authorizator' => StandInAuthorizator::class]],
+            config: ['services' => [
+                'core.authorizator' => StandInAuthorizator::class,
+                // Not autowired: a second Nette\Security\User in the container
+                // would leave the framework's own with two candidates to
+                // choose between. It is reached by name and by one service.
+                'test.nobodySignedIn' => ['factory' => NobodySignedIn::class, 'autowired' => false],
+                'core.landlords' => [
+                    'factory' => Landlords::class,
+                    'arguments' => ['@core.accounts', '@test.nobodySignedIn'],
+                ],
+            ]],
         );
     }
 

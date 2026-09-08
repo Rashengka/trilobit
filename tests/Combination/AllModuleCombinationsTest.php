@@ -279,14 +279,27 @@ final class AllModuleCombinationsTest extends TestCase
      * belongs to is read off its destination, which is the only thing Core
      * knows about it.
      *
+     * **Core is one of the contributors and is expected in every build**, and
+     * that is a change of premise rather than of rule. It contributes the one
+     * entry that leads into the section belonging to the installation itself
+     * rather than to any business in it - see
+     * Trilobit\Core\Admin\Menu\InstallationMenu - the way it contributes one
+     * event listener whatever the build is made of. What is asked here is the
+     * register, which holds everything the build has; who is shown what is a
+     * question about a person and is asked of
+     * Trilobit\Core\Admin\Menu\ReachableMenu, one layer further out.
+     *
      * @param list<string> $enabled
      */
     #[DataProviderExternal(Build::class, 'everyCombination')]
-    public function testTheAdminMenuHoldsEntriesFromExactlyTheEnabledModules(array $enabled): void
+    public function testTheAdminMenuHoldsEntriesFromExactlyTheEnabledModulesAndCore(array $enabled): void
     {
         $items = Build::container($enabled)->getByType(Menu::class)->items();
 
-        self::assertSame($enabled, $this->modulesOf(array_map(
+        $expected = [...$enabled, 'core'];
+        sort($expected);
+
+        self::assertSame($expected, $this->modulesOf(array_map(
             static fn(MenuItem $item): string => $item->destination,
             $items,
         )));
@@ -307,11 +320,17 @@ final class AllModuleCombinationsTest extends TestCase
      * A build with no optional module has no menu at all - not an empty one -
      * because a navigation with nothing in it is furniture with no purpose.
      *
-     * Core contributes nothing here on purpose, which is what makes the count
-     * unambiguous; the way back to the overview is the mark in the banner. The
-     * identity is invented rather than read from a database: what is under test
-     * is which entries the build has, and needing a database to ask that would
-     * make this the slowest claim in the suite instead of one of the cheapest.
+     * **Core's own entry is not drawn here, and its absence is the menu filter
+     * working rather than Core contributing nothing.** The entry leads into
+     * the section belonging to the installation itself, and nobody in this
+     * suite administers the installation - see
+     * Trilobit\Tests\Double\Security\NobodySignedIn, which is what keeps that
+     * question from being answered out of a table this suite has no schema
+     * for. So the count stays unambiguous, for a reason that is now stated
+     * instead of assumed. The identity is invented rather than read from a
+     * database for the same reason: what is under test is which entries the
+     * build has, and needing a database to ask that would make this the
+     * slowest claim in the suite instead of one of the cheapest.
      *
      * @param list<string> $enabled
      */

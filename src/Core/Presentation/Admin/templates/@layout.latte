@@ -10,11 +10,13 @@
  * it - so a theme moves the navigation here exactly as it moves it there, and a
  * component fixed in one place is fixed in both.
  *
- * The menu is what the enabled modules contributed and nothing else. The way
- * back to the overview is the mark in the banner, the same way the way back to
- * the front page is the mark in the public banner; that is what lets "one entry
- * per enabled module" be something a test can count rather than a claim about
- * which of the entries is Core's.
+ * The menu is what the person looking at it may open: what the enabled modules
+ * contributed and Core's own way into the installation's section, less
+ * whatever would refuse them - see Trilobit\Core\Admin\Menu\ReachableMenu.
+ * The way back to where their administration begins is the mark in the banner,
+ * the same way the way back to the front page is the mark in the public
+ * banner; which page that is depends on which of the two administrations they
+ * have, and on nothing else about them.
  *}
 
 {import '../../components/site-header.latte'}
