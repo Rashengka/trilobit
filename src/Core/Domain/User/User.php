@@ -90,6 +90,31 @@ class User
         private string $name,
         #[ORM\Column]
         private DateTimeImmutable $createdAt,
+        /**
+         * Whether this account administers the installation itself rather than
+         * a business inside it.
+         *
+         * It is a flag here and not a role, because a role is held in a tenant
+         * - see Trilobit\Core\Domain\Tenancy\Membership - and this account is
+         * in none. It is the other scope and not a higher level within one:
+         * such an account has no rights inside a business at all, which is why
+         * it is not something Trilobit\Core\Security\Permissions could answer.
+         * The question is asked of Trilobit\Core\Security\Landlords instead.
+         *
+         * **It can be said only here, and that is the decision.** The two
+         * scopes must not meet: the refusal in Membership's constructor stops
+         * an account like this being given a role in a business, and this
+         * parameter having no mutator beside it stops the reverse, because an
+         * account being made holds no membership yet. A setter would put the
+         * question "does this one hold a membership anywhere" in front of
+         * every caller, and answering it wrongly produces a working account
+         * rather than an error. **Exit condition:** an administration screen
+         * that appoints or dismisses an installation administrator; the
+         * mutator then arrives together with the reading of every tenant's
+         * memberships that has to guard it, in one place.
+         */
+        #[ORM\Column]
+        private bool $landlord = false,
     ) {
         $this->roles = new ArrayCollection();
     }
@@ -127,6 +152,16 @@ class User
     public function isActive(): bool
     {
         return $this->active;
+    }
+
+    /**
+     * Whether this account administers the installation rather than a business
+     * inside it. Read from the row every request rather than carried on the
+     * identity; see Trilobit\Core\Security\Landlords.
+     */
+    public function isLandlord(): bool
+    {
+        return $this->landlord;
     }
 
     /** The way an account is taken away: it stops being able to sign in and stays attributable. */

@@ -30,7 +30,7 @@ application does. See "The design system" below.
 | path | what it is |
 |---|---|
 | `www/index.php` | the front controller; the document root is `www/`, nothing above it is reachable |
-| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:tenant` makes a business and the hosts it answers at, `app:account` makes somebody who can sign in |
+| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:tenant` makes a business and the hosts it answers at, `app:account` makes somebody who can sign in - the administrator of the installation, or of one business |
 | `src/Core/Bootstrap.php` | turns a checkout into a compiled container |
 | `src/Core/Module/` | what a module's name implies, and which modules this build has |
 | `src/Core/DI/CoreExtension.php` | the five places a module hands something to Core |
@@ -540,11 +540,40 @@ holds each rule on its own.
 `/admin` is Core's own and is in every build. It holds the sign-in page, the
 overview, and a menu made of whatever the enabled modules contributed.
 
-Make somebody who can sign in:
+Make somebody who can sign in. There are two kinds of administrator and the
+command says which it means:
 
 ```sh
+# administers the installation: no business, no role, no membership
 bin/trilobit app:account you@example.com --name 'Your Name'
+
+# administers one business: the account, the role, and the membership joining
+# them in the business that answers at that host
+bin/trilobit app:account someone@example.com --tenant localhost --name 'Their Name'
 ```
+
+They are **different scopes rather than different levels**. An account
+administering the installation creates and looks after the businesses and holds
+nothing inside any of them; an account administering a business holds every
+permission this build offers, in that business and nowhere else. The two cannot
+be combined: an account that is one is refused the other, and
+`Trilobit\Core\Domain\Tenancy\Membership` will not be constructed for an account
+administering the installation at all, so no screen and no command can arrange
+it by accident. Seeing what a business sees is a job for taking somebody's
+identity for a while, not for belonging to both.
+
+The business is named by a host rather than by an identifier, because a host is
+what a person knows and what `app:tenant` was given. A host nobody has claimed
+is an error: a business made by a typo is one somebody would go on
+administering.
+
+Whether an account administers the installation is a column on the account, read
+from the database on every request by `Trilobit\Core\Security\Landlords` and
+deliberately not carried in the session - taking it away has to take effect at
+once rather than at the next sign-in. It is not a question for
+`Trilobit\Core\Security\Permissions`, which requires a business and raises
+without one; that refusal is what it is for, and softening it would remove the
+guarantee rather than extend it.
 
 The password is generated and printed once. It is never an argument - an
 argument is in the shell history of the machine it was typed on and in that
@@ -670,14 +699,18 @@ bin/trilobit migrations:migrate
 bin/trilobit app:warmup
 bin/trilobit app:tenant 'Your Business' localhost
 bin/trilobit app:account you@example.com
+bin/trilobit app:account admin@example.com --tenant localhost
 ```
 
 `app:warmup` writes down which modules this build is made of, for the parts
 that never start PHP. `app:tenant` makes the business requests belong to and
 the hosts it answers at - without it every request is refused, because a host
 that names no business is never served by a default one; see "Tenants and
-domains" above. `app:account` makes somebody who can sign in to `/admin`
-and prints their password once; see "The administration" above. The scripts and
+domains" above. `app:account` makes somebody who can sign in to `/admin` and
+prints their password once - the first call makes the account that administers
+the installation and the second one an administrator inside the business
+answering at `localhost`, which are two scopes rather than two levels; see "The
+administration" above. The scripts and
 the stylesheet are already in the clone,
 under `www/build`; run `npm ci && npm run build` only once you change something
 under `assets/` or `src/*/assets/`, or once you switch a module on or off -

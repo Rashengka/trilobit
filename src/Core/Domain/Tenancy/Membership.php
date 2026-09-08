@@ -25,6 +25,16 @@ use Trilobit\Core\Domain\User\User;
  *
  * The three columns are unique together, so granting the same role twice is
  * refused by the database rather than by whoever remembers to look.
+ *
+ * **One kind of account may not have a row here at all.** An account that
+ * administers the installation (Trilobit\Core\Domain\User\User::isLandlord())
+ * is above the businesses rather than inside one, and being both would turn
+ * "which scope am I asking in" into a question every calling place has to
+ * answer correctly - the sort of decision this design exists to remove rather
+ * than to make carefully. The refusal is in the constructor because a
+ * membership is made in more than one place, and a check in one of them is a
+ * check the others do not have. What it prevents is quiet: an account with a
+ * foot in both scopes works, it just works with rights nobody meant it to have.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_tenant_membership')]
@@ -46,7 +56,18 @@ class Membership
         #[ORM\ManyToOne(targetEntity: Role::class)]
         #[ORM\JoinColumn(nullable: false)]
         private Role $role,
-    ) {}
+    ) {
+        if ($user->isLandlord()) {
+            throw new \LogicException(sprintf(
+                '%s administers the installation, so it cannot also hold a role in %s. The two are different '
+                    . 'scopes rather than different levels: an account above the businesses has no rights inside '
+                    . 'one, and seeing what a business sees is done by taking somebody else\'s identity for a '
+                    . 'while rather than by belonging to both at once.',
+                $user->email(),
+                $tenant->name(),
+            ));
+        }
+    }
 
     public function id(): ?int
     {

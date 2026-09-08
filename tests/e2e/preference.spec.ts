@@ -39,9 +39,15 @@ test.describe.configure({ mode: 'serial' });
 let generated = '';
 
 test.beforeAll(() => {
-    const output = execFileSync('php', ['bin/trilobit', 'app:account', email, '--name', 'Bea Brachiopod'], {
-        encoding: 'utf8',
-    });
+    // The host the business this suite works in answers at; see
+    // playwright.config.ts. Without it `app:account` would make somebody who
+    // administers the installation and belongs to no business, which is not who
+    // signs in to the site the browser then opens.
+    const output = execFileSync(
+        'php',
+        ['bin/trilobit', 'app:account', email, '--tenant', '127.0.0.1', '--name', 'Bea Brachiopod'],
+        { encoding: 'utf8' },
+    );
 
     const match = passwordLine.exec(output);
     if (match === null) {

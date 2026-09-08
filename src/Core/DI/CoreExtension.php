@@ -56,6 +56,7 @@ use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
+use Trilobit\Core\Security\Landlords;
 use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Tenancy\HostTenants;
@@ -203,6 +204,14 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('permissions'))
             ->setFactory(Permissions::class);
+
+        // The other scope, and a service of its own rather than a mode of the
+        // one above. Administering the installation happens outside every
+        // tenant, and the service above refuses to answer outside one on
+        // purpose; giving it a way to would remove the refusal it exists for.
+        // See Trilobit\Core\Security\Landlords.
+        $builder->addDefinition($this->prefix('landlords'))
+            ->setFactory(Landlords::class);
 
         // The first command a new installation runs: without a tenant and a
         // host of its own, every request is refused rather than served by a

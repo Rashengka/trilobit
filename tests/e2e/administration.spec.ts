@@ -31,6 +31,18 @@ const passwordLine = /^ {2}(\S+)$/m;
 const email = 'e2e@example.com';
 const displayName = 'Alice Ammonite';
 
+/**
+ * The host the business this suite administers answers at, which is the one
+ * `playwright.config.ts` creates and the one the browser arrives at.
+ *
+ * `app:account` takes a host rather than an identifier and needs one: without
+ * it the account made would administer the installation instead, which belongs
+ * to no business and therefore holds nothing in this one. Naming it here is
+ * what makes the account this suite signs in as an administrator of the site it
+ * then opens.
+ */
+const host = '127.0.0.1';
+
 interface Manifest {
     readonly modules: readonly { readonly name: string }[];
 }
@@ -79,7 +91,7 @@ let generated = '';
 test.beforeAll(() => {
     trilobit('migrations:migrate', '--no-interaction');
 
-    const output = trilobit('app:account', email, '--name', displayName);
+    const output = trilobit('app:account', email, '--tenant', host, '--name', displayName);
     const match = passwordLine.exec(output);
     if (match === null) {
         throw new Error(`app:account printed nothing to sign in with:\n${output}`);
