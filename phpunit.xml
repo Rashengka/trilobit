@@ -47,6 +47,30 @@
             <exclude>tests/Tooling/CheckLeaksTest.php</exclude>
         </testsuite>
     </testsuites>
+    <!--
+        Two things the runner does on its own, so that no test has to remember
+        them: a finished test hands its database connections back, and a run
+        that stops without finishing says why. Both are silent-failure guards
+        and both are described in the classes themselves.
+    -->
+    <extensions>
+        <bootstrap class="Trilobit\Tests\Runner\ClosingConnections"/>
+        <bootstrap class="Trilobit\Tests\Runner\SayingWhyTheRunStopped"/>
+    </extensions>
+    <php>
+        <!--
+            The suite's own headroom, named here rather than left to whatever
+            php.ini the machine has, exactly as composer.json names one for
+            static analysis. It peaked at 126.5 MB against the 128M a stock
+            PHP image gives, which is not a limit with room in it but a limit
+            about to be crossed - and crossing it kills the process mid-run.
+
+            It is in this file rather than in the composer script so that a run
+            started from an editor gets it too: a limit only `composer test`
+            knows about is a limit half the runs do not have.
+        -->
+        <ini name="memory_limit" value="512M"/>
+    </php>
     <source>
         <include>
             <directory>src</directory>
