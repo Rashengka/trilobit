@@ -8,10 +8,10 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Dom\Element;
 use Dom\HTMLDocument;
-use Nette\Application\BadRequestException;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Request;
 use Nette\Application\Response;
+use Nette\Application\Responses\ForwardResponse;
 use Nette\Application\Responses\RedirectResponse;
 use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Presenter;
@@ -35,8 +35,9 @@ use Trilobit\Tests\Migrations;
 use Trilobit\Tests\Tenants;
 
 /**
- * The administration, from outside it: who gets in, who is turned away, and
- * what being turned away looks like.
+ * The administration, from outside it: who gets in, who is turned away, what
+ * being turned away looks like, and that being turned away still leaves a way
+ * out.
  *
  * Signing in happens through the presenter and its form rather than by calling
  * the authenticator, because the claim is about the pages a person meets. The
@@ -69,6 +70,12 @@ final class AdministrationTest extends TestCase
     private const string INSTALLATION = 'Core:Installation:Signpost';
 
     private const string BUSINESSES = 'Core:Installation:Businesses';
+
+    /** Not a page of the administration at all, which is the whole of why it can answer for one. */
+    private const string REFUSAL = 'Core:Error:Refusal';
+
+    /** Nor is this: ending a session is one act for the whole application. */
+    private const string SIGN_OUT = 'Core:Session:SignOut';
 
     private string $schema = '';
 
@@ -210,15 +217,26 @@ final class AdministrationTest extends TestCase
         self::assertNull($page->querySelector('[data-testid="admin-permission-administration"]'));
     }
 
-    public function testSigningOutSendsYouBackToTheSignInPage(): void
+    /**
+     * Signing out is not the administration's own act and does not leave
+     * anybody in it.
+     *
+     * The address carries no `admin/` and the page it ends on is the front
+     * page, because there is one identity and one session: whoever ends it -
+     * an administrator today, somebody buying something later - is doing the
+     * same thing, and the administration's sign-in page is not a landing every
+     * one of them belongs on. See
+     * Trilobit\Core\Presentation\Session\SignOutPresenter.
+     */
+    public function testSigningOutIsNotTheAdministrationsOwnAndLeavesNobodyInIt(): void
     {
         $this->submitSignIn('alice@example.com', $this->password());
         self::assertTrue($this->container()->getByType(SignedIn::class)->isLoggedIn());
 
-        $response = $this->request(self::SIGN, 'out');
+        $response = $this->request(self::SIGN_OUT, 'default');
 
         self::assertInstanceOf(RedirectResponse::class, $response);
-        self::assertStringContainsString('admin/sign-in', $response->getUrl());
+        self::assertStringNotContainsString('admin', $response->getUrl());
         self::assertFalse($this->container()->getByType(SignedIn::class)->isLoggedIn());
     }
 
@@ -249,10 +267,53 @@ final class AdministrationTest extends TestCase
         $this->submitSignIn('bob@example.com', $this->password());
         self::assertTrue($this->container()->getByType(SignedIn::class)->isLoggedIn());
 
-        $this->expectException(BadRequestException::class);
-        $this->expectExceptionCode(IResponse::S403_Forbidden);
+        $page = $this->refusedPage(self::DASHBOARD, 'default');
 
-        $this->request(self::DASHBOARD, 'default');
+        self::assertNotNull($page->querySelector('[data-testid="refusal-headline"]'));
+        self::assertTrue($this->container()->getByType(SignedIn::class)->isLoggedIn());
+    }
+
+    /**
+     * The claim the whole of this page exists for: somebody refused everywhere
+     * can still get out.
+     *
+     * The account below holds nothing in this business, so every page of the
+     * administration turns it away - and the only sign-out link the
+     * application used to draw was in the administration's own banner, on
+     * pages it could not reach. What is asserted is therefore not that the
+     * refusal is polite but that it is a way out: a link that ends the
+     * session, and one to the part of the site that is open to anybody.
+     *
+     * Neither address is under the administration. That is not decoration
+     * either - a way out that led back through the section that just refused
+     * them would refuse them again.
+     */
+    public function testTheRefusalOffersAWayOutThatDoesNotLeadBackIntoTheAdministration(): void
+    {
+        $this->submitSignIn('bob@example.com', $this->password());
+
+        $page = $this->refusedPage(self::DASHBOARD, 'default');
+
+        $signOut = $page->querySelector('[data-testid="refusal-sign-out"]');
+        self::assertNotNull($signOut, 'somebody who is refused everywhere was offered no way of signing out');
+        self::assertSame('/sign-out', $signOut->getAttribute('href'));
+
+        $site = $page->querySelector('[data-testid="refusal-public-link"]');
+        self::assertNotNull($site, 'the refusal offered no way back to the public site');
+        self::assertSame('/', $site->getAttribute('href'));
+
+        self::assertNull(
+            $page->querySelector('[data-testid="admin-menu"]'),
+            'the page a refusal is drawn on is a page of the administration after all',
+        );
+
+        // And the way out is a way out: following it ends the session and
+        // leaves them on a page that belongs to no audience in particular.
+        $left = $this->request(self::SIGN_OUT, 'default');
+
+        self::assertInstanceOf(RedirectResponse::class, $left);
+        self::assertStringEndsWith('/', $left->getUrl());
+        self::assertFalse($this->container()->getByType(SignedIn::class)->isLoggedIn());
     }
 
     /**
@@ -273,10 +334,7 @@ final class AdministrationTest extends TestCase
         $list = $this->request(self::PAGES, 'default');
         self::assertInstanceOf(TextResponse::class, $list);
 
-        $this->expectException(BadRequestException::class);
-        $this->expectExceptionCode(IResponse::S403_Forbidden);
-
-        $this->request(self::PAGES, 'add');
+        $this->refusedPage(self::PAGES, 'add');
     }
 
     /**
@@ -296,10 +354,7 @@ final class AdministrationTest extends TestCase
         $this->container()->getByType(SignedIn::class)->logout(true);
         $this->submitSignIn('alice@example.com', $this->password());
 
-        $this->expectException(BadRequestException::class);
-        $this->expectExceptionCode(IResponse::S403_Forbidden);
-
-        $this->request(self::INSTALLATION, 'default');
+        $this->refusedPage(self::INSTALLATION, 'default');
     }
 
     /**
@@ -312,10 +367,7 @@ final class AdministrationTest extends TestCase
     {
         $this->submitSignIn('cora@example.com', $this->password());
 
-        $this->expectException(BadRequestException::class);
-        $this->expectExceptionCode(IResponse::S403_Forbidden);
-
-        $this->request(self::DASHBOARD, 'default');
+        $this->refusedPage(self::DASHBOARD, 'default');
     }
 
     /**
@@ -468,16 +520,58 @@ final class AdministrationTest extends TestCase
      */
     private function request(string $presenterName, string $action, array $parameters = [], array $post = []): Response
     {
-        $presenter = $this->container()->getByType(IPresenterFactory::class)->createPresenter($presenterName);
-        self::assertInstanceOf(Presenter::class, $presenter);
-        $presenter->autoCanonicalize = false;
-
-        return $presenter->run(new Request(
+        return $this->runRequest(new Request(
             $presenterName,
             $post === [] ? 'GET' : 'POST',
             ['action' => $action, ...$parameters],
             $post,
         ));
+    }
+
+    /**
+     * The page somebody is actually shown when a gate refuses them, reached
+     * the way the framework reaches it.
+     *
+     * A refusal is a forward and not an exception, so the claim worth making
+     * is about the page at the end of it - the status it carries and the way
+     * out it offers - and not about the shape of a throw. The forward is
+     * followed here rather than being asserted and left, because
+     * Nette\Application\Application follows it on a real request and a
+     * ForwardResponse nobody follows would prove nothing about what a person
+     * sees.
+     *
+     * @param array<string, string> $parameters
+     */
+    private function refusedPage(string $presenterName, string $action, array $parameters = []): HTMLDocument
+    {
+        $refusal = $this->request($presenterName, $action, $parameters);
+
+        self::assertInstanceOf(
+            ForwardResponse::class,
+            $refusal,
+            'the gate did not turn the request into the page a refusal is drawn on',
+        );
+        self::assertSame(self::REFUSAL, $refusal->getRequest()->getPresenterName());
+
+        $page = $this->pageOf($this->runRequest($refusal->getRequest()));
+
+        self::assertSame(
+            IResponse::S403_Forbidden,
+            $this->container()->getByType(IResponse::class)->getCode(),
+            'the refusal was drawn as an ordinary page rather than as a refusal',
+        );
+
+        return $page;
+    }
+
+    private function runRequest(Request $request): Response
+    {
+        $presenter = $this->container()->getByType(IPresenterFactory::class)
+            ->createPresenter($request->getPresenterName());
+        self::assertInstanceOf(Presenter::class, $presenter);
+        $presenter->autoCanonicalize = false;
+
+        return $presenter->run($request);
     }
 
     private function pageOf(Response $response): HTMLDocument

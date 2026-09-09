@@ -1,0 +1,62 @@
+{templateType Trilobit\Core\Presentation\Error\RefusalDefaultTemplate}
+
+{*
+ * Being turned away, as a page of the application rather than as a stack
+ * trace.
+ *
+ * It is drawn in the public chrome, which is what makes it usable by the person
+ * it is for: somebody who is refused everywhere in the administration never
+ * reaches a page of the administration, so a way out drawn in the
+ * administration's banner is a way out they cannot see. See
+ * Trilobit\Core\Presentation\Error\RefusalPresenter.
+ *
+ * Everything visible here is a component from
+ * src/Core/Presentation/components/ (decision D3). What the page decides is
+ * which of them appear and in what order, and that neither of the two ways out
+ * leads back into what has just refused them.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/notice.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/marker-list.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'refusal-headline',
+        leadTestId: 'refusal-lead'}
+
+    {include notice,
+        message: 'The address is right and the page is there. What is missing is a reason for this account to be shown it.',
+        variant: 'danger',
+        testId: 'refusal-notice'}
+
+    {* The way out. Neither destination is a page of the administration: one of
+       them ends the session, the other leaves it running and goes to the part
+       of the site that is open to everybody. *}
+    <div class="l-cluster" data-testid="refusal-ways-out">
+        {if $signedIn}
+            {include button, label: 'Sign out', href: $signOutUrl, testId: 'refusal-sign-out'}
+        {else}
+            {include button, label: 'Sign in', href: $signInUrl, testId: 'refusal-sign-in'}
+        {/if}
+
+        {include button,
+            label: 'Open the site',
+            href: $homeUrl,
+            variant: 'quiet',
+            testId: 'refusal-public-link'}
+    </div>
+
+    <div class="l-measure">
+        {include markerList,
+            items: [
+                'Signing out ends the session everywhere, not only here.',
+                'Being refused is about the account rather than about the address: another one may well open this page.',
+                'Whoever administers this installation is the one who can grant what is missing.',
+            ],
+            testId: 'refusal-notes'}
+    </div>
+{/block}

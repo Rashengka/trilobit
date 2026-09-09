@@ -10,13 +10,20 @@
  * section reads Trilobit\Core\Admin\Menu\Menu::itemsOf(). One component for
  * both keeps the two ways in from drawing the same idea two different ways.
  *
+ * The one class on the element is the whole of its layout: assets/base.css
+ * draws .c-signpost with the same rule as the grid primitive .l-grid rather
+ * than beside it. Adding a second layout class here would put two rules of
+ * equal weight on one element and leave the order of the stylesheet to settle
+ * which applies, which is exactly how this component once cancelled its own
+ * grid.
+ *
  * @param iterable<Trilobit\Core\Presentation\Component\SignpostLink> $items
  *}
 
 {import 'card.latte'}
 
 {define signpost, iterable $items, string $label, ?string $testId = null}
-    <nav class="c-signpost l-grid" aria-label="{$label}" data-testid="{$testId}">
+    <nav class="c-signpost" aria-label="{$label}" data-testid="{$testId}">
         {foreach $items as $item}
             {include card,
                 title: $item->label,

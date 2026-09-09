@@ -134,8 +134,12 @@ final class EveryAdministrationViewIsGatedTest extends TestCase
                 'Cms/Presentation/Admin/PagePresenter.php: edit',
                 'Cms/Presentation/Admin/SignpostPresenter.php: default',
                 'Core/Presentation/Admin/DashboardPresenter.php: default',
+                // Coming in and nothing else. Ending a session is not a page of
+                // the administration at all - one identity, one session, one
+                // act, whoever is doing it - so it lives at
+                // Trilobit\Core\Presentation\Session\SignOutPresenter and is
+                // outside everything this rule is about.
                 'Core/Presentation/Admin/SignPresenter.php: in',
-                'Core/Presentation/Admin/SignPresenter.php: out',
                 // The other administration: the section of the installation
                 // itself, which is a directory of its own rather than two more
                 // files beside the pages of a business's administration - see

@@ -417,10 +417,22 @@
         gap: var(--space-sm);
     }
 
-    /* Columns that fit rather than columns that were counted: the card width is
-       a token, so the number of columns is a consequence of the theme and of the
-       viewport, and no breakpoint has to be written down here. */
-    .l-grid {
+    /*
+     * Columns that fit rather than columns that were counted: the card width is
+     * a token, so the number of columns is a consequence of the theme and of the
+     * viewport, and no breakpoint has to be written down here.
+     *
+     * .c-signpost is the same rule under the component's own name, because a
+     * signpost is this grid and nothing besides. It used to say that by
+     * carrying both classes and declaring `display: block` for itself - two
+     * rules of equal weight, both naming the same property, so the order of
+     * this file decided in silence and the front page drew its tiles as three
+     * stacked blocks. A hook that carries nothing is not worth a second rule to
+     * get wrong; Trilobit\Tests\Architecture\ClassesUsedTogetherDoNotCollideTest
+     * refuses the shape rather than this one instance of it.
+     */
+    .l-grid,
+    .c-signpost {
         display: grid;
         gap: var(--space-lg);
         grid-template-columns: repeat(auto-fit, minmax(min(var(--layout-card-min), 100%), 1fr));
@@ -566,12 +578,9 @@
         font-size: var(--text-sm);
     }
 
-    /* The grid itself is l-grid; this class is the component's own hook and
-       carries nothing else, because a signpost has no shape of its own beyond
-       the tiles it arranges. */
-    .c-signpost {
-        display: block;
-    }
+    /* The signpost is drawn by the grid primitive above, under its own name:
+       it has no shape beyond the tiles it arranges, so it has no rule of its
+       own here to disagree with the one that arranges them. */
 
     .c-button {
         align-items: center;
@@ -601,6 +610,25 @@
 
     .c-button--quiet:hover {
         background-color: var(--color-surface-hover);
+    }
+
+    /*
+     * A control that is one of a set of choices, drawn as the one that is on.
+     *
+     * The state is said once, in aria-pressed, and the way it looks follows
+     * from that. It used to be said twice - the server also picked the variant
+     * class - and only the attribute moved when somebody clicked, so the mark
+     * stayed on the choice that was no longer the one in force while the page
+     * around it had already changed. One fact, one place: the server writes the
+     * attribute, assets/app.ts moves it, and this rule is the consequence.
+     *
+     * The attribute raises the weight above .c-button--quiet on its own, so
+     * which of the two wins does not depend on the order of this file.
+     */
+    .c-button[aria-pressed='true'] {
+        background-color: var(--color-accent);
+        border-color: transparent;
+        color: var(--color-accent-ink);
     }
 
     .c-badge {

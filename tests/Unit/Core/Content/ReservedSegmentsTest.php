@@ -13,6 +13,7 @@ use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouteProvider;
+use Trilobit\Core\Routing\SessionRoutes;
 use Trilobit\Core\Routing\StyleguideRoutes;
 
 #[CoversClass(ReservedSegments::class)]
@@ -108,7 +109,14 @@ final class ReservedSegmentsTest extends TestCase
         );
 
         self::assertSame(
-            [PreferenceRoutes::PATH, StyleguideRoutes::PATH, AdminRoutes::PATH, 'alpha', 'c'],
+            [
+                PreferenceRoutes::PATH,
+                StyleguideRoutes::PATH,
+                AdminRoutes::PATH,
+                'alpha',
+                'c',
+                SessionRoutes::SIGN_OUT_PATH,
+            ],
             $reserved->all(),
         );
     }

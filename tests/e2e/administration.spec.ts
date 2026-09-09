@@ -195,8 +195,11 @@ test('signing in opens the administration, and signing out closes it again', asy
     await page.goto('/admin');
     await expect(page.getByTestId('admin-headline')).toHaveText('Overview');
 
+    // Signing out is the application's own act and not the administration's:
+    // the address carries no admin/ and it leaves nobody inside a section they
+    // are no longer signed in to.
     await page.getByTestId('admin-sign-out').click();
-    await expect(page).toHaveURL(/\/admin\/sign-in$/);
+    await expect(page).toHaveURL(/\/$/);
 
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/admin\/sign-in$/);

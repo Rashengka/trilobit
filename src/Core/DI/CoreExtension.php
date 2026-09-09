@@ -56,6 +56,7 @@ use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\ContentRouter;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouterFactory;
+use Trilobit\Core\Routing\SessionRoutes;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
@@ -327,6 +328,15 @@ final class CoreExtension extends CompilerExtension
         // registered only where that page exists.
         $builder->addDefinition($this->prefix('adminRoutes'))
             ->setFactory(AdminRoutes::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ROUTE_PROVIDER);
+
+        // Ending a session is one act for the whole application rather than
+        // the administration's own, so its address is registered beside the
+        // administration's and not inside it - see
+        // Trilobit\Core\Routing\SessionRoutes.
+        $builder->addDefinition($this->prefix('sessionRoutes'))
+            ->setFactory(SessionRoutes::class)
             ->setAutowired(false)
             ->addTag(self::TAG_ROUTE_PROVIDER);
 

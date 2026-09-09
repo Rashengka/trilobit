@@ -728,7 +728,7 @@ the password to use there, once. For a real deployment point
 the document root at `www/` and leave the rest of the checkout outside it;
 `www/.htaccess` covers Apache.
 
-Two settings are worth knowing about:
+A few settings are worth knowing about:
 
 - `.env` holds what differs between deployments. Every value in `.env.example`
   is empty on purpose - a committed file carrying a host, a user name or a
@@ -742,6 +742,14 @@ Two settings are worth knowing about:
   extension has no effect until `var/tmp` is cleared. A change to a `.neon`
   file is picked up either way - the boot puts what those files say into the
   cache key.
+- `TRILOBIT_EDITOR` and `TRILOBIT_EDITOR_ROOT` decide what happens when a line
+  of a stack trace is clicked. The first is the URL pattern, and it defaults to
+  the scheme a JetBrains editor registers. The second is where this checkout
+  lives on the machine the editor runs on, and it has no default and must not
+  get one: the application may be running in a container, where the paths in a
+  trace are the container's, and nothing inside can find out what the directory
+  is called outside. Left empty nothing is rewritten, which is already right
+  wherever the editor sees the same paths the application does.
 - The database settings say where MariaDB is. Left empty they fall back to what
   `config/common.neon` names beside them, which is what `compose.yaml` starts;
   fill them in for anything else. Tests that need a database say so and skip

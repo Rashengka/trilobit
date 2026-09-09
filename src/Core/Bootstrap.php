@@ -8,6 +8,8 @@ use Nette\Bootstrap\Configurator;
 use Nette\DI\Compiler;
 use Nette\DI\Container;
 use Nette\Utils\FileSystem;
+use Tracy\Debugger;
+use Trilobit\Core\Config\EditorLinks;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Module\ModuleList;
 
@@ -21,10 +23,14 @@ use Trilobit\Core\Module\ModuleList;
  * visitor's address, because an address check is unreliable in production and
  * would mean an address written down in a public repository.
  *
- * The one thing decided here rather than in configuration is which modules the
- * build contains, and only because it has to be known before the configuration
- * can be assembled: an enabled module contributes a file to load and a
- * compiler extension to run, and a disabled one contributes neither.
+ * Two things are decided here rather than in configuration, and both for the
+ * same reason: they are needed before there is a container to read a
+ * configuration file out of. Which modules the build contains has to be known
+ * before the configuration can be assembled at all - an enabled module
+ * contributes a file to load and a compiler extension to run, and a disabled
+ * one contributes neither. And Tracy is switched on a line before that, so what
+ * its links have to know about this machine cannot come from config/local.neon
+ * either; see pointTheEditorLinksAtThisMachine().
  */
 final class Bootstrap
 {
@@ -61,6 +67,7 @@ final class Bootstrap
         $configurator = new Configurator();
         $configurator->setDebugMode($environment->flag('TRILOBIT_DEBUG'));
         $configurator->enableTracy($logDirectory);
+        self::pointTheEditorLinksAtThisMachine($environment, $root);
         $configurator->setTempDirectory($tempDirectory);
 
         $configurator->addStaticParameters([
@@ -118,6 +125,30 @@ final class Bootstrap
     public static function rootDirectory(): string
     {
         return dirname(__DIR__, 2);
+    }
+
+    /**
+     * What Tracy has to know before it can turn a line of a stack trace into a
+     * link that opens that line in an editor.
+     *
+     * It is set here rather than in configuration because of when it is needed:
+     * Tracy is switched on above, before the container has been compiled, so
+     * config/local.neon does not exist yet as anything the boot can read. The
+     * environment file does, and it is already open a few lines up - so the two
+     * settings live there, beside debug mode, which is the other thing about
+     * this machine rather than about this build.
+     *
+     * What the two settings are and why one of them defaults and the other may
+     * not is Trilobit\Core\Config\EditorLinks's business; all that happens
+     * here is that its answers reach the two static properties Tracy reads.
+     */
+    private static function pointTheEditorLinksAtThisMachine(Environment $environment, string $root): void
+    {
+        Debugger::$editor = EditorLinks::pattern($environment);
+        Debugger::$editorMapping = [
+            ...Debugger::$editorMapping,
+            ...EditorLinks::mapping($environment, $root),
+        ];
     }
 
     /**

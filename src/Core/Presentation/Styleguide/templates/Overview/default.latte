@@ -121,6 +121,15 @@
      * the page it happens to be on is drawn at - see
      * Trilobit\Core\Preference\Preferences.
      *
+     * **Which control is the chosen one is said once, in aria-pressed.** It was
+     * said twice until 2026-09-09 - as the attribute and as the button's
+     * variant - and the script only ever moved the attribute, so clicking
+     * another theme repainted the whole page and left the mark sitting on the
+     * theme that was no longer on. The variant is therefore fixed here and
+     * assets/base.css draws .c-button[aria-pressed='true'] as the one in force,
+     * which makes the appearance a consequence of the state rather than a
+     * second copy of it to keep in step.
+     *
      * tests/Template/StyleguideOffersEveryPreferenceTest fails when this list
      * and the catalogue part company in either direction.
      *}
@@ -133,7 +142,7 @@
 
                 {include button,
                     label: $available,
-                    variant: $chosen ? 'primary' : 'quiet',
+                    variant: 'quiet',
                     testId: 'theme-choice-' . $available,
                     attributes: [
                         'data-preference' => 'theme',
@@ -151,7 +160,7 @@
 
                 {include button,
                     label: $label,
-                    variant: $chosen ? 'primary' : 'quiet',
+                    variant: 'quiet',
                     testId: 'theme-mode-choice-' . $mode,
                     attributes: [
                         'data-preference' => 'theme-mode',
@@ -174,7 +183,7 @@
 
                 {include button,
                     label: $label,
-                    variant: $chosen ? 'primary' : 'quiet',
+                    variant: 'quiet',
                     testId: 'content-width-choice-' . $mode,
                     attributes: [
                         'data-preference' => 'content-width',

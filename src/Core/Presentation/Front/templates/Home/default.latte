@@ -6,9 +6,9 @@
  *
  * Every visible thing here is a component from src/Core/Presentation/components/
  * (decision D3). The page itself only decides which components appear and in
- * what order, and reaches for a layout primitive - l-grid - to arrange them. It
- * makes no decision about how any of them looks, which is what leaves that
- * decision to the theme.
+ * what order; how the tiles of a signpost are arranged is that component's own
+ * business and not this page's. It makes no decision about how any of them
+ * looks, which is what leaves that decision to the theme.
  *}
 
 {import '../../../components/page-heading.latte'}

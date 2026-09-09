@@ -82,7 +82,7 @@ test('a device remembers, the profile takes it over, and afterwards the profile 
 
     // Signing out changes nothing about the way the device looks.
     await page.getByTestId('admin-sign-out').click();
-    await expect(page).toHaveURL(/\/admin\/sign-in$/);
+    await expect(page).toHaveURL(/\/$/);
     await page.goto('/_styleguide');
     expect(await themeOf(page)).toBe(chosen);
 

@@ -70,6 +70,13 @@ class AdminTemplate extends Template
      */
     public string $overviewUrl = '';
 
+    /**
+     * The application's own address for ending a session, not one under
+     * admin/. Signing in belongs to the part of the application somebody is
+     * signing into; signing out belongs to the application, because there is
+     * one session and ending it is one act. See
+     * Trilobit\Core\Presentation\Session\SignOutPresenter.
+     */
     public string $signOutUrl = '';
 
     public string $publicSiteUrl = '';

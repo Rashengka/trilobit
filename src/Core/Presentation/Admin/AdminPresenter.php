@@ -6,12 +6,13 @@ namespace Trilobit\Core\Presentation\Admin;
 
 use Nette\Application\UI\Presenter;
 use Nette\Application\UI\Template;
-use Nette\Http\IResponse;
 use Trilobit\Core\Admin\Menu\MenuItem;
 use Trilobit\Core\Admin\Menu\ReachableMenu;
 use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Component\SignpostLink;
+use Trilobit\Core\Presentation\Error\RefusalPresenter;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
+use Trilobit\Core\Presentation\Session\SignOutPresenter;
 use Trilobit\Core\Security\Doorkeeper;
 use Trilobit\Core\Security\Gate;
 use Trilobit\Core\Security\Identity;
@@ -45,6 +46,19 @@ use Trilobit\Core\Security\OpenToEverybody;
  * request is a session started for every anonymous request to /admin.
  * **Exit condition:** the first module that adds a page worth being returned to
  * after signing in.
+ *
+ * **Being refused is a page, and it is not an error either.** Somebody who is
+ * signed in and may not open this page is handed to
+ * Trilobit\Core\Presentation\Error\RefusalPresenter rather than raising a
+ * Nette\Application\BadRequestException. Raising was the older answer and what
+ * was wrong with it is what a visitor met: `catchExceptions: false` in
+ * config/common.neon leaves the framework with no error presenter registered
+ * while debug mode is on, so it rethrows and the refusal arrives as a stack
+ * trace. An account that is refused everywhere then had nowhere left to go -
+ * the only way of signing out was drawn in this very layout, on pages it could
+ * not reach. Forwarding makes the answer the same however that setting stands,
+ * because nothing is thrown for it to decide about; the status is 403 and the
+ * address is still the one that was asked for.
  */
 abstract class AdminPresenter extends Presenter
 {
@@ -146,7 +160,7 @@ abstract class AdminPresenter extends Presenter
         // the one on the class and never widens it.
         foreach ($gates as $gate) {
             if (!$gate->admits($this->doorkeeper)) {
-                $this->error('This is not yours to open.', IResponse::S403_Forbidden);
+                $this->forward(RefusalPresenter::DESTINATION);
             }
         }
     }
@@ -184,7 +198,10 @@ abstract class AdminPresenter extends Presenter
         // link they are refused on, which is the same mistake the menu filter
         // exists to stop.
         $template->overviewUrl = $this->link($this->landing->forThisPerson());
-        $template->signOutUrl = $this->link(':Core:Admin:Sign:out');
+        // The application's own address rather than one under admin/: one
+        // session ended by one act, whoever is ending it. See
+        // Trilobit\Core\Presentation\Session\SignOutPresenter.
+        $template->signOutUrl = $this->link(SignOutPresenter::DESTINATION);
         $template->publicSiteUrl = $this->link(':Core:Front:Home:default');
         $template->signedIn = $this->getUser()->isLoggedIn();
         $template->identityName = $identity instanceof Identity ? $identity->displayName() : '';

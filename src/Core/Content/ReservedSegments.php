@@ -8,6 +8,7 @@ use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouteProvider;
+use Trilobit\Core\Routing\SessionRoutes;
 use Trilobit\Core\Routing\StyleguideRoutes;
 
 /**
@@ -53,6 +54,11 @@ final readonly class ReservedSegments
     private const array ALWAYS = [
         AdminRoutes::PATH,
         PreferenceRoutes::PATH,
+        // Readable rather than hidden, so it is a segment genuinely taken away
+        // from content: nothing a tenant saves can ever live at /sign-out. That
+        // is the price of an address a person may type, and it is paid on
+        // purpose - see Trilobit\Core\Routing\SessionRoutes.
+        SessionRoutes::SIGN_OUT_PATH,
         StyleguideRoutes::PATH,
     ];
 

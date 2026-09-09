@@ -30,9 +30,13 @@ final class AdminRoutes implements RouteProvider
 {
     public const string PATH = 'admin';
 
+    /**
+     * Coming in is the administration's own, and going out is not: it moved to
+     * Trilobit\Core\Routing\SessionRoutes, because one session ended by one act
+     * cannot have an address that says which part of the application the person
+     * ending it happened to be in.
+     */
     public const string SIGN_IN_PATH = 'admin/sign-in';
-
-    public const string SIGN_OUT_PATH = 'admin/sign-out';
 
     /** Where the section of the installation's own administrator begins. */
     public const string INSTALLATION_PATH = 'admin/installation';
@@ -40,7 +44,6 @@ final class AdminRoutes implements RouteProvider
     public function provide(RouteList $routes): void
     {
         $routes->addRoute(self::SIGN_IN_PATH, 'Core:Admin:Sign:in');
-        $routes->addRoute(self::SIGN_OUT_PATH, 'Core:Admin:Sign:out');
         $routes->addRoute(self::INSTALLATION_PATH, 'Core:Installation:Signpost:default');
         $routes->addRoute(self::INSTALLATION_PATH . '/businesses', 'Core:Installation:Businesses:default');
         $routes->addRoute(self::PATH, 'Core:Admin:Dashboard:default');
