@@ -24,6 +24,7 @@ use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Console\AccountCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
+use Trilobit\Core\Console\PasswordCommand;
 use Trilobit\Core\Console\TenantCommand;
 use Trilobit\Core\Console\WarmupCommand;
 use Trilobit\Core\Content\ContentTypes;
@@ -256,6 +257,14 @@ final class CoreExtension extends CompilerExtension
             ->setFactory(AccountCommand::class)
             ->setAutowired(false)
             ->addTag(self::TAG_CONSOLE_COMMAND, 'app:account');
+
+        // The other half of that pair: the command above generates a password
+        // for a machine to pass on, this one is typed by the person the account
+        // belongs to. See Trilobit\Core\Console\PasswordCommand.
+        $builder->addDefinition($this->prefix('passwordCommand'))
+            ->setFactory(PasswordCommand::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_CONSOLE_COMMAND, 'app:password');
 
         // Doctrine's migration generator, with the two things a build made of
         // modules has to establish first; see the class. It replaces the one

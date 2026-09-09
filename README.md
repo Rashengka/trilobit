@@ -30,7 +30,7 @@ application does. See "The design system" below.
 | path | what it is |
 |---|---|
 | `www/index.php` | the front controller; the document root is `www/`, nothing above it is reachable |
-| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:tenant` makes a business and the hosts it answers at, `app:account` makes somebody who can sign in - the administrator of the installation, or of one business |
+| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:tenant` makes a business and the hosts it answers at, `app:account` makes somebody who can sign in - the administrator of the installation, or of one business - and `app:password` lets that somebody type a password of their own |
 | `src/Core/Bootstrap.php` | turns a checkout into a compiled container |
 | `src/Core/Module/` | what a module's name implies, and which modules this build has |
 | `src/Core/DI/CoreExtension.php` | the five places a module hands something to Core |
@@ -583,6 +583,28 @@ that already exists and it replaces the password rather than refusing, which is
 what somebody who has lost theirs needs and what a deployment script calling it
 every time needs.
 
+Once an account is somebody's own, they choose their own password instead:
+
+```sh
+bin/trilobit app:password you@example.com
+```
+
+The two commands are a pair, and they differ in exactly one thing: where the
+password comes from. `app:account` generates one and prints it once, which is
+the shape a script wants. `app:password` only ever takes one that was typed,
+which is the shape a person wants: the address is the argument, the password is
+hidden while it is entered, and it is asked twice, because hidden input is the
+one kind where a typo cannot be seen. There is no `--password` and no second
+argument, for the same reason as above. A run with nobody at the keyboard -
+`--no-interaction`, cron, standard input redirected from nowhere - is refused
+and pointed back at `app:account` rather than made to work; an address nobody
+has is an error and never a new account, because making one is `app:account`'s
+job. A password has to be at least twelve characters and must not be the address
+itself, and there is deliberately no rule about digits or capitals: length is
+what costs an attacker, while a composition rule pushes people towards the few
+shapes such rules produce. There is no way to name a business, because an
+address is unique across the installation, so naming one would narrow nothing.
+
 Three decisions are worth stating.
 
 **A visitor who is not signed in is redirected, never refused.** They have done
@@ -788,7 +810,7 @@ It runs, in this order:
 
 | step | command | what it decides |
 |---|---|---|
-| `leaks` | `bin/check-leaks --all` | nothing private has reached a tracked file |
+| `leaks` | `bin/check-leaks --all` | nothing private has reached a file that could be committed: tracked, plus untracked and not ignored |
 | `cs` | `php-cs-fixer check --diff` | the code is written the agreed way |
 | `cs:sniff` | `phpcs` | the rules a formatter cannot express |
 | `stan` | `phpstan analyse` | static analysis at level `max` |

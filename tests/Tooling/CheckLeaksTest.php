@@ -58,6 +58,7 @@ function run(): int
     checkSuppressions($failures);
     checkSuppressionCap($failures);
     checkFileNameIsChecked($failures);
+    checkAllModeReadsWhatCouldBeCommitted($failures);
     checkStagedModeAndHook($failures);
     checkRepositoryIsClean($failures);
 
@@ -242,6 +243,60 @@ function checkFileNameIsChecked(array &$failures): void
     [$code, $out] = checkFiles(['src/Core/' . LOCAL_PATTERNS[0] . '.php' => "<?php\n"]);
     assertSame(1, $code, 'a private pattern in the file name is a finding', $failures);
     assertContains('[private_pattern]', $out, 'the file name finding names the rule', $failures);
+}
+
+/**
+ * --all has to mean everything that could end up in a commit, not everything
+ * git already knows about.
+ *
+ * The mode used to build its list from `git ls-files`, which lists tracked
+ * files only, so a file that had been written but not added yet went through
+ * unread - and that is the file most likely to be carrying something that must
+ * not be published. Both halves are asserted here, because either one alone
+ * would pass for a broken mode: without the first, --all is blind to new work;
+ * without the second, "not ignored" has stopped being applied and --all reads
+ * vendor/ and every private note on the machine.
+ *
+ * It happens in a throw-away repository built for the check, never in the
+ * working one.
+ *
+ * @param list<string> $failures
+ */
+function checkAllModeReadsWhatCouldBeCommitted(array &$failures): void
+{
+    $workspace = workspace([], LOCAL_PATTERNS);
+    $repo = $workspace['dir'] . '/repo';
+    $home = $workspace['home'];
+
+    mkdir($repo, 0777, true);
+    execute(['git', 'init', '--quiet'], $repo, $home);
+    copy(ROOT . '/.check-leaks.yaml', $repo . '/.check-leaks.yaml');
+
+    $dirty = (string) file_get_contents(FIXTURES . '/email.sample');
+
+    // Tracked and clean, so that a mode reading nothing at all cannot pass.
+    @mkdir($repo . '/src/Core', 0777, true);
+    file_put_contents($repo . '/src/Core/Tracked.php', "<?php\n");
+    execute(['git', 'add', '.check-leaks.yaml', 'src/Core/Tracked.php'], $repo, $home);
+
+    // Written, not added: what `git ls-files` alone never sees.
+    file_put_contents($repo . '/src/Core/NotAddedYet.php', $dirty);
+
+    // Ignored, so git would not take it even with `git add .`.
+    file_put_contents($repo . '/.gitignore', "ignored/\n");
+    @mkdir($repo . '/ignored', 0777, true);
+    file_put_contents($repo . '/ignored/Leak.php', $dirty);
+
+    [$code, $out] = execute([binary(), '--all'], $repo, $home);
+
+    assertSame(1, $code, sprintf('--all reads a file that is not tracked yet (output: %s)', oneLine($out)), $failures);
+    assertContains('src/Core/NotAddedYet.php', $out, '--all names the untracked file it read', $failures);
+    assertSame(
+        false,
+        str_contains($out, 'ignored/Leak.php'),
+        '--all leaves an ignored file alone, so the mode is not simply reading the whole directory',
+        $failures
+    );
 }
 
 /**

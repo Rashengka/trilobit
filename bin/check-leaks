@@ -249,7 +249,7 @@ function usage(): void
 
       --staged            scan what is staged for commit (default, used by .githooks/pre-commit)
       --range <a>...<b>   scan the diff of a range, for CI over a pull request
-      --all               scan every tracked file
+      --all               scan every file that could end up in a commit: tracked, plus untracked and not ignored
       --history           scan every commit of every branch, including messages
       --files <path>...   scan the given files as if they were entirely new
 
@@ -321,7 +321,7 @@ function collectLines(string $mode, ?string $range, array $files, string $root, 
     $lines = match ($mode) {
         'staged' => fromDiff(requireGit(['diff', '--cached', '--unified=0', '--no-color'])),
         'range' => fromDiff(requireGit(['diff', '--unified=0', '--no-color', (string) $range])),
-        'all' => fromTrackedFiles($root),
+        'all' => fromEverythingCommittable($root),
         'files' => fromGivenFiles($files, $root),
         'history' => fromHistory(),
         default => throw new RuntimeException('unknown mode ' . $mode),
@@ -391,14 +391,45 @@ function fromDiff(string $diff): array
 }
 
 /**
+ * Every file that could end up in a commit: the tracked ones, and the untracked
+ * ones git would pick up if somebody typed `git add .`.
+ *
+ * `git ls-files` on its own lists tracked files only. Until this asked for the
+ * others as well, a file that had been written but not added yet passed --all
+ * without being read once - and a brand new file is exactly the one most likely
+ * to be carrying something that must not be published. A guard whose blind spot
+ * is shaped like new work is a guard pointed away from the risk it exists for.
+ *
+ * --exclude-standard applies the same three lists git itself applies when it
+ * decides what `git add .` would take: the .gitignore files, .git/info/exclude,
+ * and whatever core.excludesFile names. That is what keeps vendor/,
+ * node_modules/ and this project's own untracked working notes out of the scan.
+ * Without it the mode would read tens of thousands of files instead of some
+ * hundreds, and the notes - which are deliberately not in English and
+ * deliberately not committed - would make a finding of every single run.
+ *
+ * "Ignored" is not quite the same claim as "can never be committed", because
+ * `git add -f` goes round all three lists. That is not a hole left open here:
+ * it is covered where it belongs. --staged reads what is actually staged, so a
+ * force-added file is read at the moment it would enter a commit, which is the
+ * moment that decides anything.
+ *
  * @return list<array{path: string, line: int, text: string, kind: string}>
  */
-function fromTrackedFiles(string $root): array
+function fromEverythingCommittable(string $root): array
 {
-    $listing = requireGit(['ls-files', '-z']);
-    $paths = array_values(array_filter(explode("\0", $listing), static fn (string $p): bool => $p !== ''));
+    $tracked = nulSeparatedPaths(requireGit(['ls-files', '-z']));
+    $untracked = nulSeparatedPaths(requireGit(['ls-files', '--others', '--exclude-standard', '-z']));
 
-    return readFiles($paths, $root);
+    return readFiles(array_values(array_unique([...$tracked, ...$untracked])), $root);
+}
+
+/**
+ * @return list<string>
+ */
+function nulSeparatedPaths(string $listing): array
+{
+    return array_values(array_filter(explode("\0", $listing), static fn (string $p): bool => $p !== ''));
 }
 
 /**
@@ -842,8 +873,19 @@ function ruleDefinitions(array $config, array $localPatterns): array
             'scope' => 'any',
             'advice' => 'Replace the value with an environment placeholder; the secret belongs in .env or a secret store.',
             'fn' => static function (string $text): array {
+                // The separator may be a single colon but never the first half
+                // of "::". A name ending in one of these words is ordinary PHP
+                // - a class called PasswordCommand, a constant reached as
+                // SomethingSecret::LENGTH - and read as an assignment the whole
+                // of a class name became a key with ":class" for its value.
+                // Nothing that is really a credential is ever written
+                // "key::value" in PHP, NEON, YAML or an ini file, so this costs
+                // the rule nothing it was catching; the alternative was a
+                // suppression on every line that names such a class, and a rule
+                // excused that often is one somebody eventually excuses where
+                // it was right.
                 $pattern = '/([A-Za-z0-9_.\-]*(?:password|passwd|secret|token|api[_\-]?key|private[_\-]?key)[A-Za-z0-9_.\-]*)'
-                    . '[\'"\]]*\s*(?:=>|=|:)\s*(\S.*)$/i';
+                    . '[\'"\]]*\s*(?:=>|=|:(?!:))\s*(\S.*)$/i';
                 if (preg_match($pattern, $text, $m) !== 1) {
                     return [];
                 }
