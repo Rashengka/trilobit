@@ -6,7 +6,6 @@ namespace Trilobit\Shop\DI;
 
 use Nette\DI\CompilerExtension;
 use Trilobit\Core\DI\CoreExtension;
-use Trilobit\Shop\Admin\ShopMenu;
 use Trilobit\Shop\Presentation\Front\ShopSignpost;
 use Trilobit\Shop\Routing\ShopRoutes;
 
@@ -19,6 +18,15 @@ use Trilobit\Shop\Routing\ShopRoutes;
  * "switched off" means. Nothing below is conditional - the extension is
  * either registered by the boot or it is not, and a module the boot did not
  * register contributes nothing at all.
+ *
+ * **There is no administration menu entry here, and its absence is the rule
+ * rather than an omission.** A module contributes one when it has an
+ * administration page to contribute it for, and this one has none yet. It used
+ * to contribute an entry leading to its own public page - which put a way out
+ * of the administration in the bar of the administration - and that was
+ * deliberate while no module had an administration at all and the bar would
+ * otherwise have been empty. The bar is not empty any more: it begins with the
+ * way back, and another module has sections in it.
  *
  * The tags go on in loadConfiguration() rather than in beforeCompile(), because
  * Core reads them in its own beforeCompile(). Extensions all load before any of
@@ -41,11 +49,6 @@ final class ShopExtension extends CompilerExtension
             ->setFactory(ShopRoutes::class)
             ->setAutowired(false)
             ->addTag(CoreExtension::TAG_ROUTE_PROVIDER);
-
-        $builder->addDefinition($this->prefix('adminMenu'))
-            ->setFactory(ShopMenu::class)
-            ->setAutowired(false)
-            ->addTag(CoreExtension::TAG_ADMIN_MENU_PROVIDER);
 
         $builder->addDefinition($this->prefix('signpost'))
             ->setFactory(ShopSignpost::class)

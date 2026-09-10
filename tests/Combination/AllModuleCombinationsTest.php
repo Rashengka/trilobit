@@ -279,6 +279,16 @@ final class AllModuleCombinationsTest extends TestCase
      * belongs to is read off its destination, which is the only thing Core
      * knows about it.
      *
+     * **Being switched on is not enough to be in here**, and that is the newer
+     * half. A module contributes an entry when it has an administration page to
+     * contribute one for; two of the three have none yet and contribute
+     * nothing, where they used to contribute one entry apiece pointing at their
+     * own public page - a way out of the administration, drawn in the bar of
+     * the administration. So what is expected is the enabled modules that have
+     * one, which is Trilobit\Tests\Combination\Build::WITH_AN_ADMINISTRATION,
+     * and the rule that survives unchanged is the one this suite is for: a
+     * module that is switched off is never in it.
+     *
      * **Core is one of the contributors and is expected in every build**, and
      * that is a change of premise rather than of rule. It contributes the one
      * entry that leads into the section belonging to the installation itself
@@ -296,7 +306,7 @@ final class AllModuleCombinationsTest extends TestCase
     {
         $items = Build::container($enabled)->getByType(Menu::class)->items();
 
-        $expected = [...$enabled, 'core'];
+        $expected = [...array_intersect($enabled, Build::WITH_AN_ADMINISTRATION), 'core'];
         sort($expected);
 
         self::assertSame($expected, $this->modulesOf(array_map(
@@ -314,28 +324,35 @@ final class AllModuleCombinationsTest extends TestCase
      * at rather than against the container behind it.
      *
      * This is the measured proof T07 is defined by, and it is made for every
-     * build the application can be shipped as: the administration menu holds
-     * exactly the entries the enabled modules contributed, each one labelled
-     * after its module and each one resolving through the router back into it.
-     * A build with no optional module has no menu at all - not an empty one -
-     * because a navigation with nothing in it is furniture with no purpose.
+     * build the application can be shipped as: the bar begins with the way back
+     * to where this person's administration starts, and after it holds exactly
+     * the entries the enabled modules contributed, each one resolving through
+     * the router back into the module it belongs to.
      *
-     * **Core's own entry is not drawn here, and its absence is the menu filter
-     * working rather than Core contributing nothing.** The entry leads into
-     * the section belonging to the installation itself, and nobody in this
+     * **The bar is drawn in every build now, including the one with no optional
+     * module at all**, and that is the way back rather than an empty
+     * navigation: a build with nothing switched on still has an administration
+     * and still has a top to return to. It used to be absent there, which was
+     * right while every entry came from a module.
+     *
+     * **Core's section entry is not drawn here, and its absence is the menu
+     * filter working rather than Core contributing nothing.** The entry leads
+     * into the section belonging to the installation itself, and nobody in this
      * suite administers the installation - see
      * Trilobit\Tests\Double\Security\NobodySignedIn, which is what keeps that
      * question from being answered out of a table this suite has no schema
-     * for. So the count stays unambiguous, for a reason that is now stated
-     * instead of assumed. The identity is invented rather than read from a
-     * database for the same reason: what is under test is which entries the
-     * build has, and needing a database to ask that would make this the
-     * slowest claim in the suite instead of one of the cheapest.
+     * for. The way back is a different thing and is drawn: it is not a section,
+     * it is asked of Trilobit\Core\Presentation\Admin\Landing, and for somebody
+     * who administers no installation it leads to the overview. The identity is
+     * invented rather than read from a database for the same reason: what is
+     * under test is which entries the build has, and needing a database to ask
+     * that would make this the slowest claim in the suite instead of one of the
+     * cheapest.
      *
      * @param list<string> $enabled
      */
     #[DataProviderExternal(Build::class, 'everyCombination')]
-    public function testTheRenderedAdministrationMenuHasOneEntryPerEnabledModule(array $enabled): void
+    public function testTheRenderedAdministrationMenuIsTheWayBackAndTheAdministeredModules(array $enabled): void
     {
         $container = Build::container($enabled);
         $container->getByType(SignedIn::class)->login(new Identity(1, ['administrator'], []));
@@ -349,13 +366,7 @@ final class AllModuleCombinationsTest extends TestCase
             self::assertNotNull($document->querySelector('[data-testid="admin-layout"]'));
 
             $menu = $document->querySelector('[data-testid="admin-menu"]');
-            if ($enabled === []) {
-                self::assertNull($menu, 'a build with no optional module drew a menu anyway');
-
-                return;
-            }
-
-            self::assertNotNull($menu, 'the enabled modules contributed entries and no menu was drawn');
+            self::assertNotNull($menu, 'no menu was drawn, so there is no way back either');
 
             $destinations = [];
             foreach ($menu->querySelectorAll('.c-nav__link') as $link) {
@@ -374,9 +385,59 @@ final class AllModuleCombinationsTest extends TestCase
             }
 
             self::assertSame(
-                $enabled,
+                'Core:Admin:Dashboard',
+                array_shift($destinations),
+                'the bar does not begin with the way back to where the administration starts',
+            );
+
+            self::assertSame(
+                array_values(array_intersect($enabled, Build::WITH_AN_ADMINISTRATION)),
                 $this->modulesOf($destinations),
-                'the drawn menu does not hold entries from exactly the enabled modules',
+                'the drawn menu does not hold entries from exactly the modules that have an administration',
+            );
+        } finally {
+            $container->getByType(SignedIn::class)->logout(clearIdentity: true);
+        }
+    }
+
+    /**
+     * The sentence the overview prints about the build counts the same thing
+     * the bar above it holds.
+     *
+     * It is asserted because it has been wrong twice and looked right both
+     * times. It counted the entries of the bar, so one module contributing two
+     * sections made the page say four modules where three had contributed; and
+     * once the bar begins with the way back, counting what is drawn would have
+     * added one that nobody contributed. What it counts now is modules, once
+     * each, Core's own left out - Core is in every build, and the sentence is
+     * about what switching a module on adds.
+     *
+     * @param list<string> $enabled
+     */
+    #[DataProviderExternal(Build::class, 'everyCombination')]
+    public function testTheOverviewCountsTheModulesThatPutASectionOnTheMenu(array $enabled): void
+    {
+        $container = Build::container($enabled);
+        $container->getByType(SignedIn::class)->login(new Identity(1, ['administrator'], []));
+
+        try {
+            $document = HTMLDocument::createFromString(
+                Build::render($container, 'Core:Admin:Dashboard'),
+                LIBXML_NOERROR,
+            );
+
+            $notes = $document->querySelector('[data-testid="admin-build-notes"]');
+            self::assertNotNull($notes, 'the overview said nothing about the build it is drawing');
+
+            $contributors = count(array_intersect($enabled, Build::WITH_AN_ADMINISTRATION));
+
+            self::assertStringContainsString(
+                match ($contributors) {
+                    0 => 'No module in this build has an administration to put on the menu yet.',
+                    1 => 'One module contributed a section to the menu.',
+                    default => $contributors . ' modules contributed a section to the menu.',
+                },
+                $notes->textContent ?? '',
             );
         } finally {
             $container->getByType(SignedIn::class)->logout(clearIdentity: true);
@@ -391,9 +452,8 @@ final class AllModuleCombinationsTest extends TestCase
      * .ai/plans/10-menu-submenu-a-rozcestniky.md: "the signpost of a section
      * is the same menu, drawn differently."
      *
-     * Cms is the only module with an entry into its own administration today -
-     * Shop and Crm point their one bar entry at their front page (see
-     * Trilobit\Shop\Admin\ShopMenu, Trilobit\Crm\Admin\CrmMenu) - which is why
+     * Cms is the only module with an administration today - it is the whole of
+     * Trilobit\Tests\Combination\Build::WITH_AN_ADMINISTRATION - which is why
      * this asks by name rather than looping every switchable module the way the
      * claims above do. A module with nothing in the bar has no route here
      * either: there is no catch-all under /admin any more than there is one

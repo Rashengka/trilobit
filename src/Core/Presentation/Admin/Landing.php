@@ -10,17 +10,31 @@ use Trilobit\Core\Security\Landlords;
  * Where the administration begins for the person making this request.
  *
  * There are two scopes and therefore two beginnings, and the application has
- * to know which one it is looking at in two places: after somebody signs in,
- * and behind the mark in the banner that every page offers as the way back.
- * Sending the administrator of the installation to the overview of a business
- * would be sending them to a page they are refused on - a working application
- * behaving like a broken one, and on the very first page a fresh installation
- * shows the account it was set up with.
+ * to know which one it is looking at in four places: after somebody signs in,
+ * behind the mark in the banner that every page offers as the way back, in the
+ * first entry of the administration bar, which is where the way back was
+ * looked for, and at /admin itself, which is the address of the administration
+ * a person knows and therefore the one they type. Sending the administrator of
+ * the installation to the overview of a business would be sending them to a
+ * page they are refused on - a working application behaving like a broken one,
+ * and on the very first page a fresh installation shows the account it was set
+ * up with.
  *
  * **It is one class because it is one decision.** Written into the sign-in
  * page and again into the layout, the two would answer differently the first
  * time either was changed, and the one that was left behind would be the one
- * somebody meets after signing in.
+ * somebody meets after signing in. Every place above therefore asks this and
+ * none of them keeps an answer of its own.
+ *
+ * **What it answers is where somebody belongs, and that is not the same claim
+ * as what they may open.** For the two kinds of account this was written for
+ * the two coincide, and for a role assembled out of one section they do not:
+ * `content:view` and nothing else opens that section and is refused the
+ * overview, because the pairs in src/Core/Security/permissions.neon inherit
+ * from parent to child. Anything that turns this answer into a link has to
+ * ask the second question as well - the bar does, through
+ * Trilobit\Core\Admin\Menu\ReachableMenu::wouldOpen(), and draws no way back
+ * where there is none to draw.
  *
  * **What it is not is a page that changes by who is looking.** Both
  * destinations exist for everybody and both say the same thing to whoever

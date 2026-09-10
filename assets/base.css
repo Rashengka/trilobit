@@ -422,6 +422,17 @@
      * a token, so the number of columns is a consequence of the theme and of the
      * viewport, and no breakpoint has to be written down here.
      *
+     * **auto-fill and not auto-fit, and the difference is only visible when
+     * there are fewer tiles than columns.** Both lay out the same number of
+     * tracks; auto-fit then collapses the ones nothing was placed in, and the
+     * `1fr` on what is left swallows the room they gave up - so a section with
+     * one entry drew a tile as wide as the page, and a section with two drew
+     * two half-page tiles, while a section with three or more drew cards. A
+     * grid whose cell size depends on how many cells are filled is not a grid,
+     * and the tile of a young section is exactly where it showed: measured at
+     * 1104px of content, one tile was 1104px wide and is now 349px, which is
+     * what every other tile in the application already was.
+     *
      * .c-signpost is the same rule under the component's own name, because a
      * signpost is this grid and nothing besides. It used to say that by
      * carrying both classes and declaring `display: block` for itself - two
@@ -435,7 +446,7 @@
     .c-signpost {
         display: grid;
         gap: var(--space-lg);
-        grid-template-columns: repeat(auto-fit, minmax(min(var(--layout-card-min), 100%), 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-card-min), 100%), 1fr));
     }
 
     .l-measure {

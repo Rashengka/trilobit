@@ -540,8 +540,8 @@ holds each rule on its own.
 
 `/admin` is Core's own and is in every build. It holds the sign-in page, the
 overview, the section belonging to the installation rather than to any business
-in it, and a menu made of what the enabled modules contributed and the one
-entry Core adds.
+in it, and a menu made of the way back to where this person's administration
+begins and whatever the enabled modules put a section on it.
 
 Make somebody who can sign in. There are two kinds of administrator and the
 command says which it means:
@@ -617,22 +617,47 @@ it does. `tests/Integration/Admin/AdministrationTest` asserts the status code as
 well as the destination, because a 500 carrying a `Location` header would
 satisfy "goes to the sign-in page" and nothing else about it.
 
-**The menu is what the enabled modules contributed, plus one entry of Core's.**
-Core put nothing in it until the installation had a section of its own, and
-that changed the premise rather than the rule: the entry is contributed by
-tagging a service, `Trilobit\Core\Admin\Menu\InstallationMenu`, exactly the way
-a module contributes one. The way back to the overview is still not an entry -
-it is the mark in the banner, the same way the way back to the front page is
-the mark in the public banner. `tests/Combination/AllModuleCombinationsTest`
-holds that for all eight builds the application can be shipped as, and it holds
-it twice because there are two questions: what the register holds, which is the
-enabled modules and Core, and what a page actually draws for somebody who does
-not administer the installation, which is the enabled modules alone - Core's
-entry leads where such a person is refused, so the filter takes it out before
-they see it. `Cms` contributes two entries and both lead into its own
-administration; `Crm` and `Shop` still contribute one apiece pointing at their
-own public page, which is what a module with nothing to administer yet has to
-point at.
+**`/admin` resolves to the administration this person has; every other address
+refuses as usual.** It is the one address of the administration anybody knows,
+so somebody who administers the installation typing it used to be told the page
+was not theirs to open - on an installation that was working perfectly, by the
+account it had been set up with. What answers it is the same
+`Trilobit\Core\Presentation\Admin\Landing` the sign-in page and the mark in the
+banner ask, so there is one decision about where the administration begins
+rather than three. A page says it is that address by overriding
+`isWhereTheAdministrationBegins()`, and the default is no: a page added
+tomorrow refuses whoever may not open it without its author having to know the
+method exists. That is the whole of the line, and it is deliberately narrow -
+if trying a page you may not open quietly moved you somewhere else, nobody
+would ever learn they lacked a right, and a gate that never says no is
+indistinguishable from no gate.
+
+**The menu is the way back, and then what the modules contributed.** Its first
+entry leads where that person's administration begins - the same address the
+mark in the banner uses and the same answer behind both, because a way back
+nobody finds is not a way back, and it was the mark alone that nobody found.
+It is filtered like every other entry rather than trusted: where somebody
+belongs is not the same claim as what they may open, and the two come apart at
+an ordinary role. `content:view` and nothing else opens every page of that
+section and is refused the overview, because the pairs in
+`src/Core/Security/permissions.neon` inherit from parent to child - so such a
+person is drawn no way back and their bar begins with the section they may
+open. Nothing the bar offers answers 403.
+The entries after it are the sections: a module contributes one when it has an
+administration page to contribute one for, and Core contributes the way into
+the section belonging to the installation by tagging a service,
+`Trilobit\Core\Admin\Menu\InstallationMenu`, exactly the way a module
+contributes one. `Cms` contributes two entries and both lead into its own
+administration; `Crm` and `Shop` contribute none, because they have nothing to
+administer yet - they used to contribute one apiece pointing at their own
+public page, which was a way out of the administration drawn inside it.
+`tests/Combination/AllModuleCombinationsTest` holds that for all eight builds
+the application can be shipped as, and it holds it twice because there are two
+questions: what the register holds, which is Core and every enabled module that
+has an administration, and what a page actually draws for somebody who does not
+administer the installation, which is the way back and those modules - Core's
+section entry leads where such a person is refused, so the filter takes it out
+before they see it.
 
 The sign-in form carries no CSRF token of its own. nette/forms 3.3 deprecates
 its token control as redundant beside the check the framework now makes on every

@@ -51,12 +51,17 @@ class AdminTemplate extends Template
      * What the person reading this page may open, already turned into
      * addresses.
      *
-     * It is what the enabled modules contributed plus Core's own way into the
-     * section belonging to the installation, and then filtered by
+     * The first of them is the way back to where this person's administration
+     * begins, which the mark in the header also leads to and out of the same
+     * answer. The rest are the sections: what the enabled modules contributed
+     * plus Core's own way into the section belonging to the installation.
+     *
+     * Everything here, the way back included, has been through
      * Trilobit\Core\Admin\Menu\ReachableMenu - so an entry that would refuse
-     * whoever is looking is not here to be clicked. The way back to where this
-     * person's administration begins is the mark in the header, the same way
-     * the way back to the front page is the mark in the public header.
+     * whoever is looking is not here to be clicked. Where the way back would,
+     * it is absent and the bar begins with a section; that is the case of a
+     * role assembled out of one section, which opens that section and is
+     * refused the overview.
      *
      * @var list<NavigationItem>
      */

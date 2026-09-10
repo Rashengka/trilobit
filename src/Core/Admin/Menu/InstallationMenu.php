@@ -10,8 +10,12 @@ namespace Trilobit\Core\Admin\Menu;
  *
  * Core contributed nothing to the bar until this, and the reason it does now is
  * not that the rule changed but that there is now a page of Core's that a
- * person navigates to. The overview is still reached by the mark in the
- * banner and is still not an entry here.
+ * person navigates to. The way back to the top of the administration is still
+ * not an entry here: the bar draws it as its first entry and the mark in the
+ * banner leads to it, and both ask
+ * Trilobit\Core\Presentation\Admin\Landing rather than reading a row. A row
+ * would belong to whichever section its destination names and would turn up on
+ * that section's own signpost, pointing at the page it was drawn on.
  *
  * **The entry is drawn for one kind of account and not the other**, and
  * neither this class nor the register it is read out of knows that. It is

@@ -10,13 +10,14 @@
  * it - so a theme moves the navigation here exactly as it moves it there, and a
  * component fixed in one place is fixed in both.
  *
- * The menu is what the person looking at it may open: what the enabled modules
- * contributed and Core's own way into the installation's section, less
- * whatever would refuse them - see Trilobit\Core\Admin\Menu\ReachableMenu.
- * The way back to where their administration begins is the mark in the banner,
- * the same way the way back to the front page is the mark in the public
- * banner; which page that is depends on which of the two administrations they
- * have, and on nothing else about them.
+ * The menu begins with the way back to where their administration begins and
+ * goes on with the sections: what the enabled modules contributed and Core's
+ * own way into the installation's section. All of it, the way back included,
+ * is less whatever would refuse the person reading it - see
+ * Trilobit\Core\Admin\Menu\ReachableMenu - so somebody whose role is one
+ * section is drawn no way back at all, because the page it leads to is not
+ * theirs to open. The mark in the banner leads to the same place, the same way
+ * the mark in the public banner leads to the front page.
  *}
 
 {import '../../components/site-header.latte'}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Admin;
 
 use Nette\Application\UI\Template;
+use Trilobit\Core\Admin\Menu\MenuItem;
 use Trilobit\Core\Security\Identity;
 use Trilobit\Core\Security\Needs;
 use Trilobit\Core\Security\Privilege;
@@ -28,10 +29,25 @@ use Trilobit\Core\Security\Resource;
  * work on that section and nothing else would be the only person able to see
  * the build's own overview, and everybody else would be refused on the page
  * they arrive at the moment they sign in.
+ *
+ * **It is also the address the administration begins at**, because /admin is
+ * what Trilobit\Core\Routing\AdminRoutes points here and /admin is the address
+ * a person types. That, and not the gate above, is why somebody who
+ * administers the installation is not refused here: they are sent to the
+ * section that is theirs, by the same answer that sends them there when they
+ * sign in. Which is a claim about this page alone - see
+ * Trilobit\Core\Presentation\Admin\AdminPresenter::isWhereTheAdministrationBegins().
  */
 #[Needs(Resource::Administration, Privilege::View)]
 final class DashboardPresenter extends AdminPresenter
 {
+    /**
+     * The part of the build that is in every build, as a menu entry names it:
+     * the first segment of a destination, lower-cased, the same key
+     * Trilobit\Core\Admin\Menu\MenuItem::module() answers with.
+     */
+    private const string ALWAYS_ON = 'core';
+
     public function renderDefault(): void
     {
         $template = $this->getTemplate();
@@ -50,7 +66,39 @@ final class DashboardPresenter extends AdminPresenter
         $template->lead = 'Everything this installation is made of, and the way into each part of it.';
         $template->roles = $identity instanceof Identity ? $this->strings($identity->getRoles()) : [];
         $template->permissions = $identity instanceof Identity ? $identity->permissions() : [];
-        $template->sectionCount = count($template->menu);
+        $template->moduleCount = count($this->contributingModules());
+    }
+
+    /**
+     * This page and nothing else, so that /admin - which is what leads here -
+     * takes somebody who administers the installation to their own section
+     * instead of refusing them.
+     */
+    protected function isWhereTheAdministrationBegins(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Which switchable parts of the build put a section on the bar, counted
+     * once each.
+     *
+     * Three things this is not, and each of them was the number this page used
+     * to print. It is not how many entries the bar holds: one part contributing
+     * two of them made four out of three, and a part with an administration
+     * worth the name has several. It is not how many entries are drawn either -
+     * the first of those is the way back, which nobody contributed. And what is
+     * left out is Core's own, because Core cannot be switched off, and the
+     * sentence this feeds is about what switching a part on adds.
+     *
+     * @return list<string>
+     */
+    private function contributingModules(): array
+    {
+        return array_values(array_unique(array_filter(
+            array_map(static fn(MenuItem $item): string => $item->module(), $this->sections()),
+            static fn(string $module): bool => $module !== self::ALWAYS_ON,
+        )));
     }
 
     /**
