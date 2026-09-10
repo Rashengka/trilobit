@@ -59,9 +59,31 @@ use Trilobit\Core\Security\OpenToEverybody;
  * not reach. Forwarding makes the answer the same however that setting stands,
  * because nothing is thrown for it to decide about; the status is 403 and the
  * address is still the one that was asked for.
+ *
+ * **One address resolves instead of refusing, and it is the one the
+ * administration begins at.** Somebody who administers the installation, typing
+ * /admin because it is the only address of the administration anybody knows,
+ * was told the page was not theirs to open on an installation that was working
+ * perfectly. What answers that is not a second rule about who they are but the
+ * answer the application already has - Trilobit\Core\Presentation\Admin\Landing,
+ * which the sign-in page and the mark in the banner both ask. See
+ * isWhereTheAdministrationBegins() below for the whole of that line, and for why
+ * a refusal anywhere else stays a refusal.
  */
 abstract class AdminPresenter extends Presenter
 {
+    /**
+     * What the first entry of the bar is called.
+     *
+     * It names the destination's scope rather than either of the two pages it
+     * can lead to, because which one it leads to depends on the person and the
+     * word in the bar may not: the overview of a business is called Overview
+     * and the installation's own section is called Installation, and an entry
+     * calling itself one of those to somebody it takes to the other would be a
+     * small lie told on every page.
+     */
+    private const string WAY_BACK = 'Administration';
+
     private RememberedPreferences $remembered;
 
     private ReachableMenu $menu;
@@ -156,6 +178,20 @@ abstract class AdminPresenter extends Presenter
             }
         }
 
+        // Then, and only on the page the administration begins at, where this
+        // person's administration begins. Between the two passes on purpose:
+        // after identity, because a visitor who has not signed in has no
+        // landing to be sent to and belongs on the sign-in page; before
+        // permission, because the whole point is the person the gate below is
+        // about to refuse for being in the wrong scope rather than in the
+        // wrong job.
+        if ($this->isWhereTheAdministrationBegins() && $this->getUser()->isLoggedIn()) {
+            $landing = $this->landing->forThisPerson();
+            if ($this->presenterIn($landing) !== $this->getName()) {
+                $this->redirect($landing);
+            }
+        }
+
         // Then permission, of all of them: a declaration on an action narrows
         // the one on the class and never widens it.
         foreach ($gates as $gate) {
@@ -163,6 +199,37 @@ abstract class AdminPresenter extends Presenter
                 $this->forward(RefusalPresenter::DESTINATION);
             }
         }
+    }
+
+    /**
+     * Whether this page is the address the administration begins at.
+     *
+     * **The default is no, and that is the whole of the mechanism.** A page
+     * added tomorrow refuses whoever may not open it, without its author
+     * having to know this method exists; saying yes is a deliberate act, and
+     * there is one page in the application that does - the overview, which is
+     * what /admin routes to and therefore the address a person types or
+     * bookmarks.
+     *
+     * **What saying yes does not do is turn a refusal into a redirect.** It
+     * asks Landing where this person's administration begins and sends them
+     * there if it is somewhere else; when the answer is this very page, nothing
+     * happens and the gate decides as it does everywhere. So somebody who
+     * administers a business and holds nothing in it is still refused here,
+     * and somebody who administers the installation is still refused every
+     * page of a business's administration - both measured in
+     * Trilobit\Tests\Integration\Admin\AdministrationTest. A gate that quietly
+     * moved people who tried a page they may not open would never tell anybody
+     * they lacked a right, and a gate that never says no is indistinguishable
+     * from no gate at all.
+     *
+     * There is no loop in it for the same reason: the redirect only ever leads
+     * to the page Landing named, and that page, asked the same question in the
+     * next request, is told it is already where this person belongs.
+     */
+    protected function isWhereTheAdministrationBegins(): bool
+    {
+        return false;
     }
 
     /**
@@ -223,6 +290,23 @@ abstract class AdminPresenter extends Presenter
     }
 
     /**
+     * The sections on the bar: what the enabled modules contributed and what
+     * Core contributed as a section of its own, less whatever would refuse the
+     * person reading it.
+     *
+     * It is what the register holds and therefore what a signpost is drawn
+     * from. The way back the bar begins with is not one of them - see
+     * navigation() - so a page counting sections counts these and not the
+     * drawn bar.
+     *
+     * @return list<MenuItem>
+     */
+    protected function sections(): array
+    {
+        return $this->menu->items();
+    }
+
+    /**
      * The menu, as addresses rather than as presenter names.
      *
      * The router produces them here rather than in the template, so that an
@@ -233,19 +317,61 @@ abstract class AdminPresenter extends Presenter
      * register behind it, so an entry leading somewhere this person would be
      * refused is gone before a link is made of it.
      *
+     * **The bar begins with the way back, and the way back is not a section.**
+     * The mark in the banner has always led there and still does, but it was
+     * not found: somebody deep in a section looked at the bar, which is where
+     * the ways from here to there are, and there was no way to the top of it.
+     * The address is the same one the mark uses, read from the same
+     * Trilobit\Core\Presentation\Admin\Landing, so there is one decision about
+     * where the administration begins and not two that agree until one of them
+     * is changed.
+     *
+     * **It is drawn here rather than contributed to the register**, and that is
+     * the difference between the way back and a section. A row in the register
+     * belongs to whichever module its destination names, and every signpost is
+     * drawn from those rows for one module - so a row of Core's leading to the
+     * top would appear on the installation section's own signpost as a tile
+     * pointing at the page it was drawn on.
+     *
+     * **Being drawn here does not exempt it from the filter, and assuming it
+     * did was wrong.** Landing answers where somebody belongs, and that reads
+     * like the same question as what they may open - it is not, and the two
+     * come apart at an ordinary role. Somebody holding `content:view` and
+     * nothing else opens every page of that section and is refused the
+     * overview, because the pairs in src/Core/Security/permissions.neon inherit
+     * from parent to child; the way back was drawn for them all the same, on
+     * every page they were allowed to be in, and it led to a refusal. So the
+     * destination goes through
+     * Trilobit\Core\Admin\Menu\ReachableMenu::wouldOpen() like everything else
+     * the bar offers, and where there is no way back that opens, the bar begins
+     * with the first section instead. Nothing is offered that answers 403 -
+     * which is what this class's filter says about itself, and it has to be
+     * true of the whole bar and not only of the rows in it.
+     *
      * @return list<NavigationItem>
      */
     private function navigation(): array
     {
         $items = [];
-        foreach ($this->menu->items() as $item) {
+
+        $landing = $this->landing->forThisPerson();
+        if ($this->menu->wouldOpen($landing)) {
+            $items[] = new NavigationItem(
+                self::WAY_BACK,
+                $this->link($landing),
+                $this->getName() === $this->presenterIn($landing),
+                'admin-menu-' . strtolower(self::WAY_BACK),
+            );
+        }
+
+        foreach ($this->sections() as $item) {
             $items[] = new NavigationItem(
                 $item->label,
                 // The leading colon makes the destination absolute; without it
                 // Nette would resolve it inside Core, the module this presenter
                 // lives in.
                 $this->link(':' . $item->destination),
-                $this->getName() === $this->presenterOf($item),
+                $this->getName() === $this->presenterIn($item->destination),
                 'admin-menu-' . strtolower($item->label),
             );
         }
@@ -311,11 +437,15 @@ abstract class AdminPresenter extends Presenter
         return $gates;
     }
 
-    /** A menu entry points at an action; the presenter is everything before it. */
-    private function presenterOf(MenuItem $item): string
+    /**
+     * A destination points at an action; the presenter is everything before
+     * it, and never the leading colon that makes the destination absolute -
+     * so that what comes out can be compared with what getName() returns.
+     */
+    private function presenterIn(string $destination): string
     {
-        $separator = strrpos($item->destination, ':');
+        $separator = strrpos($destination, ':');
 
-        return $separator === false ? $item->destination : substr($item->destination, 0, $separator);
+        return ltrim($separator === false ? $destination : substr($destination, 0, $separator), ':');
     }
 }

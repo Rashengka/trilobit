@@ -77,26 +77,50 @@ final readonly class ReachableMenu
     }
 
     /**
+     * Whether the page at a destination would open for the person making this
+     * request - the same question this class asks of every row, asked about a
+     * destination that is not one.
+     *
+     * The bar begins with the way back, and the way back is not a row: it is
+     * where Trilobit\Core\Presentation\Admin\Landing says this person's
+     * administration begins, which is a different question and deliberately
+     * answered elsewhere. **Where somebody belongs is not the same claim as
+     * what they may open**, and the two come apart at exactly one shape of
+     * account: a role assembled out of a section - `content:view` and nothing
+     * else - opens every page of that section and is refused the overview,
+     * because the pairs in src/Core/Security/permissions.neon inherit from
+     * parent to child. Such a person was drawn a way back to a page that
+     * refused them, on every page of the section they were allowed to be in.
+     *
+     * So the answer to "where" stays in one place and this stays the only
+     * thing that decides what is offered - which is what the sentence at the
+     * top of this class says, and it has to be true of the whole bar rather
+     * than of the rows in it.
+     */
+    public function wouldOpen(string $destination): bool
+    {
+        $page = $this->pageOf($destination);
+        if (!$page instanceof \ReflectionClass) {
+            return true;
+        }
+
+        return array_all(
+            $this->gatesOn($page, $destination),
+            fn(Gate $gate): bool => $gate->admits($this->doorkeeper),
+        );
+    }
+
+    /**
      * @param list<MenuItem> $items
      *
      * @return list<MenuItem>
      */
     private function reachableAmong(array $items): array
     {
-        return array_values(array_filter($items, $this->opens(...)));
-    }
-
-    private function opens(MenuItem $item): bool
-    {
-        $page = $this->pageOf($item->destination);
-        if (!$page instanceof \ReflectionClass) {
-            return true;
-        }
-
-        return array_all(
-            $this->gatesOn($page, $item->destination),
-            fn(Gate $gate): bool => $gate->admits($this->doorkeeper),
-        );
+        return array_values(array_filter(
+            $items,
+            fn(MenuItem $item): bool => $this->wouldOpen($item->destination),
+        ));
     }
 
     /**

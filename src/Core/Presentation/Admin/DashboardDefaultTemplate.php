@@ -19,6 +19,9 @@ final class DashboardDefaultTemplate extends AdminTemplate
     /** @var list<string> every permission those roles carry */
     public array $permissions = [];
 
-    /** How many sections the enabled modules contributed to the menu. */
-    public int $sectionCount = 0;
+    /**
+     * How many of the modules this build is made of put a section on the menu -
+     * the modules, counted once each, and not the entries they contributed.
+     */
+    public int $moduleCount = 0;
 }

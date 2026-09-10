@@ -17,12 +17,16 @@ use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Presenter;
 use Nette\DI\Container;
 use Nette\Http\IResponse;
+use Nette\Http\Request as HttpRequest;
+use Nette\Http\UrlScript;
+use Nette\Routing\Router;
 use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
 use Nette\Utils\Random;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\DI\CoreExtension;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
@@ -31,6 +35,7 @@ use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
+use Trilobit\Tests\Double\Admin\PublicPageMenu;
 use Trilobit\Tests\Migrations;
 use Trilobit\Tests\Tenants;
 
@@ -362,10 +367,54 @@ final class AdministrationTest extends TestCase
      * installation belongs to no business, so a page of a business's
      * administration is not theirs to open - not because they were given too
      * little, but because a role is held in a business and they are in none.
+     *
+     * The page asked for is a section of a module rather than the overview,
+     * and the difference is the point: the overview is what /admin leads to
+     * and is therefore the address the administration begins at, which
+     * resolves to where this person belongs instead of refusing them (see
+     * below). Every other page, this one included, refuses as it always did -
+     * otherwise nobody would ever learn they lacked a right.
      */
     public function testTheInstallationsAdministratorIsRefusedTheAdministrationOfABusiness(): void
     {
         $this->submitSignIn('cora@example.com', $this->password());
+
+        $this->refusedPage(self::PAGES, 'default');
+    }
+
+    /**
+     * The address the administration begins at takes each kind of account to
+     * the administration it has, and refuses nobody for the scope they are in.
+     *
+     * /admin is the one address of the administration a person knows, and what
+     * met somebody who administers the installation there was "This is not
+     * yours to open" - a working installation behaving like a broken one, on
+     * the account it was set up with. The answer is not a new rule but the one
+     * the sign-in page and the mark in the banner already use, so the three
+     * cannot come to disagree; see Trilobit\Core\Presentation\Admin\Landing.
+     *
+     * All three accounts are asked, because two of them alone would be
+     * satisfied by a page that redirected everybody: the one who administers a
+     * business is drawn the overview, the one who administers the installation
+     * is sent to their own section, and the one who holds nothing anywhere is
+     * refused exactly as before. The last is the whole of what keeps this from
+     * being a gate that never says no.
+     */
+    public function testTheAddressTheAdministrationBeginsAtTakesEachKindOfAccountToTheirOwn(): void
+    {
+        $this->submitSignIn('alice@example.com', $this->password());
+        $drawn = $this->pageOf($this->request(self::DASHBOARD, 'default'));
+        self::assertSame('Overview', $drawn->querySelector('[data-testid="admin-headline"]')?->textContent);
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+        $this->submitSignIn('cora@example.com', $this->password());
+
+        $sent = $this->request(self::DASHBOARD, 'default');
+        self::assertInstanceOf(RedirectResponse::class, $sent);
+        self::assertStringContainsString('/admin/installation', $sent->getUrl());
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+        $this->submitSignIn('bob@example.com', $this->password());
 
         $this->refusedPage(self::DASHBOARD, 'default');
     }
@@ -416,7 +465,7 @@ final class AdministrationTest extends TestCase
     public function testTheMenuHoldsNothingThePersonReadingItWouldBeRefused(): void
     {
         $this->submitSignIn('alice@example.com', $this->password());
-        $business = $this->menuAddressesOn($this->request(self::DASHBOARD, 'default'));
+        $business = $this->menuAddressesOn($this->pageOf($this->request(self::DASHBOARD, 'default')));
 
         self::assertNotSame([], $business, 'somebody administering a business was drawn no menu at all');
         self::assertSame(
@@ -427,7 +476,7 @@ final class AdministrationTest extends TestCase
 
         $this->container()->getByType(SignedIn::class)->logout(true);
         $this->submitSignIn('cora@example.com', $this->password());
-        $installation = $this->menuAddressesOn($this->request(self::BUSINESSES, 'default'));
+        $installation = $this->menuAddressesOn($this->pageOf($this->request(self::BUSINESSES, 'default')));
 
         self::assertNotSame([], $installation, 'the administrator of the installation was drawn no menu at all');
         self::assertSame(
@@ -441,26 +490,111 @@ final class AdministrationTest extends TestCase
     }
 
     /**
+     * The bar begins with the way back, and it leads where the mark in the
+     * banner leads.
+     *
+     * The mark led there first and still does, and it was not enough: somebody
+     * inside a section looked for the way to the top of the administration in
+     * the bar, which is where the ways from here to there are, and found none.
+     * What is asserted is both halves - that the first entry of the bar is that
+     * way back, and that it is the same address as the mark - because two
+     * places drawing it from one answer is the whole reason it is drawn from
+     * Trilobit\Core\Presentation\Admin\Landing rather than written twice.
+     *
+     * Both kinds of account are asked, because the address is not the same one
+     * for them and a way back that led everybody to a business's overview would
+     * be a link one of them is refused on.
+     */
+    public function testTheBarBeginsWithTheWayBackToWhereThisPersonsAdministrationStarts(): void
+    {
+        $this->submitSignIn('alice@example.com', $this->password());
+        $page = $this->pageOf($this->request(self::DASHBOARD, 'default'));
+
+        self::assertSame('/admin', $this->menuAddressesOn($page)[0] ?? null);
+        self::assertSame('/admin', $page->querySelector('[data-testid="admin-home-link"]')?->getAttribute('href'));
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+        $this->submitSignIn('cora@example.com', $this->password());
+        $page = $this->pageOf($this->request(self::BUSINESSES, 'default'));
+
+        self::assertSame('/admin/installation', $this->menuAddressesOn($page)[0] ?? null);
+        self::assertSame(
+            '/admin/installation',
+            $page->querySelector('[data-testid="admin-home-link"]')?->getAttribute('href'),
+        );
+    }
+
+    /**
      * An entry leading somewhere no gate stands is drawn for everybody, which
      * is a decision rather than an oversight: the destination is a page of the
-     * public site that a module put on the bar, and hiding a page anybody may
-     * open would be the filter answering a question nobody asked it.
+     * public site, and hiding a page anybody may open would be the filter
+     * answering a question nobody asked it.
      *
      * It is asserted from the account that holds nothing in this business,
      * because that is where "hide what is refused" and "hide what has no gate"
      * come apart.
+     *
+     * The entry is contributed by Trilobit\Tests\Double\Admin\PublicPageMenu
+     * and no longer by a module. Every module used to contribute one like it,
+     * and it was a way out of the administration drawn inside the
+     * administration; taking them out took the last live example of this shape
+     * with them, and a rule with no example left is a rule that quietly stops
+     * being true. So the example is made here, where it can be pointed at.
      */
     public function testAnEntryLeadingSomewhereNoGateStandsIsDrawnForEverybody(): void
     {
         $this->submitSignIn('cora@example.com', $this->password());
 
-        $addresses = $this->menuAddressesOn($this->request(self::BUSINESSES, 'default'));
+        $addresses = $this->menuAddressesOn($this->pageOf($this->request(self::BUSINESSES, 'default')));
 
         self::assertNotSame(
             [],
             array_values(array_filter($addresses, static fn(string $href): bool => !str_starts_with($href, '/admin'))),
             'every entry leading outside the administration was dropped, and none of them is gated',
         );
+    }
+
+    /**
+     * Every address the bar draws is followed, and every one of them opens.
+     *
+     * That is the sentence Trilobit\Core\Admin\Menu\ReachableMenu makes about
+     * itself, and this is the only place it is measured as a whole rather than
+     * entry by entry: what the bar holds is not compared with a list written
+     * here, it is asked for.
+     *
+     * The account is the one holding a single section, because that is where
+     * the claim can fail. Somebody who may open everything sees no wrong entry
+     * because there is no page to be refused, and somebody who may open nothing
+     * never reaches a page that draws a bar at all - so a suite made of those
+     * two would agree with a bar that offered a refusal to everybody in
+     * between. The way back was such an entry: it was drawn from where this
+     * person belongs, and where somebody belongs turned out not to be the same
+     * question as what they may open.
+     */
+    public function testEveryAddressTheBarDrawsOpensForThePersonReadingIt(): void
+    {
+        $this->submitSignIn('dana@example.com', $this->password());
+
+        $addresses = $this->menuAddressesOn($this->pageOf($this->request(self::PAGES, 'default')));
+        self::assertNotSame([], $addresses, 'the person was drawn no bar, so nothing was measured');
+
+        foreach ($addresses as $address) {
+            [$presenter, $action] = $this->routed($address);
+
+            self::assertInstanceOf(
+                TextResponse::class,
+                $this->request($presenter, $action),
+                $address . ' is offered in the bar and refuses the person reading it',
+            );
+        }
+
+        // The other half, and the half that keeps the first from being met by a
+        // bar with nothing in it: the page they may open is in there, and the
+        // overview - which they may not - is not, while still refusing anybody
+        // who asks for it by name rather than quietly sending them elsewhere.
+        self::assertContains('/admin/cms/pages', $addresses);
+        self::assertNotContains('/admin', $addresses);
+        $this->refusedPage(self::DASHBOARD, 'default');
     }
 
     /**
@@ -486,13 +620,14 @@ final class AdministrationTest extends TestCase
     }
 
     /**
-     * Every address the administration bar of a drawn page leads to.
+     * Every address the administration bar of a drawn page leads to, in the
+     * order the bar draws them - the first of which is the way back.
      *
      * @return list<string>
      */
-    private function menuAddressesOn(Response $response): array
+    private function menuAddressesOn(HTMLDocument $page): array
     {
-        $menu = $this->pageOf($response)->querySelector('[data-testid="admin-menu"]');
+        $menu = $page->querySelector('[data-testid="admin-menu"]');
         if (!$menu instanceof Element) {
             return [];
         }
@@ -503,6 +638,28 @@ final class AdministrationTest extends TestCase
         }
 
         return $addresses;
+    }
+
+    /**
+     * What answers at an address, asked of the router rather than worked out
+     * from the string.
+     *
+     * A page reached by taking its address apart here would be a page this
+     * suite chose; asked of the router, it is the page a browser following that
+     * link would land on.
+     *
+     * @return array{string, string}
+     */
+    private function routed(string $address): array
+    {
+        $matched = $this->container()->getByType(Router::class)
+            ->match(new HttpRequest(new UrlScript('http://localhost' . $address, '/')));
+
+        self::assertIsArray($matched, $address . ' is drawn in the bar and the router does not claim it');
+        self::assertIsString($matched['presenter'] ?? null);
+        self::assertIsString($matched['action'] ?? null);
+
+        return [$matched['presenter'], $matched['action']];
     }
 
     private function submitSignIn(string $email, string $secret): Response
@@ -624,6 +781,20 @@ final class AdministrationTest extends TestCase
      *
      * All three share one generated password, because what differs between
      * them is what they hold and nothing else.
+     *
+     * **The fourth holds one section and not the administration**, which is the
+     * ordinary shape of a role rather than an odd one: the pairs in
+     * src/Core/Security/permissions.neon inherit from parent to child, so
+     * `content:view` opens that section and says nothing about the
+     * administration as a whole. It is the account that shows what the bar may
+     * offer somebody: every other account here either may open everything in
+     * this business or may open nothing in it, and both hide an entry that
+     * leads to a refusal.
+     *
+     * **One menu entry in this build comes from the suite and not from a
+     * module**, and it is the one leading to a page no gate stands over - see
+     * Trilobit\Tests\Double\Admin\PublicPageMenu. It is tagged the way a module
+     * tags its own provider, so what the filter meets is a row like any other.
      */
     private function container(): Container
     {
@@ -632,10 +803,16 @@ final class AdministrationTest extends TestCase
         }
 
         $this->schema = Database::schemaFor(self::class);
-        $container = Boot::container(ModuleList::of(
-            ['cms' => true, 'crm' => true, 'shop' => true],
-            Bootstrap::rootDirectory(),
-        ));
+        $container = Boot::container(
+            ModuleList::of(['cms' => true, 'crm' => true, 'shop' => true], Bootstrap::rootDirectory()),
+            config: ['services' => [
+                'test.publicPageMenu' => [
+                    'factory' => PublicPageMenu::class,
+                    'autowired' => false,
+                    'tags' => [CoreExtension::TAG_ADMIN_MENU_PROVIDER],
+                ],
+            ]],
+        );
         Migrations::run($container);
         $tenant = Tenants::enter($container, 'Ammonite Bikes');
 
@@ -665,10 +842,31 @@ final class AdministrationTest extends TestCase
         );
         $container->getByType(Accounts::class)->save($administersTheInstallation);
 
+        $holdingOneSection = new User(
+            'dana@example.com',
+            $container->getByType(Passwords::class)->hash($this->generatedPassword),
+            'Dana Diatom',
+            new DateTimeImmutable('2026-09-04T08:00:00+00:00'),
+        );
+        $container->getByType(Accounts::class)->save($holdingOneSection);
+
         $entityManager = $container->getByType(EntityManagerInterface::class);
-        $role = new Role('administrator', 'Administrator', ['administration:view']);
-        $entityManager->persist($role);
-        $entityManager->persist(new Membership($tenant, $account, $role));
+        $administrator = new Role('administrator', 'Administrator', ['administration:view']);
+        $entityManager->persist($administrator);
+        $entityManager->persist(new Membership($tenant, $account, $administrator));
+
+        // The narrow role, and it is narrow the way src/Core/Security/
+        // permissions.neon means it rather than by leaving something out.
+        // Resource inheritance runs from parent to child: `administration` is
+        // the parent of `content`, so a rule on the parent answers for the
+        // section and a rule on the section says nothing about the
+        // administration as a whole. Somebody assembled out of `content:view`
+        // therefore opens every page of that section and is refused the
+        // overview - an ordinary role rather than a broken one.
+        $editor = new Role('editor', 'Editor', ['content:view']);
+        $entityManager->persist($editor);
+        $entityManager->persist(new Membership($tenant, $holdingOneSection, $editor));
+
         $entityManager->flush();
 
         return $this->container = $container;

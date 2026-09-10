@@ -74,10 +74,13 @@ function enabledModules(): string[] {
 /**
  * Which module a menu entry leads into, read off its address.
  *
- * Two shapes, because entries lead to two places: a module's own public page
- * (`/shop`) and a section of its administration (`/admin/cms/pages`). The
- * second one is what R10 fixes - the backoffice has one root and the module is
- * the first segment under it.
+ * One shape now: a section of a module's administration, `/admin/cms/pages`,
+ * where the backoffice has one root and the module is the first segment under
+ * it (R10). It used to have to answer for a second - a module's own public page,
+ * `/shop` - because a module with nothing to administer put that on the bar
+ * instead; nothing does now, and the arm that read it is kept because an entry
+ * that ever led out of the administration again would come back as an empty
+ * answer here rather than as a module name that happens to fit.
  */
 function moduleOfHref(href: string): string {
     const segments = href.split('/').filter((segment) => segment !== '');
@@ -165,14 +168,18 @@ test('signing in opens the administration, and signing out closes it again', asy
     await expect(page.getByTestId('admin-identity')).toHaveText(displayName);
     await expect(page.getByTestId('admin-identity-email')).toHaveText(email);
 
-    // Entries from exactly the enabled modules, in a real page. The same claim
-    // is made for all eight builds in the combination suite; this is the one
-    // build a browser can be pointed at.
+    // The way back and then the sections, in a real page. The same claim is
+    // made for all eight builds in the combination suite; this is the one build
+    // a browser can be pointed at.
     //
     // What is counted is which modules are represented, not how many entries
     // each one contributed: a module with an administration worth the name has
     // several sections, and one entry apiece would make the rule impossible to
-    // state without rewriting it every time a module grows a page.
+    // state without rewriting it every time a module grows a page. Nor is the
+    // set of them the set of enabled modules any more - a module contributes an
+    // entry when it has an administration page to contribute one for, and two
+    // of the three have none yet - so what is asserted of each is that it leads
+    // into a module this build was made with.
     const links = page.getByTestId('admin-menu').locator('.c-nav__link');
     const drawn = await links.evaluateAll((elements) =>
         elements.map((element) => ({
@@ -187,8 +194,20 @@ test('signing in opens the administration, and signing out closes it again', asy
         expect(entry.label, 'a menu entry with nothing to call it').not.toBe('');
     }
 
-    const represented = [...new Set(drawn.map((entry) => moduleOfHref(entry.href)))].sort();
-    expect(represented).toEqual([...enabledModules()].sort());
+    // The first entry is the way back to where this person's administration
+    // begins, which for somebody administering a business is the overview. The
+    // mark in the banner leads to the same address, and it is the same answer
+    // behind both rather than two that agree today.
+    expect(drawn[0].href, 'the bar does not begin with the way back').toBe('/admin');
+    await expect(page.getByTestId('admin-home-link')).toHaveAttribute('href', drawn[0].href);
+
+    const sections = drawn.slice(1);
+    expect(sections.length, 'the bar held the way back and nothing else').toBeGreaterThan(0);
+
+    const represented = [...new Set(sections.map((entry) => moduleOfHref(entry.href)))].sort();
+    for (const module of represented) {
+        expect(enabledModules(), 'the bar leads into a module this build was not made with').toContain(module);
+    }
 
     // The session survives a navigation of its own, which is the half a single
     // redirect after signing in would not have shown.
@@ -246,17 +265,30 @@ test('the administrator of the installation is shown no way into a business, and
 
     // The mark in the banner is a destination like any other, and for this
     // person it is their own section rather than the overview of a business.
+    // So is the first entry of the bar, which is where the way back was looked
+    // for and where it was not.
     await expect(page.getByTestId('admin-home-link')).toHaveAttribute('href', '/admin/installation');
+    expect(addresses[0], 'the bar does not begin with the way back').toBe('/admin/installation');
 
-    // Typing the address of one anyway is refused rather than drawn.
+    // Typing /admin - the one address of the administration anybody knows -
+    // takes them to the administration they have rather than telling them it is
+    // not theirs to open. It is the address the administration begins at and
+    // the only one that answers this way; see
+    // Trilobit\Core\Presentation\Admin\AdminPresenter::isWhereTheAdministrationBegins().
+    const entered = await page.goto('/admin');
+    expect(entered?.status(), 'the address the administration begins at did not answer').toBe(200);
+    await expect(page).toHaveURL(/\/admin\/installation$/);
+
+    // And a page of a business's administration is still refused, which is the
+    // half that keeps the line above from being "every refusal is a redirect".
     //
     // Both halves are asserted because either alone would be satisfied by the
     // wrong thing: a 403 is the status of any refusal, and the sentence is the
     // one this gate refuses with. The body carries it because this server runs
     // in debug mode - config/common.neon leaves the framework's exceptions
     // uncaught - and what is fixed either way is the status.
-    const refused = await page.goto('/admin');
-    expect(refused?.status(), 'the overview of a business answered somebody with nothing in one').toBe(403);
+    const refused = await page.goto('/admin/cms/pages');
+    expect(refused?.status(), 'a section of a business answered somebody with nothing in one').toBe(403);
     await expect(page.locator('body')).toContainText('This is not yours to open.');
 });
 

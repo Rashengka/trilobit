@@ -51,9 +51,12 @@
         {block panelBody}
             {include markerList,
                 items: [
-                    $sectionCount === 1
-                        ? 'One module contributed a section to the menu.'
-                        : $sectionCount . ' modules contributed a section to the menu.',
+                    $moduleCount === 0
+                        ? 'No module in this build has an administration to put on the menu yet.'
+                        : ($moduleCount === 1
+                            ? 'One module contributed a section to the menu.'
+                            : $moduleCount . ' modules contributed a section to the menu.'),
+                    'A module contributes an entry when it has an administration page to contribute one for.',
                     'A module that is switched off registers nothing, so it leaves no entry behind.',
                     'Switching one on is a line in config/modules.neon and a run of the migrations.',
                 ],
