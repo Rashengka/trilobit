@@ -1,0 +1,46 @@
+{templateType Trilobit\Core\Presentation\Installation\SignpostTemplate}
+
+{*
+ * The signpost of the installation's own section.
+ *
+ * The tiles are exactly the entries Core contributed to the administration
+ * bar, filtered the same way the bar is - one data structure, two renderings
+ * (decision M2 in .ai/plans/10-menu-submenu-a-rozcestniky.md). There is no
+ * list written by hand here, because a second list beside the first is how the
+ * two come to disagree.
+ *
+ * Nothing on this page asks what somebody may do. The question would have no
+ * meaning here: the person reading it belongs to no business, and an access
+ * list is a thing a business has - so such a question would answer no without
+ * anybody deciding that. See
+ * Trilobit\Core\Presentation\Installation\SignpostPresenter.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/signpost.latte'}
+{import '../../../components/marker-list.latte'}
+{import '../../../components/panel.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'installation-headline',
+        leadTestId: 'installation-lead'}
+
+    {include signpost, items: $items, label: 'Installation', testId: 'installation-signpost'}
+
+    {embed block panel, testId: 'installation-scope-panel'}
+        {block panelTitle}What this section is{/block}
+
+        {block panelBody}
+            {include markerList,
+                items: [
+                    'It is administered above the businesses, not inside one of them.',
+                    'An account here belongs to no business and holds no role in one.',
+                    'Seeing what a business sees is somebody else\'s account, not a wider one.',
+                ],
+                testId: 'installation-scope-notes'}
+        {/block}
+    {/embed}
+{/block}

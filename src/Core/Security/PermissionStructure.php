@@ -128,6 +128,29 @@ final readonly class PermissionStructure
     }
 
     /**
+     * Every piece a role could be assembled from in this build.
+     *
+     * It is what a role that may do everything is made of, and it is derived
+     * here rather than written down beside whoever wants it: a second list
+     * would go on saying what this file used to offer, and the account holding
+     * it would quietly stop being able to reach whatever was added after the
+     * list was written.
+     *
+     * @return list<Grant>
+     */
+    public function everyPair(): array
+    {
+        $pairs = [];
+        foreach (Resource::cases() as $resource) {
+            foreach ($this->privilegesOf($resource) as $privilege) {
+                $pairs[] = new Grant($resource, $privilege);
+            }
+        }
+
+        return $pairs;
+    }
+
+    /**
      * Puts every resource into an access list, each one after whatever it
      * falls under - Nette refuses a parent it has not been given yet.
      */

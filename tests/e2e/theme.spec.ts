@@ -270,3 +270,45 @@ test.describe('themes', () => {
         expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('atrium');
     });
 });
+
+/**
+ * The mark on the switch moves when somebody clicks, and not on the next load.
+ *
+ * The choice used to be drawn twice - as aria-pressed and as the button's
+ * variant class - and the script moved only the attribute, so the page changed
+ * appearance while the mark stayed on the choice that was no longer in force.
+ * Nothing said so until a reload.
+ *
+ * The width switch is the one measured because it is the one whose colours do
+ * not move underneath the measurement: choosing another theme redefines every
+ * token, so "the marked button looks the same as the marked button did" would
+ * be comparing two different palettes. What is asserted is therefore that the
+ * mark itself changes hands - the newly chosen control takes the appearance the
+ * old one had, and the old one gives it up.
+ */
+test('the mark on a switch moves with the click rather than with the next load', async ({ page }) => {
+    await page.goto('/_styleguide');
+
+    // The mark is a colour and .c-button animates colour, so a reading taken
+    // while an animation is running comes back as a point somewhere along it
+    // and the case would turn on how fast the machine was. The animation is
+    // switched off for the measurement; what is being asked is which control
+    // ends up marked, not how it got there.
+    await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; }' });
+
+    const background = (testId: string): Promise<string> =>
+        page.getByTestId(testId).evaluate((element) => getComputedStyle(element).backgroundColor);
+
+    await expect(page.getByTestId('content-width-choice-content')).toHaveAttribute('aria-pressed', 'true');
+    const marked = await background('content-width-choice-content');
+    const unmarked = await background('content-width-choice-wide');
+    expect(marked, 'the chosen control looks no different from the ones beside it').not.toBe(unmarked);
+
+    await choose(page, 'content-width', 'wide');
+
+    await expect(page.getByTestId('content-width-choice-wide')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('content-width-choice-content')).toHaveAttribute('aria-pressed', 'false');
+
+    expect(await background('content-width-choice-wide')).toBe(marked);
+    expect(await background('content-width-choice-content')).toBe(unmarked);
+});

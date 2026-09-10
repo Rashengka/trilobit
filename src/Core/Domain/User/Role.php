@@ -65,4 +65,23 @@ class Role
     {
         return $this->permissions;
     }
+
+    /**
+     * Replaces what this role is assembled from.
+     *
+     * It exists for the one role the application defines rather than a tenant:
+     * the administrator Trilobit\Core\Console\AccountCommand makes, which holds
+     * every pair the build offers. An installation upgraded from an earlier
+     * build already has that row, carrying whatever the earlier build wrote in
+     * it, and a command that only ever created the role would leave that
+     * account with rights nobody would think to look for. Replacing rather than
+     * adding is what makes running the command say what the role is now, rather
+     * than what it has ever been.
+     *
+     * @param list<string> $permissions
+     */
+    public function redefine(array $permissions): void
+    {
+        $this->permissions = $permissions;
+    }
 }

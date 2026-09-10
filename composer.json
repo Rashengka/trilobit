@@ -52,6 +52,25 @@
             "phpstan/extension-installer": true,
             "dealerdirect/phpcodesniffer-composer-installer": true
         },
+        "_comment": [
+            "process-timeout is how long Composer lets one step of a script run before it kills it, and",
+            "Composer's default is 300 seconds. The gate has been measured at 5 minutes 42 in total, of",
+            "which the test run alone is 5 minutes 28 - so the longest single step is already past the",
+            "default on its own, and whether `composer check` finished at all was decided by how loaded",
+            "the machine happened to be. It has passed and it has been killed on the same tree.",
+            "That is the worst way for a gate to fail: a killed step is not a failing test, it is no",
+            "answer at all, and it arrives looking like a broken build.",
+            "1800 seconds is about five times the longest step measured here, which leaves room for a",
+            "cold analyser cache, a slower runner and a machine doing something else at the time, without",
+            "leaving room for a step that is never going to finish. It is deliberately not 0: unlimited",
+            "would trade a run that lies for a run that hangs and says nothing, which is the shape the",
+            "test runner's own watchdog exists to remove. A step that has genuinely hung still stops,",
+            "with Composer saying why, instead of holding a terminal or a CI job open.",
+            "It lives here rather than in a shell or a workflow so that every runner gets it - the",
+            "terminal, CI and an editor alike; a limit only one of them knows about is a limit half the",
+            "runs do not have."
+        ],
+        "process-timeout": 1800,
         "sort-packages": true
     },
     "scripts": {
@@ -78,7 +97,7 @@
     },
     "scripts-descriptions": {
         "check": "Runs the whole gate: leak guard, coding standard, static analysis, layer rules, refactoring check, tests.",
-        "leaks": "Looks over every tracked file for content that does not belong in a public repository.",
+        "leaks": "Looks over every file that could end up in a commit - tracked, plus untracked and not ignored - for content that does not belong in a public repository.",
         "cs": "Reports coding standard violations without changing anything.",
         "cs:fix": "Applies the coding standard, then whatever of the ruleset a machine can apply.",
         "cs:sniff": "Reports the rules a formatter cannot express: naming, namespace hygiene, PSR-4.",

@@ -16,12 +16,15 @@ use Nette\InvalidStateException;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Nette\Security\User as SignedIn;
+use Trilobit\Core\Admin\Menu\InstallationMenu;
 use Trilobit\Core\Admin\Menu\Menu;
+use Trilobit\Core\Admin\Menu\ReachableMenu;
 use Trilobit\Core\Asset\VersionedViteMapper;
 use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Console\AccountCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
+use Trilobit\Core\Console\PasswordCommand;
 use Trilobit\Core\Console\TenantCommand;
 use Trilobit\Core\Console\WarmupCommand;
 use Trilobit\Core\Content\ContentTypes;
@@ -43,6 +46,7 @@ use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Core\Preference\PreferenceCatalogue;
 use Trilobit\Core\Preference\RememberedPreferences;
+use Trilobit\Core\Presentation\Admin\Landing;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
@@ -53,11 +57,17 @@ use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\ContentRouter;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouterFactory;
+use Trilobit\Core\Routing\SessionRoutes;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
+use Trilobit\Core\Security\Authorizator;
+use Trilobit\Core\Security\Doorkeeper;
+use Trilobit\Core\Security\Landlords;
+use Trilobit\Core\Security\Memberships;
 use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
+use Trilobit\Core\Tenancy\Businesses;
 use Trilobit\Core\Tenancy\HostTenants;
 use Trilobit\Core\Tenancy\Tenancy;
 use Trilobit\Core\Tenancy\TenantFromHost;
@@ -204,6 +214,37 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('permissions'))
             ->setFactory(Permissions::class);
 
+        // Who holds which role in the tenant of this request, read in one
+        // place so that the shared cache of decision D6 has one place to be
+        // put in front of.
+        $builder->addDefinition($this->prefix('memberships'))
+            ->setFactory(Memberships::class);
+
+        // The same wiring as the authenticator above and for the same reason:
+        // Nette\Security\User takes an authorizator by type, so registering
+        // ours is the whole of what makes $user->isAllowed() answer instead of
+        // raising "Authorizator has not been set." nette/security registers one
+        // of its own only when security: declares roles or rules, and this
+        // build declares none - what may be asked about is a file of Core's,
+        // and who may do it is rows.
+        $builder->addDefinition($this->prefix('authorizator'))
+            ->setFactory(Authorizator::class);
+
+        // What a declaration written above a page is asked of. One service
+        // rather than the gate reaching for what it needs itself: an attribute
+        // is built by the engine and can hold no services, so this is the seam
+        // a new kind of gate is added at. See Trilobit\Core\Security\Doorkeeper.
+        $builder->addDefinition($this->prefix('doorkeeper'))
+            ->setFactory(Doorkeeper::class);
+
+        // The other scope, and a service of its own rather than a mode of the
+        // one above. Administering the installation happens outside every
+        // tenant, and the service above refuses to answer outside one on
+        // purpose; giving it a way to would remove the refusal it exists for.
+        // See Trilobit\Core\Security\Landlords.
+        $builder->addDefinition($this->prefix('landlords'))
+            ->setFactory(Landlords::class);
+
         // The first command a new installation runs: without a tenant and a
         // host of its own, every request is refused rather than served by a
         // default one.
@@ -216,6 +257,14 @@ final class CoreExtension extends CompilerExtension
             ->setFactory(AccountCommand::class)
             ->setAutowired(false)
             ->addTag(self::TAG_CONSOLE_COMMAND, 'app:account');
+
+        // The other half of that pair: the command above generates a password
+        // for a machine to pass on, this one is typed by the person the account
+        // belongs to. See Trilobit\Core\Console\PasswordCommand.
+        $builder->addDefinition($this->prefix('passwordCommand'))
+            ->setFactory(PasswordCommand::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_CONSOLE_COMMAND, 'app:password');
 
         // Doctrine's migration generator, with the two things a build made of
         // modules has to establish first; see the class. It replaces the one
@@ -238,6 +287,13 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('hostTenants'))
             ->setFactory(HostTenants::class);
+
+        // Which businesses this installation runs, for the section that is
+        // over all of them. It reads through the mapper like anything else,
+        // because the tenant is what tenancy is measured against rather than
+        // something measured by it; see Trilobit\Core\Tenancy\Businesses.
+        $builder->addDefinition($this->prefix('businesses'))
+            ->setFactory(Businesses::class);
 
         // Hung on the application's startup in beforeCompile() below, which is
         // where it has to be: the framework runs those before it asks the
@@ -284,8 +340,42 @@ final class CoreExtension extends CompilerExtension
             ->setAutowired(false)
             ->addTag(self::TAG_ROUTE_PROVIDER);
 
+        // Ending a session is one act for the whole application rather than
+        // the administration's own, so its address is registered beside the
+        // administration's and not inside it - see
+        // Trilobit\Core\Routing\SessionRoutes.
+        $builder->addDefinition($this->prefix('sessionRoutes'))
+            ->setFactory(SessionRoutes::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ROUTE_PROVIDER);
+
         $builder->addDefinition($this->prefix('adminMenu'))
             ->setFactory(Menu::class, [[]]);
+
+        // Core's own entry on the bar: the way into the section that belongs
+        // to the installation rather than to any business in it. It is
+        // contributed through the same tag a module uses, so that nothing has
+        // to know whose entry it is - and it is taken out again for anybody it
+        // would refuse, by the filter below.
+        $builder->addDefinition($this->prefix('installationMenu'))
+            ->setFactory(InstallationMenu::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ADMIN_MENU_PROVIDER);
+
+        // The menu as the person reading it may use it. Both the bar and a
+        // section's signpost are drawn through this one service, because they
+        // are one data structure drawn twice and a filter written into each
+        // drawing would be two places to disagree. See
+        // Trilobit\Core\Admin\Menu\ReachableMenu.
+        $builder->addDefinition($this->prefix('reachableMenu'))
+            ->setFactory(ReachableMenu::class);
+
+        // Which of the two administrations somebody is sent to after signing
+        // in, and what the mark in the banner leads back to. One service
+        // because it is one decision; see
+        // Trilobit\Core\Presentation\Admin\Landing.
+        $builder->addDefinition($this->prefix('landing'))
+            ->setFactory(Landing::class);
 
         $builder->addDefinition($this->prefix('signposts'))
             ->setFactory(SignpostList::class, [[]]);

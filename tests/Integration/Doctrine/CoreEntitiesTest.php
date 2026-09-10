@@ -75,8 +75,35 @@ final class CoreEntitiesTest extends TestCase
         self::assertInstanceOf(User::class, $read);
         self::assertSame('Alice Ammonite', $read->name());
         self::assertTrue($read->isActive());
+        self::assertFalse($read->isLandlord());
         self::assertSame(['administrator', 'editor'], $read->roleCodes());
         self::assertSame(['administration', 'content.write'], $read->permissions());
+    }
+
+    /**
+     * Which of the two scopes an account is in survives being written and read
+     * back, which is what says the column the migration adds is really there
+     * and really mapped. Both values, because a column that came back false for
+     * everybody would look exactly like the ordinary case passing.
+     */
+    public function testAnAccountKeepsWhetherItAdministersTheInstallation(): void
+    {
+        $entityManager = $this->emptyDatabase();
+
+        $entityManager->persist(new User(
+            'landlord@example.com',
+            'not a real hash',
+            'Bea Brachiopod',
+            new DateTimeImmutable('2026-09-07T08:00:00+00:00'),
+            landlord: true,
+        ));
+        $entityManager->flush();
+        $entityManager->clear();
+
+        $read = $entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord@example.com']);
+
+        self::assertInstanceOf(User::class, $read);
+        self::assertTrue($read->isLandlord());
     }
 
     /**

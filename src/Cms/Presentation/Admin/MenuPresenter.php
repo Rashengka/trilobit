@@ -6,6 +6,7 @@ namespace Trilobit\Cms\Presentation\Admin;
 
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
+use Nette\Http\IResponse;
 use Trilobit\Cms\Application\Page\Pages;
 use Trilobit\Cms\Domain\Menu\MenuItem;
 use Trilobit\Cms\Domain\Menu\MenuRepository;
@@ -13,6 +14,9 @@ use Trilobit\Cms\Domain\Menu\MenuTarget;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Core\Presentation\Admin\AdminPresenter;
 use Trilobit\Core\Presentation\Link\Destinations;
+use Trilobit\Core\Security\Needs;
+use Trilobit\Core\Security\Privilege;
+use Trilobit\Core\Security\Resource;
 use Trilobit\Core\Tenancy\Tenancy;
 
 /**
@@ -31,7 +35,19 @@ use Trilobit\Core\Tenancy\Tenancy;
  * key, the other two are text - so the form asks for the kind and refuses a
  * combination the domain has no way to hold; see
  * Trilobit\Cms\Domain\Menu\MenuTarget.
+ *
+ * **The pairs are the same ones pages are gated on, and that is a decision.**
+ * src/Core/Security/permissions.neon keeps `change_priority` apart from `edit`
+ * because "a menu is an ordering: somebody may be trusted to arrange what is
+ * there without being trusted to change what it says" - and that is a
+ * distinction this presenter cannot make, because where an entry sits is a
+ * field of the same form its label is. Asking for `change_priority` as well
+ * would mean nobody could rename an entry without also being trusted to
+ * rearrange the menu, which is the opposite of what the pair is for.
+ * **Exit condition:** a way of reordering that is an action of its own - which
+ * is then gated on `content:change_priority`, and this form is not.
  */
+#[Needs(Resource::Content, Privilege::View)]
 final class MenuPresenter extends AdminPresenter
 {
     private const string FORM = 'entry';
@@ -48,11 +64,13 @@ final class MenuPresenter extends AdminPresenter
     }
 
     /** A new entry is arranged in the same form an existing one is. */
+    #[Needs(Resource::Content, Privilege::Add)]
     public function actionAdd(): void
     {
         $this->setView('edit');
     }
 
+    #[Needs(Resource::Content, Privilege::Edit)]
     public function actionEdit(int $id): void
     {
         $entry = $this->entries->find($id);
@@ -186,8 +204,18 @@ final class MenuPresenter extends AdminPresenter
         $this->redirect('default');
     }
 
+    /**
+     * Deleting asks for itself, for the reason set out on
+     * Trilobit\Cms\Presentation\Admin\PagePresenter::delete(): it is a second
+     * button on a form somebody may already be trusted with, and an attribute
+     * cannot tell which button was pressed.
+     */
     private function delete(): void
     {
+        if (!$this->getUser()->isAllowed(Resource::Content, Privilege::Delete)) {
+            $this->error('This is not yours to delete.', IResponse::S403_Forbidden);
+        }
+
         $entry = $this->edited
             ?? throw new \LogicException('The delete button is only added to the form while an entry is being arranged.');
 

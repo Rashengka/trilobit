@@ -31,6 +31,31 @@ const passwordLine = /^ {2}(\S+)$/m;
 const email = 'e2e@example.com';
 const displayName = 'Alice Ammonite';
 
+/**
+ * The other kind of account, and the reason there is a second one at all.
+ *
+ * `app:account` without `--tenant` makes the administrator of the installation:
+ * somebody who belongs to no business, holds no role in one, and is therefore
+ * refused on every page of a business's administration. What that person meets
+ * instead is the claim only a browser can make - that signing in lands them
+ * somewhere they may be, and that nothing they are shown leads anywhere they
+ * are not.
+ */
+const installationEmail = 'e2e-installation@example.com';
+const installationName = 'Cora Crinoid';
+
+/**
+ * The host the business this suite administers answers at, which is the one
+ * `playwright.config.ts` creates and the one the browser arrives at.
+ *
+ * `app:account` takes a host rather than an identifier and needs one: without
+ * it the account made would administer the installation instead, which belongs
+ * to no business and therefore holds nothing in this one. Naming it here is
+ * what makes the account this suite signs in as an administrator of the site it
+ * then opens.
+ */
+const host = '127.0.0.1';
+
 interface Manifest {
     readonly modules: readonly { readonly name: string }[];
 }
@@ -75,17 +100,41 @@ function trilobit(...arguments_: string[]): string {
 test.describe.configure({ mode: 'serial' });
 
 let generated = '';
+let generatedForTheInstallation = '';
 
-test.beforeAll(() => {
-    trilobit('migrations:migrate', '--no-interaction');
-
-    const output = trilobit('app:account', email, '--name', displayName);
+/** The one line of `app:account` output there is anything to read. */
+function passwordOf(output: string): string {
     const match = passwordLine.exec(output);
     if (match === null) {
         throw new Error(`app:account printed nothing to sign in with:\n${output}`);
     }
 
-    generated = match[1];
+    return match[1];
+}
+
+/** Signs in through the form, the way somebody arriving at the address does. */
+async function signIn(page: import('@playwright/test').Page, address: string, entered: string): Promise<void> {
+    await page.goto('/admin/sign-in');
+    await page.getByTestId('sign-in-email').fill(address);
+    await page.getByTestId('sign-in-password').fill(entered);
+    await page.getByTestId('sign-in-submit').click();
+}
+
+/** Every address the administration bar leads to, in the order it draws them. */
+async function menuAddresses(page: import('@playwright/test').Page): Promise<string[]> {
+    return page
+        .getByTestId('admin-menu')
+        .locator('.c-nav__link')
+        .evaluateAll((elements) => elements.map((element) => element.getAttribute('href') ?? ''));
+}
+
+test.beforeAll(() => {
+    trilobit('migrations:migrate', '--no-interaction');
+
+    generated = passwordOf(trilobit('app:account', email, '--tenant', host, '--name', displayName));
+    generatedForTheInstallation = passwordOf(
+        trilobit('app:account', installationEmail, '--name', installationName),
+    );
 });
 
 test('the administration sends a visitor who is not signed in to the sign-in page', async ({ page }) => {
@@ -146,13 +195,87 @@ test('signing in opens the administration, and signing out closes it again', asy
     await page.goto('/admin');
     await expect(page.getByTestId('admin-headline')).toHaveText('Overview');
 
+    // Signing out is the application's own act and not the administration's:
+    // the address carries no admin/ and it leaves nobody inside a section they
+    // are no longer signed in to.
     await page.getByTestId('admin-sign-out').click();
-    await expect(page).toHaveURL(/\/admin\/sign-in$/);
+    await expect(page).toHaveURL(/\/$/);
 
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/admin\/sign-in$/);
 
     expect(consoleErrors).toEqual([]);
+});
+
+/**
+ * The other scope, in a browser: the administrator of the installation.
+ *
+ * This is the case the whole slice exists for, and it is one page-load away
+ * from looking broken. The account holds nothing in any business, so every
+ * page of a business's administration refuses it - and being refused on the
+ * page you are sent to after signing in is a working application behaving like
+ * a broken one. So what is asserted is the whole way in: where the form leaves
+ * them, that the section it leaves them in draws what it is for, and that
+ * nothing they are shown leads anywhere they would be turned away from.
+ */
+test('the administrator of the installation signs in to their own section', async ({ page }) => {
+    await signIn(page, installationEmail, generatedForTheInstallation);
+
+    await expect(page).toHaveURL(/\/admin\/installation$/);
+    await expect(page.getByTestId('installation-headline')).toHaveText('Installation');
+    await expect(page.getByTestId('admin-identity')).toHaveText(installationName);
+
+    // The way into the section is the signpost, and it is built from the same
+    // rows the bar is - so following it is also a check that the two agree.
+    await page.getByTestId('admin-signpost-businesses').click();
+
+    await expect(page).toHaveURL(/\/admin\/installation\/businesses$/);
+    await expect(page.getByTestId('business-list')).toContainText('Trilobit E2E');
+});
+
+test('the administrator of the installation is shown no way into a business, and has none', async ({ page }) => {
+    await signIn(page, installationEmail, generatedForTheInstallation);
+
+    const addresses = await menuAddresses(page);
+    expect(addresses.length, 'the installation administrator was drawn no menu at all').toBeGreaterThan(0);
+
+    const intoABusiness = addresses.filter(
+        (href) => href.startsWith('/admin') && !href.startsWith('/admin/installation'),
+    );
+    expect(intoABusiness, 'the bar drew a way into a business administration').toEqual([]);
+
+    // The mark in the banner is a destination like any other, and for this
+    // person it is their own section rather than the overview of a business.
+    await expect(page.getByTestId('admin-home-link')).toHaveAttribute('href', '/admin/installation');
+
+    // Typing the address of one anyway is refused rather than drawn.
+    //
+    // Both halves are asserted because either alone would be satisfied by the
+    // wrong thing: a 403 is the status of any refusal, and the sentence is the
+    // one this gate refuses with. The body carries it because this server runs
+    // in debug mode - config/common.neon leaves the framework's exceptions
+    // uncaught - and what is fixed either way is the status.
+    const refused = await page.goto('/admin');
+    expect(refused?.status(), 'the overview of a business answered somebody with nothing in one').toBe(403);
+    await expect(page.locator('body')).toContainText('This is not yours to open.');
+});
+
+test('somebody administering a business is shown no way into the installation', async ({ page }) => {
+    await signIn(page, email, generated);
+
+    const addresses = await menuAddresses(page);
+    expect(addresses.length).toBeGreaterThan(0);
+    expect(
+        addresses.filter((href) => href.startsWith('/admin/installation')),
+        'the bar drew a way into the installation section',
+    ).toEqual([]);
+
+    // The same shape as the refusal above, and refused for the opposite
+    // reason: this account holds everything in one business and nothing over
+    // the installation the business is one of.
+    const refused = await page.goto('/admin/installation');
+    expect(refused?.status(), 'the installation section answered somebody who administers a business').toBe(403);
+    await expect(page.locator('body')).toContainText('This is not yours to open.');
 });
 
 test('a wrong password leaves you on the sign-in page and says so', async ({ page }) => {

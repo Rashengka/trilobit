@@ -8,13 +8,22 @@ use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Nette\Security\AuthenticationException;
 use Trilobit\Core\Security\Authenticator;
+use Trilobit\Core\Security\OpenToEverybody;
 
 /**
- * Coming in and going out.
+ * Coming in.
  *
  * It is the one page of the administration that answers to somebody who is not
- * signed in, which is the whole of why requiresIdentity() is overridden here
- * and nowhere else.
+ * signed in, which is the whole of why the declaration above it is the open
+ * one and why it is the only page in the build carrying it.
+ *
+ * **Going out is not here, and the asymmetry is the point.** Arriving differs
+ * by audience - an administrator arrives in the administration, somebody
+ * buying something will one day arrive somewhere else - so signing in belongs
+ * to the part of the application somebody is signing into. Leaving does not:
+ * there is one identity and one session, so ending it is one act with one
+ * address for the whole application. See
+ * Trilobit\Core\Presentation\Session\SignOutPresenter.
  *
  * The form carries no CSRF token of its own. nette/forms 3.3 deprecates its
  * token control as redundant beside the check the framework now makes on every
@@ -25,22 +34,14 @@ use Trilobit\Core\Security\Authenticator;
  * Whatever went wrong, the message is one sentence that does not say which of
  * the ways it was; see Trilobit\Core\Security\Authenticator.
  */
+#[OpenToEverybody(because: 'coming in is what somebody who cannot be asked to sign in first does')]
 final class SignPresenter extends AdminPresenter
 {
     public function actionIn(): void
     {
         if ($this->getUser()->isLoggedIn()) {
-            $this->redirect(':Core:Admin:Dashboard:default');
+            $this->redirect($this->landing());
         }
-    }
-
-    public function actionOut(): void
-    {
-        // The identity goes with it rather than being kept for a later "you
-        // were signed in as": a browser somebody has signed out of should hold
-        // nothing about them.
-        $this->getUser()->logout(clearIdentity: true);
-        $this->redirect(':Core:Admin:Sign:in');
     }
 
     public function renderIn(): void
@@ -58,12 +59,6 @@ final class SignPresenter extends AdminPresenter
         $template->headline = 'Sign in';
         $template->lead = 'The administration of this installation.';
         $template->errors = array_map(strval(...), $this->getComponent('signIn')->getOwnErrors());
-    }
-
-    /** The sign-in page is the one page of the administration that is not behind it. */
-    protected function requiresIdentity(): bool
-    {
-        return false;
     }
 
     /**
@@ -112,6 +107,10 @@ final class SignPresenter extends AdminPresenter
             return;
         }
 
-        $this->redirect(':Core:Admin:Dashboard:default');
+        // Where somebody lands depends on which administration they have, and
+        // it has to: the account a fresh installation is set up with holds
+        // nothing in any business, so the overview of one is the page it would
+        // be refused on. See Trilobit\Core\Presentation\Admin\Landing.
+        $this->redirect($this->landing());
     }
 }

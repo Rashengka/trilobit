@@ -76,9 +76,22 @@ final class ApplicationSkeletonTest extends TestCase
         self::assertSame('Core:Front:Home', $match['presenter'] ?? null);
     }
 
-    public function testTheAdminMenuIsEmptyWithoutModules(): void
+    /**
+     * Core contributes one entry of its own whichever modules are enabled -
+     * the way into the section belonging to the installation rather than to a
+     * business in it - so "no modules" leaves exactly that one rather than an
+     * empty menu. It is the same shape as the listener below.
+     *
+     * What is asked here is the register, which holds what the build has.
+     * Whether a particular person is shown that entry is a different question
+     * and is asked of Trilobit\Core\Admin\Menu\ReachableMenu.
+     */
+    public function testOnlyCoresOwnEntryIsInTheAdminMenuWithoutModules(): void
     {
-        self::assertSame([], $this->container()->getByType(Menu::class)->items());
+        $items = $this->container()->getByType(Menu::class)->items();
+
+        self::assertCount(1, $items);
+        self::assertSame('Core:Installation:Businesses:default', $items[0]->destination);
     }
 
     public function testTheSignpostsAreEmptyWithoutModules(): void

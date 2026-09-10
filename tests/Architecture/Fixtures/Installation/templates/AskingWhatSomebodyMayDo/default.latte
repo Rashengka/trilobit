@@ -1,0 +1,8 @@
+{*
+ * A template asking the question the section may not ask, so that the lexical
+ * half of the rule has something to find. Nothing renders this.
+ *}
+
+{block content}
+    <p n:if="$user->isAllowed('content', 'view')">Nobody here would ever see this.</p>
+{/block}
