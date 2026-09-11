@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    A run of one trivial test against a budget nothing can fit into, so that
+    what happens when the budget is crossed can be watched from outside.
+
+    It exists because the interesting half of a budget is the half a green run
+    never reaches. Trilobit\Tests\Tooling\TheRunSaysWhatItCostTest runs this
+    configuration as a child process and reads its exit status and its output:
+    that is the only way to see that going over really ends the run rather than
+    printing a line nobody acts on.
+
+    The budget is a hundredth of a second, which is less than PHPUnit spends
+    starting up, so the outcome does not depend on the machine.
+-->
+<!--
+    No schema is named here, unlike phpunit.xml, because the two attributes
+    that name one carry a w3.org address and bin/check-leaks reads any such
+    address in a file as a link that should have pointed at example.com. It is
+    right to: this file is a fixture and has nothing to validate against a
+    schema that phpunit.xml does not validate first.
+-->
+<phpunit bootstrap="../bootstrap.php"
+         cacheDirectory="../../.phpunit.cache"
+         colors="false"
+         displayDetailsOnTestsThatTriggerErrors="true">
+    <testsuites>
+        <testsuite name="fixture">
+            <directory>Budget</directory>
+        </testsuite>
+    </testsuites>
+    <extensions>
+        <bootstrap class="Trilobit\Tests\Runner\WhatTheWholeRunCost">
+            <parameter name="processorSecondsBudget" value="0.01"/>
+        </bootstrap>
+    </extensions>
+</phpunit>

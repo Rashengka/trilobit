@@ -15,6 +15,7 @@ use Nette\DI\Definitions\Statement;
 use Nette\InvalidStateException;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
+use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
 use Trilobit\Core\Admin\Menu\InstallationMenu;
 use Trilobit\Core\Admin\Menu\Menu;
@@ -494,6 +495,7 @@ final class CoreExtension extends CompilerExtension
         $this->settleTheTenantBeforeRouting();
         $this->letTheProfileWinWhenSomebodySignsIn();
         $this->runTheMigrationsInTheOrderTheyWereWritten();
+        $this->hashPasswordsWithoutThrowingAnyOfThemAway();
 
         // Has to run before taggedPorts() below: a port with no module
         // behind it gets its fallback registered and tagged here, so that
@@ -592,6 +594,69 @@ final class CoreExtension extends CompilerExtension
         }
 
         $definition->addSetup('setService', [Comparator::class, new Statement(ChronologicalComparator::class)]);
+    }
+
+    /**
+     * Replaces the hashing algorithm the password service would otherwise pick
+     * for itself.
+     *
+     * nette/security registers Nette\Security\Passwords on PASSWORD_DEFAULT,
+     * which on this build is bcrypt, and bcrypt reads the first 72 bytes of
+     * what it is handed and drops the rest without saying so. That is not a
+     * weak hash; it is two visibly different passphrases signing in to one
+     * account, and the successful one and the wrong one produce the same
+     * output. A password twenty characters long can never reach it, so nothing
+     * in the application is wrong today - and app:password invites a passphrase
+     * and sets no maximum, so nothing in the application stops it either.
+     *
+     * **The fix is chosen to remove the decision rather than to make it
+     * correctly.** A maximum length would be right in every place a password is
+     * set today and would have to be right in every place one is set later,
+     * including the ones nobody has written; argon2id truncates nothing, so
+     * there is no length to be right about. Its cost is measured rather than
+     * assumed: at PHP's defaults - 64 MiB of memory, four passes - a hash on
+     * this build takes about 100 ms against bcrypt's about 190. The memory is
+     * taken by libargon2 and not by PHP's allocator, so it never counts against
+     * memory_limit, and it is given back the moment the hash is computed rather
+     * than held.
+     *
+     * **Nothing rewrites the hashes already stored.** password_verify reads the
+     * algorithm out of the hash it is given, so a bcrypt row goes on being
+     * accepted; what makes it stop being a bcrypt row is needsRehash(), which
+     * Trilobit\Core\Security\Authenticator asks at the one moment a password is
+     * in hand. Trilobit\Tests\Integration\Security\PasswordHashingTest asserts
+     * that carry-over on a row it wrote with bcrypt rather than inferring it.
+     *
+     * The absence of the service is refused rather than absorbed, for the same
+     * reason as everywhere else in this class: a build that quietly went back
+     * to the default would look exactly like this one until somebody chose a
+     * long passphrase.
+     */
+    private function hashPasswordsWithoutThrowingAnyOfThemAway(): void
+    {
+        $builder = $this->getContainerBuilder();
+        $name = $builder->getByType(Passwords::class);
+        if ($name === null) {
+            throw new InvalidStateException(sprintf(
+                'No %s is in the container, so passwords could not be made to hash with argon2id. '
+                . 'It is registered by nette/security.',
+                Passwords::class,
+            ));
+        }
+
+        $definition = $builder->getDefinition($name);
+        if (!$definition instanceof ServiceDefinition) {
+            throw new InvalidStateException(sprintf(
+                "Service '%s' was replaced by a %s, so the hashing algorithm could not be set on it.",
+                $name,
+                $definition::class,
+            ));
+        }
+
+        // The named constructor rather than PASSWORD_ARGON2ID written out,
+        // because it raises where a PHP build has no argon2 instead of leaving
+        // password_hash() to fail on the first account somebody makes.
+        $definition->setFactory([Passwords::class, 'argon2id'])->setType(Passwords::class);
     }
 
     /**

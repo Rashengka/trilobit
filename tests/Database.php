@@ -11,6 +11,7 @@ use Doctrine\DBAL\Exception\DriverException;
 use PHPUnit\Framework\Assert;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Config\Environment;
+use Trilobit\Tests\Runner\KeepingUnitTestsAwayFromTheDatabase;
 
 /**
  * A database for a test to have to itself.
@@ -22,15 +23,28 @@ use Trilobit\Core\Config\Environment;
  *
  * A test that needs a database gets a schema of its own, named after itself
  * and dropped again afterwards, so that two of them can never be reading each
- * other's tables. When nothing answers, the test is skipped with the reason
- * said out loud - the point of skipping rather than passing is that a run with
- * no database has to look different from a run with one, or the claim quietly
- * stops being made.
+ * other's tables. When nothing answers, the test fails with the reason said out
+ * loud.
+ *
+ * **It used to skip, and the change is a decision about what the application
+ * is.** A skip was right while the database was something the application could
+ * be run without; it is now a part of it, so a run that had no server did not
+ * find nothing wrong - it found nothing at all, and the two have to look
+ * different. They did not: a suite of skips ends in exit 0 and prints a green
+ * summary, which is this project's standing example of a failure nobody sees.
+ * The cost is named rather than hidden: `composer test` on a machine with no
+ * stack running is red, and that is the point rather than a side effect.
  *
  * **A server that answers "no" is not a server that is not there, and a port
  * that never answers at all is a third thing again.** Those three outcomes are
  * the whole of connectToTheServer(): read what that method says before touching
- * the list or the deadline it keeps.
+ * the list or the deadline it keeps. What changed is only the verdict of the
+ * two that meant "no server", never how they are told apart, and never the
+ * messages - which of the three happened is the useful half and it survives.
+ *
+ * **A unit test never gets here at all.** It is turned away at the door by
+ * Trilobit\Tests\Runner\KeepingUnitTestsAwayFromTheDatabase, which explains why
+ * the two kinds of test are allowed different worlds.
  */
 final class Database
 {
@@ -67,9 +81,16 @@ final class Database
      *
      * Remembered because the wait is the expensive outcome and the suite asks
      * this question two or three times per test. Paid once, a mistyped port
-     * costs a run ten seconds and then a few hundred immediate skips; paid
+     * costs a run ten seconds and then a few hundred immediate failures; paid
      * every time, it costs a quarter of an hour of a run nobody stays for -
      * which is its own way of telling somebody nothing.
+     *
+     * Remembering the negative answer was finding N10, and it was a finding
+     * while the answer led to a skip: a server that was a second late at the
+     * first probe turned the rest of a green run into skips, and the run still
+     * left with exit 0. The verdict is now red either way, so a remembered "no"
+     * costs a fast red instead of a slow one and can no longer be mistaken for
+     * a run that passed.
      *
      * @var array<string, string> keyed by host and port
      */
@@ -153,18 +174,19 @@ final class Database
      * The driver codes that mean no server was ever reached: nothing is
      * listening on the socket, the host name resolves to nothing, or the
      * attempt timed out on the way. Those are the developer who has not run
-     * `docker compose up -d`, and that is what a skip is for.
+     * `docker compose up -d`.
      *
-     * **The list is the quiet side of the split on purpose, and it has to stay
-     * that way round.** Everything not in it - the credentials are wrong
+     * **The list decides which sentence a reader gets, and no longer whether
+     * the run is red.** Everything not in it - the credentials are wrong
      * (1045), the schema is gone (1049), the server has run out of connections
-     * (1040) - is a server that answered and refused, and is raised rather than
-     * skipped. A list somebody has to extend to keep a failure *loud* goes
-     * quiet the first time it is forgotten, and a suite that skipped instead of
-     * failing prints a green summary. A list somebody has to extend to keep a
-     * failure *quiet* fails when it is forgotten, and somebody notices within a
-     * minute. So a new code goes in here only when it provably means nobody was
-     * home.
+     * (1040) - is a server that answered and refused, and the driver's own
+     * account of it is better than anything written here, so it is raised
+     * untouched. A code in the list is the same verdict wearing a message that
+     * says how to fix it. Both are failures, which is what makes the list safe
+     * to be wrong about: forgetting to add a code costs a worse message and
+     * never a quiet run, and it used to cost a quiet run. So a new code still
+     * goes in here only when it provably means nobody was home, and nothing
+     * depends on remembering to.
      */
     private const array NOBODY_ANSWERED = [
         2002, // the socket could not be opened: refused, unreachable, or the name did not resolve
@@ -177,19 +199,24 @@ final class Database
      * whatever a caller does next fails for its own reasons rather than for
      * this one.
      *
-     * Exit condition: this returns only when a server answered. It skips when
-     * nothing was there to answer and when nothing answered in time, and it
-     * raises when something was there and said no.
+     * Exit condition: this returns only when a server answered. Every other
+     * ending raises - nothing was there to answer, nothing answered in time, or
+     * something was there and said no - and the three are told apart by the
+     * message rather than by the verdict.
+     *
+     * @throws NoDatabaseToTestAgainst when no server answered
      */
     private static function connectToTheServer(Environment $environment, ?string $schema = null): Connection
     {
+        KeepingUnitTestsAwayFromTheDatabase::refuse('a database of its own');
+
         $host = $environment->value('TRILOBIT_DB_HOST', self::DEFAULT_HOST);
         $port = (int) $environment->value('TRILOBIT_DB_PORT', self::DEFAULT_PORT);
         $user = $environment->value('TRILOBIT_DB_USER', self::DEFAULT_USER);
 
         $silence = self::whyNobodySaidHello($host, $port);
         if ($silence !== null) {
-            Assert::markTestSkipped($silence);
+            throw new NoDatabaseToTestAgainst($silence);
         }
 
         $parameters = [
@@ -214,14 +241,14 @@ final class Database
                 throw $failure;
             }
 
-            Assert::markTestSkipped(sprintf(
+            throw new NoDatabaseToTestAgainst(sprintf(
                 'MariaDB is not reachable at %s:%s as %s, so this test could not run: %s. '
                     . 'Start it with `docker compose up -d` and fill in .env; see README.',
                 $host,
                 $port,
                 $user,
                 $failure->getMessage(),
-            ));
+            ), $failure->getCode(), $failure);
         }
 
         return $connection;
@@ -241,12 +268,16 @@ final class Database
      * long. It is the same silence as a skip that meant "too many connections",
      * arriving by a different road.
      *
-     * **Giving up counts as nobody having answered, so it skips.** A socket
-     * that opens and then stays quiet is not distinguishable from a server that
-     * is not up yet, and calling it a failure would make a stack that is still
-     * starting into a red run. What makes the skip honest rather than the lie
-     * N6 was is that it says which of the two it might be and never blames a
-     * server that answered.
+     * **Giving up counts as nobody having answered.** A socket that opens and
+     * then stays quiet is not distinguishable from a server that is not up yet,
+     * so the message says which of the two it might be and never blames a
+     * server that answered - that is what made it honest when this was a skip
+     * and is the whole of what it still has to do.
+     *
+     * It is a failure now for the same reason the plain "nobody is listening"
+     * is. Both of them are "there is no database", and a stack that is still
+     * starting is precisely a run that could not test anything: it deserves to
+     * be red and run again, not to be green and believed.
      */
     private static function whyNobodySaidHello(string $host, int $port): ?string
     {

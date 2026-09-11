@@ -48,14 +48,49 @@
         </testsuite>
     </testsuites>
     <!--
-        Two things the runner does on its own, so that no test has to remember
-        them: a finished test hands its database connections back, and a run
-        that stops without finishing says why. Both are silent-failure guards
-        and both are described in the classes themselves.
+        Things the runner does on its own, so that no test has to remember
+        them: a finished test hands its database connections back, a run that
+        stops without finishing says why, a unit test is turned away from the
+        database, and the whole run says what it cost. All four are
+        silent-failure guards and all four are described in the classes
+        themselves.
     -->
     <extensions>
         <bootstrap class="Trilobit\Tests\Runner\ClosingConnections"/>
         <bootstrap class="Trilobit\Tests\Runner\SayingWhyTheRunStopped"/>
+        <bootstrap class="Trilobit\Tests\Runner\KeepingUnitTestsAwayFromTheDatabase"/>
+        <bootstrap class="Trilobit\Tests\Runner\WhatTheWholeRunCost">
+            <!--
+                What the whole run may cost, in processor seconds. Why it is
+                processor seconds and not wall clock is argued in the class;
+                where this particular number came from is here, because this is
+                where somebody tempted to raise it will be standing.
+
+                Measured over this tree on a fourteen core machine, 835 tests:
+                58.2 s and 63.7 s of processor time on a quiet machine, against
+                237 s and 335 s on the clock. The same suite against sixteen
+                processes deliberately spinning: 130.8 s of processor time and
+                697 s on the clock. So the worst figure a healthy suite has
+                actually produced here is about 131 s.
+
+                300 is a little over twice that, and the headroom is bought for
+                one machine that could not be measured from here: CI runs the
+                same suite on a hosted runner whose cores are slower, and the
+                same work on a slower core is more processor seconds, not fewer.
+                It is deliberately loose rather than advisory - a budget that
+                fires late and stops the run is worth more than one that fires
+                early and only prints. At the growth this suite has shown, 709
+                to 824 tests in a week, it is a number the suite would reach in
+                months rather than years, which is the point: reaching it is
+                what buys running the combinations in parallel.
+
+                Exit condition: tighten it once CI has printed its own figures
+                for a few weeks and there is a measured number for the machine
+                this headroom was bought for. Every run prints its cost, so
+                those figures now exist to be read.
+            -->
+            <parameter name="processorSecondsBudget" value="300"/>
+        </bootstrap>
     </extensions>
     <php>
         <!--
