@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Nette\DI\Container;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Tests\Runner\KeepingUnitTestsAwayFromTheDatabase;
 use WeakReference;
 
 /**
@@ -28,6 +29,11 @@ use WeakReference;
  * is not given back here but by Trilobit\Tests\Runner\ClosingConnections after
  * every test - see letGoOfEveryConnection() for why it is not left to each
  * test to remember.
+ *
+ * That connection is also why a unit test is not given a container at all: it
+ * would be handed a live one for the database on the machine the suite happens
+ * to be running on. See
+ * Trilobit\Tests\Runner\KeepingUnitTestsAwayFromTheDatabase.
  */
 final class Boot
 {
@@ -74,6 +80,13 @@ final class Boot
      */
     public static function container(?ModuleList $modules = null, bool $styleguide = false, array $config = []): Container
     {
+        // The second door into a database, and the one that opens without
+        // saying so: a built container carries a connection pointed at whatever
+        // TRILOBIT_DB_NAME happens to be, which on a developer's machine is the
+        // database they are working in. See the guard for why a unit test is
+        // turned away here rather than at the socket.
+        KeepingUnitTestsAwayFromTheDatabase::refuse('a built application container');
+
         $configurator = Bootstrap::configurator($modules);
         $configurator->addConfig([
             'parameters' => [
