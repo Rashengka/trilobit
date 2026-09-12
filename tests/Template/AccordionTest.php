@@ -29,10 +29,10 @@ final class AccordionTest extends TestCase
         $drawn = ComponentRendering::render(
             'accordion.latte',
             "{import 'collapse.latte'}\n"
-            . "{embed block accordion}{block accordionItems}"
+            . '{embed block accordion}{block accordionItems}'
             . "{include collapse, title: 'First', name: 'questions', level: 3}"
             . "{include collapse, title: 'Second', name: 'questions', level: 3}"
-            . "{/block}{/embed}",
+            . '{/block}{/embed}',
         );
 
         $group = $drawn->querySelector('.c-accordion');
@@ -40,9 +40,9 @@ final class AccordionTest extends TestCase
 
         // Walked rather than asked with :scope, which PHP 8.4's parser does not know.
         $titles = [];
-        for ($item = $group->firstElementChild; $item !== null; $item = $item->nextElementSibling) {
+        for ($item = $group->firstElementChild; $item instanceof Element; $item = $item->nextElementSibling) {
             self::assertSame('DETAILS', $item->tagName, 'the group holds its items and nothing between them');
-            $titles[] = trim($item->querySelector('summary')?->textContent ?? '');
+            $titles[] = trim($item->querySelector('summary')->textContent ?? '');
         }
 
         self::assertSame(['First', 'Second'], $titles);
@@ -88,7 +88,7 @@ final class AccordionTest extends TestCase
     /**
      * The specimen as the style guide draws it, found by the section that
      * shows the component rather than by an address written here: the pages
-     * and their addresses are Trilobit\Core\Presentation\Styleguide\StyleguidePages',
+     * and their addresses are kept in Trilobit\Core\Presentation\Styleguide\StyleguidePages,
      * and a second copy of one would be a second thing to keep in step.
      */
     private function specimen(string $variant): Element

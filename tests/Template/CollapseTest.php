@@ -170,7 +170,7 @@ final class CollapseTest extends TestCase
 
     private function child(Element $parent, string $class): ?Element
     {
-        for ($child = $parent->firstElementChild; $child !== null; $child = $child->nextElementSibling) {
+        for ($child = $parent->firstElementChild; $child instanceof Element; $child = $child->nextElementSibling) {
             if ($child->classList->contains($class)) {
                 return $child;
             }
