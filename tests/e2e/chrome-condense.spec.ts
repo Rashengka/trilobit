@@ -164,8 +164,15 @@ async function wheel(page: Page, by: number): Promise<void> {
  */
 const distance = 600;
 
-/** Every sixteenth of a pixel, to shift a heading by: every way a jump to it can be rounded. */
-const sixteenths = Array.from({ length: 16 }, (_, index) => index / 16);
+/**
+ * Every sixty-fourth of a pixel, to shift a heading by: every place in its
+ * pixel a heading can be laid out at, since layout keeps positions in
+ * sixty-fourths. A coarser step - a sixteenth - reaches only every fourth of
+ * them, and which four in sixteen it reaches is decided by the fraction the
+ * content above the heading already puts it at; a clearance short by a
+ * sixty-fourth then fails or passes by the luck of the page.
+ */
+const sixtyFourths = Array.from({ length: 64 }, (_, index) => index / 64);
 
 for (const size of windows) {
     test(`in atrium at ${size.width}px the banner and the navigation stay in view, made smaller`, async ({ page }) => {
@@ -195,8 +202,10 @@ for (const size of windows) {
 
         // What a jump keeps clear is what the two bands cover now, not what they
         // covered at the top - and half a pixel more, for the browser rounding
-        // the jump to a whole one (assets/chrome.ts).
-        expect(small.offset, 'the clearance a jump keeps is not the height of the smaller bands').toBeCloseTo(small.navBottom + 0.5, 2);
+        // the jump to a whole one (assets/chrome.ts). Exactly that: both are
+        // whole numbers of sixty-fourths, and a clearance short by less than
+        // one is laid out a whole one short.
+        expect(small.offset, 'the clearance a jump keeps is not the height of the smaller bands').toBe(small.navBottom + 0.5);
 
         // And held: scrolled further, neither band moves while the content does.
         await wheel(page, 300);
@@ -213,7 +222,8 @@ for (const size of windows) {
      * nearest one, so which way a jump is rounded depends on the fraction of a
      * pixel the heading sits at - and that is decided by everything above it on
      * the page. One jump would pass or fail by the luck of the content; a jump at
-     * every sixteenth of a pixel is every way the rounding can go.
+     * every sixty-fourth of a pixel is every place the heading can sit at, and so
+     * every way the rounding can go.
      *
      * The heading may not be left under the navigation by any amount. Layout
      * keeps positions in sixty-fourths of a pixel and the scroll position is a
@@ -230,7 +240,7 @@ for (const size of windows) {
         const from = await page.evaluate(() => window.scrollY);
 
         const under: string[] = [];
-        for (const fraction of sixteenths) {
+        for (const fraction of sixtyFourths) {
             await shiftJumpTarget(page, fraction, from);
 
             await page.getByTestId('chrome-jump').evaluate((link) => (link as HTMLElement).click());

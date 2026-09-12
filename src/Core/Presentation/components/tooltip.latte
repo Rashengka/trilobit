@@ -1,0 +1,41 @@
+{**
+ * c-tooltip - a short description of an element, shown while the pointer rests
+ * on it or the focus is on it.
+ *
+ * The element is the caller's, written into the tooltipTarget block, and so is
+ * the attribute that ties the two together: aria-describedby on the element,
+ * naming $id. A tooltip describes; it is never all there is to name the
+ * element, which has a name of its own - its text, or its aria-label when it is
+ * drawn as an icon. tests/Template/TooltipTest asks both of every tooltip on
+ * every page of the style guide.
+ *
+ * The tip is a manual popover, shown and hidden by assets/tooltip.ts rather than
+ * by a click: on the pointer resting on the element and on the focus arriving
+ * at it, kept while the pointer moves onto the tip itself or the focus stays,
+ * and put away by Escape without the focus moving (WCAG 1.4.13). Manual also
+ * means that showing it closes no menu it sits in. It is drawn in the top
+ * layer, without a z-index.
+ *
+ * It hangs over the element, or under it when asked to, by CSS anchor
+ * positioning, and turns to the other side when there is no room; a browser that
+ * cannot anchor is served by assets/anchor.ts, which reads data-side.
+ *
+ * @param string $id the tip's id, which the element names in aria-describedby
+ * @param string $side above or below: where the tip hangs when there is room
+ *}
+
+{define tooltip, string $id, string $text, string $side = 'above', ?string $testId = null}
+    {* The holder is a flex box, so the whitespace between its children draws
+       nothing and the markup can be laid out a part to a line. *}
+    <span class="c-tooltip" style="anchor-name: --{$id}" data-testid="{$testId}">
+        {block tooltipTarget}{/block}
+        <span
+            id="{$id}"
+            class="c-tooltip__tip"
+            role="tooltip"
+            popover="manual"
+            data-side="{$side === 'below' ? 'below' : 'above'}"
+            style="position-anchor: --{$id}"
+        >{$text}</span>
+    </span>
+{/define}

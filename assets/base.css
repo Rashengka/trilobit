@@ -849,6 +849,152 @@
         justify-content: space-between;
     }
 
+    /*
+     * c-dropdown, c-popover and c-tooltip: a holder drawn as exactly the element
+     * it holds, and a native popover hung from it - in the top layer, over the
+     * page and under nothing, without a z-index.
+     *
+     * The holder is the anchor (anchor-name in the markup, named after the
+     * popover's id). The browser's own rule for a popover centres it in the
+     * window and gives it a border, a padding and the system's colours; the
+     * colours and the box are taken back here, and the centring only where the
+     * browser can anchor, so that one that cannot and has no script either
+     * still draws the popover somewhere in view. Where it cannot anchor,
+     * assets/anchor.ts puts it where position-area would have. The popover's
+     * own layout is given only while it is open, as for .c-user-menu__panel:
+     * a display on the closed one would draw it open for good.
+     *
+     * The gap is a margin on both block sides, so it is right whichever side the
+     * popover ends up on, whether the stylesheet turned it there or the script.
+     */
+    .c-dropdown,
+    .c-popover,
+    .c-tooltip {
+        display: inline-flex;
+    }
+
+    .c-dropdown__menu,
+    .c-popover__panel,
+    .c-tooltip__tip {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-raised);
+        color: var(--color-ink);
+        margin: 0;
+        margin-block: var(--space-2xs);
+        padding: 0;
+    }
+
+    @supports (position-area: block-end) {
+        .c-dropdown__menu,
+        .c-popover__panel,
+        .c-tooltip__tip {
+            inset: auto;
+        }
+
+        .c-dropdown__menu {
+            position-area: block-end span-inline-end;
+            position-try-fallbacks:
+                flip-block,
+                flip-inline,
+                flip-block flip-inline;
+        }
+
+        .c-dropdown__menu[data-align='end'] {
+            position-area: block-end span-inline-start;
+        }
+
+        .c-popover__panel,
+        .c-tooltip__tip {
+            position-area: block-end;
+            position-try-fallbacks:
+                flip-block,
+                block-end span-inline-end,
+                block-end span-inline-start;
+        }
+
+        .c-popover__panel[data-side='above'],
+        .c-tooltip__tip[data-side='above'] {
+            position-area: block-start;
+            position-try-fallbacks:
+                flip-block,
+                block-start span-inline-end,
+                block-start span-inline-start;
+        }
+    }
+
+    .c-dropdown__menu {
+        padding-block: var(--space-2xs);
+    }
+
+    .c-dropdown__menu:popover-open {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* A button and a link drawn alike, as one row each: which of the two an
+       entry is depends on what it does, not on how it looks. The entry the
+       focus is on is lit the way the one under the pointer is - in a menu the
+       arrows move a highlight, and the outline alone would be the only sign. */
+    .c-dropdown__item {
+        background-color: transparent;
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        display: block;
+        font: inherit;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-md);
+        text-align: start;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .c-dropdown__item:is(:hover, :focus) {
+        background-color: var(--color-surface-hover);
+    }
+
+    /* Inside the entry, because the menu clips what is drawn outside it. */
+    .c-dropdown__item:focus-visible {
+        outline-offset: calc(var(--border-marker) * -1);
+    }
+
+    .c-dropdown__separator {
+        border: 0;
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        margin-block: var(--space-2xs);
+    }
+
+    .c-popover__panel {
+        max-inline-size: var(--layout-card-min);
+    }
+
+    .c-popover__title {
+        border-block-end: var(--border-hairline) solid var(--color-line);
+        font-weight: var(--font-weight-display);
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-md);
+    }
+
+    .c-popover__text {
+        font-size: var(--text-sm);
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
+    /* The inverse of whatever mode is on, as a key is, so that it reads as a
+       note laid over the page rather than as another panel of it. */
+    .c-tooltip__tip {
+        background-color: var(--color-ink);
+        border-color: transparent;
+        color: var(--color-canvas);
+        font-size: var(--text-sm);
+        max-inline-size: var(--layout-card-min);
+        padding-block: var(--space-3xs);
+        padding-inline: var(--space-xs);
+    }
+
     .c-nav {
         background-color: var(--color-nav);
         block-size: 100%;

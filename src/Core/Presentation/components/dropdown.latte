@@ -1,0 +1,65 @@
+{**
+ * c-dropdown - a button that opens a short menu of actions, or of places to go.
+ *
+ * It is the menu button of the WAI-ARIA Authoring Practices: the button says it
+ * opens a menu (aria-haspopup), the menu is named by the button, and every
+ * entry is a menuitem left out of the order of Tab, because inside the menu the
+ * arrow keys move, Home and End go to either end and a letter goes to the entry
+ * it starts. That is assets/dropdown.ts. Opening and closing are not: the menu
+ * is a native popover, so a click outside it or Escape closes it, the focus goes
+ * back to the button, and it is drawn in the top layer, over the page and under
+ * nothing, without a z-index.
+ *
+ * A menu, and not a disclosure, because what it holds is things to do. A list
+ * of the ways around a site is navigation and stays c-nav, whose entries unfold
+ * by their own buttons; and a panel holding who somebody is and a switch, like
+ * c-user-menu, is not a menu either - a menu may hold nothing but its entries.
+ *
+ * The menu hangs under the dropdown by CSS anchor positioning. The dropdown is
+ * the anchor and is named after the menu's id, so two on one page each find
+ * their own; lined up with the button's start, or with its end when there is
+ * more room that way. A browser that cannot anchor is served by
+ * assets/anchor.ts, which reads data-side and data-align to place it the same.
+ *
+ * @param string $id the menu's id, which has to be unique on the page
+ * @param list<Trilobit\Core\Presentation\Component\DropdownItem> $items
+ * @param string $align start or end: which edge of the button the menu lines up with
+ *}
+
+{import 'button.latte'}
+
+{define dropdown, string $id, string $label, array $items, string $align = 'start', ?string $testId = null}
+    <div class="c-dropdown" style="anchor-name: --{$id}" data-testid="{$testId}">
+        {include button,
+            label: $label,
+            variant: 'quiet',
+            icon: 'chevron-down',
+            attributes: [
+                'id' => $id . '-button',
+                'popovertarget' => $id,
+                'aria-haspopup' => 'menu',
+            ]}
+
+        <div
+            id="{$id}"
+            class="c-dropdown__menu"
+            popover
+            role="menu"
+            aria-labelledby="{$id}-button"
+            data-side="below"
+            data-align="{$align === 'end' ? 'end' : 'start'}"
+            style="position-anchor: --{$id}"
+        >
+            {foreach $items as $item}
+                <hr n:if="$item->separated && !$iterator->first" class="c-dropdown__separator">
+                <a
+                    n:tag="$item->href === null ? 'button' : 'a'"
+                    class="c-dropdown__item"
+                    role="menuitem"
+                    tabindex="-1"
+                    n:attr="href: $item->href, type: $item->href === null ? 'button' : null, data-testid: $item->testId"
+                >{$item->label}</a>
+            {/foreach}
+        </div>
+    </div>
+{/define}

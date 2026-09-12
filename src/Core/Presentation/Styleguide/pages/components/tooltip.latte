@@ -1,0 +1,46 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A tooltip on a button with words, on one drawn as a cross - named by its
+ * aria-label, which the tooltip only describes - and under a link in running
+ * text. Rest the pointer on one, or move the focus to it.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/close.latte'}
+{import '../../../components/tooltip.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-tooltip']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {embed block tooltip, id: 'sg-tip-duplicate', text: 'Makes a second record with the same fields.', testId: 'sample-tooltip'}
+                    {block tooltipTarget}
+                        {include button, label: 'Duplicate', variant: 'quiet', attributes: ['aria-describedby' => 'sg-tip-duplicate']}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'on a button drawn as an icon'}
+                {embed block tooltip, id: 'sg-tip-remove', text: 'The record keeps its other photographs.', testId: 'sample-tooltip-icon'}
+                    {block tooltipTarget}
+                        {include close, label: 'Remove the photograph', attributes: ['aria-describedby' => 'sg-tip-remove']}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'below'}
+                <p>
+                    Found in the
+                    {embed block tooltip, id: 'sg-tip-shale', text: 'A soft rock that splits into thin layers.', side: 'below', testId: 'sample-tooltip-below'}
+                        {block tooltipTarget}<a href="#shale" aria-describedby="sg-tip-shale">grey shale</a>{/block}
+                    {/embed}
+                    of the lower quarry.
+                </p>
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}
