@@ -11,6 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Config\Mode;
+use Trilobit\Core\Config\ModeNotNamed;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
 use Trilobit\Core\Routing\StyleguideRoutes;
@@ -93,7 +94,7 @@ final class ModeDecidesTheBuildTest extends TestCase
 
     public function testTheRetiredSwitchWithoutAModeStopsTheBoot(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(ModeNotNamed::class);
         $this->expectExceptionMessage('TRILOBIT_ENV');
 
         Boot::container(

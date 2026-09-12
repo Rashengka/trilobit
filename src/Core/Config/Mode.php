@@ -45,24 +45,17 @@ enum Mode: string
     public const string RETIRED = 'TRILOBIT_DEBUG';
 
     /**
-     * @throws \RuntimeException where the retired flag is on and no mode is
-     *     named, because the fallback to production would there switch off
-     *     what the flag had switched on - the one change-over that would
-     *     otherwise go unnoticed until somebody missed the debugger
+     * @throws ModeNotNamed where the retired flag is on and no mode is named,
+     *     because the fallback to production would there switch off what the
+     *     flag had switched on - the one change-over that would otherwise go
+     *     unnoticed until somebody missed the debugger
      */
     public static function fromEnvironment(Environment $environment): self
     {
         $value = $environment->value(self::VARIABLE);
 
         if ($value === '' && $environment->flag(self::RETIRED)) {
-            throw new \RuntimeException(sprintf(
-                '%2$s is set and %1$s is not. %2$s is no longer read: the mode is %1$s - dev, staging or prod - '
-                . 'and without one this would start as prod, with no debug bar and no style guide. Replace %2$s '
-                . 'with %1$s=dev wherever it is set (.env, compose.override.yaml, the web server or the container), '
-                . 'or with %1$s=prod if production is what is meant.',
-                self::VARIABLE,
-                self::RETIRED,
-            ));
+            throw new ModeNotNamed();
         }
 
         return self::tryFrom($value) ?? self::Prod;

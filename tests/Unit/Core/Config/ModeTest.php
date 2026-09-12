@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Config\Mode;
+use Trilobit\Core\Config\ModeNotNamed;
 
 #[CoversClass(Mode::class)]
 final class ModeTest extends TestCase
@@ -65,7 +66,7 @@ final class ModeTest extends TestCase
      */
     public function testTheRetiredSwitchWithoutAModeRefusesToStart(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(ModeNotNamed::class);
         $this->expectExceptionMessage('TRILOBIT_DEBUG is set and TRILOBIT_ENV is not');
 
         Mode::fromEnvironment(Environment::fromValues(['TRILOBIT_DEBUG' => '1']));
@@ -76,7 +77,7 @@ final class ModeTest extends TestCase
         try {
             Mode::fromEnvironment(Environment::fromValues(['TRILOBIT_DEBUG' => '1']));
             self::fail('the retired switch was accepted without a mode');
-        } catch (\RuntimeException $refusal) {
+        } catch (ModeNotNamed $refusal) {
             self::assertStringContainsString('TRILOBIT_ENV=dev', $refusal->getMessage());
         }
     }
@@ -84,7 +85,7 @@ final class ModeTest extends TestCase
     /** An empty mode is an absent one, so it does not get past the refusal either. */
     public function testTheRetiredSwitchWithAnEmptyModeRefusesToStart(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(ModeNotNamed::class);
 
         Mode::fromEnvironment(Environment::fromValues(['TRILOBIT_DEBUG' => '1', 'TRILOBIT_ENV' => '']));
     }
