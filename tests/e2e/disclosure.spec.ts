@@ -17,10 +17,6 @@ import { type CDPSession, expect, type Locator, type Page, test } from '@playwri
  * has not asked for reduced motion, and that the colours are the theme's.
  */
 
-const COLLAPSE = '/_styleguide/components/collapse'; // check-leaks:allow rule=high_entropy reason=the address of a page of the style guide, long enough to read as an opaque literal
-
-const ACCORDION = '/_styleguide/components/accordion'; // check-leaks:allow rule=high_entropy reason=the address of a page of the style guide, long enough to read as an opaque literal
-
 const themes = ['atrium', 'ledger'] as const;
 
 const modes = ['light', 'dark'] as const;
@@ -141,7 +137,7 @@ test.describe('with the keyboard, and to a screen reader', () => {
     test.use({ reducedMotion: 'reduce' });
 
     test('c-collapse is a named, expandable control that opens and closes by key', async ({ page }) => {
-        await page.goto(COLLAPSE);
+        await page.goto('/_styleguide/components/collapse');
 
         const details = specimen(page, 'default').locator('details.c-collapse');
         const summary = details.locator('summary');
@@ -179,7 +175,7 @@ test.describe('with the keyboard, and to a screen reader', () => {
     });
 
     test('a title given a level is a heading in the tree, inside the control that opens it', async ({ page }) => {
-        await page.goto(COLLAPSE);
+        await page.goto('/_styleguide/components/collapse');
 
         const stage = specimen(page, 'with a heading');
         await expect(stage.getByRole('heading', { level: 2, name: 'Where the moults are kept' })).toBeVisible();
@@ -194,7 +190,7 @@ test.describe('with the keyboard, and to a screen reader', () => {
     });
 
     test('c-accordion opens one item at a time when its items share a name', async ({ page }) => {
-        await page.goto(ACCORDION);
+        await page.goto('/_styleguide/components/accordion');
 
         const items = specimen(page, 'one open at a time').locator('.c-accordion > details');
         await expect(items).toHaveCount(3);
@@ -219,7 +215,7 @@ test.describe('with the keyboard, and to a screen reader', () => {
     });
 
     test('c-accordion keeps every item open that was opened when its items share no name', async ({ page }) => {
-        await page.goto(ACCORDION);
+        await page.goto('/_styleguide/components/accordion');
 
         const items = specimen(page, 'any number open').locator('.c-accordion > details');
         await expect(items).toHaveCount(3);
@@ -238,7 +234,7 @@ test.describe('the address of an item', () => {
     test.use({ reducedMotion: 'reduce' });
 
     test('opens the item it names on arrival, and brings it into view', async ({ page }) => {
-        await page.goto(`${ACCORDION}#sg-accordion-growth`);
+        await page.goto('/_styleguide/components/accordion#sg-accordion-growth');
 
         const items = specimen(page, 'one open at a time').locator('.c-accordion > details');
         const named = page.locator('#sg-accordion-growth');
@@ -249,7 +245,7 @@ test.describe('the address of an item', () => {
     });
 
     test('opens the item a link on the page names, closing the other of its group, and again after it was closed', async ({ page }) => {
-        await page.goto(ACCORDION);
+        await page.goto('/_styleguide/components/accordion');
 
         const first = page.locator('#sg-accordion-shield');
         const named = page.locator('#sg-accordion-growth');
@@ -275,7 +271,7 @@ test.describe('the address of an item', () => {
 test.describe('the motion of opening', () => {
     test('the height unfolds over a moment for somebody who has not asked for less motion', async ({ page }) => {
         await page.emulateMedia({ reducedMotion: 'no-preference' });
-        await page.goto(COLLAPSE);
+        await page.goto('/_styleguide/components/collapse');
 
         const opening = await heightsWhileOpening(specimen(page, 'default').locator('details.c-collapse'));
 
@@ -285,7 +281,7 @@ test.describe('the motion of opening', () => {
 
     test('and is open at once for somebody who has', async ({ page }) => {
         await page.emulateMedia({ reducedMotion: 'reduce' });
-        await page.goto(COLLAPSE);
+        await page.goto('/_styleguide/components/collapse');
 
         const opening = await heightsWhileOpening(specimen(page, 'default').locator('details.c-collapse'));
 
@@ -295,7 +291,7 @@ test.describe('the motion of opening', () => {
 });
 
 test('the colours are the theme\'s in both themes and both modes', async ({ page }) => {
-    await page.goto(ACCORDION);
+    await page.goto('/_styleguide/components/accordion');
 
     const group = specimen(page, 'one open at a time').locator('.c-accordion');
     const first = group.locator('details').first();
