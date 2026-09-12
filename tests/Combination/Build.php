@@ -183,13 +183,46 @@ final class Build
      */
     public static function render(Container $container, string $presenterName, string $action = 'default'): string
     {
+        return self::renderRequest($container, $presenterName, ['action' => $action]);
+    }
+
+    /**
+     * Renders whatever the router sends a path to, with the parameters it
+     * read out of the path.
+     *
+     * For the pages whose presenter and action say less than their address
+     * does - a page of the style guide is told which page it is by the
+     * parameters its route carries. Asking by path is also asking the way a
+     * visitor does, so a page nobody routed fails here rather than rendering in
+     * a test and nowhere else.
+     */
+    public static function renderPath(Container $container, string $path): string
+    {
+        $parameters = self::match($container, $path);
+        if ($parameters === null) {
+            throw new \LogicException(sprintf('Nothing in this build answers at %s.', $path));
+        }
+
+        $presenterName = $parameters['presenter'] ?? null;
+        if (!is_string($presenterName)) {
+            throw new \LogicException(sprintf('The route answering at %s names no presenter.', $path));
+        }
+
+        unset($parameters['presenter']);
+
+        return self::renderRequest($container, $presenterName, $parameters);
+    }
+
+    /** @param array<string, mixed> $parameters */
+    private static function renderRequest(Container $container, string $presenterName, array $parameters): string
+    {
         $presenter = $container->getByType(IPresenterFactory::class)->createPresenter($presenterName);
         if (!$presenter instanceof Presenter) {
             throw new \LogicException(sprintf('%s is not a %s.', $presenterName, Presenter::class));
         }
 
         $presenter->autoCanonicalize = false;
-        $response = $presenter->run(new Request($presenterName, 'GET', ['action' => $action]));
+        $response = $presenter->run(new Request($presenterName, 'GET', $parameters));
         if (!$response instanceof TextResponse) {
             throw new \LogicException(sprintf('%s answered with a %s.', $presenterName, $response::class));
         }
