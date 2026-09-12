@@ -40,11 +40,17 @@ use Trilobit\Core\Routing\StyleguideRoutes;
 #[CoversNothing]
 final class StyleguideShowsTheSourceOfEverySpecimenTest extends TestCase
 {
-    /** @return iterable<string, array{StyleguidePage}> */
+    /**
+     * Every page of the group, the ones showing how components go together
+     * (Navbar) included: their specimens are shown with their code the same
+     * way, and are held to it the same way.
+     *
+     * @return iterable<string, array{StyleguidePage}>
+     */
     public static function componentPages(): iterable
     {
         foreach (StyleguideSpecimens::pages()->pages() as $page) {
-            if ($page->group === 'components' && $page->components !== []) {
+            if ($page->group === 'components') {
                 yield $page->path() => [$page];
             }
         }

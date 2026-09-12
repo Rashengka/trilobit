@@ -66,6 +66,17 @@ final class ComponentRegistry
                 ['default', 'with entries nested under an entry'],
             ),
             new Component(
+                'c-tabs',
+                'Several views of one thing, shown one at a time behind a row of tabs - and, where the script '
+                . 'does not run, every one of them under its title.',
+                ['default', 'with headings', 'redrawn by Naja'],
+            ),
+            new Component(
+                'c-scrollspy',
+                'The contents of a long page, beside it, marking the section being read.',
+                ['default'],
+            ),
+            new Component(
                 'c-breadcrumb',
                 'The way up from the page being drawn: the pages it sits under, in order, ending in the page itself.',
                 ['default', 'directly under the start'],

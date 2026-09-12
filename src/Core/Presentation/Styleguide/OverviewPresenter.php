@@ -125,11 +125,12 @@ final class OverviewPresenter extends FrontPresenter
     }
 
     /**
-     * The one snippet of the guide, drawn again: the specimen of c-combobox
-     * that Naja redraws, which is how the guide shows - and
-     * tests/e2e/combobox.spec.ts measures - a combobox surviving its select
-     * being replaced. Asked for by the button beside it, through Naja; a
-     * request that is not Naja's draws the whole page as usual.
+     * The snippet a page of the guide draws under this name, drawn again: the
+     * specimens Naja redraws - of c-combobox, c-tabs and c-scrollspy, one to a
+     * page - which is how the guide shows, and tests/e2e measures, a component
+     * surviving the markup under it being replaced. Asked for by the button
+     * beside it, through Naja; a request that is not Naja's draws the whole
+     * page as usual.
      */
     public function handleRedrawSpecimen(): void
     {
