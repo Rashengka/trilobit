@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Trilobit\Tests\Template;
 
 use Dom\HTMLDocument;
+use Nette\DI\Container;
 use Nette\Routing\Route;
 use Nette\Routing\RouteList;
 use Nette\Routing\Router;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Combination\Build;
@@ -46,6 +48,8 @@ final class StyleguideSpecimens
     /** @var array<string, HTMLDocument>|null */
     private static ?array $pages = null;
 
+    private static ?Container $container = null;
+
     /**
      * Every page of the style guide, rendered, keyed by the path it answers
      * at.
@@ -61,10 +65,7 @@ final class StyleguideSpecimens
             return self::$pages;
         }
 
-        $container = Boot::container(
-            ModuleList::of(['cms' => true, 'crm' => true, 'shop' => true], Bootstrap::rootDirectory()),
-            styleguide: true,
-        );
+        $container = self::container();
 
         $pages = [];
         foreach (self::pathsIn($container->getByType(Router::class)) as $path) {
@@ -146,6 +147,21 @@ final class StyleguideSpecimens
             $registered,
             static fn(string $name): bool => ($shown[$name] ?? []) === [],
         ));
+    }
+
+    /** The list the pages above were routed from, out of the same build. */
+    public static function pages(): StyleguidePages
+    {
+        return self::container()->getByType(StyleguidePages::class);
+    }
+
+    /** The build every page here is rendered in: every module on, and the style guide with them. */
+    private static function container(): Container
+    {
+        return self::$container ??= Boot::container(
+            ModuleList::of(['cms' => true, 'crm' => true, 'shop' => true], Bootstrap::rootDirectory()),
+            styleguide: true,
+        );
     }
 
     /** @return iterable<Route> */

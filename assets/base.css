@@ -1035,6 +1035,68 @@
     .sg-specimen__stage--narrow {
         max-inline-size: var(--layout-card-min);
     }
+
+    /*
+     * The frame every page of the guide is drawn in: the menu of its pages
+     * beside the page, or above it where there is no room for both.
+     *
+     * No breakpoint, for the reason .l-grid has none. The menu asks for the
+     * width of a card - the narrowest column the design system has a name for
+     * - and the page takes the rest and refuses to be narrower than the
+     * measure; where both cannot be had side by side, the two wrap onto rows
+     * of their own. The width at which that happens follows from the theme's
+     * tokens rather than from a number written here.
+     */
+    .sg-frame {
+        align-items: flex-start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xl);
+    }
+
+    .sg-frame__menu {
+        flex-basis: var(--layout-card-min);
+        flex-grow: 1;
+    }
+
+    .sg-frame__main {
+        flex-basis: 0;
+        flex-grow: 999;
+        min-inline-size: min(var(--layout-measure), 100%);
+    }
+
+    .sg-menu {
+        display: flex;
+        flex-direction: column;
+        font-size: var(--text-sm);
+        gap: var(--space-md);
+    }
+
+    .sg-menu__heading {
+        color: var(--color-ink-muted);
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+    }
+
+    .sg-menu__list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2xs);
+    }
+
+    .sg-menu__link {
+        color: var(--color-ink);
+        text-decoration: none;
+    }
+
+    .sg-menu__link:hover {
+        text-decoration: underline;
+    }
+
+    .sg-menu__link[aria-current='page'] {
+        color: var(--color-accent);
+        font-weight: var(--font-weight-strong);
+    }
 }
 
 @layer utilities {

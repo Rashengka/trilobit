@@ -105,11 +105,25 @@
     </div>
 {/define}
 
-{block content}
-    {include pageHeading,
-        title: 'Style guide',
-        lead: 'Every component this application is built out of, rendered by the application itself.',
-        testId: 'styleguide-headline'}
+{*
+ * No switch from the frame on this page: the specimen of c-preference-switcher
+ * below is the switch, and a second one would put two controls for every
+ * answer on one page.
+ *}
+{block sgSwitch}{/block}
+
+{block sgPage}
+    {*
+     * The way into every page of the guide, drawn from the same list the menu
+     * beside it and the routes are made from.
+     *}
+    <div class="l-stack l-stack--loose" data-testid="styleguide-signposts">
+        <section n:foreach="$guide as $group" class="l-stack" data-testid="styleguide-group-{$group->name}">
+            {include pageHeading, title: $group->title, lead: $group->summary, level: 'h2'}
+
+            {include signpost, items: $group->signposts, label: $group->title}
+        </section>
+    </div>
 
     {*
      * The switch, which is at once the specimen of c-preference-switcher: the

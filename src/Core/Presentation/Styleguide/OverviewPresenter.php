@@ -90,7 +90,8 @@ final class OverviewPresenter extends FrontPresenter
         $template = $this->styleguideTemplate();
 
         $template->pageTitle = 'Style guide';
-        $this->fillIn($template);
+        $template->lead = 'Every component this application is built out of, rendered by the application itself.';
+        $this->fillIn($template, null);
         $template->fullWidthUrl = $this->link('page', ['group' => 'foundations', 'page' => 'full-width']);
     }
 
@@ -118,9 +119,9 @@ final class OverviewPresenter extends FrontPresenter
         $template->setFile(StyleguidePages::directory() . '/' . $shown->file());
 
         $template->pageTitle = $shown->title;
+        $template->lead = $shown->summary;
         $template->page = $shown;
-        $this->fillIn($template);
-        $template->styleguideUrl = $this->link('default');
+        $this->fillIn($template, $shown);
 
         if ($shown->width !== null) {
             $this->overruleContentWidth($shown->width);
@@ -158,8 +159,10 @@ final class OverviewPresenter extends FrontPresenter
      * all of it is invented and cheap, and a page moving from one group to
      * another then cannot lose the data it was drawn with on the way.
      */
-    private function fillIn(OverviewDefaultTemplate $template): void
+    private function fillIn(OverviewDefaultTemplate $template, ?StyleguidePage $current): void
     {
+        $template->guideUrl = $this->link('default');
+        $template->guide = $this->guide($current);
         $template->components = $this->byName($this->components);
         $template->contentGroups = $this->groupsByName($this->contentGroups);
         $template->colourTokens = self::COLOUR_TOKENS;
@@ -168,6 +171,41 @@ final class OverviewPresenter extends FrontPresenter
         $template->tableRows = $this->sampleTableRows();
         $template->sampleNavigation = $this->sampleNavigation();
         $template->sampleSignposts = $this->sampleSignposts();
+    }
+
+    /**
+     * Every page of the guide, in one pass over the list, as the menu draws it
+     * and as the front page does.
+     *
+     * The addresses come from the router rather than from the list, so a page
+     * listed and not routed fails here, while the page is being prepared,
+     * rather than drawing a link that leads nowhere.
+     *
+     * @return list<StyleguideMenuGroup>
+     */
+    private function guide(?StyleguidePage $current): array
+    {
+        $guide = [];
+        foreach ($this->pages->groups() as $group) {
+            $items = [];
+            $signposts = [];
+            foreach ($group->pages as $page) {
+                $href = $this->link('page', ['group' => $page->group, 'page' => $page->slug]);
+                $id = $page->group . '-' . $page->slug;
+
+                $items[] = new NavigationItem(
+                    $page->title,
+                    $href,
+                    $current?->path() === $page->path(),
+                    'styleguide-menu-' . $id,
+                );
+                $signposts[] = new SignpostLink($page->title, $href, $page->summary, 'styleguide-page-' . $id);
+            }
+
+            $guide[] = new StyleguideMenuGroup($group->name, $group->title, $group->summary, $items, $signposts);
+        }
+
+        return $guide;
     }
 
     /**

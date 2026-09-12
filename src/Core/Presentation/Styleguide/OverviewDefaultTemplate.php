@@ -48,9 +48,21 @@ final class OverviewDefaultTemplate extends FrontTemplate
     /** @var list<SignpostLink> */
     public array $sampleSignposts = [];
 
+    /** The sentence under the title: what the page being drawn is for. */
+    public string $lead = '';
+
+    /**
+     * Every page of the guide, group by group, with its address resolved -
+     * what the menu on every page and the front page of the guide are drawn
+     * from.
+     *
+     * @var list<StyleguideMenuGroup>
+     */
+    public array $guide = [];
+
+    /** The front page of the guide. */
+    public string $guideUrl = '';
+
     /** Where the page that insists on its own width lives, for the guide to point at. */
     public string $fullWidthUrl = '';
-
-    /** And the way back from it. */
-    public string $styleguideUrl = '';
 }
