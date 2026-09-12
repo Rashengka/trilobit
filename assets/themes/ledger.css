@@ -161,6 +161,24 @@
     --layout-nav-position: sticky;
 
     --layout-z-chrome: 1;
+    --layout-z-menu: 2;
+
+    /*
+     * Ledger unfolds the entries under an entry in place, inside the entry,
+     * each level set in from the one above it and as deep as the tree goes -
+     * the way a ledger's accounts sit under the account they belong to. Nothing
+     * is laid over the page, so the list has no surface or rule of its own, and
+     * a navigation longer than the window scrolls inside its column.
+     */
+    --layout-nav-overflow: auto;
+    --layout-nav-sub-position: static;
+    --layout-nav-sub-column: 100%;
+    --layout-nav-sub-padding: 0 0 0 0.875rem;
+    --layout-nav-sub-indent: 0.875rem;
+    --layout-nav-inner-toggle: inline-flex;
+    --layout-nav-inner-folded: none;
+    --color-nav-panel: transparent;
+    --color-nav-panel-line: transparent;
 }
 
 /*

@@ -181,12 +181,42 @@
 
     /*
      * The layer whatever is held is drawn in: above the content that scrolls
-     * under it. A menu that opens is drawn in the browser's top layer, above
-     * every layer named here, and needs none of its own. A layer added later
-     * is named beside this one rather than numbered in between wherever it is
-     * first needed.
+     * under it. The menu of whoever is signed in is a popover, drawn in the
+     * browser's top layer above every layer named here, and needs none of its
+     * own. A layer added later is named beside this one rather than numbered in
+     * between wherever it is first needed.
+     *
+     * The entries a navigation opens as a block over the page are the one
+     * thing that opens and cannot be a popover: the same list lies in the page
+     * in a theme that unfolds it in place, and a popover is never in the page.
+     * So the block has a layer of its own, above what is held.
      */
     --layout-z-chrome: 1;
+    --layout-z-menu: 2;
+
+    /*
+     * The entries under an entry of the navigation (c-nav).
+     *
+     * Atrium opens them as a block over the page, hung under the row - the
+     * first level as columns, and the level under each as a list beneath it.
+     * Two levels and no more: a block over the page that went on opening would
+     * cover the page it was meant to lead into. The buttons inside the block
+     * are therefore not drawn, and the level under the second is folded for
+     * good; every entry drawn still leads to its own page.
+     *
+     * The band the navigation is held in lets the block hang out of it
+     * (--layout-nav-overflow), or the block would be cut off at the band's
+     * lower edge.
+     */
+    --layout-nav-overflow: visible;
+    --layout-nav-sub-position: absolute;
+    --layout-nav-sub-column: 13rem;
+    --layout-nav-sub-padding: var(--space-md);
+    --layout-nav-sub-indent: 0px;
+    --layout-nav-inner-toggle: none;
+    --layout-nav-inner-folded: grid;
+    --color-nav-panel: var(--color-surface);
+    --color-nav-panel-line: var(--color-line);
 }
 
 /*

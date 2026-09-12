@@ -456,6 +456,12 @@
      * menu taller than the window therefore scrolls inside its column too;
      * making the bound follow the switch would take a second switch, and the two
      * could then be set to disagree.
+     *
+     * Whether it scrolls at all is the theme's (--layout-nav-overflow). A theme
+     * that opens the entries under an entry as a block over the page needs the
+     * block to hang out of the band, and a band that scrolls clips whatever
+     * hangs out of it at its edge - so such a theme lets it overflow, and its
+     * navigation, a row under the banner, is never the height of a window.
      */
     .l-shell__nav {
         background-color: var(--color-nav);
@@ -465,7 +471,7 @@
     .l-shell__nav-hold {
         inset-block-start: 0;
         max-block-size: var(--layout-shell-min-size);
-        overflow-y: auto;
+        overflow-y: var(--layout-nav-overflow);
         position: var(--layout-nav-position);
         z-index: var(--layout-z-chrome);
     }
@@ -664,12 +670,23 @@
         color: var(--color-nav-ink);
     }
 
+    /* Positioned, so that a block a theme opens over the page under an entry
+       hangs from the whole row rather than from the one entry. */
     .c-nav__list {
         display: flex;
         flex-direction: var(--layout-nav-direction);
         flex-wrap: var(--layout-nav-wrap);
         gap: var(--layout-nav-gap);
         padding: var(--layout-nav-padding);
+        position: relative;
+    }
+
+    /* The link, the button beside it when there is one, and the list under
+       them on a line of its own. */
+    .c-nav__item {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
     }
 
     .c-nav__link {
@@ -678,10 +695,103 @@
         border-radius: var(--radius-sm);
         color: var(--color-nav-ink);
         display: block;
+        flex: 1 1 auto;
         padding-block: var(--space-xs);
         padding-inline: var(--space-sm);
         text-decoration: none;
         transition: background-color var(--motion-fast), color var(--motion-fast);
+    }
+
+    /*
+     * The button beside an entry that has entries under it. The chevron turns
+     * over while what it opens is open, read off the one attribute that says
+     * so.
+     */
+    .c-nav__toggle {
+        align-items: center;
+        background-color: transparent;
+        border: 0;
+        border-radius: var(--radius-sm);
+        color: var(--color-nav-ink);
+        cursor: pointer;
+        display: inline-flex;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-2xs);
+        position: relative;
+    }
+
+    .c-nav__toggle:hover {
+        background-color: var(--color-surface-hover);
+        color: var(--color-nav-ink-active);
+    }
+
+    .c-nav__toggle .c-icon {
+        transition: rotate var(--motion-fast);
+    }
+
+    .c-nav__toggle[aria-expanded='true'] .c-icon {
+        rotate: 0.5turn;
+    }
+
+    /*
+     * The entries under an entry: one list per level, each directly after the
+     * button that opens it.
+     *
+     * The same markup is drawn two ways, and the theme decides which with
+     * tokens rather than with selectors of its own. The first level either
+     * lies in the page, set in under its entry (ledger), or is taken out of it
+     * and hung under the row as a block over the page (atrium) - that is
+     * --layout-nav-sub-position, and assets/nav.ts reads the position the list
+     * ended up with to know which of the two it is handling. Inside it, a
+     * theme either folds every level by its own button, or lays the second
+     * level open in the block and draws no buttons there
+     * (--layout-nav-inner-toggle, --layout-nav-inner-folded). Below the second
+     * level a folded list is folded in every theme; in one that draws the
+     * buttons there, they unfold it.
+     *
+     * Folded is read off aria-expanded on the button before the list, which is
+     * the only place the state is kept.
+     */
+    .c-nav__sub {
+        display: grid;
+        flex-basis: 100%;
+        gap: var(--layout-nav-gap);
+        grid-template-columns: minmax(0, 1fr);
+        padding-inline-start: var(--layout-nav-sub-indent);
+    }
+
+    .c-nav__list > .c-nav__item > .c-nav__sub {
+        align-items: start;
+        background-color: var(--color-nav-panel);
+        border: var(--border-hairline) solid var(--color-nav-panel-line);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-raised);
+        grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-nav-sub-column), 100%), 1fr));
+        inset-block-start: 100%;
+        inset-inline: 0;
+        padding: var(--layout-nav-sub-padding);
+        position: var(--layout-nav-sub-position);
+        z-index: var(--layout-z-menu);
+    }
+
+    .c-nav__sub .c-nav__sub {
+        font-size: var(--text-sm);
+    }
+
+    .c-nav__sub .c-nav__toggle {
+        display: var(--layout-nav-inner-toggle);
+    }
+
+    .c-nav__toggle[aria-expanded='false'] + .c-nav__sub {
+        display: none;
+    }
+
+    .c-nav__sub .c-nav__toggle[aria-expanded='false'] + .c-nav__sub {
+        display: var(--layout-nav-inner-folded);
+    }
+
+    .c-nav__sub .c-nav__sub .c-nav__toggle[aria-expanded='false'] + .c-nav__sub {
+        display: none;
     }
 
     .c-nav__link:hover {

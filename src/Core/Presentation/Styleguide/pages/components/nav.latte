@@ -4,17 +4,37 @@
  * The primary navigation, drawn with invented entries so that the specimen is
  * the same whichever modules this build is made of. Whether it reads as a row
  * or as a column is the theme's to decide - switch it above and watch.
+ *
+ * The second specimen is the case a submenu breaks, and it has to stay that
+ * case: an entry that leads somewhere of its own and holds entries two levels
+ * deep (tests/Template/StyleguideShowsANestedNavigationTest). One branch goes a
+ * level further, which is where the two themes part - ledger draws it, atrium
+ * stops at two.
  *}
 
 {import '../../templates/furniture.latte'}
 {import '../../../components/nav.latte'}
 
 {block sgPage}
+    <p class="l-measure">
+        An entry with entries under it keeps its own link, and a button beside it opens what is under
+        it. Ledger unfolds the entries in place, inside their entry, as deep as they go. Atrium opens
+        them as a block over the page, two levels deep, where the pointer rests on the entry - and
+        just as well from the button, by keyboard or by touch. The block goes away when the mouse
+        leaves it, on Escape, on a click outside it, and when the focus leaves it.
+    </p>
+
     {embed block sgSection, component: $components['c-nav']}
         {block sgSectionBody}
             {embed block sgSpecimen, variant: 'default'}
                 {block sgSpecimenStage}
                     {include nav, items: $sampleNavigation, label: 'Specimen'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with entries nested under an entry'}
+                {block sgSpecimenStage}
+                    {include nav, items: $sampleNestedNavigation, label: 'Specimen with entries under an entry', testId: 'sample-subnav'}
                 {/block}
             {/embed}
         {/block}
