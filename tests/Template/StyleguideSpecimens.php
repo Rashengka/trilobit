@@ -45,7 +45,10 @@ final class StyleguideSpecimens
     /** What a section showing a group of native form elements is marked with. */
     public const string FORM = 'data-styleguide-form';
 
-    /** What every specimen inside either kind of section is marked with. */
+    /** What a section showing a layout primitive (an l-* block of assets/base.css) is marked with. */
+    public const string LAYOUT = 'data-styleguide-layout';
+
+    /** What every specimen inside any kind of section is marked with. */
     public const string VARIANT = 'data-styleguide-variant';
 
     /** @var array<string, HTMLDocument>|null */
@@ -134,6 +137,54 @@ final class StyleguideSpecimens
         }
 
         return $shown;
+    }
+
+    /**
+     * Every class of a layout primitive the given pages show, and where.
+     *
+     * A layout primitive has nothing to name it by but the class itself, and
+     * every page of the guide already carries a few of them - the frame is
+     * stacked with .l-stack, the text is kept to .l-measure. That use proves
+     * nothing: it is the primitive used in passing, not shown. So a class
+     * counts here only where an element inside a specimen of the section
+     * naming its primitive carries it - .l-stack--loose inside a specimen of
+     * the section marked l-stack, and not the frame's own .l-stack--loose
+     * around it, nor a section marked l-stack with nothing inside.
+     *
+     * @param array<string, HTMLDocument> $pages keyed by path
+     *
+     * @return array<string, list<string>> class => the path of every page with a section showing it
+     */
+    public static function primitivesShownIn(array $pages): array
+    {
+        $shown = [];
+        foreach ($pages as $path => $page) {
+            foreach ($page->querySelectorAll(sprintf('[%s]', self::LAYOUT)) as $section) {
+                $primitive = $section->getAttribute(self::LAYOUT) ?? '';
+
+                $carried = [];
+                foreach ($section->querySelectorAll(sprintf('[%s] [class]', self::VARIANT)) as $element) {
+                    $classes = preg_split('/\s+/', $element->getAttribute('class') ?? '', -1, PREG_SPLIT_NO_EMPTY);
+                    foreach ($classes === false ? [] : $classes as $class) {
+                        if (self::primitiveOf($class) === $primitive) {
+                            $carried[$class] = true;
+                        }
+                    }
+                }
+
+                foreach (array_keys($carried) as $class) {
+                    $shown[$class][] = $path;
+                }
+            }
+        }
+
+        return $shown;
+    }
+
+    /** The block a class of a layout primitive belongs to: l-shell for l-shell__banner, l-stack for l-stack--loose. */
+    public static function primitiveOf(string $class): string
+    {
+        return (string) preg_replace('/(?:__|--).*$/', '', $class);
     }
 
     /**

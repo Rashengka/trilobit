@@ -1,0 +1,46 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Short things side by side, wrapping where the row runs out.
+ *
+ * The second specimen is drawn in a frame too narrow for the row on purpose,
+ * so that the wrapping is something to look at rather than something to take
+ * on trust.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/badge.latte'}
+
+{block sgPage}
+    {embed block sgLayoutSection,
+        primitive: 'l-cluster',
+        summary: 'Short things side by side - labels, buttons, the links at the end of a row - centred on one '
+            . 'line and wrapping onto the next where the room runs out, with the same space both ways.'}
+        {block sgLayoutSectionBody}
+            {embed block sgSpecimen, variant: 'on one line'}
+                {block sgSpecimenStage}
+                    <div class="l-cluster">
+                        {include badge, label: 'Cambrian'}
+                        {include badge, label: 'Ordovician'}
+                        {include badge, label: 'In this build', variant: 'accent'}
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'wrapping in a narrow frame', narrow: true}
+                {block sgSpecimenStage}
+                    <div class="l-cluster">
+                        {include badge, label: 'Cambrian'}
+                        {include badge, label: 'Ordovician'}
+                        {include badge, label: 'Silurian'}
+                        {include badge, label: 'Devonian'}
+                        {include badge, label: 'Carboniferous'}
+                        {include badge, label: 'Permian', variant: 'accent'}
+                    </div>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

@@ -1,0 +1,84 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The shell every page is drawn in, and its four regions.
+ *
+ * The specimen is a second shell drawn inside the first, with the same classes,
+ * so that the switch above rearranges it the way it rearranges this page: its
+ * areas, columns and rows are the theme's tokens and are left alone. Four other
+ * tokens are set on the specimen, for it and nothing else, because a shell drawn
+ * inside a page cannot behave the way the page does:
+ *
+ * - --layout-shell-min-size: auto. The page's shell is never shorter than the
+ *   window, and a specimen that tall would be a page of its own. The navigation
+ *   it holds is bounded by the same token, which then bounds nothing.
+ * - --layout-banner-position and --layout-nav-position: static. A held band in
+ *   the content would stick to the window under the page's own banner, and
+ *   assets/chrome.ts adds up every band whose position is sticky - a held
+ *   specimen would move where a jump to a heading stops.
+ * - --layout-z-chrome: auto. The banner is a grid item, so its layer applies
+ *   even where it is not held, and the specimen's banner would be drawn over
+ *   the page's own as it scrolls under it.
+ *
+ * What is held, and the layer it is held in, is shown by the chrome of this
+ * very page and explained on the page the first paragraph points at, which
+ * stays where it is, under Foundations.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/nav.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        Every page is written in the same four regions in the same order - banner, navigation,
+        content, footer - and none of them knows where it will be drawn. The theme decides that:
+        ledger puts the navigation in a column beside the other three, atrium puts all four one under
+        another. Which of them stays in view while the page scrolls is a theme's decision too, and it is
+        shown by this page's own banner and navigation: see
+        <a n:href="page group: 'foundations', page: 'chrome'" data-testid="styleguide-chrome-link">what stays in view</a>.
+    </p>
+
+    {embed block sgLayoutSection,
+        primitive: 'l-shell',
+        summary: 'The grid a page is drawn in. Its areas, columns and rows are tokens of the theme, so moving '
+            . 'the navigation from the top of the page to its side changes no template.'}
+        {block sgLayoutSectionBody}
+            {embed block sgSpecimen, variant: 'the four regions, placed by the theme'}
+                {block sgSpecimenStage}
+                    <div
+                        class="l-shell"
+                        style="--layout-shell-min-size: auto; --layout-banner-position: static; --layout-nav-position: static; --layout-z-chrome: auto"
+                        data-testid="styleguide-shell-specimen"
+                    >
+                        <div class="l-shell__banner">
+                            <p><code>.l-shell__banner</code> - the name of the site, and whoever is signed in</p>
+                        </div>
+
+                        <div class="l-shell__nav">
+                            <div class="l-shell__nav-hold">
+                                {include nav, items: $sampleNavigation, label: 'Shell specimen'}
+                            </div>
+                        </div>
+
+                        <div class="l-shell__main">
+                            <p><code>.l-shell__main</code> - the content of the page</p>
+                        </div>
+
+                        <div class="l-shell__footer">
+                            <p><code>.l-shell__footer</code> - what every page ends with</p>
+                        </div>
+                    </div>
+                {/block}
+            {/embed}
+
+            <p class="l-measure">
+                The navigation region is <code>.l-shell__nav</code>, drawn here with the navigation
+                component the way every page draws it. It paints the whole region, and what it holds is
+                one element in, <code>.l-shell__nav-hold</code> - the part a theme may keep in view,
+                because a region stretched down the whole page has nowhere to stick to.
+            </p>
+        {/block}
+    {/embed}
+{/block}
