@@ -6,6 +6,7 @@ namespace Trilobit\Tests\Template;
 
 use Dom\Element;
 use Dom\HTMLDocument;
+use Dom\Node;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 
@@ -90,19 +91,20 @@ final class TooltipTest extends TestCase
             }
         }
 
-        if ($tip === null) {
+        if (!$tip instanceof Element) {
             return ['the tooltip has no tip'];
         }
 
         $id = (string) $tip->getAttribute('id');
         $described = null;
         foreach ($holder->querySelectorAll('[aria-describedby]') as $candidate) {
-            if (in_array($id, preg_split('/\s+/', trim((string) $candidate->getAttribute('aria-describedby'))) ?: [], true)) {
+            $ids = preg_split('/\s+/', trim((string) $candidate->getAttribute('aria-describedby')));
+            if (in_array($id, $ids === false ? [] : $ids, true)) {
                 $described = $candidate;
             }
         }
 
-        if ($described === null) {
+        if (!$described instanceof Node) {
             return [sprintf('nothing in the tooltip is described by its tip %s', $id)];
         }
 
