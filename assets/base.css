@@ -18,12 +18,14 @@
  * ratio such as 100% or 1fr describes a relationship between parts rather than a
  * size - "as wide as its container" stays true in every theme.
  *
- * One token is declared here rather than by a theme: --layout-content-width,
- * which the block below derives from the theme's three widths and the attribute
+ * Two tokens are declared here rather than by a theme. --layout-content-width
+ * is derived by the block below from the theme's three widths and the attribute
  * on <html>. Deriving is not deciding - the three values it picks between are
  * still the theme's - and the test above knows the difference: a token this file
  * declares is exempt from "every theme has to declare it", and every token that
- * declaration reads is checked as usual.
+ * declaration reads is checked as usual. --layout-chrome-offset is not a value
+ * anybody chooses at all but one the page measures (assets/chrome.ts); what this
+ * file gives it is the zero it starts from.
  *
  * Class names say what a thing is, never what it looks like (decision D3):
  *
@@ -123,6 +125,37 @@
 
     html {
         -webkit-text-size-adjust: 100%;
+    }
+
+    /*
+     * A jump to an anchor, and focus moved from the keyboard, stop under
+     * whatever the theme holds in view at the top of the window rather than
+     * behind it. Both are the browser scrolling something into view, and both
+     * keep clear the scroll margin of what they scroll to.
+     *
+     * **The margin of what is scrolled to, and not the padding of what
+     * scrolls.** Padding the scroller would be one line, and it is what was
+     * tried first: it keeps the clearance for everything scrolled into view,
+     * the held banner and the held navigation included. Those are in view
+     * already, but under a padding they count as hidden behind themselves, so
+     * tabbing onto the first link of the menu scrolled the page back by most of
+     * a window. So the clearance is given to what can be covered - the content
+     * and the footer, which share the column the banner is held over - and to
+     * nothing else. It also leaves nothing here to move should the page ever
+     * stop scrolling as a document: a margin on the target works for whatever
+     * scrolls.
+     *
+     * One number, and it is measured: assets/chrome.ts writes how much of the
+     * window the held bands cover, added up, whenever that changes. Zero until
+     * it has, which is also the right answer wherever nothing is held.
+     */
+    :root {
+        --layout-chrome-offset: 0;
+    }
+
+    .l-shell__main *,
+    .l-shell__footer * {
+        scroll-margin-block-start: var(--layout-chrome-offset);
     }
 
     body {
@@ -481,14 +514,84 @@
         min-block-size: var(--layout-shell-min-size);
     }
 
+    /*
+     * What a theme may hold in view while the page scrolls under it: the banner,
+     * and the navigation, each on a switch of its own (--layout-banner-position,
+     * --layout-nav-position - sticky or static), because somebody who wants one
+     * held should not get the other with it. See .ai/plans/09-chrome-a-sirka-
+     * obsahu.md, L1.
+     *
+     * **Sticky, never fixed.** A held band stays a grid item: it keeps its row
+     * and its column, and the content starts under it because the grid puts it
+     * there. A fixed band would leave the grid, and the space it used to take
+     * would have to be written down again as a margin on the content - a second
+     * copy of the banner's height, right until the banner changes.
+     *
+     * **The document scrolls**, so a held band sticks to the window. What a jump
+     * to an anchor keeps clear is the scroll margin further up, given to the
+     * content and not to the bands, and the number it reads is measured by
+     * assets/chrome.ts.
+     *
+     * Held bands are drawn in the chrome's layer. Whatever in the content has a
+     * position of its own - a card, the link stretched over it - is otherwise
+     * painted in the same pass in the order of the document, which is after the
+     * banner, and would be drawn over it as it scrolls under.
+     */
     .l-shell__banner {
         background-color: var(--color-banner);
         border-block-end: var(--border-hairline) solid var(--color-line);
         grid-area: banner;
+        inset-block-start: 0;
+        position: var(--layout-banner-position);
+        z-index: var(--layout-z-chrome);
     }
 
+    /*
+     * The navigation is held one element in, and not by the region itself.
+     *
+     * In ledger the region is the side column: stretched down the whole page so
+     * that its colour runs to the bottom whatever the length of the menu. A box
+     * as tall as the page it sticks in has nowhere to stick to, so the region
+     * stays where it is and paints the column, and what it holds is the part
+     * that stays in view - never taller than the window, so a menu longer than
+     * the window scrolls inside it rather than below the reach of anybody who
+     * has not scrolled to the end of the page. The window's height is read from
+     * --layout-shell-min-size, the one token that already names it: the shell
+     * is never shorter than the window, and what is held in it never taller.
+     *
+     * The bound is not on the switch. A navigation that is not held but has a
+     * menu taller than the window therefore scrolls inside its column too;
+     * making the bound follow the switch would take a second switch, and the two
+     * could then be set to disagree.
+     */
     .l-shell__nav {
+        background-color: var(--color-nav);
         grid-area: nav;
+    }
+
+    .l-shell__nav-hold {
+        inset-block-start: 0;
+        max-block-size: var(--layout-shell-min-size);
+        overflow-y: auto;
+        position: var(--layout-nav-position);
+        z-index: var(--layout-z-chrome);
+    }
+
+    /*
+     * Nothing is held on paper. A held band would be printed at the top of every
+     * sheet, and a navigation bounded to one window would be printed cut off
+     * where the window ended.
+     */
+    @media print {
+        .l-shell__banner {
+            position: static;
+        }
+
+        .l-shell__nav-hold {
+            max-block-size: none;
+            overflow-y: visible;
+            position: static;
+        }
     }
 
     .l-shell__main {

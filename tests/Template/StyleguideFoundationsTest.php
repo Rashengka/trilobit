@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Presentation\Styleguide\OverviewPresenter;
 use Trilobit\Core\Presentation\Styleguide\StyleguidePage;
 use Trilobit\Core\Routing\StyleguideRoutes;
+use Trilobit\Tests\Architecture\BaseCssHoldsNoLiteralsTest;
 
 /**
  * The two things the style guide shows that belong to no register, still shown
@@ -46,6 +47,48 @@ final class StyleguideFoundationsTest extends TestCase
                     $token,
                     count($drawnOn),
                     implode(', ', $drawnOn),
+                ),
+            );
+        }
+    }
+
+    /**
+     * Every layer a theme names for what is drawn over the page is named, once,
+     * on some page of the guide.
+     *
+     * The layers are read from the theme files rather than from a list kept
+     * beside the page, so a layer added to the themes and to nothing else fails
+     * here - the guide shows the stacking order the themes declare, not the one
+     * somebody remembered to write down (.ai/plans/13-styleguide-layout.md: the
+     * guide documents the token once it exists).
+     */
+    public function testEveryLayerTheThemesDeclareIsNamedOnceSomewhereInTheGuide(): void
+    {
+        $layers = [];
+        foreach (BaseCssHoldsNoLiteralsTest::themeFiles() as $source) {
+            preg_match_all('/^\s*(--layout-z-[a-z0-9-]+)\s*:/mi', $source, $matches);
+            $layers = [...$layers, ...$matches[1]];
+        }
+
+        $layers = array_values(array_unique($layers));
+        self::assertNotSame([], $layers, 'no theme declares a layer (--layout-z-*), so there is nothing to look for');
+
+        foreach ($layers as $layer) {
+            $namedOn = [];
+            foreach (StyleguideSpecimens::everyPage() as $path => $page) {
+                foreach ($page->querySelectorAll(sprintf('[data-testid="chrome-token-%s"]', $layer)) as $row) {
+                    $namedOn[] = $path . ' (' . $row->tagName . ')';
+                }
+            }
+
+            self::assertCount(
+                1,
+                $namedOn,
+                sprintf(
+                    '%s is a layer the themes declare and the style guide names it %d times rather than once: %s',
+                    $layer,
+                    count($namedOn),
+                    implode(', ', $namedOn),
                 ),
             );
         }
