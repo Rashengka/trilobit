@@ -70,6 +70,23 @@ final class ToastTest extends TestCase
         }
     }
 
+    /**
+     * A type it does not know stops the page rather than being drawn as
+     * information: a refusal with a typing mistake in its type would be read out
+     * as a quiet status.
+     */
+    public function testATypeItDoesNotKnowIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("c-toast takes type 'info', 'danger', not 'dnager'.");
+
+        ComponentRendering::render(
+            'toast.latte',
+            '{include toast, messages: $messages}',
+            ['messages' => [(object) ['message' => 'Saved.', 'type' => 'info'], (object) ['message' => 'Refused.', 'type' => 'dnager']]],
+        );
+    }
+
     public function testARefusalIsDrawnAsOne(): void
     {
         [$saved, $refused] = $this->toasts([['Saved.', 'info'], ['Refused.', 'danger']]);

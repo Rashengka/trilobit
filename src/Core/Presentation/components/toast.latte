@@ -9,8 +9,10 @@
  * message said before a redirect arrives with the page the redirect leads to;
  * one said in answer to Naja arrives in that snippet, and replaces what was
  * there rather than piling up on it. The type names what kind of news it is,
- * as it does for c-notice: danger is a refusal, and anything else is drawn as
- * information.
+ * as it does for c-notice: info, or danger for a refusal. A type it does not
+ * know stops the page (Argument) rather than being drawn as information: a
+ * refusal said with a typing mistake in its type would otherwise be read out
+ * as a quiet status and look like good news.
  *
  * **What a screen reader hears** is the sentence and not the toast, for the
  * reason c-notice gives: a live region holding the button would announce
@@ -35,6 +37,7 @@
 
 {define toast, array $messages, bool $corner = false, ?string $testId = null}
     <div n:if="$messages !== []" n:class="'c-toast', $corner ? 'c-toast--corner'" data-testid="{$testId}">
+        {foreach $messages as $toast}{do Trilobit\Core\Presentation\Component\Argument::oneOf('c-toast', 'type', $toast->type, ['info', 'danger'])}{/foreach}
         <div n:foreach="$messages as $toast" n:class="'c-toast__item', $toast->type === 'danger' ? 'c-toast__item--danger'">
             <p class="c-toast__message" role="{$toast->type === 'danger' ? 'alert' : 'status'}">{$toast->message}</p>
             {include close, label: 'Dismiss'}

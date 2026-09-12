@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Trilobit\Tests\Template;
 
 use Dom\Element;
-use Dom\HTMLDocument;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
