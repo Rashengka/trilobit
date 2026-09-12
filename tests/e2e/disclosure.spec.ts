@@ -158,6 +158,10 @@ test.describe('with the keyboard, and to a screen reader', () => {
         tree = await accessible(page, '[data-styleguide-variant="default"] .c-collapse > summary');
         expect(tree.expanded).toBe(true);
 
+        // Tabbed on once it is drawn, the way a person tabs on once they see
+        // it: a Tab in the same moment as the Enter can reach the browser
+        // before the opened content has been laid out, and skip it.
+        await expect(inside).toBeVisible();
         await page.keyboard.press('Tab');
         await expect(inside).toBeFocused();
 
@@ -199,10 +203,12 @@ test.describe('with the keyboard, and to a screen reader', () => {
         await page.keyboard.press('Enter');
         await expect(items.nth(0)).toHaveAttribute('open', '');
 
-        // What the open item holds is in reach; the next stop after it is the
-        // title of the next item.
+        // What the open item holds is in reach, once it is drawn (see the test
+        // above); the next stop after it is the title of the next item.
+        const insideFirst = items.nth(0).locator('.c-collapse__body a');
+        await expect(insideFirst).toBeVisible();
         await page.keyboard.press('Tab');
-        await expect(items.nth(0).locator('.c-collapse__body a')).toBeFocused();
+        await expect(insideFirst).toBeFocused();
         await page.keyboard.press('Tab');
         await expect(items.nth(1).locator('summary')).toBeFocused();
         await page.keyboard.press('Enter');
