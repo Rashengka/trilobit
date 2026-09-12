@@ -67,6 +67,13 @@ export function keepJumpsClearOfTheChrome(): void {
         attributeFilter: ['data-theme'],
     });
 
+    // Says that the page measures its chrome, and a theme that holds one band
+    // under another holds nothing until it does (atrium.css): without the
+    // reach, the lower band would be held at the top of the window, over the
+    // upper one. Set in the same task as the first measurement, so no frame
+    // is drawn with the bands held and not yet measured; the measurement
+    // reads the bands as held, which is why the mark comes first.
+    document.documentElement.setAttribute('data-chrome-measured', '');
     update();
 }
 

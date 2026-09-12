@@ -296,9 +296,16 @@
  * window keeps the values above for the same reason ledger lets go there: on a
  * window that small, a banner and a row of links held for good would take the
  * room the content scrolls in.
+ *
+ * And only once the page measures its chrome (data-chrome-measured, set by
+ * assets/chrome.ts). The navigation is held where the held banner ends, and
+ * that is a length the page measures; without the script it would be held at
+ * the top of the window, over the banner. So a page without the script holds
+ * nothing and lets both bands scroll away, which is what atrium did before it
+ * held them.
  */
 @media screen and (width >= 52rem) {
-    [data-theme='atrium'] {
+    [data-theme='atrium'][data-chrome-measured] {
         --layout-banner-position: sticky;
         --layout-nav-position: sticky;
     }

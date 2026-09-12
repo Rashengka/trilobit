@@ -420,6 +420,66 @@ test('in atrium a page opens with its bands at their size, not growing into it',
     expect(before.length, `the banner grew into its size over several frames: ${before.join(', ')} -> ${final}`).toBeLessThanOrEqual(1);
 });
 
+/**
+ * Without the script nothing measures how tall the banner is, so a navigation
+ * held under it would be held at the top of the window - over the banner, or
+ * under it. Atrium then holds nothing at all and lets both bands scroll away,
+ * the way it did before it held them: a page that works without the script,
+ * rather than one that half works.
+ */
+test.describe('without the script', () => {
+    test.use({ javaScriptEnabled: false });
+
+    test('in atrium on a wide window the bands scroll away and never cover each other', async ({ page }) => {
+        await page.setViewportSize(windows[0]);
+        await page.goto('/_styleguide');
+        expect(
+            await page.evaluate(() => document.querySelector('[data-chrome-sentinel]') === null),
+            'the page ran its script, so this is not the page without it',
+        ).toBe(true);
+        await page.evaluate(() => {
+            const filler = document.createElement('div');
+            filler.style.blockSize = '300vh';
+            document.querySelector('.l-shell__main .l-container')?.prepend(filler);
+        });
+
+        const read = () =>
+            page.evaluate(
+                ([banner, nav, content]) => {
+                    const box = (selector: string): DOMRect => {
+                        const element = document.querySelector(selector);
+                        if (element === null) {
+                            throw new Error(`nothing matches ${selector}`);
+                        }
+
+                        return element.getBoundingClientRect();
+                    };
+
+                    return {
+                        bannerTop: box(banner).top,
+                        bannerBottom: box(banner).bottom,
+                        navTop: box(nav).top,
+                        contentTop: box(content).top,
+                    };
+                },
+                [BANNER, NAV, CONTENT],
+            );
+
+        const before = await read();
+        await page.mouse.move(10, 10);
+        await page.mouse.wheel(0, distance);
+        // Asked from outside: waitForFunction waits on the page's own frames,
+        // and a page without its script never runs one.
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(distance);
+        const after = await read();
+
+        expect(before.contentTop - after.contentTop, 'the content did not move with the scroll').toBeCloseTo(distance, 0);
+        expect(after.navTop, 'the navigation and the banner cover each other').toBeGreaterThanOrEqual(after.bannerBottom - 0.5);
+        expect(before.bannerTop - after.bannerTop, 'the banner is held without the script').toBeCloseTo(distance, 0);
+        expect(before.navTop - after.navTop, 'the navigation is held without the script').toBeCloseTo(distance, 0);
+    });
+});
+
 /** Ledger holds its bands and does not change their size: L3 is atrium's. */
 test('in ledger the bands keep their size while the page scrolls', async ({ page }) => {
     await open(page, windows[0], 'ledger');
