@@ -52,6 +52,7 @@ function run(): int
 
     checkRuleSamples($failures);
     checkWindowsDriveLettersBeginAToken($failures);
+    checkHighEntropySeesThroughWordPaths($failures);
     checkFixtureDirectory($failures);
     checkExemptPaths($failures);
     checkMissingLocalConfig($failures);
@@ -157,6 +158,59 @@ function checkWindowsDriveLettersBeginAToken(array &$failures): void
         [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
         assertSame(1, $code, sprintf('%s is still a finding (output: %s)', $case, oneLine($out)), $failures);
         assertContains('[absolute_path]', $out, sprintf('%s is still reported by absolute_path', $case), $failures);
+    }
+}
+
+/**
+ * A path spelled out of words is not an opaque literal, however long it is.
+ *
+ * The rule reports a long literal assigned to a name, and a directory path
+ * such as the one a style guide page or a component registry names is long
+ * enough to be one. It used to be reported, and two suppressions in this
+ * repository existed for nothing else. The line is drawn by what the pieces of
+ * the literal look like, not by whether it contains a slash - base64 carries
+ * slashes too - so both directions are held here: every word path passes, and
+ * every shape a key or a token takes is still reported, a slash in it or not.
+ *
+ * The secrets are assembled from pieces so that this file does not carry the
+ * very literals it hands the tool. The word paths are written out as they
+ * are, because this file is scanned too and they have to pass here as well.
+ *
+ * @param list<string> $failures
+ */
+function checkHighEntropySeesThroughWordPaths(array &$failures): void
+{
+    $wordPaths = [
+        'a style guide route' => "const COLLAPSE = '/_styleguide/components/collapse';",
+        'a source directory' => "public const string DIRECTORY = 'src/Core/Presentation/components';",
+        'a fixture directory' => "public const string DIRECTORY = 'tests/Architecture/Fixtures/Permissions';",
+        'a path of words joined by dashes and underscores' => "\$path = 'assets/component-previews/button_group/large-variant';",
+        'a path naming a class' => "\$path = 'src/Core/Presentation/Component/ComponentRegistry';",
+    ];
+    foreach ($wordPaths as $case => $line) {
+        [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
+        assertSame(0, $code, sprintf('%s is not an opaque literal (output: %s)', $case, oneLine($out)), $failures);
+    }
+
+    $hex = 'a3f9c1d4e5b6' . 'a7c8d9e0f1a2' . 'b3c4d5e6f708';
+    $base64 = 'abcD3fGh/IjkL' . 'mN0pQrS+tUvWxYz12==';
+    $jwt = 'eyJhbGciOiJIUzI1NiJ9' . '.' . 'eyJzdWIiOiJkZW1vIn0' . '.' . 'Xk9pQ2mZ7rT4vB8nL3wY6s';
+    $mixed = 'Q7mZp2Rk' . 'X9vT4nWb' . 'L8sY3dHc' . 'F6gJ1eAu';
+    $secrets = [
+        'a hex string' => "\$value = '" . $hex . "';",
+        'base64 with a slash, a plus and padding' => "\$value = '" . $base64 . "';",
+        'a JWT' => "\$value = '" . $jwt . "';",
+        'a key in mixed case with digits' => "\$value = '" . $mixed . "';",
+        'a hex segment inside a path' => "\$value = '/assets/" . '9f86d081884c7d659a2f' . 'eaa0c55ad015a3bf4f1b' . "';",
+        'a path one segment of which is random characters' => "\$value = '/files/" . 'Xk9pQ2mZ' . '7rT4vB8n' . "/download';",
+        'a path one segment of which is random lower case' => "\$value = '/account/activate/" . 'qwhdkzmx' . 'nvbrtplk' . "';",
+        'base64url whose pieces the dashes and underscores separate' => "\$value = '" . 'Zm9vYm-FyQm_F6cXV4' . 'LXRva2VuLXNhbXBsZQ' . "';",
+        'a token behind a word path on the same line' => "\$a = '/_styleguide/components/collapse'; \$b = '" . $mixed . "';",
+    ];
+    foreach ($secrets as $case => $line) {
+        [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
+        assertSame(1, $code, sprintf('%s is still a finding (output: %s)', $case, oneLine($out)), $failures);
+        assertContains('[high_entropy]', $out, sprintf('%s is still reported by high_entropy', $case), $failures);
     }
 }
 

@@ -21,7 +21,7 @@ use Trilobit\Core\Security\Gate;
 final class InstallationSection
 {
     /** Under the project root. */
-    public const string DIRECTORY = 'src/Core/Presentation/Installation'; // check-leaks:allow rule=high_entropy reason=a directory path that happens to be long enough to read as an opaque literal
+    public const string DIRECTORY = 'src/Core/Presentation/Installation';
 
     /**
      * Every permission question written in $directory, as

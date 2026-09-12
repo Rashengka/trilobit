@@ -1,0 +1,40 @@
+{**
+ * c-offcanvas - a panel drawn in from an edge of the window over the page: a
+ * basket, a set of filters, a menu on a narrow screen.
+ *
+ * It is the same native dialog c-modal is, shown as a modal and opened and
+ * closed the same way - a button with commandfor naming it and the command
+ * show-modal, and the cross in its header with the command close - so it
+ * takes the focus in, makes the page behind it inert, closes on Escape and
+ * gives the focus back, all of it the browser's. See modal.latte.
+ *
+ * What it adds is the edge (Trilobit\Core\Presentation\Component\OffcanvasEdge),
+ * which is logical: the start and the end swap sides in a language written
+ * from the right. It slides in from that edge, for nobody who asked for
+ * reduced motion (assets/base.css).
+ *
+ * A click on the page beside it puts it away (closedby="any"), the way a menu
+ * is put away: what it holds is something to look at or pick from rather than
+ * something half written. A browser that does not know the attribute ignores
+ * it, and there Escape and the cross still close it.
+ *}
+
+{import 'close.latte'}
+
+{define offcanvas, string $id, string $title, Trilobit\Core\Presentation\Component\OffcanvasEdge $edge = Trilobit\Core\Presentation\Component\OffcanvasEdge::End, ?string $testId = null}
+    <dialog
+        n:class="'c-offcanvas', 'c-offcanvas--' . $edge->value"
+        id="{$id}"
+        aria-labelledby="{$id}-title"
+        closedby="any"
+        data-testid="{$testId}"
+    >
+        <div class="c-offcanvas__header">
+            <h2 class="c-offcanvas__title" id="{$id}-title">{$title}</h2>
+
+            {include close, attributes: ['commandfor' => $id, 'command' => 'close']}
+        </div>
+
+        <div class="c-offcanvas__body">{block offcanvasBody}{/block}</div>
+    </dialog>
+{/define}
