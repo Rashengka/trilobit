@@ -28,6 +28,7 @@ use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\PasswordCommand;
 use Trilobit\Core\Console\TenantCommand;
 use Trilobit\Core\Console\WarmupCommand;
+use Trilobit\Core\Content\Categories;
 use Trilobit\Core\Content\ContentTypes;
 use Trilobit\Core\Content\PathRegistry;
 use Trilobit\Core\Content\ReservedSegments;
@@ -314,6 +315,12 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('pathRegistry'))
             ->setFactory(PathRegistry::class);
+
+        // Categories are rows of that register with other rows filed under
+        // them, so they are Core's too and shared by every module that files
+        // content into them (.ai/plans/11-cms-po-prvnim-proklikani.md, C4).
+        $builder->addDefinition($this->prefix('categories'))
+            ->setFactory(Categories::class);
 
         // Which kinds of content this build can draw, and the catch-all that
         // reads the register in front of them. Both are always registered:
