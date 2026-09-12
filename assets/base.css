@@ -146,12 +146,16 @@
     }
 
     /*
-     * The six levels read off the six steps of the type scale the themes
-     * declare, in the one order they come in. A component that wants a size of
-     * its own says so on its own class and wins by specificity, which is what
-     * every heading in this application does today - so this is what a heading
-     * nobody wrote a component for falls back to, rather than the body size it
-     * used to inherit.
+     * The six levels read off the type scale the themes declare. A component
+     * that wants a size of its own says so on its own class and wins by
+     * specificity, which is what every heading in this application does
+     * today - so this is what a heading nobody wrote a component for falls
+     * back to, rather than the body size it used to inherit.
+     *
+     * h5 and h6 share the bottom step on purpose (decided 2026-09-12): a
+     * heading smaller than the running text under it reads as a caption
+     * rather than as a heading, so the scale stops narrowing at --text-base
+     * instead of dropping a step further for the sixth level.
      */
     h1 {
         font-size: var(--text-3xl);
@@ -169,12 +173,9 @@
         font-size: var(--text-lg);
     }
 
-    h5 {
-        font-size: var(--text-base);
-    }
-
+    h5,
     h6 {
-        font-size: var(--text-sm);
+        font-size: var(--text-base);
     }
 
     a {
