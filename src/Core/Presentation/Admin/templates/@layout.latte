@@ -68,7 +68,9 @@
 {* Absent rather than empty while nobody is signed in: there is nothing to
    navigate to before there is somebody navigating. *}
 <div class="l-shell__nav" n:if="$menu !== []">
-    {include nav, items: $menu, label: 'Administration', testId: 'admin-menu'}
+    <div class="l-shell__nav-hold">
+        {include nav, items: $menu, label: 'Administration', testId: 'admin-menu'}
+    </div>
 </div>
 
 <main class="l-shell__main" data-testid="admin-content">

@@ -164,6 +164,29 @@
 
     --layout-card-min: 17rem;
     --layout-card-media-ratio: 16 / 9;
+
+    /*
+     * What stays in view while the page scrolls under it, each band on a
+     * switch of its own: `sticky` holds it, `static` lets it scroll away with
+     * the page. Two switches rather than one, because a held banner and a held
+     * navigation are worth something for different reasons, and somebody who
+     * wants one should not get the other with it.
+     *
+     * Atrium holds neither. Its banner and its navigation are two rows on top
+     * of the page, and holding both for good would take the room they are
+     * worth only while the page is at its top.
+     */
+    --layout-banner-position: static;
+    --layout-nav-position: static;
+
+    /*
+     * The layer whatever is held is drawn in: above the content that scrolls
+     * under it. A menu that opens is drawn in the browser's top layer, above
+     * every layer named here, and needs none of its own. A layer added later
+     * is named beside this one rather than numbered in between wherever it is
+     * first needed.
+     */
+    --layout-z-chrome: 1;
 }
 
 /*
