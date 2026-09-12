@@ -129,11 +129,19 @@ demo_names:
 # would catch a real disclosure in a lock file - a private package repository,
 # a URL carrying a password, a service token, a pattern from the local list -
 # keep applying to it. That is why this is four names and not skip_paths.
+#
+# www/build/licenses.txt is the other file nobody writes. The build copies into
+# it the licence of every third-party package it bundled, and a copyright line
+# has to be carried verbatim - so it holds its authors' names in their own
+# alphabets, and editing it by hand is forbidden for the same reason as the lock
+# file. Only czech_text is lifted; every other rule keeps applying to it.
+# Approved by the owner on 2026-09-12.
 exempt:
   czech_text:
     - '**/translations/cs.*'
     - 'LICENSE'
     - 'composer.lock'
+    - 'www/build/licenses.txt'
   email:
     - 'composer.lock'
   phone:

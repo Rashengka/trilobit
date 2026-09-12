@@ -17,10 +17,14 @@
  * computed display) became a utility in the stylesheet the application ships,
  * and npm run check:build then held the build to the tests as well as to the
  * code. What a test says about the page must not change the page.
+ *
+ * The same holds for the build's own plugins: "transform", in a comment in
+ * vite-plugins, became a utility as well.
  */
 
 @import "tailwindcss";
 @source not "../tests";
+@source not "../vite-plugins";
 @import "../var/build/sources.css";
 
 @import "./themes/atrium.css";
