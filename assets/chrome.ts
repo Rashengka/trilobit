@@ -20,7 +20,9 @@ import { observedAgainst, scroller } from './scroller';
  * covers the content column: a band above the content counts with its offset
  * and its height, and a band beside it - ledger's navigation - covers none of
  * it. Several bands held one under another cover as far down as the lowest of
- * them reaches, which is their heights added up.
+ * them reaches, which is their heights added up. What is written is half a
+ * pixel more than that, for the browser rounding a jump to a whole pixel
+ * (clearance(), below).
  *
  * One more number is written beside it, for the same reason: how far down the
  * held banner reaches (--layout-banner-reach). A theme that holds its
@@ -47,7 +49,7 @@ export function keepJumpsClearOfTheChrome(): void {
     // offset below is measured off the navigation.
     const update = (): void => {
         scroller().style.setProperty('--layout-banner-reach', `${reach(document.querySelector(BANNER))}px`);
-        scroller().style.setProperty('--layout-chrome-offset', `${covered(content)}px`);
+        scroller().style.setProperty('--layout-chrome-offset', `${clearance(covered(content))}px`);
     };
 
     // Any band changing size is a banner that wrapped, a theme that changed, a
@@ -155,6 +157,30 @@ function reach(band: Element | null): number {
     const offset = Number.parseFloat(style.insetBlockStart);
 
     return (Number.isNaN(offset) ? 0 : offset) + band.getBoundingClientRect().height;
+}
+
+/**
+ * How far below the top of the window a jump stops, for bands that cover
+ * $covered of it: half a pixel further, whenever anything is covered at all.
+ *
+ * A browser scrolls the document by whole pixels. Chrome takes the position a
+ * jump asks for - where the heading is, less its scroll margin - and rounds it
+ * to the nearest whole pixel, a half upwards; measured at a device pixel ratio
+ * of 1 and of 2 alike, so the pixel is a CSS one and not a device's. The
+ * heading is laid out at a fraction of a pixel that everything above it
+ * decides, so a jump can end up to half a pixel further down the page than
+ * asked, leaving that much of the heading behind the lowest band. Half a pixel
+ * is the most rounding to the nearest pixel can move a jump by, so a margin
+ * half a pixel taller than what is covered puts the heading on the band's edge
+ * or less than a pixel below it, and never under it, wherever it sits. A
+ * clearance rounded up to a whole pixel would not do: the position is rounded
+ * after the heading's own fraction is added, which a whole-pixel margin leaves
+ * where it was.
+ *
+ * Where nothing is held there is nothing to keep clear of, and zero stays zero.
+ */
+function clearance(covered: number): number {
+    return covered > 0 ? covered + 0.5 : 0;
 }
 
 function covered(content: Element): number {
