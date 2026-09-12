@@ -58,7 +58,8 @@
 #
 # A bundle, because the whole of it is everything in the business, including
 # sections nobody has written yet - which is what owning a business means.
-# Which role may carry that is a question about the role, not about this file.
+# Which role may carry that is a question about the role, not about this file:
+# the owner's and no other, see Trilobit\Core\Security\AccessComposition.
 app:
     bundle: true
     privileges: [view]

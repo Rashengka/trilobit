@@ -24,7 +24,6 @@ use Trilobit\Core\Security\Identity;
 use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
-use Trilobit\Core\Security\Resource;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
@@ -126,16 +125,18 @@ final class AccountCommandTest extends TestCase
 
         self::assertCount(1, $memberships);
         self::assertSame('alice@example.com', $memberships[0]->user()->email());
-        self::assertSame('administrator', $memberships[0]->role()->code());
+        self::assertSame('owner', $memberships[0]->role()->code());
         self::assertSame('Ammonite Bikes', $memberships[0]->tenant()->name());
     }
 
     /**
      * The claim the three rows are there for, asked the way the application
-     * asks it. Counting rows would pass just as well for a role assembled out
-     * of pieces nothing offers, which is exactly what the earlier build wrote.
+     * asks it, and asked of every pair this build offers. Counting rows would
+     * pass just as well for a role assembled out of pieces nothing offers,
+     * which is exactly what an earlier build wrote; naming a few pairs would
+     * pass for a role that had merely fallen behind.
      */
-    public function testTheAdministratorOfABusinessMayThenDoThingsInIt(): void
+    public function testTheOwnerOfABusinessMayDoEverythingInIt(): void
     {
         $container = $this->emptyInstallation();
 
@@ -144,56 +145,59 @@ final class AccountCommandTest extends TestCase
 
         $permissions = $container->getByType(Permissions::class);
 
-        self::assertTrue($permissions->isAllowed(Resource::Administration, Privilege::View));
-        self::assertTrue($permissions->isAllowed(Resource::Content, Privilege::Edit));
-        self::assertTrue($permissions->isAllowed(Resource::Account, Privilege::Purge));
+        $pairs = PermissionStructure::of(Bootstrap::rootDirectory())->everyPair();
+        self::assertNotSame([], $pairs);
+
+        foreach ($pairs as $pair) {
+            $privilege = $pair->privilege;
+            self::assertInstanceOf(Privilege::class, $privilege);
+            self::assertTrue(
+                $permissions->isAllowed($pair->resource, $privilege),
+                'the owner was refused ' . $pair->code(),
+            );
+        }
     }
 
     /**
-     * The role is what this build offers and not what some build offered, so it
-     * is read off the structure rather than out of a list beside the command.
-     * Asserted by the count as well as by two of the pieces, because a list
-     * that had merely fallen behind would still contain the ones anybody
-     * thought to name.
+     * The role is the owner's, and it is the whole of the application rather
+     * than a list of what this build offers: a list goes on saying what the
+     * application used to offer, and the whole of it takes in every section
+     * added afterwards without anybody coming back to the role.
      */
-    public function testTheRoleIsAssembledFromEveryPieceThisBuildOffers(): void
+    public function testTheRoleIsTheOwnersAndHoldsTheWholeApplication(): void
     {
         $container = $this->emptyInstallation();
 
         $this->execute($container, 'alice@example.com', tenant: self::HOST);
 
-        $role = $container->getByType(Accounts::class)->roleWithCode('administrator');
+        $role = $container->getByType(Accounts::class)->roleWithCode('owner');
         self::assertInstanceOf(Role::class, $role);
-        self::assertContains('app.administration:view', $role->permissions());
-        self::assertContains('app.administration.content:change_priority', $role->permissions());
-        self::assertCount(
-            count(PermissionStructure::of(Bootstrap::rootDirectory())->everyPair()),
-            $role->permissions(),
-        );
+        self::assertSame('Owner', $role->name());
+        self::assertSame(['app:*'], $role->permissions());
     }
 
     /**
-     * An installation upgraded from an earlier build already holds a role under
-     * this code, carrying whatever that build wrote in it - here the string the
-     * earlier one used, which is not even a piece anything offers. Running the
-     * command has to leave the role saying what it means now; leaving it alone
-     * would hand the account a role that reaches nothing, which looks like a
-     * permission problem rather than like an old row.
+     * A row under the owner's code that says anything else is brought back to
+     * the whole of the application on every run - here a single pair, the
+     * shape a hand-edited row or an earlier build could leave behind. Leaving
+     * it alone would hand the account a role that reaches less than owning a
+     * business means, which looks like a permission problem rather than like
+     * an old row.
      */
-    public function testItBringsARoleWrittenByAnEarlierBuildUpToDate(): void
+    public function testItBringsTheOwnersRoleBackToTheWholeApplication(): void
     {
         $container = $this->emptyInstallation();
 
         $entityManager = $container->getByType(EntityManagerInterface::class);
-        $entityManager->persist(new Role('administrator', 'Administrator', ['administration']));
+        $entityManager->persist(new Role('owner', 'Owner', ['app.administration:view']));
         $entityManager->flush();
 
         $this->execute($container, 'alice@example.com', tenant: self::HOST);
 
-        $role = $container->getByType(Accounts::class)->roleWithCode('administrator');
+        $role = $container->getByType(Accounts::class)->roleWithCode('owner');
         self::assertInstanceOf(Role::class, $role);
-        self::assertNotContains('administration', $role->permissions());
-        self::assertContains('app.administration:view', $role->permissions());
+        self::assertSame(['app:*'], $role->permissions());
+        self::assertCount(1, $entityManager->getRepository(Role::class)->findAll(), 'the row was reused, not doubled');
     }
 
     /**

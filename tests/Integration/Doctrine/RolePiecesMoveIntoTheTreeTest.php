@@ -13,6 +13,7 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Trilobit\Core\Migrations\Version20260907064607;
+use Trilobit\Core\Migrations\Version20260912093939;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 
@@ -42,7 +43,12 @@ final class RolePiecesMoveIntoTheTreeTest extends TestCase
     /** The last migration before the pieces moved. */
     private const string BEFORE = Version20260907064607::class;
 
-    private const string LATEST = 'latest';
+    /**
+     * The migration under test, and not the latest one: the next migration
+     * makes the administrator the owner, and this is about the pieces moving
+     * and nothing after it.
+     */
+    private const string LATEST = Version20260912093939::class;
 
     /**
      * By the role's code: the column as an earlier build wrote it, and as it

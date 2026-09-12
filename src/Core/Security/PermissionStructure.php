@@ -179,6 +179,40 @@ final readonly class PermissionStructure
     }
 
     /**
+     * What everything else falls under: the application inside one business.
+     *
+     * The whole of it is every section there is and every one added later,
+     * which is what owning a business means - so it is the one piece only the
+     * owner's role may hold; see Trilobit\Core\Security\AccessComposition.
+     * It is found in the tree rather than named, so that asking for it is not
+     * a mention of a resource that no question follows - see
+     * tests/Architecture/EveryPermissionQuestionIsPredefinedTest.
+     *
+     * There is one, because every resource's name begins with it. A tree with
+     * none or with two is refused rather than answered with one of them: the
+     * one picked would be the one the owner's role holds.
+     */
+    public function root(): Resource
+    {
+        $roots = array_values(array_filter(
+            Resource::cases(),
+            fn(Resource $resource): bool => $this->tree->ancestorsOf($resource->value) === [],
+        ));
+
+        if (count($roots) !== 1) {
+            throw new \LogicException(sprintf(
+                'Everything has to fall under one resource, and %s is what falls under nothing.',
+                $roots === [] ? 'no resource' : implode(', ', array_map(
+                    static fn(Resource $resource): string => $resource->value,
+                    $roots,
+                )),
+            ));
+        }
+
+        return $roots[0];
+    }
+
+    /**
      * Every piece a role could be assembled from in this build.
      *
      * It is what a role that may do everything is made of, and it is derived

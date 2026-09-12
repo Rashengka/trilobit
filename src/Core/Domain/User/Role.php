@@ -26,6 +26,20 @@ use Trilobit\Core\Tenancy\Shared;
 #[Shared(because: 'a role is part of the application rather than of a business, and a tenant that wants one of its own gets a row that names it - see Trilobit\Core\Domain\Tenancy\Membership')]
 class Role
 {
+    /**
+     * The code of the one role the application defines rather than a
+     * business: the owner of the business, which holds the whole of the
+     * application - `app:*`, every section there is and every one added later.
+     *
+     * It is a code rather than a flag on the row because a code is what
+     * everything else already refers to a role by, and it is written here once
+     * because the owner is the only role allowed to hold the whole of the
+     * application: Trilobit\Core\Security\AccessComposition drops that piece on
+     * any other role. A second spelling of it anywhere would be a second place
+     * deciding who owns a business.
+     */
+    public const string OWNER = 'owner';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -70,13 +84,12 @@ class Role
      * Replaces what this role is assembled from.
      *
      * It exists for the one role the application defines rather than a tenant:
-     * the administrator Trilobit\Core\Console\AccountCommand makes, which holds
-     * every pair the build offers. An installation upgraded from an earlier
-     * build already has that row, carrying whatever the earlier build wrote in
-     * it, and a command that only ever created the role would leave that
-     * account with rights nobody would think to look for. Replacing rather than
-     * adding is what makes running the command say what the role is now, rather
-     * than what it has ever been.
+     * the owner Trilobit\Core\Console\AccountCommand makes, which holds the
+     * whole of the application. A row under that code may say something else -
+     * edited by hand, or left by an earlier build - and a command that only
+     * ever created the role would leave that account with rights nobody would
+     * think to look for. Replacing rather than adding is what makes running the
+     * command say what the role is now, rather than what it has ever been.
      *
      * @param list<string> $permissions
      */

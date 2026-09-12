@@ -28,8 +28,6 @@ use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Security\Accounts;
-use Trilobit\Core\Security\Grant;
-use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
@@ -311,8 +309,8 @@ final class PageAdministrationTest extends TestCase
      * to be granted on the account row, which names no business - so it was a
      * right in all of them at once and, now that the pages of the
      * administration are gated, an answer in none. It is made here the way
-     * `app:account --tenant` makes it: every piece this build offers, on a
-     * role, held through a membership.
+     * `app:account --tenant` makes it: the owner's role, holding the whole of
+     * the application, held through a membership.
      */
     private function container(): Container
     {
@@ -338,10 +336,7 @@ final class PageAdministrationTest extends TestCase
         $container->getByType(Accounts::class)->save($account);
 
         $entityManager = $container->getByType(EntityManagerInterface::class);
-        $role = new Role('administrator', 'Administrator', array_map(
-            static fn(Grant $piece): string => $piece->code(),
-            $container->getByType(PermissionStructure::class)->everyPair(),
-        ));
+        $role = new Role(Role::OWNER, 'Owner', ['app:*']);
         $entityManager->persist($role);
         $entityManager->persist(new Membership($tenant, $account, $role));
         $entityManager->flush();

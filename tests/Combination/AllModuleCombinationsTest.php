@@ -355,7 +355,7 @@ final class AllModuleCombinationsTest extends TestCase
     public function testTheRenderedAdministrationMenuIsTheWayBackAndTheAdministeredModules(array $enabled): void
     {
         $container = Build::container($enabled);
-        $container->getByType(SignedIn::class)->login(new Identity(1, ['administrator'], []));
+        $container->getByType(SignedIn::class)->login(new Identity(1, ['owner'], []));
 
         try {
             $document = HTMLDocument::createFromString(
@@ -418,7 +418,7 @@ final class AllModuleCombinationsTest extends TestCase
     public function testTheOverviewCountsTheModulesThatPutASectionOnTheMenu(array $enabled): void
     {
         $container = Build::container($enabled);
-        $container->getByType(SignedIn::class)->login(new Identity(1, ['administrator'], []));
+        $container->getByType(SignedIn::class)->login(new Identity(1, ['owner'], []));
 
         try {
             $document = HTMLDocument::createFromString(
@@ -477,7 +477,7 @@ final class AllModuleCombinationsTest extends TestCase
         self::assertNotNull($match, 'cms is enabled and /admin/cms is not routed');
         self::assertSame('Cms:Admin:Signpost', $match['presenter'] ?? null);
 
-        $container->getByType(SignedIn::class)->login(new Identity(1, ['administrator'], []));
+        $container->getByType(SignedIn::class)->login(new Identity(1, ['owner'], []));
 
         try {
             $document = HTMLDocument::createFromString(
