@@ -31,7 +31,7 @@ use Trilobit\Tests\Architecture\BaseCssHoldsNoLiteralsTest;
  * mode added to the catalogue alone fails on the first of them.
  *
  * The other half of the mode - that somebody can reach it - is
- * Trilobit\Tests\Template\StyleguideOffersEveryPreferenceTest.
+ * Trilobit\Tests\Template\PreferenceSwitcherOffersEveryPreferenceTest.
  */
 #[CoversNothing]
 final class ContentWidthModesTest extends TestCase

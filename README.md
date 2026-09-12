@@ -523,10 +523,11 @@ The switches are preferences, and a preference is one entry in
 else: `theme` is drawn as `data-theme` on `<html>` and kept in a cookie called
 `trilobit-theme`, `theme-mode` as `data-theme-mode` in `trilobit-theme-mode`,
 `content-width` as `data-content-width` in `trilobit-content-width`. Adding a
-fourth is that one entry, a control in a template, and a rule per answer in
-`base.css` and in each theme - not a column and not a migration.
-`tests/Template/StyleguideOffersEveryPreferenceTest` fails when the catalogue and
-the controls part company either way round: an answer nobody can pick is a mode
+fourth is that one entry and a rule per answer in `base.css` and in each theme -
+not a column and not a migration: the switch (`c-preference-switcher`) reads its
+choices out of the catalogue, so it offers the new one without being touched.
+`tests/Template/PreferenceSwitcherOffersEveryPreferenceTest` fails when the
+catalogue and the switch part company either way round: an answer nobody can pick is a mode
 that does not exist, and a control for an answer the catalogue has not got posts
 a choice the server refuses while the page goes on looking right.
 
