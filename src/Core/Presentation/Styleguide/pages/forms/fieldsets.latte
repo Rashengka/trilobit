@@ -1,0 +1,47 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Fields that belong together, under one name. The fieldset draws the frame
+ * and the legend the name; how the fields inside are arranged is the page's
+ * business, which is why the rhythm here is .l-stack on the fieldset rather
+ * than anything the fieldset brings with it.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/field.latte'}
+
+{block sgPage}
+    {embed block sgFormSection, group: $formElements['fieldsets']}
+        {block sgFormSectionBody}
+            {embed block sgSpecimen, variant: 'a group of fields'}
+                {block sgSpecimenStage}
+                    <fieldset class="l-stack" data-testid="forms-fieldset">
+                        <legend>Where it was found</legend>
+
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-locality">Locality</label>{/block}
+
+                            {block fieldControl}
+                                <input id="sg-forms-locality" type="text" value="A quarry nobody named">
+                            {/block}
+                        {/embed}
+
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-layer">Layer</label>{/block}
+
+                            {block fieldControl}
+                                <select id="sg-forms-layer">
+                                    <option>Grey shale</option>
+                                    <option selected>Red limestone</option>
+                                    <option>Sandstone</option>
+                                </select>
+                            {/block}
+                        {/embed}
+                    </fieldset>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

@@ -11,6 +11,8 @@ use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
+use Trilobit\Core\Presentation\Form\FormElementGroup;
+use Trilobit\Core\Presentation\Form\FormElementRegistry;
 use Trilobit\Core\Presentation\Front\FrontPresenter;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
@@ -80,6 +82,7 @@ final class OverviewPresenter extends FrontPresenter
     public function __construct(
         private readonly ComponentRegistry $components,
         private readonly ContentGroupRegistry $contentGroups,
+        private readonly FormElementRegistry $formElements,
         private readonly StyleguidePages $pages,
     ) {
         parent::__construct();
@@ -164,6 +167,7 @@ final class OverviewPresenter extends FrontPresenter
         $template->guide = $this->guide($current);
         $template->components = $this->byName($this->components);
         $template->contentGroups = $this->groupsByName($this->contentGroups);
+        $template->formElements = $this->formElementsByName($this->formElements);
         $template->colourTokens = self::COLOUR_TOKENS;
         $template->statements = self::SAMPLE_STATEMENTS;
         $template->tableColumns = $this->sampleTableColumns();
@@ -268,6 +272,21 @@ final class OverviewPresenter extends FrontPresenter
      * @return array<string, ContentGroup>
      */
     private function groupsByName(ContentGroupRegistry $registry): array
+    {
+        $groups = [];
+        foreach ($registry->all() as $group) {
+            $groups[$group->name] = $group;
+        }
+
+        return $groups;
+    }
+
+    /**
+     * The groups of form controls, keyed the same way and for the same reason.
+     *
+     * @return array<string, FormElementGroup>
+     */
+    private function formElementsByName(FormElementRegistry $registry): array
     {
         $groups = [];
         foreach ($registry->all() as $group) {

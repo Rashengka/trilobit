@@ -8,6 +8,8 @@ use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
+use Trilobit\Core\Presentation\Form\FormElementGroup;
+use Trilobit\Core\Presentation\Form\FormElementRegistry;
 
 /**
  * Every page of the style guide, in the groups the menu lists them under.
@@ -29,9 +31,9 @@ use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
  * registered, and the only thing left to write is the file that shows it -
  * which the gates insist on.
  *
- * Layout and Forms are not here yet, on purpose: a group with nothing to show
- * would be a heading in the menu leading nowhere. Layout waits for
- * .ai/plans/09-chrome-a-sirka-obsahu.md, Forms for the plan that brings them.
+ * Layout is not here yet, on purpose: a group with nothing to show would be a
+ * heading in the menu leading nowhere, and it waits for
+ * .ai/plans/09-chrome-a-sirka-obsahu.md.
  *
  * tests/Template/StyleguidePagesTest holds this list and the files under
  * directory() together in both directions.
@@ -43,6 +45,7 @@ final class StyleguidePages
 
     public function __construct(
         private readonly ContentGroupRegistry $contentGroups,
+        private readonly FormElementRegistry $formElements,
         private readonly ComponentRegistry $components,
     ) {}
 
@@ -99,6 +102,22 @@ final class StyleguidePages
                         contentGroups: [$group->name],
                     ),
                     $this->contentGroups->all(),
+                ),
+            ),
+            new StyleguideGroup(
+                'forms',
+                'Forms',
+                'The controls of a form as the browser hands them over, drawn out of the theme, one page for '
+                . 'every group of them.',
+                array_map(
+                    static fn(FormElementGroup $group): StyleguidePage => new StyleguidePage(
+                        'forms',
+                        $group->name,
+                        ucfirst($group->name),
+                        $group->summary,
+                        formElements: [$group->name],
+                    ),
+                    $this->formElements->all(),
                 ),
             ),
             new StyleguideGroup(
