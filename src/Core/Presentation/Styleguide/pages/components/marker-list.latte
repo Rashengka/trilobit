@@ -8,11 +8,9 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-marker-list']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {include markerList, items: $statements}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {include markerList, items: $statements}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

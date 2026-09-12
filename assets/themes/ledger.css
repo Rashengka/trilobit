@@ -77,6 +77,16 @@
     --color-highlight: light-dark(oklch(0.9 0.11 90), oklch(0.42 0.09 85));
     --color-highlight-ink: light-dark(oklch(0.26 0.04 60), oklch(0.95 0.015 85));
 
+    /* The code the style guide highlights, which sits on --color-canvas-sunken:
+       each pair holds 4.5:1 against it in both modes, measured by
+       tests/e2e/styleguide-code.spec.ts. Inks, as a printer would set a
+       listing, rather than bright colours. */
+    --color-code-comment: light-dark(oklch(0.47 0.02 70), oklch(0.74 0.02 80));
+    --color-code-keyword: light-dark(oklch(0.45 0.13 25), oklch(0.78 0.11 30));
+    --color-code-name: light-dark(oklch(0.43 0.09 250), oklch(0.8 0.08 240));
+    --color-code-string: light-dark(oklch(0.43 0.09 145), oklch(0.8 0.1 140));
+    --color-code-literal: light-dark(oklch(0.45 0.11 310), oklch(0.8 0.09 310));
+
     --color-banner: light-dark(oklch(0.99 0.008 85), oklch(0.24 0.013 75));
     --color-banner-ink: var(--color-ink);
     --color-nav: light-dark(oklch(0.3 0.026 60), oklch(0.16 0.012 75));

@@ -11,17 +11,13 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-icon']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'sign-out'}
-                {block sgSpecimenStage}
-                    {include icon, name: 'sign-out', label: 'Sign out'}
-                {/block}
-            {/embed}
+            {specimen 'sign-out'}
+                {include icon, name: 'sign-out', label: 'Sign out'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'chevron-down'}
-                {block sgSpecimenStage}
-                    {include icon, name: 'chevron-down', label: 'Opens underneath'}
-                {/block}
-            {/embed}
+            {specimen 'chevron-down'}
+                {include icon, name: 'chevron-down', label: 'Opens underneath'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

@@ -13,28 +13,22 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-page-heading']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {include pageHeading,
-                        title: 'Trilobite field guide',
-                        lead: 'How to tell one segmented fossil from the next without a hand lens.'}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {include pageHeading,
+                    title: 'Trilobite field guide',
+                    lead: 'How to tell one segmented fossil from the next without a hand lens.'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'without a lead'}
-                {block sgSpecimenStage}
-                    {include pageHeading, title: 'Trilobite field guide'}
-                {/block}
-            {/embed}
+            {specimen 'without a lead'}
+                {include pageHeading, title: 'Trilobite field guide'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'as a section heading'}
-                {block sgSpecimenStage}
-                    {include pageHeading,
-                        title: 'Segments and lobes',
-                        lead: 'Three lobes along one axis, which is where the name comes from.',
-                        level: 'h3'}
-                {/block}
-            {/embed}
+            {specimen 'as a section heading'}
+                {include pageHeading,
+                    title: 'Segments and lobes',
+                    lead: 'Three lobes along one axis, which is where the name comes from.',
+                    level: 'h3'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

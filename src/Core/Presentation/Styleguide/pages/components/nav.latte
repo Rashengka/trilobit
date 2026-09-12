@@ -26,17 +26,13 @@
 
     {embed block sgSection, component: $components['c-nav']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {include nav, items: $sampleNavigation, label: 'Specimen'}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {include nav, items: $sampleNavigation, label: 'Specimen'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'with entries nested under an entry'}
-                {block sgSpecimenStage}
-                    {include nav, items: $sampleNestedNavigation, label: 'Specimen with entries under an entry', testId: 'sample-subnav'}
-                {/block}
-            {/embed}
+            {specimen 'with entries nested under an entry'}
+                {include nav, items: $sampleNestedNavigation, label: 'Specimen with entries under an entry', testId: 'sample-subnav'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

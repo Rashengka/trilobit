@@ -8,17 +8,13 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-notice']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'info'}
-                {block sgSpecimenStage}
-                    {include notice, message: 'The catalogue was saved.'}
-                {/block}
-            {/embed}
+            {specimen 'info'}
+                {include notice, message: 'The catalogue was saved.'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'danger'}
-                {block sgSpecimenStage}
-                    {include notice, message: 'The address or the password is not right.', variant: 'danger'}
-                {/block}
-            {/embed}
+            {specimen 'danger'}
+                {include notice, message: 'The address or the password is not right.', variant: 'danger'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

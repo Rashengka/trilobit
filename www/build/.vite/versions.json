@@ -1,8 +1,9 @@
 {
-  "app.css": "3805a908",
+  "app.css": "1a78e19c",
   "app.js": "1e964a4d",
   "cms.js": "e3b0c442",
   "crm.js": "e3b0c442",
-  "licenses.txt": "156dad50",
-  "shop.js": "e3b0c442"
+  "licenses.txt": "a25525c5",
+  "shop.js": "e3b0c442",
+  "styleguide.js": "9d04a582"
 }

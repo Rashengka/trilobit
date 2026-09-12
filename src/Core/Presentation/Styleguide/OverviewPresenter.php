@@ -201,6 +201,7 @@ final class OverviewPresenter extends FrontPresenter
     {
         $template->guideUrl = $this->link('default');
         $template->guide = $this->guide($current);
+        $template->groupPages = $this->othersInItsGroup($template->guide, $current);
         $template->components = $this->byName($this->components);
         $template->contentGroups = $this->groupsByName($this->contentGroups);
         $template->formElements = $this->formElementsByName($this->formElements);
@@ -273,6 +274,34 @@ final class OverviewPresenter extends FrontPresenter
         }
 
         return $guide;
+    }
+
+    /**
+     * The pages of the group the current page is listed under, other than the
+     * current page, as the guide already drew them - so that a page leading
+     * into its group lists exactly what the menu beside it offers.
+     *
+     * @param list<StyleguideMenuGroup> $guide
+     *
+     * @return list<SignpostLink>
+     */
+    private function othersInItsGroup(array $guide, ?StyleguidePage $current): array
+    {
+        if (!$current instanceof StyleguidePage) {
+            return [];
+        }
+
+        $here = $this->link('page', ['group' => $current->group, 'page' => $current->slug]);
+        foreach ($guide as $group) {
+            if ($group->name === $current->group) {
+                return array_values(array_filter(
+                    $group->signposts,
+                    static fn(SignpostLink $page): bool => $page->href !== $here,
+                ));
+            }
+        }
+
+        return [];
     }
 
     /**

@@ -75,7 +75,15 @@ test('every entry point is emitted under a name that does not move', () => {
     assert.equal(manifest['src/Cms/assets/entry.ts'].file, 'cms.js');
     assert.equal(manifest['src/Crm/assets/entry.ts'].file, 'crm.js');
     assert.equal(manifest['src/Shop/assets/entry.ts'].file, 'shop.js');
+    assert.equal(manifest['assets/styleguide.ts'].file, 'styleguide.js');
     assert.deepEqual(manifest['assets/app.ts'].css, ['app.css']);
+
+    // The style guide's bundle stands on its own. A module shared with app.js
+    // would be split into a chunk both import, and a chunk is reached by an
+    // import inside the bundle rather than by a tag the server writes - so it
+    // would carry no ?v= and a browser could keep an old copy of it.
+    assert.deepEqual(manifest['assets/styleguide.ts'].imports ?? [], [], 'the style guide shares a chunk with another entry');
+    assert.deepEqual(manifest['assets/app.ts'].imports ?? [], [], 'app.js imports a chunk of its own');
 
     // The claim above is about entry points; this one is about everything
     // else the build emits, so that a chunk or an asset cannot quietly bring a

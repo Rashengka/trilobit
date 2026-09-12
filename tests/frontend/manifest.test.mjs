@@ -61,6 +61,11 @@ test('a build with crm switched off has no src/Crm/ entry in the manifest', () =
     assert.ok(keys.includes('src/Shop/assets/entry.ts'), "Shop's entry point is missing");
     assert.ok(keys.includes('src/Cms/assets/entry.ts'), "Cms's entry point is missing");
 
+    // The style guide belongs to Core, which is not switchable, so its bundle
+    // is there whichever modules are - it is the server that decides which
+    // pages load it (src/Core/Presentation/Styleguide/templates/@layout.latte).
+    assert.ok(keys.includes('assets/styleguide.ts'), "the style guide's entry point is missing");
+
     rmSync(outDir, { recursive: true, force: true });
 });
 

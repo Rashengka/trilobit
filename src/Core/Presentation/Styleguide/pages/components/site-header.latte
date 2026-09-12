@@ -12,30 +12,24 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-site-header']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {include siteHeader, brand: 'Trilobit', href: '#'}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {include siteHeader, brand: 'Trilobit', href: '#'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'with a tagline'}
-                {block sgSpecimenStage}
-                    {include siteHeader,
-                        brand: 'Trilobit',
-                        href: '#',
-                        tagline: 'Modular commerce, contacts and content.'}
-                {/block}
-            {/embed}
+            {specimen 'with a tagline'}
+                {include siteHeader,
+                    brand: 'Trilobit',
+                    href: '#',
+                    tagline: 'Modular commerce, contacts and content.'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'with something at the end'}
-                {block sgSpecimenStage}
-                    {embed block siteHeader, brand: 'Trilobit', href: '#', tagline: 'Administration'}
-                        {block siteHeaderEnd}
-                            {include button, label: 'Somebody', variant: 'quiet', icon: 'chevron-down'}
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+            {specimen 'with something at the end'}
+                {embed block siteHeader, brand: 'Trilobit', href: '#', tagline: 'Administration'}
+                    {block siteHeaderEnd}
+                        {include button, label: 'Somebody', variant: 'quiet', icon: 'chevron-down'}
+                    {/block}
+                {/embed}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

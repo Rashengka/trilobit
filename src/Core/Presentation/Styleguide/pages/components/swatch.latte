@@ -11,11 +11,9 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-swatch']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {include swatch, name: '--color-accent', role: 'the action a page is about'}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {include swatch, name: '--color-accent', role: 'the action a page is about'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

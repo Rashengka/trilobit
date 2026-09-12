@@ -7,6 +7,11 @@
             "app-test-fixture.css"
         ]
     },
+    "assets/styleguide.ts": {
+        "file": "styleguide-test-fixture.js",
+        "src": "assets/styleguide.ts",
+        "isEntry": true
+    },
     "src/Cms/assets/entry.ts": {
         "file": "cms-entry-test-fixture.js",
         "src": "src/Cms/assets/entry.ts",
