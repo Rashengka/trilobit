@@ -214,10 +214,47 @@
         font-size: var(--text-base);
     }
 
+    /*
+     * A link inside running text is told apart from the text around it by
+     * nothing but this rule (WCAG 1.4.1): colour alone would not survive
+     * printing in grey, and here colour is not even different, because
+     * color: inherit above is what lets a link sit inside a heading or a
+     * quotation without becoming a shade of its own. The underline is
+     * therefore the one signal doing the whole job, not an addition to it.
+     *
+     * Tailwind's preflight (assets/app.css imports it before this file, into
+     * the same layer) declares `a { text-decoration: inherit }`. Inherited
+     * from a paragraph, which carries none, that is `none` - so every link in
+     * the application drew no underline at all until this rule said
+     * otherwise, in the same layer and later in it, which is what lets a
+     * property neither rule shares - line, thickness, colour, offset - fall
+     * through to whichever of the two set it.
+     *
+     * A component that draws its own kind of link - a card, a button, the
+     * primary navigation - already says `text-decoration: none` on its own
+     * class, and a class beats an element by specificity whether this rule
+     * exists or not; that is what keeps this from touching any of them. Only
+     * .c-breadcrumb__link and the icon-only link in .c-table__actions had
+     * nothing of their own to win with, so those two carry the same
+     * exception explicitly, below and beside their own rule respectively.
+     */
     a {
         color: inherit;
         text-decoration-color: var(--color-accent);
+        text-decoration-line: underline;
+        text-decoration-thickness: var(--border-hairline);
         text-underline-offset: var(--space-3xs);
+    }
+
+    /* Thicker on hover and on the focus outline's own colour while focused -
+       reusing the tokens a border already reads, so no colour or length is
+       invented for the one purpose of a link glancing back at the pointer. */
+    a:hover {
+        text-decoration-thickness: var(--border-marker);
+    }
+
+    a:focus-visible {
+        text-decoration-color: var(--color-focus);
     }
 
     /*
@@ -1989,8 +2026,14 @@
         content: '/' / '';
     }
 
+    /* A step up carries no underline: the trail is already told apart from
+       running text by sitting in its own <nav>, in a smaller size, each step
+       comma-separated by the rule above, so the muted colour is affordance
+       enough and an underline on every step would be one line under most of
+       the row rather than a signal picking anything out. */
     .c-breadcrumb__link {
         color: var(--color-ink-muted);
+        text-decoration: none;
     }
 
     .c-breadcrumb__link:hover {
@@ -2476,6 +2519,15 @@
         inline-size: 1%;
         text-align: end;
         white-space: nowrap;
+    }
+
+    /* An action drawn as a bare link rather than as c-button - today, an
+       icon with no visible label - carries no underline: there is no text
+       for a line to run under, only an icon it would run through. c-button
+       already excludes itself by its own class; this is the one shape of
+       link in this cell a component does not already cover. */
+    .c-table__actions > a {
+        text-decoration: none;
     }
 
     /* Figures line up under each other when the digits are all one width. */
