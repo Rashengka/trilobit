@@ -10,9 +10,17 @@
  *
  * Adding a theme is one line here and one file beside the others; see
  * .ai/plans/01d-design-system.md.
+ *
+ * The tests are not a source. Tailwind also detects sources on its own, from
+ * the project root, and it reads every word of every file it finds as a
+ * possible class name - so a word in a test ("flex", in an assertion about a
+ * computed display) became a utility in the stylesheet the application ships,
+ * and npm run check:build then held the build to the tests as well as to the
+ * code. What a test says about the page must not change the page.
  */
 
 @import "tailwindcss";
+@source not "../tests";
 @import "../var/build/sources.css";
 
 @import "./themes/atrium.css";

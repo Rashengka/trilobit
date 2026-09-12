@@ -1,0 +1,116 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * What a control says about itself. Three of the four states are drawn as
+ * they are; the fourth, the browser's own check, shows only once somebody has
+ * typed into the control and left it, which is the point of it - and focus
+ * shows only when a control has it, on this page and every other.
+ *
+ * The sentence under a control is c-field's (fieldError, fieldHint), and the
+ * control names it in aria-describedby, which is what joins the two for
+ * somebody who cannot see that one is under the other.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/field.latte'}
+
+{block sgPage}
+    {embed block sgFormSection, group: $formElements['states']}
+        {block sgFormSectionBody}
+            {embed block sgSpecimen, variant: 'with a hint'}
+                {block sgSpecimenStage}
+                    {embed block field, testId: 'forms-state-hinted-field', hintId: 'sg-forms-hinted-hint'}
+                        {block fieldLabel}<label for="sg-forms-hinted">Catalogue number</label>{/block}
+
+                        {block fieldControl}
+                            <input
+                                id="sg-forms-hinted"
+                                type="text"
+                                value="TR-0118"
+                                aria-describedby="sg-forms-hinted-hint"
+                                data-testid="forms-state-hinted"
+                            >
+                        {/block}
+
+                        {block fieldHint}Two letters, a dash and four digits, as it is written on the tray.{/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'refused, with the reason'}
+                {block sgSpecimenStage}
+                    {embed block field, testId: 'forms-state-refused-field', errorId: 'sg-forms-refused-error'}
+                        {block fieldLabel}<label for="sg-forms-refused">Genus</label>{/block}
+
+                        {block fieldControl}
+                            <input
+                                id="sg-forms-refused"
+                                type="text"
+                                value="Trilobitia"
+                                aria-invalid="true"
+                                aria-describedby="sg-forms-refused-error"
+                                data-testid="forms-state-refused"
+                            >
+                        {/block}
+
+                        {block fieldError}No genus in the collection is called that.{/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'checked by the browser once somebody has typed'}
+                {block sgSpecimenStage}
+                    {embed block field, testId: 'forms-state-checked-field', hintId: 'sg-forms-checked-hint'}
+                        {block fieldLabel}<label for="sg-forms-checked">Where to send the loan agreement</label>{/block}
+
+                        {block fieldControl}
+                            <input
+                                id="sg-forms-checked"
+                                type="email"
+                                required
+                                aria-describedby="sg-forms-checked-hint"
+                                data-testid="forms-state-checked"
+                            >
+                        {/block}
+
+                        {block fieldHint}Type something that is not an address, then leave the field.{/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'disabled'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-disabled">Registered by</label>{/block}
+
+                            {block fieldControl}
+                                <input
+                                    id="sg-forms-disabled"
+                                    type="text"
+                                    value="The first curator"
+                                    disabled
+                                    data-testid="forms-state-disabled"
+                                >
+                            {/block}
+                        {/embed}
+
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-disabled-list">Held by</label>{/block}
+
+                            {block fieldControl}
+                                <select id="sg-forms-disabled-list" disabled>
+                                    <option>The museum</option>
+                                </select>
+                            {/block}
+                        {/embed}
+
+                        <label><input type="checkbox" checked disabled data-testid="forms-state-disabled-choice"> On public display</label>
+                    </div>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

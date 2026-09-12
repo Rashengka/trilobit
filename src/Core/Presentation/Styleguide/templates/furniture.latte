@@ -8,10 +8,11 @@
  *
  * These are not components (the .sg-* classes in assets/base.css): they frame
  * the specimens and are used nowhere else. They are what makes a page
- * measurable - every section carries data-styleguide-component or
- * data-styleguide-content and every specimen carries data-styleguide-variant,
- * which is what tests/Template/StyleguideShowsEveryComponentTest and its twin
- * read off every page the router sends to the guide.
+ * measurable - every section carries data-styleguide-component,
+ * data-styleguide-content or data-styleguide-form and every specimen carries
+ * data-styleguide-variant, which is what
+ * tests/Template/StyleguideShowsEveryComponentTest and its two twins read off
+ * every page the router sends to the guide.
  *}
 
 {*
@@ -29,6 +30,13 @@
 {define sgContentSection, Trilobit\Core\Presentation\Content\ContentGroup $group}
     <section class="sg-section l-stack" data-styleguide-content="{$group->name}">
         {block sgContentSectionBody}{/block}
+    </section>
+{/define}
+
+{* One registered group of form controls, marked for its own gate. *}
+{define sgFormSection, Trilobit\Core\Presentation\Form\FormElementGroup $group}
+    <section class="sg-section l-stack" data-styleguide-form="{$group->name}">
+        {block sgFormSectionBody}{/block}
     </section>
 {/define}
 

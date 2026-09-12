@@ -13,6 +13,8 @@ use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
+use Trilobit\Core\Presentation\Form\FormElementGroup;
+use Trilobit\Core\Presentation\Form\FormElementRegistry;
 use Trilobit\Core\Presentation\Styleguide\StyleguideGroup;
 use Trilobit\Core\Presentation\Styleguide\StyleguidePage;
 use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
@@ -121,6 +123,7 @@ final class StyleguidePagesTest extends TestCase
     {
         self::assertSame([], array_values(array_diff($page->components, new ComponentRegistry()->names())));
         self::assertSame([], array_values(array_diff($page->contentGroups, new ContentGroupRegistry()->names())));
+        self::assertSame([], array_values(array_diff($page->formElements, new FormElementRegistry()->names())));
     }
 
     /**
@@ -162,6 +165,22 @@ final class StyleguidePagesTest extends TestCase
         );
     }
 
+    /** Every registered group of native form elements is one page of the guide, on the same terms. */
+    #[DataProviderExternal(FormElementRegistryTest::class, 'registered')]
+    public function testEveryFormElementGroupIsListedOnExactlyOnePage(FormElementGroup $group): void
+    {
+        $on = array_filter(
+            self::pages()->pages(),
+            static fn(StyleguidePage $page): bool => in_array($group->name, $page->formElements, true),
+        );
+
+        self::assertCount(
+            1,
+            $on,
+            sprintf('%s is a registered group of form elements and %d pages of the style guide say they show it', $group->name, count($on)),
+        );
+    }
+
     /**
      * What the list says a page shows is what the page draws, and nothing
      * besides - so the menu cannot send somebody to a page for a component
@@ -186,6 +205,11 @@ final class StyleguidePagesTest extends TestCase
                 array_keys(StyleguideSpecimens::shownIn($drawn, StyleguideSpecimens::CONTENT)),
                 sprintf('the content groups %s draws are not the ones the list says it shows', $path),
             );
+            self::assertSame(
+                $page->formElements,
+                array_keys(StyleguideSpecimens::shownIn($drawn, StyleguideSpecimens::FORM)),
+                sprintf('the groups of form elements %s draws are not the ones the list says it shows', $path),
+            );
         }
     }
 
@@ -202,6 +226,6 @@ final class StyleguidePagesTest extends TestCase
 
     private static function pages(): StyleguidePages
     {
-        return new StyleguidePages(new ContentGroupRegistry(), new ComponentRegistry());
+        return new StyleguidePages(new ContentGroupRegistry(), new FormElementRegistry(), new ComponentRegistry());
     }
 }

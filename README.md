@@ -491,18 +491,28 @@ at `/_styleguide/<group>/<page>`:
 |---|---|
 | Foundations | the colour tokens, the content width, and a page that insists on a width of its own |
 | Content | one for every group of native elements - reboot, typography, code, images, tables, figures |
+| Forms | one for every group of form controls - controls, checks, fieldsets, states |
 | Components | one for every component |
 
 The pages are written down once, in
 `Trilobit\Core\Presentation\Styleguide\StyleguidePages`, and everything else is
 read from that list: a route per page, the menu down the side of every page,
-and `/_styleguide` itself, which is the way into all of them. Content and
+and `/_styleguide` itself, which is the way into all of them. Content, Forms and
 Components are derived from their registers, so a component has a page, a place
 in the menu and a tile on the front page the moment it is registered; what is
 left to write is the file under
 `src/Core/Presentation/Styleguide/pages/` that shows it, and the gates will not
-pass without it. Layout and Forms get a group when there is something to put
-in one.
+pass without it. Layout gets a group when there is something to put in one.
+
+The controls of a form - every kind of input, `select`, `textarea`, checkboxes
+and radio buttons, `label`, `fieldset` and `legend`, and their focused, refused
+and disabled states - are styled by their own names in `assets/base.css` and
+never through whatever is drawn around them, so a control looks the same in
+every arrangement of a form (`tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest`).
+They are catalogued in `Trilobit\Core\Presentation\Form\FormElementRegistry`
+the way the elements of running text are in `ContentGroupRegistry`. The two
+sentences a browser has no element for - why an answer was refused and what a
+field is for - are drawn under the control by `c-field`.
 
 It exists only where `trilobit.styleguide` is on - by default in debug mode, off
 in production, and `config/local.neon` overrides either. Off means none of its
