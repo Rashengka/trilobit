@@ -959,14 +959,32 @@ function ruleDefinitions(array $config, array $localPatterns): array
                 if (in_array(basename($path), $lockFiles, true)) {
                     return [];
                 }
+                // A JSON web token is three base64url parts joined by dots, and
+                // the dots kept it out of the literal below, so a token of that
+                // shape used to pass. Its header and its payload are both JSON
+                // objects, so both begin with the encoding of an opening brace
+                // and a quote; that is looked for directly, before the keyword
+                // skip, so that a word such as "reference" on the line cannot
+                // hide it. Dots are not added to the literal itself: dotted
+                // names such as a sniff code in phpcs.xml would then be long
+                // opaque literals, and they are nothing of the kind.
+                $tokens = allMatches('/\beyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]*/', $text);
+                if ($tokens !== []) {
+                    return $tokens;
+                }
                 if (preg_match('/\b(integrity|sha256|sha512|checksum|hash|reference|shasum)\b/i', $text) === 1) {
                     return [];
                 }
-                if (preg_match('/(?:=>|=|:)\s*[\'"]([A-Za-z0-9+\/=_\-]{32,})[\'"]/', $text, $m) !== 1) {
-                    return [];
+                // Every literal on the line is looked at, not only the first:
+                // the first one may be a word path, and a key after it on the
+                // same line must not ride through on its back.
+                foreach (allMatches('/(?:=>|=|:)\s*[\'"]([A-Za-z0-9+\/=_\-]{32,})[\'"]/', $text, 1) as $literal) {
+                    if (!isWordPath($literal)) {
+                        return [$literal];
+                    }
                 }
 
-                return [$m[1]];
+                return [];
             },
         ],
         'absolute_path' => [
@@ -1207,6 +1225,48 @@ function allMatches(string $pattern, string $text, int $group = 0): array
     }
 
     return array_values(array_unique($matches[$group] ?? []));
+}
+
+/**
+ * Whether a long literal is a path spelled out of words.
+ *
+ * Such a literal is long enough for the high_entropy rule, and a directory a
+ * component registry or a style guide route names used to be reported as a
+ * key. The decision is made on what the pieces look like, never on the mere
+ * presence of a slash: base64 carries slashes, and a hex or random segment
+ * inside a path is still exactly what the rule is there to find.
+ *
+ * The literal has to hold a slash, and every piece between the separators
+ * (slash, dash, underscore) has to be a word: lower case, or
+ * capitalised, or humps of a camel-case name each three letters or more,
+ * followed by at most two digits, with no run of five consonants. A random
+ * piece fails at least one of those - a digit inside it, a hump of one or two
+ * letters, a letter salad of consonants - and one failing piece is enough for
+ * the whole literal to stay a finding. A plus or an equals sign never occurs
+ * in a word, so padded base64 never gets this far.
+ *
+ * Words joined only by dashes or underscores are not let through: a pass
+ * phrase is written that way, and is a secret.
+ */
+function isWordPath(string $literal): bool
+{
+    if (!str_contains($literal, '/')) {
+        return false;
+    }
+    $pieces = preg_split('#[/_\-]+#', $literal, -1, PREG_SPLIT_NO_EMPTY);
+    if ($pieces === false || count($pieces) < 2) {
+        return false;
+    }
+    foreach ($pieces as $piece) {
+        if (preg_match('/^(?:[a-z]+|[A-Z][a-z]+)(?:[A-Z][a-z]{2,})*\d{0,2}$/', $piece) !== 1) {
+            return false;
+        }
+        if (preg_match('/[bcdfghjklmnpqrstvwxz]{5}/i', $piece) === 1) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function literalValue(string $raw): ?string

@@ -28,7 +28,7 @@ namespace Trilobit\Core\Presentation\Component;
 final class ComponentRegistry
 {
     /** Under the project root. */
-    public const string DIRECTORY = 'src/Core/Presentation/components'; // check-leaks:allow rule=high_entropy reason=a directory path that happens to be long enough to read as an opaque literal
+    public const string DIRECTORY = 'src/Core/Presentation/components';
 
     /** What a component's root class starts with, and what its name is derived from. */
     public const string PREFIX = 'c-';
