@@ -36,6 +36,96 @@
                     <pre data-testid="styleguide-code-block"><code>docker compose exec php vendor/bin/phpunit --filter 'ContentGroupRegistryTest|StyleguideShowsEveryContentGroupTest' --testdox --colors=never --display-skipped</code></pre>
                 {/block}
             {/embed}
+
+            {*
+             * The highlighter of the style guide (assets/styleguide.ts) colours
+             * any code whose class names its language, a block or inline, in
+             * the tokens of the theme that is on. One block for every language
+             * it is given, each an invented sample and not a copy of anything.
+             *
+             * n:syntax="off" leaves the braces of the samples alone, so that
+             * Latte does not read the code as its own tags; a less-than sign
+             * is still written as an entity, because it is HTML being written.
+             *}
+            {embed block sgSpecimen, variant: 'highlighted, a block in every language the guide knows'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        <pre data-testid="styleguide-highlight-markup" n:syntax="off"><code class="language-markup">&lt;a class="c-button" href="https://example.com/drawers/12"&gt;
+    Open the drawer &lt;em&gt;twelve&lt;/em&gt;
+&lt;/a&gt;</code></pre>
+
+                        <pre data-testid="styleguide-highlight-css" n:syntax="off"><code class="language-css">/* read out of a token, never written here */
+.c-badge {
+    color: var(--color-accent);
+    padding-inline: var(--space-2xs);
+}</code></pre>
+
+                        <pre data-testid="styleguide-highlight-javascript" n:syntax="off"><code class="language-javascript">const drawers = document.querySelectorAll('[data-period]');
+for (const drawer of drawers) {
+    drawer.hidden = drawer.dataset.period !== 'cambrian';
+}</code></pre>
+
+                        <pre data-testid="styleguide-highlight-typescript" n:syntax="off"><code class="language-typescript">interface Specimen {
+    readonly name: string;
+    segments: number;
+}
+
+export function describe(specimen: Specimen): string {
+    return `${specimen.name}, ${specimen.segments} segments`;
+}</code></pre>
+
+                        <pre data-testid="styleguide-highlight-php" n:syntax="off"><code class="language-php">&lt;?php
+
+final readonly class Specimen
+{
+    public function __construct(
+        public string $name,
+        public int $segments = 11,
+    ) {}
+}
+
+echo new Specimen('Paradoxides')->name;</code></pre>
+
+                        <pre data-testid="styleguide-highlight-latte" n:syntax="off"><code class="language-latte">{* every specimen in the drawer, the rare ones marked *}
+{import 'components/badge.latte'}
+
+&lt;ul n:if="$specimens"&gt;
+    {foreach $specimens as $specimen}
+        &lt;li n:class="$specimen->rare ? rare"&gt;
+            &lt;a n:href="Specimen:show $specimen->id"&gt;{$specimen->name|capitalize}&lt;/a&gt;
+            {include badge, label: $specimen->period}
+        &lt;/li&gt;
+    {/foreach}
+&lt;/ul&gt;</code></pre>
+
+                        <pre data-testid="styleguide-highlight-json" n:syntax="off"><code class="language-json">{
+    "name": "Phacops",
+    "segments": 11,
+    "found": ["the north quarry", "drawer 12"],
+    "complete": true
+}</code></pre>
+
+                        <pre data-testid="styleguide-highlight-bash" n:syntax="off"><code class="language-bash"># rebuild the frontend and hold it to what is committed
+npm run build &amp;&amp; npm run check:build || echo "the build drifted" &gt;&amp;2</code></pre>
+
+                        <pre data-testid="styleguide-highlight-sql" n:syntax="off"><code class="language-sql">SELECT name, COUNT(*) AS found
+FROM specimen
+WHERE period = 'Cambrian'
+GROUP BY name
+ORDER BY found DESC;</code></pre>
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'highlighted, inline'}
+                {block sgSpecimenStage}
+                    <p>
+                        A badge takes its colour from
+                        <code class="language-css" data-testid="styleguide-highlight-inline">color: var(--color-accent);</code>
+                        in either theme.
+                    </p>
+                {/block}
+            {/embed}
         {/block}
     {/embed}
 {/block}

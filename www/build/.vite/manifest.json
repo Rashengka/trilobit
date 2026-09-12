@@ -8,6 +8,12 @@
       "app.css"
     ]
   },
+  "assets/styleguide.ts": {
+    "file": "styleguide.js",
+    "name": "styleguide",
+    "src": "assets/styleguide.ts",
+    "isEntry": true
+  },
   "src/Cms/assets/entry.ts": {
     "file": "cms.js",
     "name": "entry",

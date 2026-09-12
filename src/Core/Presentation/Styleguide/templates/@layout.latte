@@ -70,3 +70,16 @@
         </div>
     </div>
 {/block}
+
+{*
+ * The style guide's own bundle, after the shared one: the highlighter of the
+ * code it shows and the button that copies it (assets/styleguide.ts). It is an
+ * entry point of the build rather than part of app.js, so that no page outside
+ * the guide carries it, and a tag written here rather than an import() inside
+ * a bundle, because only what the server writes a tag for is given its ?v= by
+ * Trilobit\Core\Asset\VersionedViteMapper.
+ *}
+{block scripts}
+    {include parent}
+    {asset 'vite:assets/styleguide.ts'}
+{/block}

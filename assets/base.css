@@ -1537,6 +1537,157 @@
         color: var(--color-accent);
         font-weight: var(--font-weight-strong);
     }
+
+    /*
+     * The code under a specimen: one disclosure for the HTML it came out as
+     * and one for the Latte it was written in, one open at a time (sgExample
+     * in src/Core/Presentation/Styleguide/templates/furniture.latte). After
+     * the label, so that what a specimen is called stays next to what it
+     * looks like.
+     */
+    .sg-source {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        order: 2;
+    }
+
+    .sg-source__name {
+        color: var(--color-ink-muted);
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+    }
+
+    .sg-source__view[open] > .sg-source__name {
+        color: var(--color-ink);
+    }
+
+    .sg-code {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2xs);
+        margin-block-start: var(--space-2xs);
+    }
+
+    /* What the button did, and the button, at the end of the row above the
+       code, where Bootstrap keeps it. */
+    .sg-code__bar {
+        align-items: center;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: flex-end;
+    }
+
+    .sg-code__status {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+    }
+
+    .sg-code__copy {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-sm);
+        color: var(--color-ink);
+        cursor: pointer;
+        font-size: var(--text-sm);
+        padding-block: var(--space-3xs);
+        padding-inline: var(--space-xs);
+    }
+
+    .sg-code__copy:hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    /* The list of every component, the way into the Components group. */
+    .sg-index {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .sg-index__entry {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3xs);
+    }
+
+    .sg-index__summary {
+        color: var(--color-ink-muted);
+    }
+
+    /*
+     * ==== Highlighted code ================================================
+     *
+     * The classes are Prism's (assets/styleguide/prism.ts): it wraps every
+     * token of the code it highlights in <span class="token TYPE">, TYPE being
+     * what its grammar calls the token. They carry no prefix because the
+     * markup is the highlighter's and cannot be told to, which is why
+     * tests/Architecture/StylesheetClassesAreNamedByKindTest names each of them
+     * as the one library excused from the prefixes.
+     *
+     * No theme of Prism's is loaded. The colours are tokens, so each theme and
+     * each mode chooses its own, and tests/e2e/styleguide-code.spec.ts measures
+     * every token drawn against the ground of the code at 4.5:1.
+     */
+    .token.comment,
+    .token.prolog,
+    .token.doctype,
+    .token.cdata {
+        color: var(--color-code-comment);
+        font-style: italic;
+    }
+
+    .token.punctuation {
+        color: var(--color-ink-muted);
+    }
+
+    .token.tag,
+    .token.keyword,
+    .token.important,
+    .token.selector,
+    .token.atrule,
+    .token.rule {
+        color: var(--color-code-keyword);
+    }
+
+    .token.attr-name,
+    .token.property,
+    .token.function,
+    .token.class-name,
+    .token.builtin {
+        color: var(--color-code-name);
+    }
+
+    .token.string,
+    .token.attr-value,
+    .token.char,
+    .token.regex,
+    .token.url {
+        color: var(--color-code-string);
+    }
+
+    .token.number,
+    .token.boolean,
+    .token.constant,
+    .token.symbol,
+    .token.variable {
+        color: var(--color-code-literal);
+    }
+
+    .token.operator,
+    .token.entity {
+        color: var(--color-ink);
+    }
+
+    .token.important,
+    .token.bold {
+        font-weight: var(--font-weight-strong);
+    }
+
+    .token.italic {
+        font-style: italic;
+    }
 }
 
 @layer utilities {
