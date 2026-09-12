@@ -129,7 +129,7 @@ final class ComponentRegistry
                 'c-table',
                 'Rows and columns inside the frame that catches their overflow, so that a table too wide for '
                 . 'the space it has scrolls and the page around it stays where it was.',
-                ['default', 'with a visible caption'],
+                ['default', 'with a visible caption', 'with column rules', 'framed', 'framed with column rules'],
             ),
             new Component(
                 'c-swatch',

@@ -146,12 +146,16 @@
     }
 
     /*
-     * The six levels read off the six steps of the type scale the themes
-     * declare, in the one order they come in. A component that wants a size of
-     * its own says so on its own class and wins by specificity, which is what
-     * every heading in this application does today - so this is what a heading
-     * nobody wrote a component for falls back to, rather than the body size it
-     * used to inherit.
+     * The six levels read off the type scale the themes declare. A component
+     * that wants a size of its own says so on its own class and wins by
+     * specificity, which is what every heading in this application does
+     * today - so this is what a heading nobody wrote a component for falls
+     * back to, rather than the body size it used to inherit.
+     *
+     * h5 and h6 share the bottom step on purpose (decided 2026-09-12): a
+     * heading smaller than the running text under it reads as a caption
+     * rather than as a heading, so the scale stops narrowing at --text-base
+     * instead of dropping a step further for the sixth level.
      */
     h1 {
         font-size: var(--text-3xl);
@@ -169,12 +173,9 @@
         font-size: var(--text-lg);
     }
 
-    h5 {
-        font-size: var(--text-base);
-    }
-
+    h5,
     h6 {
-        font-size: var(--text-sm);
+        font-size: var(--text-base);
     }
 
     a {
@@ -932,6 +933,18 @@
      */
     .c-table {
         background-color: var(--color-surface);
+    }
+
+    /*
+     * The outer frame is a modifier, not the default (decided 2026-09-12):
+     * the plain table already has a name for what marks one row off from the
+     * next - the hairline .c-table__grid tbody tr + tr draws below - and a
+     * table nobody asked to be framed does not carry a border and a rounded
+     * corner it did not ask for either. overflow: hidden lives here rather
+     * than on .c-table because it exists only to clip the corner this rule
+     * rounds; nothing here needs it otherwise.
+     */
+    .c-table--framed {
         border: var(--border-hairline) solid var(--color-line);
         border-radius: var(--radius-md);
         overflow: hidden;
@@ -940,6 +953,19 @@
     .c-table__viewport {
         overflow-x: auto;
         overscroll-behavior-inline: contain;
+    }
+
+    /*
+     * The other modifier: a rule between columns rather than between rows.
+     * It is drawn on the cell that follows another, so the outer edges of the
+     * grid never carry one - "inner" is the whole point, and it is what tells
+     * this apart from .c-table--framed, which is the outer edge and nothing
+     * else. The two are written as separate rules for exactly that reason:
+     * asking for one never draws a line the other is meant to own, and asking
+     * for both draws each exactly once.
+     */
+    .c-table--column-rules .c-table__grid :is(th, td) + :is(th, td) {
+        border-inline-start: var(--border-hairline) solid var(--color-line);
     }
 
     .c-table__grid {
