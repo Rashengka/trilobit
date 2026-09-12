@@ -1,0 +1,26 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A picture at the size it was drawn, and in a frame narrower than itself -
+ * where it has to shrink and keep its own shape.
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    {embed block sgContentSection, group: $contentGroups['images']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'at the size it was drawn'}
+                {block sgSpecimenStage}
+                    {include sgSpecimenDrawing}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'in a frame narrower than itself', narrow: true}
+                {block sgSpecimenStage}
+                    {include sgSpecimenDrawing}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

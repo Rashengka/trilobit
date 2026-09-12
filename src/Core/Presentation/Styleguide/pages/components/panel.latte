@@ -1,0 +1,24 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{* A boxed area of a page, with a heading and whatever belongs under it. *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/panel.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-panel']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block panel}
+                        {block panelTitle}What a panel is for{/block}
+
+                        {block panelBody}
+                            <p>Anything that belongs together and wants an edge drawn round it.</p>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

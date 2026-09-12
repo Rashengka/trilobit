@@ -1,0 +1,18 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{* A handful of short statements, each one marked. *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/marker-list.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-marker-list']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include markerList, items: $statements}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

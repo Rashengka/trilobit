@@ -1,0 +1,40 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The heading scale and running text, as a heading falls back to them when no
+ * component gives it a size of its own.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    {embed block sgContentSection, group: $contentGroups['typography']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'the heading scale'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        <h1>Heading one</h1>
+                        <h2>Heading two</h2>
+                        <h3>Heading three</h3>
+                        <h4>Heading four</h4>
+                        <h5>Heading five</h5>
+                        <h6>Heading six</h6>
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'running text'}
+                {block sgSpecimenStage}
+                    <p class="l-measure">
+                        Body text is set at the base step of the scale, at the line height the theme
+                        asks for, and kept to a measure a reader can come back from at the end of a
+                        line. The measure is a layout token rather than a property of the paragraph,
+                        so a page decides how wide its text runs and the text itself does not.
+                    </p>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

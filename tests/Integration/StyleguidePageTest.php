@@ -6,13 +6,16 @@ namespace Trilobit\Tests\Integration;
 
 use Dom\HTMLDocument;
 use Nette\DI\Container;
+use Nette\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Combination\Build;
+use Trilobit\Tests\Template\StyleguideSpecimens;
 
 /**
  * Decision D4: the style guide is a page of the application, and switching it
@@ -36,6 +39,62 @@ final class StyleguidePageTest extends TestCase
             Build::match($this->container(styleguide: false), self::PATH),
             'the style guide is switched off and its path is still routed, so it would answer rather than 404',
         );
+    }
+
+    /**
+     * All of it goes, and not only its front page: a page of the guide left
+     * routed in a build without the guide would answer at an address nobody
+     * links to, which is the worst place for a page to be.
+     */
+    public function testWithTheSwitchOffNoPageOfTheGuideIsRouted(): void
+    {
+        $container = $this->container(styleguide: false);
+
+        foreach ($container->getByType(StyleguidePages::class)->pages() as $page) {
+            self::assertNull(
+                Build::match($container, self::PATH . '/' . $page->path()),
+                sprintf('the style guide is switched off and its page %s is still routed', $page->path()),
+            );
+        }
+
+        self::assertSame([], StyleguideSpecimens::pathsIn($container->getByType(Router::class)));
+    }
+
+    /** Every page the list has answers at the address the list gives it, and is told which page it is. */
+    public function testWithTheSwitchOnEveryListedPageIsRoutedToItself(): void
+    {
+        $container = $this->container(styleguide: true);
+
+        foreach ($container->getByType(StyleguidePages::class)->pages() as $page) {
+            $match = Build::match($container, self::PATH . '/' . $page->path());
+            self::assertNotNull($match, sprintf('%s is a page of the style guide and nothing routes it', $page->path()));
+
+            self::assertSame(
+                ['presenter' => 'Core:Styleguide:Overview', 'action' => 'page', 'group' => $page->group, 'page' => $page->slug],
+                array_intersect_key($match, array_flip(['presenter', 'action', 'group', 'page'])),
+            );
+        }
+    }
+
+    /**
+     * And the other way round: the guide answers at its front page and at the
+     * pages the list has, and at nothing else - so there is no route without a
+     * page and no page that the gates, which read the routes, would not see.
+     */
+    public function testTheGuideAnswersAtItsFrontPageAndItsListedPagesAndNowhereElse(): void
+    {
+        $container = $this->container(styleguide: true);
+
+        $expected = [self::PATH];
+        foreach ($container->getByType(StyleguidePages::class)->pages() as $page) {
+            $expected[] = self::PATH . '/' . $page->path();
+        }
+
+        $routed = StyleguideSpecimens::pathsIn($container->getByType(Router::class));
+
+        sort($expected);
+        sort($routed);
+        self::assertSame($expected, $routed);
     }
 
     public function testWithTheSwitchOffThereIsNoLinkToIt(): void

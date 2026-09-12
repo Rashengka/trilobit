@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Routing;
 
 use Nette\Application\Routers\RouteList;
+use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
 
 /**
  * Where the style guide answers, when this build has one.
@@ -19,19 +20,42 @@ use Nette\Application\Routers\RouteList;
  * The leading underscore keeps the path out of the way of content: a page or a
  * product will never be called _styleguide.
  */
-final class StyleguideRoutes implements RouteProvider
+final readonly class StyleguideRoutes implements RouteProvider
 {
     public const string PATH = '_styleguide';
 
+    public function __construct(
+        private StyleguidePages $pages,
+    ) {}
+
     /**
-     * The guide, and the page it keeps in order to show what a page insisting on
-     * a width of its own looks like (.ai/plans/09-chrome-a-sirka-obsahu.md, L4).
-     * Both are answered by one presenter, which is the thing that second page is
-     * there to demonstrate.
+     * The front page of the guide, and a route of its own for every page
+     * Trilobit\Core\Presentation\Styleguide\StyleguidePages lists.
+     *
+     * One fixed route per page rather than one route with the group and the
+     * page as parameters, and on purpose: a parameter would answer at every
+     * address of its shape, so a mistyped page would reach the presenter and
+     * have to be refused there, and the gates reading the routes could not tell
+     * which pages exist. With a route per page the router itself knows the
+     * list, an address nobody listed is claimed by nobody, and the answer is
+     * the same 404 the switch gives.
+     *
+     * Every page is the same action of the same presenter, told which page it
+     * is by the two parameters the route carries - which is also what lets one
+     * of them be drawn at a width of its own while the rest are drawn at the
+     * reader's (.ai/plans/09-chrome-a-sirka-obsahu.md, L4).
      */
     public function provide(RouteList $routes): void
     {
-        $routes->addRoute(self::PATH . '/full-width', 'Core:Styleguide:Overview:fullWidth');
+        foreach ($this->pages->pages() as $page) {
+            $routes->addRoute(self::PATH . '/' . $page->path(), [
+                'presenter' => 'Core:Styleguide:Overview',
+                'action' => 'page',
+                'group' => $page->group,
+                'page' => $page->slug,
+            ]);
+        }
+
         $routes->addRoute(self::PATH, 'Core:Styleguide:Overview:default');
     }
 

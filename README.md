@@ -449,8 +449,10 @@ somebody to remember to switch.
 A page says so by calling `overruleContentWidth()` from its render method, which
 is what makes the width belong to the page rather than to the class behind it -
 one presenter answers at several addresses and they need not be drawn alike.
-`/_styleguide` and `/_styleguide/full-width` are two actions of one presenter and
-show exactly that.
+Every page of the style guide is the same action of one presenter, and
+`/_styleguide/foundations/full-width` is the one that insists on a width - the
+list of the guide's pages says so, and the class behind it does not know which
+page it is drawing until the route tells it.
 
 Nothing is written down when a page overrules. The reader's setting is untouched,
 the switch goes on showing it, and the next page is drawn at it again -
@@ -471,23 +473,48 @@ spacing and layout; only the components abstain.
 Two tests hold the register and the directory together.
 `tests/Template/ComponentRegistryTest` fails when a file has no record or a
 record has no file, and `tests/Template/StyleguideShowsEveryComponentTest`
-renders the style guide and fails when a registered variant has no specimen on
-it. So a component nobody has shown does not pass `composer check`.
+renders every page of the style guide and fails when a registered variant has
+no specimen on any of them. So a component nobody has shown does not pass
+`composer check`.
 
 ### The style guide
 
-`/_styleguide` is a page of the application, not a separate tool: same base
+`/_styleguide` is part of the application, not a separate tool: same base
 presenter, same Latte engine, same layout, and it includes the same component
 files the homepage does. A catalogue rendering its own HTML would drift away
 from the application and nobody would see it happen.
 
-It exists only where `trilobit.styleguide` is on - by default in debug mode, off
-in production, and `config/local.neon` overrides either. Off means the route is
-never registered, so the path is claimed by nobody and the answer is 404 rather
-than 403: a tool that is not there has nothing to admit to.
+It is split into groups of pages, the way Bootstrap's documentation is, each
+at `/_styleguide/<group>/<page>`:
 
-The page carries a switcher for the theme, for the light/dark mode and for how
-wide the content runs.
+| group | pages |
+|---|---|
+| Foundations | the colour tokens, the content width, and a page that insists on a width of its own |
+| Content | one for every group of native elements - reboot, typography, code, images, tables, figures |
+| Components | one for every component |
+
+The pages are written down once, in
+`Trilobit\Core\Presentation\Styleguide\StyleguidePages`, and everything else is
+read from that list: a route per page, the menu down the side of every page,
+and `/_styleguide` itself, which is the way into all of them. Content and
+Components are derived from their registers, so a component has a page, a place
+in the menu and a tile on the front page the moment it is registered; what is
+left to write is the file under
+`src/Core/Presentation/Styleguide/pages/` that shows it, and the gates will not
+pass without it. Layout and Forms get a group when there is something to put
+in one.
+
+It exists only where `trilobit.styleguide` is on - by default in debug mode, off
+in production, and `config/local.neon` overrides either. Off means none of its
+routes is registered, so every one of its paths is claimed by nobody and the
+answer is 404 rather than 403: a tool that is not there has nothing to admit
+to.
+
+Every page carries a switcher for the theme, for the light/dark mode and for
+how wide the content runs, so a specimen can be looked at in any of them where
+it lives. The one page without it is the page drawn at a width of its own:
+beside a page not drawn at the setting, a control showing the setting is a
+question nobody needs to be asked.
 
 ### What somebody prefers, and where it is kept
 
@@ -496,10 +523,11 @@ The switches are preferences, and a preference is one entry in
 else: `theme` is drawn as `data-theme` on `<html>` and kept in a cookie called
 `trilobit-theme`, `theme-mode` as `data-theme-mode` in `trilobit-theme-mode`,
 `content-width` as `data-content-width` in `trilobit-content-width`. Adding a
-fourth is that one entry, a control in a template, and a rule per answer in
-`base.css` and in each theme - not a column and not a migration.
-`tests/Template/StyleguideOffersEveryPreferenceTest` fails when the catalogue and
-the controls part company either way round: an answer nobody can pick is a mode
+fourth is that one entry and a rule per answer in `base.css` and in each theme -
+not a column and not a migration: the switch (`c-preference-switcher`) reads its
+choices out of the catalogue, so it offers the new one without being touched.
+`tests/Template/PreferenceSwitcherOffersEveryPreferenceTest` fails when the
+catalogue and the switch part company either way round: an answer nobody can pick is a mode
 that does not exist, and a control for an answer the catalogue has not got posts
 a choice the server refuses while the page goes on looking right.
 

@@ -1,0 +1,72 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+{layout '../../Front/templates/@layout.latte'}
+
+{*
+ * The frame every page of the style guide is drawn in, inside the site's own
+ * layout rather than instead of it (decision D4): the menu of every page down
+ * the side, and above each page its title and the switch.
+ *
+ * The framework finds this file before the site's layout because it sits
+ * beside the presenter, and it hands on to the site's layout itself - so a
+ * page of the guide is the site's chrome, then this frame, then the page. A
+ * page fills in sgPage and nothing else; one that filled in content would
+ * take the frame away with it, and tests/Template/StyleguideFrameTest would
+ * say so.
+ *
+ * The menu is drawn out of Trilobit\Core\Presentation\Styleguide\StyleguidePages,
+ * the same list the routes are made from, with the addresses the router gave
+ * back - so it can offer no page the guide does not have and leave out none it
+ * does.
+ *
+ * The switch is on every page because a specimen in the dark mode has to be
+ * one somebody can switch to wherever it now lives. It is a block so that the
+ * two pages that must not carry it here can say so: the page whose specimen is
+ * the switch itself, which would otherwise put two controls for every answer
+ * on one page, and the page drawn at a width nobody chose, beside which a
+ * control showing the setting is a question nobody needs to be asked.
+ *
+ * The menu and the frame are the page's own furniture (the .sg-* classes in
+ * assets/base.css), not components: nothing else in the application draws a
+ * catalogue.
+ *}
+
+{import '../../components/page-heading.latte'}
+{import '../../components/preference-switcher.latte'}
+
+{block content}
+    <div class="sg-frame">
+        <nav class="sg-frame__menu sg-menu" aria-label="Style guide" data-testid="styleguide-menu">
+            <a
+                class="sg-menu__link sg-menu__front"
+                href="{$guideUrl}"
+                n:attr="aria-current: $page === null ? 'page' : null"
+                data-testid="styleguide-menu-front"
+            >Style guide</a>
+
+            <div n:foreach="$guide as $group" class="sg-menu__group">
+                <h2 class="sg-menu__heading">{$group->title}</h2>
+
+                <ul class="sg-menu__list">
+                    <li n:foreach="$group->items as $item">
+                        <a
+                            class="sg-menu__link"
+                            href="{$item->href}"
+                            n:attr="aria-current: $item->current ? 'page' : null"
+                            data-testid="{$item->testId}"
+                        >{$item->label}</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <div class="sg-frame__main l-stack l-stack--loose">
+            {include pageHeading, title: $pageTitle, lead: $lead, testId: 'styleguide-headline'}
+
+            {block sgSwitch}
+                {include preferenceSwitcher, preferences: $preferences, testId: 'theme-switcher'}
+            {/block}
+
+            {block sgPage}{/block}
+        </div>
+    </div>
+{/block}

@@ -11,15 +11,19 @@ use Trilobit\Core\Presentation\Front\FrontTemplate;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
 /**
- * What Core:Styleguide:Overview renders with, at either of its two actions.
+ * What Core:Styleguide:Overview renders with, at the front page of the guide and
+ * at every page of it.
  *
- * One class for both, because the second page is a page of the style guide
- * rather than a second guide: it shows the one thing the first cannot show about
- * itself, which is a page drawn at a width nobody chose. Splitting it would mean
- * two classes differing by which half of the properties below they leave empty.
+ * One class for all of them, because they are pages of one guide rather than
+ * separate guides: a page is a selection of specimens drawn out of the same
+ * registers with the same invented data, and one class per page would be a
+ * dozen classes differing by which of the properties below they leave empty.
  */
 final class OverviewDefaultTemplate extends FrontTemplate
 {
+    /** The page of the guide being drawn, or null on the guide's front page. */
+    public ?StyleguidePage $page = null;
+
     /** @var array<string, Component> keyed by name, the way the template asks for them */
     public array $components = [];
 
@@ -44,9 +48,18 @@ final class OverviewDefaultTemplate extends FrontTemplate
     /** @var list<SignpostLink> */
     public array $sampleSignposts = [];
 
-    /** Where the page that insists on its own width lives, for the guide to point at. */
-    public string $fullWidthUrl = '';
+    /** The sentence under the title: what the page being drawn is for. */
+    public string $lead = '';
 
-    /** And the way back from it. */
-    public string $styleguideUrl = '';
+    /**
+     * Every page of the guide, group by group, with its address resolved -
+     * what the menu on every page and the front page of the guide are drawn
+     * from.
+     *
+     * @var list<StyleguideMenuGroup>
+     */
+    public array $guide = [];
+
+    /** The front page of the guide. */
+    public string $guideUrl = '';
 }

@@ -4,44 +4,40 @@ declare(strict_types=1);
 
 namespace Trilobit\Tests\Template;
 
-use Dom\HTMLDocument;
-use Dom\HTMLElement;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
-use Trilobit\Core\Bootstrap;
-use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
-use Trilobit\Tests\Boot;
-use Trilobit\Tests\Combination\Build;
 
 /**
  * The native elements are catalogued the way the components are: a registered
- * group has a section on the style guide page, and every variant it claims is
- * one you can look at.
+ * group has a section on some page of the style guide, and every variant it
+ * claims is one you can look at.
  *
  * It is deliberately the same shape as
  * Trilobit\Tests\Template\StyleguideShowsEveryComponentTest, and for the same
- * reason: the claim is made against the rendered page rather than against the
- * template, because a section that fails to render is exactly the case a
- * source-level check would pass.
+ * reasons: the claim is made against the rendered pages rather than against
+ * the templates, because a section that fails to render is exactly the case a
+ * source-level check would pass; and it is made of every page the router sends
+ * to the style guide rather than of one, because one page is the question a
+ * split guide stops answering. The rule itself is run over pages built to
+ * fail it in that class, and is the same rule here.
  */
 #[CoversNothing]
 final class StyleguideShowsEveryContentGroupTest extends TestCase
 {
-    private static ?HTMLDocument $page = null;
-
     #[DataProviderExternal(ContentGroupRegistryTest::class, 'registered')]
     public function testItHasASection(ContentGroup $group): void
     {
-        self::assertNotNull(
-            $this->sectionOf($group),
+        self::assertSame(
+            [],
+            StyleguideSpecimens::missing([$group->name], $this->shown()),
             sprintf(
-                '%s is a registered content group and the style guide shows nothing of it; add a section '
-                . 'to %s.',
+                '%s is a registered content group and no page of the style guide shows anything of it - the '
+                . 'pages looked at were %s. Add a section to the page the guide lists it on.',
                 $group->name,
-                'src/Core/Presentation/Styleguide/templates/Overview/default.latte',
+                implode(', ', array_keys(StyleguideSpecimens::everyPage())),
             ),
         );
     }
@@ -49,58 +45,32 @@ final class StyleguideShowsEveryContentGroupTest extends TestCase
     #[DataProviderExternal(ContentGroupRegistryTest::class, 'registered')]
     public function testEveryVariantIsShown(ContentGroup $group): void
     {
-        $section = $this->sectionOf($group);
-        self::assertNotNull($section, $group->name . ' has no section at all');
+        $places = $this->shown()[$group->name] ?? [];
+        self::assertCount(
+            1,
+            $places,
+            sprintf('%s is shown in %d sections of the style guide rather than in one', $group->name, count($places)),
+        );
 
         self::assertSame(
             $group->variants,
-            $this->variantsIn($section),
+            $places[0]['variants'],
             sprintf('the specimens of %s and its registered variants do not match', $group->name),
         );
     }
 
-    /** Nothing is on the page that is not in the register, either. */
+    /** Nothing is on any page that is not in the register, either. */
     public function testEverySectionBelongsToARegisteredGroup(): void
     {
-        $shown = [];
-        foreach ($this->page()->querySelectorAll('[data-styleguide-content]') as $section) {
-            $shown[] = $section->getAttribute('data-styleguide-content');
-        }
-
-        self::assertSame(new ContentGroupRegistry()->names(), $shown);
-    }
-
-    private function sectionOf(ContentGroup $group): ?HTMLElement
-    {
-        $section = $this->page()->querySelector(
-            sprintf('[data-styleguide-content="%s"]', $group->name),
+        self::assertSame(
+            [],
+            array_values(array_diff(array_keys($this->shown()), new ContentGroupRegistry()->names())),
         );
-
-        return $section instanceof HTMLElement ? $section : null;
     }
 
-    /** @return list<string> */
-    private function variantsIn(HTMLElement $section): array
+    /** @return array<string, list<array{page: string, variants: list<string>}>> */
+    private function shown(): array
     {
-        $variants = [];
-        foreach ($section->querySelectorAll('[data-styleguide-variant]') as $specimen) {
-            $variants[] = $specimen->getAttribute('data-styleguide-variant') ?? '';
-        }
-
-        return $variants;
-    }
-
-    private function page(): HTMLDocument
-    {
-        return self::$page ??= HTMLDocument::createFromString(
-            Build::render(
-                Boot::container(
-                    ModuleList::of(['cms' => true, 'crm' => true, 'shop' => true], Bootstrap::rootDirectory()),
-                    styleguide: true,
-                ),
-                'Core:Styleguide:Overview',
-            ),
-            LIBXML_NOERROR,
-        );
+        return StyleguideSpecimens::shownIn(StyleguideSpecimens::everyPage(), StyleguideSpecimens::CONTENT);
     }
 }

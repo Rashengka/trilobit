@@ -1,0 +1,29 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * How wide the content runs, and the one exception a page is allowed to make.
+ *
+ * The width is the reader's setting, chosen with the switch above this page
+ * like the theme and the mode, and every other page of the guide is drawn at
+ * it. The exception cannot be shown on a page that follows the setting, so it
+ * is a page of its own - the next one in the menu - and this is where it is
+ * explained and pointed at. See .ai/plans/09-chrome-a-sirka-obsahu.md, L4.
+ *
+ * The link is written with n:href rather than handed over resolved: it points
+ * at one named page of this same guide, and the router refuses it while the
+ * page is being drawn if that page ever stops being listed.
+ *}
+
+{block sgPage}
+    <p class="l-measure">
+        How wide the content of a page runs is chosen with the switch above, the same way the theme
+        and the mode are, and it is remembered for the next page. Every page of this guide is drawn at
+        whatever was chosen, and so is every page of the application.
+    </p>
+
+    <p class="l-measure">
+        A page may insist on a width of its own where it has to - a report with a column for every day
+        of a month overflows at any width, and cannot wait for somebody to remember to switch:
+        <a n:href="page group: 'foundations', page: 'full-width'" data-testid="styleguide-full-width-link">see one that does</a>.
+    </p>
+{/block}
