@@ -504,8 +504,9 @@ left to write is the file under
 pass without it. Layout and Forms get a group when there is something to put
 in one.
 
-It exists only where `trilobit.styleguide` is on - by default in debug mode, off
-in production, and `config/local.neon` overrides either. Off means none of its
+It exists only where `trilobit.styleguide` is on - by default in the `dev` and
+`staging` modes and not in `prod` (see `TRILOBIT_ENV` below), and
+`config/local.neon` overrides either. Off means none of its
 routes is registered, so every one of its paths is claimed by nobody and the
 answer is 404 rather than 403: a tool that is not there has nothing to admit
 to.
@@ -1040,14 +1041,24 @@ A few settings are worth knowing about:
   is empty on purpose - a committed file carrying a host, a user name or a
   password is a disclosure git keeps forever. A variable set in the process
   environment wins over the file, so a container needs no `.env` at all.
-- `TRILOBIT_DEBUG=1` turns on the debug bar and the detailed error page. It is
-  a variable rather than a check on the visitor's address, because an address
-  check is unreliable in production and would mean an address written into a
-  public repository. Set it while working on the checkout: with it off the
+- `TRILOBIT_ENV` says which kind of deployment this is: `dev`, `staging` or
+  `prod`. `dev` and `staging` turn on the debug bar, the detailed error page
+  and the style guide. `staging` runs over real data, so `dev` is the only mode
+  in which a tool may seed or delete data -
+  `Trilobit\Core\Config\Mode::mayAlterData()` is the question such a tool asks.
+  Empty, absent or misspelled is `prod`, so forgetting it closes the
+  application rather than opening its debugger. It is a variable rather than a
+  check on the visitor's address, because an address check is unreliable in
+  production and would mean an address written into a public repository. Set
+  `TRILOBIT_ENV=dev` while working on the checkout: outside debug mode the
   framework never rechecks the compiled container, so a change to a compiler
   extension has no effect until `var/tmp` is cleared. A change to a `.neon`
   file is picked up either way - the boot puts what those files say into the
   cache key.
+- `TRILOBIT_DEBUG`, which `TRILOBIT_ENV` replaced, is no longer read. Left set
+  without `TRILOBIT_ENV` it stops the application with a message saying what
+  to write instead, because falling back to `prod` there would quietly take
+  the debugger and the style guide away from a machine that had them.
 - `TRILOBIT_EDITOR` and `TRILOBIT_EDITOR_ROOT` decide what happens when a line
   of a stack trace is clicked. The first is the URL pattern, and it defaults to
   the scheme a JetBrains editor registers. The second is where this checkout
