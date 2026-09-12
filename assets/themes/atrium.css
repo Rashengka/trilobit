@@ -85,6 +85,10 @@
     --color-highlight: light-dark(oklch(0.92 0.13 95), oklch(0.45 0.1 95));
     --color-highlight-ink: light-dark(oklch(0.28 0.05 95), oklch(0.97 0.02 95));
 
+    /* Laid over the page behind an open dialog: the ink of the page, thin
+       enough for the page to show through, so it reads as still there. */
+    --color-backdrop: light-dark(oklch(0.24 0.02 255 / 0.45), oklch(0.08 0.01 255 / 0.7));
+
     /* The code the style guide highlights, which sits on --color-canvas-sunken:
        each pair holds 4.5:1 against it in both modes, measured by
        tests/e2e/styleguide-code.spec.ts. */
@@ -137,10 +141,24 @@
        their line. */
     --icon-size: 1.125em;
 
+    /* The thickness of a c-progress bar, and the size of a c-spinner standing
+       for a whole region that is loading. The small spinner is --icon-size. */
+    --progress-size: 0.5rem;
+    --spinner-size: 2.25rem;
+
     --shadow-raised: 0 1px 2px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
         0 8px 24px light-dark(oklch(0.24 0.02 255 / 0.07), oklch(0 0 0 / 0.35));
 
     --motion-fast: 120ms ease;
+
+    /* How long a dialog takes to come in over the page and go again; nothing
+       moves for somebody who asked for reduced motion (assets/base.css). */
+    --motion-layer: 200ms ease-out;
+
+    /* One turn of whatever loops while a page waits: a spinner's turn, a
+       placeholder's pulse, the run of a bar that does not know how far it has
+       got. Nobody who asked for reduced motion sees any of them move. */
+    --motion-loop: 1s;
 
     /* What a disclosure takes to open or close: long enough to be seen to
        unfold, the way this theme takes its time. */
@@ -188,6 +206,11 @@
        choices, which is where a list starts offering a line to search it by
        (assets/combobox.ts). */
     --layout-combobox-list-size: 20rem;
+
+    /* How wide a c-modal is drawn, where the window is wider than that, and how
+       far a c-offcanvas reaches in from its edge. */
+    --layout-modal-width: 34rem;
+    --layout-offcanvas-size: 24rem;
 
     /*
      * What stays in view while the page scrolls under it, each band on a

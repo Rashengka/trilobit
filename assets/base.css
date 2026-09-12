@@ -214,10 +214,47 @@
         font-size: var(--text-base);
     }
 
+    /*
+     * A link inside running text is told apart from the text around it by
+     * nothing but this rule (WCAG 1.4.1): colour alone would not survive
+     * printing in grey, and here colour is not even different, because
+     * color: inherit above is what lets a link sit inside a heading or a
+     * quotation without becoming a shade of its own. The underline is
+     * therefore the one signal doing the whole job, not an addition to it.
+     *
+     * Tailwind's preflight (assets/app.css imports it before this file, into
+     * the same layer) declares `a { text-decoration: inherit }`. Inherited
+     * from a paragraph, which carries none, that is `none` - so every link in
+     * the application drew no underline at all until this rule said
+     * otherwise, in the same layer and later in it, which is what lets a
+     * property neither rule shares - line, thickness, colour, offset - fall
+     * through to whichever of the two set it.
+     *
+     * A component that draws its own kind of link - a card, a button, the
+     * primary navigation - already says `text-decoration: none` on its own
+     * class, and a class beats an element by specificity whether this rule
+     * exists or not; that is what keeps this from touching any of them. Only
+     * .c-breadcrumb__link and the icon-only link in .c-table__actions had
+     * nothing of their own to win with, so those two carry the same
+     * exception explicitly, below and beside their own rule respectively.
+     */
     a {
         color: inherit;
         text-decoration-color: var(--color-accent);
+        text-decoration-line: underline;
+        text-decoration-thickness: var(--border-hairline);
         text-underline-offset: var(--space-3xs);
+    }
+
+    /* Thicker on hover and on the focus outline's own colour while focused -
+       reusing the tokens a border already reads, so no colour or length is
+       invented for the one purpose of a link glancing back at the pointer. */
+    a:hover {
+        text-decoration-thickness: var(--border-marker);
+    }
+
+    a:focus-visible {
+        text-decoration-color: var(--color-focus);
     }
 
     /*
@@ -1237,6 +1274,18 @@
         font-size: var(--text-sm);
     }
 
+    /* At the foot of the tile however long the sentence above it is, so the
+       footers of a row of tiles line up: the grid stretches every tile to the
+       tallest, and the footer takes the room left over above it. */
+    .c-card__footer {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        margin-block-start: auto;
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
     /* The signpost is drawn by the grid primitive above, under its own name:
        it has no shape beyond the tiles it arranges, so it has no rule of its
        own here to disagree with the one that arranges them. */
@@ -1251,8 +1300,8 @@
         display: inline-flex;
         font-weight: var(--font-weight-display);
         gap: var(--space-2xs);
-        padding-block: var(--space-xs);
-        padding-inline: var(--space-md);
+        padding-block: var(--c-button-padding-block, var(--space-xs));
+        padding-inline: var(--c-button-padding-inline, var(--space-md));
         text-decoration: none;
         transition: background-color var(--motion-fast);
     }
@@ -1269,6 +1318,41 @@
 
     .c-button--quiet:hover {
         background-color: var(--color-surface-hover);
+    }
+
+    /*
+     * The one that deletes or cancels something. Drawn in the shape of the
+     * quiet one and in the ink of a refusal: it stands beside the main action
+     * as its alternative, and should be found before it is pressed rather than
+     * be the loudest thing on the form.
+     */
+    .c-button--danger {
+        background-color: transparent;
+        border-color: var(--color-danger);
+        color: var(--color-danger);
+    }
+
+    .c-button--danger:hover {
+        background-color: var(--color-danger-surface);
+    }
+
+    /*
+     * For a row of a table or a toolbar: a size, so it combines with any of
+     * the variants above. It sets the room around the label and nothing reads
+     * it but .c-button, so that the button drawn as only an icon can take the
+     * same room beside the icon as above it, at either size, without the two
+     * modifiers deciding the same property.
+     */
+    .c-button--small {
+        --c-button-padding-block: var(--space-2xs);
+        --c-button-padding-inline: var(--space-sm);
+
+        font-size: var(--text-sm);
+    }
+
+    /* Only the icon on the page, so as much room beside it as above it. */
+    .c-button--icon-only {
+        padding-inline: var(--c-button-padding-block, var(--space-xs));
     }
 
     /*
@@ -1338,6 +1422,13 @@
     .c-badge--accent {
         background-color: var(--color-accent);
         color: var(--color-accent-ink);
+    }
+
+    /* A state that asks for attention, in the pair c-notice uses for a
+       refusal. */
+    .c-badge--danger {
+        background-color: var(--color-danger-surface);
+        color: var(--color-danger-ink);
     }
 
     .c-field {
@@ -1544,6 +1635,285 @@
         color: var(--color-danger-ink);
     }
 
+    /* The title over the sentence, set apart by the weight of emphasis rather
+       than by a size: it is not a heading of the page (see notice.latte). */
+    .c-notice--titled {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3xs);
+    }
+
+    .c-notice__title {
+        font-weight: var(--font-weight-strong);
+    }
+
+    /*
+     * ---- Waiting ------------------------------------------------------------
+     *
+     * c-progress, c-spinner and c-placeholder are the three ways a page says it
+     * is waiting for something. Whatever moves while it waits moves for nobody
+     * who asked for less motion: every animation below is declared inside
+     * `prefers-reduced-motion: no-preference`, and what is left outside it is a
+     * still picture that says the same thing. How long one turn of the loop
+     * takes is the theme's, --motion-loop.
+     */
+
+    /*
+     * c-progress. The label over the bar, and the value beside it. The bar is
+     * the browser's own <progress> or <meter> with its native look taken away,
+     * so that the track and the fill are the theme's; a browser draws the fill
+     * as a part of its own, which every engine names differently, hence one rule
+     * per engine - a selector list with one name a browser does not know is
+     * dropped whole by that browser.
+     */
+    .c-progress {
+        align-items: center;
+        display: grid;
+        gap: var(--space-2xs) var(--space-sm);
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .c-progress__label {
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+        grid-column: 1 / -1;
+    }
+
+    .c-progress__bar {
+        /* How tall a meter's parts are drawn: see ::-webkit-meter-bar. */
+        --c-progress-inner-size: calc(var(--progress-size) - 2 * var(--border-hairline));
+
+        appearance: none;
+        background-color: var(--color-canvas-sunken);
+        block-size: var(--progress-size);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-pill);
+        inline-size: 100%;
+        overflow: hidden;
+    }
+
+    .c-progress__value {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .c-progress__bar::-webkit-progress-bar {
+        background-color: transparent;
+    }
+
+    .c-progress__bar::-webkit-progress-value {
+        background-color: var(--color-accent);
+    }
+
+    .c-progress__bar::-moz-progress-bar {
+        background-color: var(--color-accent);
+    }
+
+    /*
+     * Chrome draws a meter's fill half as tall as the bar, whatever the bar's
+     * height, and takes no percentage for the height of the parts inside it -
+     * only a length, given to the track and to the fill both. So they are
+     * given the bar's own height less its two hairlines, and the fill of a
+     * meter is as thick as the fill of a progress bar beside it
+     * (tests/e2e/progress.spec.ts measures both on the pixels).
+     */
+    .c-progress__bar::-webkit-meter-bar {
+        background: none;
+        block-size: var(--c-progress-inner-size);
+        border: 0;
+    }
+
+    /* Which of a meter's three ranges the value is in is the browser's to work
+       out from low, high and optimum; the ink for each is the theme's. */
+    .c-progress__bar::-webkit-meter-optimum-value {
+        background: var(--color-accent);
+        block-size: var(--c-progress-inner-size);
+    }
+
+    .c-progress__bar::-webkit-meter-suboptimum-value {
+        background: var(--color-ink-muted);
+        block-size: var(--c-progress-inner-size);
+    }
+
+    .c-progress__bar::-webkit-meter-even-less-good-value {
+        background: var(--color-danger);
+        block-size: var(--c-progress-inner-size);
+    }
+
+    .c-progress__bar:-moz-meter-optimum::-moz-meter-bar {
+        background: var(--color-accent);
+    }
+
+    .c-progress__bar:-moz-meter-sub-optimum::-moz-meter-bar {
+        background: var(--color-ink-muted);
+    }
+
+    .c-progress__bar:-moz-meter-sub-sub-optimum::-moz-meter-bar {
+        background: var(--color-danger);
+    }
+
+    /*
+     * Not known how far: the whole track hatched in the fill's ink, standing
+     * still, which is how a bar has said "busy, no idea how long" since long
+     * before anything on a page could move. The browser draws no fill of its
+     * own for a bar without a value, so the hatching is the track's.
+     */
+    .c-progress__bar:indeterminate {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            var(--color-accent) 0 var(--space-2xs),
+            transparent 0 var(--space-xs)
+        );
+    }
+
+    .c-progress__bar:indeterminate::-moz-progress-bar {
+        background-color: transparent;
+    }
+
+    /* And for whoever has not asked for less motion, a stretch of fill that
+       runs to one end of the track and back. */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-progress__bar:indeterminate {
+            animation: c-progress-sweep var(--motion-loop) ease-in-out infinite alternate;
+            background-image: linear-gradient(var(--color-accent), var(--color-accent));
+            background-repeat: no-repeat;
+            background-size: 40% 100%;
+        }
+    }
+
+    @keyframes c-progress-sweep {
+        from {
+            background-position: 0 0;
+        }
+
+        to {
+            background-position: 100% 0;
+        }
+    }
+
+    /*
+     * c-spinner. A ring in the ink of the lines with one quarter in the accent,
+     * and the words beside it.
+     *
+     * The words are always there. With motion they are read out and not shown,
+     * because the turning ring is what says "loading" to whoever sees it. Without
+     * motion the ring stands still and says nothing, so the words are shown -
+     * which is why hiding them is inside the same media query as the turning.
+     */
+    .c-spinner {
+        align-items: center;
+        color: var(--color-ink-muted);
+        display: inline-flex;
+        font-size: var(--text-sm);
+        gap: var(--space-xs);
+        vertical-align: middle;
+    }
+
+    .c-spinner__shape {
+        block-size: var(--spinner-size);
+        border: var(--border-marker) solid var(--color-line);
+        border-block-start-color: var(--color-accent);
+        border-radius: 50%;
+        flex: none;
+        inline-size: var(--spinner-size);
+    }
+
+    /* As tall as the text beside it, the way an icon is. */
+    .c-spinner--small .c-spinner__shape {
+        block-size: var(--icon-size);
+        inline-size: var(--icon-size);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .c-spinner__shape {
+            animation: c-spinner-turn var(--motion-loop) linear infinite;
+        }
+
+        .c-spinner:not(.c-spinner--labelled) .c-spinner__label {
+            block-size: var(--border-hairline);
+            clip-path: inset(50%);
+            inline-size: var(--border-hairline);
+            overflow: hidden;
+            position: absolute;
+            white-space: nowrap;
+        }
+    }
+
+    @keyframes c-spinner-turn {
+        to {
+            rotate: 1turn;
+        }
+    }
+
+    /*
+     * c-placeholder. Bars as tall as the text they stand in for, in the ink of
+     * the lines, the last one of a paragraph shorter the way a paragraph's last
+     * line is. In place of a card it takes the card's frame and the card's
+     * proportions (the same tokens as .c-card), so the tile that arrives lands
+     * where the placeholder was.
+     */
+    .c-placeholder__shapes {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .c-placeholder__body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .c-placeholder__heading,
+    .c-placeholder__line {
+        background-color: var(--color-line);
+        border-radius: var(--radius-sm);
+        display: block;
+    }
+
+    .c-placeholder__heading {
+        block-size: var(--text-lg);
+        inline-size: 60%;
+    }
+
+    .c-placeholder__line {
+        block-size: var(--text-base);
+    }
+
+    .c-placeholder__line:last-child {
+        inline-size: 70%;
+    }
+
+    .c-placeholder--card {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-raised);
+        overflow: hidden;
+    }
+
+    .c-placeholder__media {
+        aspect-ratio: var(--layout-card-media-ratio);
+        background-color: var(--color-canvas-sunken);
+        display: block;
+    }
+
+    .c-placeholder--card .c-placeholder__body {
+        padding: var(--space-md);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .c-placeholder__shapes {
+            animation: c-placeholder-pulse var(--motion-loop) ease-in-out infinite alternate;
+        }
+    }
+
+    @keyframes c-placeholder-pulse {
+        to {
+            opacity: 0.4;
+        }
+    }
+
     .c-marker-list {
         display: flex;
         flex-direction: column;
@@ -1627,8 +1997,14 @@
         content: '/' / '';
     }
 
+    /* A step up carries no underline: the trail is already told apart from
+       running text by sitting in its own <nav>, in a smaller size, each step
+       comma-separated by the rule above, so the muted colour is affordance
+       enough and an underline on every step would be one line under most of
+       the row rather than a signal picking anything out. */
     .c-breadcrumb__link {
         color: var(--color-ink-muted);
+        text-decoration: none;
     }
 
     .c-breadcrumb__link:hover {
@@ -2116,10 +2492,295 @@
         white-space: nowrap;
     }
 
+    /* An action drawn as a bare link rather than as c-button - today, an
+       icon with no visible label - carries no underline: there is no text
+       for a line to run under, only an icon it would run through. c-button
+       already excludes itself by its own class; this is the one shape of
+       link in this cell a component does not already cover. */
+    .c-table__actions > a {
+        text-decoration: none;
+    }
+
     /* Figures line up under each other when the digits are all one width. */
     .c-table__number {
         font-variant-numeric: tabular-nums;
         text-align: end;
+    }
+
+    /*
+     * c-modal and c-offcanvas: a native dialog shown with showModal().
+     *
+     * **No layer of their own.** A dialog shown as a modal is in the browser's
+     * top layer, above the whole page and every z-index in it, so neither
+     * reads one of the --layout-z-* layers; a layer written here would be a
+     * number nothing reads.
+     *
+     * A closed dialog is display: none by the browser's own stylesheet, and a
+     * display given to the class would win over it - an author's rule beats
+     * the browser's whatever its specificity - and draw every closed dialog on
+     * the page. So the layout is given to the open one alone.
+     */
+    .c-modal,
+    .c-offcanvas {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        box-shadow: var(--shadow-raised);
+        color: var(--color-ink);
+        padding: 0;
+    }
+
+    .c-modal[open],
+    .c-offcanvas[open] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Laid over the page behind an open dialog, which still shows through it. */
+    .c-modal::backdrop,
+    .c-offcanvas::backdrop {
+        background-color: var(--color-backdrop);
+    }
+
+    /*
+     * The page under a modal dialog stays where it is, and it is the
+     * stylesheet that holds it, with no script: nothing counts the dialogs
+     * that are open, so there is no count to be left wrong by one Naja takes
+     * away while it is open.
+     *
+     * **No gutter kept for the scrollbar that goes.** Where a scrollbar takes
+     * room - Windows, Linux, a Mac set to show them always - holding the page
+     * takes the scrollbar away, and a gutter kept in its place
+     * (scrollbar-gutter: stable) is room the window stops lending to anything
+     * fixed: the backdrop stopped short of it and left a strip of the page
+     * undimmed, the panel at the end stopped beside it, and the modal sat half
+     * its width off the middle. So the dialog and its backdrop get the whole
+     * window, and the page under the backdrop moves by the scrollbar's width
+     * while the dialog is open. Holding that still as well would take a script
+     * measuring the scrollbar and padding the page - and everything held in
+     * view on it - by as much, for a page nobody can use while it is dimmed.
+     * tests/e2e/layers.spec.ts measures the dialogs with a scrollbar that
+     * takes room and with the one the browser draws.
+     *
+     * Any modal dialog holds it, not only these two, because the page scrolled
+     * behind any of them is the same fault.
+     */
+    :root:has(dialog:modal) {
+        overflow: hidden;
+    }
+
+    /*
+     * In the middle of the window. The browser puts a modal dialog there with
+     * automatic margins, and the reset at the top of this file takes every
+     * margin away, that one included - so it is given back here, or the
+     * dialog is drawn in the top corner.
+     */
+    .c-modal {
+        border-radius: var(--radius-lg);
+        inline-size: var(--layout-modal-width);
+        margin: auto;
+        max-block-size: calc(100% - 2 * var(--space-lg));
+        max-inline-size: calc(100% - 2 * var(--space-md));
+    }
+
+    /*
+     * Header, body and footer, one under another, with the body alone taking
+     * whatever is too long for the window - so the heading and the buttons
+     * stay in view. The frame is a div, or the form that closes the dialog.
+     */
+    .c-modal__frame {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-block-size: 0;
+    }
+
+    .c-modal__header,
+    .c-offcanvas__header {
+        align-items: flex-start;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    .c-modal__header {
+        border-block-end: var(--border-hairline) solid var(--color-line);
+    }
+
+    .c-modal__title,
+    .c-offcanvas__title {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: var(--font-weight-display);
+        letter-spacing: var(--tracking-display);
+        line-height: var(--leading-tight);
+    }
+
+    .c-modal__body,
+    .c-offcanvas__body {
+        align-content: start;
+        display: grid;
+        flex: 1 1 auto;
+        gap: var(--space-sm);
+        min-block-size: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    .c-offcanvas__body {
+        padding-block-start: 0;
+    }
+
+    .c-modal__footer {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+        justify-content: flex-end;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    /*
+     * Against an edge of the window. The browser puts a modal dialog between
+     * all four edges with automatic margins; taking the margins away and
+     * giving one back on the side away from the edge is what moves it there.
+     * The margins are logical, so the start and the end change sides with the
+     * direction of the text and nothing here has to know which it is.
+     */
+    .c-offcanvas {
+        border-width: 0;
+        margin: 0;
+        max-block-size: 100%;
+        max-inline-size: 100%;
+    }
+
+    .c-offcanvas--start,
+    .c-offcanvas--end {
+        block-size: 100%;
+        inline-size: min(var(--layout-offcanvas-size), 100%);
+    }
+
+    .c-offcanvas--start {
+        border-inline-end-width: var(--border-hairline);
+        margin-inline-end: auto;
+    }
+
+    .c-offcanvas--end {
+        border-inline-start-width: var(--border-hairline);
+        margin-inline-start: auto;
+    }
+
+    /* As tall as what is in it, which the browser would otherwise stretch between the top and the bottom. */
+    .c-offcanvas--top,
+    .c-offcanvas--bottom {
+        block-size: fit-content;
+        inline-size: 100%;
+        max-block-size: min(var(--layout-offcanvas-size), 100%);
+    }
+
+    .c-offcanvas--top {
+        border-block-end-width: var(--border-hairline);
+        margin-block-end: auto;
+    }
+
+    .c-offcanvas--bottom {
+        border-block-start-width: var(--border-hairline);
+        margin-block-start: auto;
+    }
+
+    /*
+     * Drawn in over a moment - the modal rising a little as it appears, the
+     * offcanvas sliding in from its edge - and out again the same way, for
+     * nobody who asked for reduced motion, who gets the same dialog at once.
+     *
+     * The way in is where the dialog starts from as it opens (@starting-style),
+     * and the way out is the closed dialog's place, reached before the browser
+     * takes it off the page: display and overlay are handed over at the end of
+     * the moment rather than at its start. A browser that cannot do either
+     * shows and hides the dialog at once, which is the same dialog.
+     *
+     * The start and the end slide from the side they are drawn against, which
+     * changes with the direction of the text, so the slide does too. The
+     * direction is read off the dir attribute, where a page says it, and not
+     * with :dir(rtl): the build compiles that into a list of :lang() for older
+     * browsers, so the slide followed the language rather than the direction,
+     * and a page marked right to left in a language not on the list slid its
+     * panel in from the wrong side while it came to rest on the right one.
+     * Where it comes to rest needs neither - the margins above are logical.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-modal,
+        .c-modal::backdrop,
+        .c-offcanvas,
+        .c-offcanvas::backdrop {
+            transition:
+                display var(--motion-layer) allow-discrete,
+                opacity var(--motion-layer),
+                overlay var(--motion-layer) allow-discrete,
+                translate var(--motion-layer);
+        }
+
+        .c-modal:not([open]),
+        .c-modal:not([open])::backdrop,
+        .c-offcanvas:not([open])::backdrop {
+            opacity: 0;
+        }
+
+        .c-modal:not([open]) {
+            translate: 0 var(--space-md);
+        }
+
+        .c-offcanvas--start:not([open]),
+        [dir='rtl'] .c-offcanvas--end:not([open]) {
+            translate: -100% 0;
+        }
+
+        .c-offcanvas--end:not([open]),
+        [dir='rtl'] .c-offcanvas--start:not([open]) {
+            translate: 100% 0;
+        }
+
+        .c-offcanvas--top:not([open]) {
+            translate: 0 -100%;
+        }
+
+        .c-offcanvas--bottom:not([open]) {
+            translate: 0 100%;
+        }
+
+        @starting-style {
+            .c-modal[open],
+            .c-modal[open]::backdrop,
+            .c-offcanvas[open]::backdrop {
+                opacity: 0;
+            }
+
+            .c-modal[open] {
+                translate: 0 var(--space-md);
+            }
+
+            .c-offcanvas--start[open],
+            [dir='rtl'] .c-offcanvas--end[open] {
+                translate: -100% 0;
+            }
+
+            .c-offcanvas--end[open],
+            [dir='rtl'] .c-offcanvas--start[open] {
+                translate: 100% 0;
+            }
+
+            .c-offcanvas--top[open] {
+                translate: 0 -100%;
+            }
+
+            .c-offcanvas--bottom[open] {
+                translate: 0 100%;
+            }
+        }
     }
 
     /* ==== The style guide's own furniture ================================ */

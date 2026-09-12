@@ -28,7 +28,7 @@ namespace Trilobit\Core\Presentation\Component;
 final class ComponentRegistry
 {
     /** Under the project root. */
-    public const string DIRECTORY = 'src/Core/Presentation/components'; // check-leaks:allow rule=high_entropy reason=a directory path that happens to be long enough to read as an opaque literal
+    public const string DIRECTORY = 'src/Core/Presentation/components';
 
     /** What a component's root class starts with, and what its name is derived from. */
     public const string PREFIX = 'c-';
@@ -89,7 +89,7 @@ final class ComponentRegistry
             new Component(
                 'c-card',
                 'A linked tile: something to look at, a title that is the link, and a sentence about it.',
-                ['default', 'without media'],
+                ['default', 'without media', 'with a footer'],
             ),
             new Component(
                 'c-signpost',
@@ -99,7 +99,7 @@ final class ComponentRegistry
             new Component(
                 'c-button',
                 'The one thing a page wants you to do, and the quieter things beside it.',
-                ['primary', 'quiet', 'without a destination', 'with an icon'],
+                ['primary', 'quiet', 'danger', 'small', 'without a destination', 'with an icon', 'with only an icon'],
             ),
             new Component(
                 'c-button-group',
@@ -138,7 +138,7 @@ final class ComponentRegistry
             new Component(
                 'c-badge',
                 'A short label attached to something else: a state, a count, a name.',
-                ['plain', 'accent'],
+                ['plain', 'accent', 'danger'],
             ),
             new Component(
                 'c-field',
@@ -162,7 +162,24 @@ final class ComponentRegistry
                 'c-notice',
                 'One sentence a page has to say to whoever is reading it, which the reader may be allowed to put '
                 . 'away.',
-                ['info', 'danger', 'dismissible'],
+                ['info', 'danger', 'dismissible', 'with a title'],
+            ),
+            new Component(
+                'c-progress',
+                'How far something has got, or how much of something there is: the browser\'s own bar for '
+                . 'each, named by a label and saying its value in words.',
+                ['under way', 'not known how far', 'a measure', 'a measure past its high bound'],
+            ),
+            new Component(
+                'c-spinner',
+                'A wait, said in words: a status naming what is being loaded, and a turning shape beside the '
+                . 'words for whoever can see it turn.',
+                ['default', 'small', 'with its words shown'],
+            ),
+            new Component(
+                'c-placeholder',
+                'The shape of content still on its way, announced once for the whole block.',
+                ['lines of text', 'in place of a card'],
             ),
             new Component(
                 'c-marker-list',
@@ -181,6 +198,18 @@ final class ComponentRegistry
                 'c-panel',
                 'A boxed area of a page, with a heading and whatever belongs under it.',
                 ['default'],
+            ),
+            new Component(
+                'c-modal',
+                'A question the page stops to ask over everything else on it, until it is answered or put '
+                . 'away: the browser\'s own dialog, shown as a modal.',
+                ['default', 'with a form that closes it', 'with a body longer than the window', 'redrawn by Naja'],
+            ),
+            new Component(
+                'c-offcanvas',
+                'The same dialog drawn in from an edge of the window - a basket, a set of filters, a menu - and '
+                . 'put away by a click on the page beside it.',
+                ['at the end', 'at the start', 'at the top', 'at the bottom'],
             ),
             new Component(
                 'c-collapse',

@@ -1,0 +1,56 @@
+{**
+ * c-modal - a question the page stops to ask over everything else on it, until
+ * it is answered or put away.
+ *
+ * It is the browser's own dialog shown as a modal, and nearly everything it
+ * does comes from there: the focus is taken into it, the page behind it is
+ * inert to the keyboard, the pointer and a screen reader alike, Escape closes
+ * it, and closing it gives the focus back to whatever had it before. None of
+ * that is written here, so none of it can go missing from here.
+ *
+ * It is opened by a button that names it and the command, which a caller
+ * writes as a c-button with commandfor set to the dialog's id and command set
+ * to show-modal. A browser with Invoker Commands does that on its own; in one
+ * without them assets/dialog.ts answers the same two attributes, listening on
+ * the document, so nothing is set up per dialog and one Naja draws later works
+ * the same. The cross in the header is the same kind of button with the
+ * command close, and so is any button in the footer that only puts the dialog
+ * away.
+ *
+ * It is drawn closed. A dialog drawn open would be shown without being modal -
+ * nothing behind it inert, no backdrop, Escape doing nothing - and there is no
+ * markup that opens one as a modal.
+ *
+ * It is named by its heading (aria-labelledby), so a screen reader says what
+ * it asks as it opens.
+ *
+ * Asked to be a form (dialogForm), everything in it sits inside a form with
+ * method="dialog": a submit button in it closes the dialog and leaves its value
+ * as the dialog's returnValue, with no script at all. A form that goes to the
+ * server is an ordinary form inside the body instead.
+ *
+ * A click beside it does not close it. What it asks is often half filled in,
+ * and a stray click would lose that; Escape and the cross are both there.
+ *
+ * The page under it is held still by assets/base.css, and it is drawn in the
+ * browser's top layer, above every --layout-z-* layer, with no z-index of its
+ * own.
+ *}
+
+{import 'close.latte'}
+
+{define modal, string $id, string $title, bool $dialogForm = false, ?string $testId = null}
+    <dialog class="c-modal" id="{$id}" aria-labelledby="{$id}-title" data-testid="{$testId}">
+        <div n:tag="$dialogForm ? 'form' : 'div'" class="c-modal__frame" n:attr="method: $dialogForm ? 'dialog' : null">
+            <div class="c-modal__header">
+                <h2 class="c-modal__title" id="{$id}-title">{$title}</h2>
+
+                {include close, attributes: ['commandfor' => $id, 'command' => 'close']}
+            </div>
+
+            <div class="c-modal__body">{block modalBody}{/block}</div>
+
+            <div class="c-modal__footer" n:ifcontent>{block modalFooter}{/block}</div>
+        </div>
+    </dialog>
+{/define}

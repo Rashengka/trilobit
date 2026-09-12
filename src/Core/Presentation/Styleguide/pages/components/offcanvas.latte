@@ -1,0 +1,90 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The same dialog drawn in from each of the four edges of the window. The
+ * start and the end are logical: switch the page to a language written from
+ * the right and they change sides, which tests/e2e/layers.spec.ts measures.
+ *
+ * Each specimen is the button that opens the panel and the panel itself,
+ * which is drawn closed and so takes no room on the stage.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/offcanvas.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-offcanvas']}
+        {block sgSectionBody}
+            {specimen 'at the end'}
+                {include button,
+                    label: 'Open the basket',
+                    variant: 'quiet',
+                    attributes: ['commandfor' => 'sg-offcanvas-end', 'command' => 'show-modal'],
+                    testId: 'sg-offcanvas-end-open'}
+
+                {embed block offcanvas, id: 'sg-offcanvas-end', title: 'Basket', testId: 'sg-offcanvas-end'}
+                    {block offcanvasBody}
+                        <p>Two specimens, each lent for four weeks.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'at the start'}
+                {include button,
+                    label: 'Filter the drawer',
+                    variant: 'quiet',
+                    attributes: ['commandfor' => 'sg-offcanvas-start', 'command' => 'show-modal'],
+                    testId: 'sg-offcanvas-start-open'}
+
+                {embed block offcanvas,
+                    id: 'sg-offcanvas-start',
+                    title: 'Filters',
+                    edge: Trilobit\Core\Presentation\Component\OffcanvasEdge::Start,
+                    testId: 'sg-offcanvas-start'}
+                    {block offcanvasBody}
+                        <p>Narrow the drawer down by period, and by where each specimen was found.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'at the top'}
+                {include button,
+                    label: 'Read the notice',
+                    variant: 'quiet',
+                    attributes: ['commandfor' => 'sg-offcanvas-top', 'command' => 'show-modal'],
+                    testId: 'sg-offcanvas-top-open'}
+
+                {embed block offcanvas,
+                    id: 'sg-offcanvas-top',
+                    title: 'Notice of closure',
+                    edge: Trilobit\Core\Presentation\Component\OffcanvasEdge::Top,
+                    testId: 'sg-offcanvas-top'}
+                    {block offcanvasBody}
+                        <p>The reading room is closed on the first Monday of every month.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'at the bottom'}
+                {include button,
+                    label: 'Show what was looked at',
+                    variant: 'quiet',
+                    attributes: ['commandfor' => 'sg-offcanvas-bottom', 'command' => 'show-modal'],
+                    testId: 'sg-offcanvas-bottom-open'}
+
+                {embed block offcanvas,
+                    id: 'sg-offcanvas-bottom',
+                    title: 'Recently viewed',
+                    edge: Trilobit\Core\Presentation\Component\OffcanvasEdge::Bottom,
+                    testId: 'sg-offcanvas-bottom'}
+                    {block offcanvasBody}
+                        <p>Phacops, Calymene and Asaphus, the last one twice.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}
