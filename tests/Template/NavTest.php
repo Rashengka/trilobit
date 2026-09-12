@@ -151,12 +151,19 @@ final class NavTest extends TestCase
         return $entry;
     }
 
-    /** @return list<Element> the direct children of $parent that are $name elements */
+    /**
+     * The direct children of $parent that are $name elements.
+     *
+     * Read out of childNodes rather than ->children, which Dom\Element has
+     * only from PHP 8.5 on, and this project still runs on 8.4.
+     *
+     * @return list<Element>
+     */
     private function childrenOf(Element $parent, string $name): array
     {
         $found = [];
-        foreach ($parent->children as $child) {
-            if ($child->localName === $name) {
+        foreach ($parent->childNodes as $child) {
+            if ($child instanceof Element && $child->localName === $name) {
                 $found[] = $child;
             }
         }

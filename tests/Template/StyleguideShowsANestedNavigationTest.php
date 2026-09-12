@@ -114,13 +114,31 @@ final class StyleguideShowsANestedNavigationTest extends TestCase
         }
 
         $deepest = 0;
-        foreach ($top->children as $entry) {
-            if ($entry->localName === 'li') {
-                $deepest = max($deepest, self::levelsUnder($entry));
-            }
+        foreach (self::elementsIn($top, 'li') as $entry) {
+            $deepest = max($deepest, self::levelsUnder($entry));
         }
 
         return $deepest;
+    }
+
+    /**
+     * The direct children of $parent that are $name elements.
+     *
+     * Read out of childNodes rather than ->children, which Dom\Element has
+     * only from PHP 8.5 on, and this project still runs on 8.4.
+     *
+     * @return list<Element>
+     */
+    private static function elementsIn(Element $parent, string $name): array
+    {
+        $found = [];
+        foreach ($parent->childNodes as $child) {
+            if ($child instanceof Element && $child->localName === $name) {
+                $found[] = $child;
+            }
+        }
+
+        return $found;
     }
 
     private static function levelsUnder(Element $entry): int
@@ -142,10 +160,8 @@ final class StyleguideShowsANestedNavigationTest extends TestCase
         }
 
         $deepest = 0;
-        foreach ($opened->children as $child) {
-            if ($child->localName === 'li') {
-                $deepest = max($deepest, self::levelsUnder($child));
-            }
+        foreach (self::elementsIn($opened, 'li') as $child) {
+            $deepest = max($deepest, self::levelsUnder($child));
         }
 
         return 1 + $deepest;
@@ -153,13 +169,7 @@ final class StyleguideShowsANestedNavigationTest extends TestCase
 
     private static function firstChild(Element $parent, string $name): ?Element
     {
-        foreach ($parent->children as $child) {
-            if ($child->localName === $name) {
-                return $child;
-            }
-        }
-
-        return null;
+        return self::elementsIn($parent, $name)[0] ?? null;
     }
 
     private function tree(string $parentHref, string $childHref): string
