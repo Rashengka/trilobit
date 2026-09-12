@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Styleguide;
 
-use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
@@ -182,19 +181,49 @@ final class StyleguidePages
                         'Overview',
                         'Every component on one list: what it is called, what it is for, and the way to its page.',
                     ),
-                    ...array_map(
-                        static fn(Component $component): StyleguidePage => new StyleguidePage(
-                            'components',
-                            substr($component->name, strlen(ComponentRegistry::PREFIX)),
-                            $component->name,
-                            $component->summary,
-                            components: [$component->name],
-                        ),
-                        $this->components->all(),
-                    ),
+                    ...$this->componentPages(),
                 ],
             ),
         ];
+    }
+
+    /**
+     * One page for every registered component, in the order of the register,
+     * with the one page about how two of them go together after the second of
+     * them.
+     *
+     * That page is Navbar: what Bootstrap has as a component of its own is
+     * c-site-header and c-nav here, in the two regions of the shell, and the
+     * page shows the two together without registering anything. It follows
+     * c-nav, so that the menu offers it where somebody looking for the
+     * navigation already is.
+     *
+     * @return list<StyleguidePage>
+     */
+    private function componentPages(): array
+    {
+        $pages = [];
+        foreach ($this->components->all() as $component) {
+            $pages[] = new StyleguidePage(
+                'components',
+                substr($component->name, strlen(ComponentRegistry::PREFIX)),
+                $component->name,
+                $component->summary,
+                components: [$component->name],
+            );
+
+            if ($component->name === 'c-nav') {
+                $pages[] = new StyleguidePage(
+                    'components',
+                    'navbar',
+                    'Navbar',
+                    'The banner over the navigation - c-site-header and c-nav, in the regions of the shell a '
+                        . 'page draws them in.',
+                );
+            }
+        }
+
+        return $pages;
     }
 
     /** @return non-empty-list<StyleguidePage> */

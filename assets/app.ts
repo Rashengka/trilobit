@@ -13,6 +13,8 @@ import { openWhatTheAddressNames } from './disclosure';
 import { keepTheDropdownsToTheKeyboard } from './dropdown';
 import { unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
+import { followTheChrome, scrollspiesInSnippets, spyWithin } from './scrollspy';
+import { layTabsWithin, switchTheTabs, tabsInSnippets } from './tabs';
 import { showTheTooltips } from './tooltip';
 import './segment-suggestion';
 import { announceTheToasts } from './toast';
@@ -143,8 +145,19 @@ naja.registerExtension(comboboxesInSnippets);
 // history.back() brings back; before Naja starts, like the one above, so that
 // no redraw can happen without it. See assets/dialog.ts.
 naja.registerExtension(dialogsInSnippets);
+naja.registerExtension(tabsInSnippets);
+naja.registerExtension(scrollspiesInSnippets);
 naja.initialize({ history: true });
 enhanceWithin(document);
+
+// Tabs and contents follow the comboboxes' order for the same reason: what
+// Naja keeps of a snippet has to be the server's markup, without a tab list
+// laid over it. See assets/tabs.ts and assets/scrollspy.ts. The contents
+// read the chrome measured above, so they come after it.
+switchTheTabs();
+layTabsWithin(document);
+followTheChrome();
+spyWithin(document);
 
 // After Naja has started, like the comboboxes, and with no extension of its
 // own: it listens on the document and prepares no notice, so there is nothing

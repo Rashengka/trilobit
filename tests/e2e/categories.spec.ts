@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process';
 
 import { expect, test, type Page } from '@playwright/test';
 
+import { addressFor } from './accounts';
+
 /**
  * Categories and the page form, in a real browser.
  *
@@ -21,16 +23,18 @@ import { expect, test, type Page } from '@playwright/test';
 /** Trilobit\Core\Console\AccountCommand::PASSWORD_LINE. */
 const generatedLine = /^ {2}(\S+)$/m;
 
-const email = 'e2e-categories@example.com';
-
 /** The business playwright.config.ts creates, and the host the browser arrives at. */
 const host = '127.0.0.1';
 
 test.describe.configure({ mode: 'serial' });
 
+/** This copy's address; see tests/e2e/accounts.ts. */
+let email = '';
 let generated = '';
 
 test.beforeAll(() => {
+    email = addressFor('e2e-categories@example.com');
+
     const output = execFileSync(
         'php',
         ['bin/trilobit', 'app:account', email, '--tenant', host, '--name', 'Cora Categories'],
