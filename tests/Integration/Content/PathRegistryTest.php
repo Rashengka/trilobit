@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Tests\Integration\Content;
 
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Content\Address;
 use Trilobit\Core\Content\PathRefused;
@@ -284,6 +285,145 @@ final class PathRegistryTest extends TestCase
         $this->expectExceptionMessage(sprintf("cannot start with '%s'", AdminRoutes::PATH));
 
         $registry->rename('bikes', AdminRoutes::PATH);
+    }
+
+    public function testTheLastPartIsJoinedUnderTheAddressAboveIt(): void
+    {
+        $registry = $this->emptyRegistry();
+
+        self::assertSame('bikes/mountain', $registry->addressUnder('bikes', 'mountain'));
+        self::assertSame('bikes', $registry->addressUnder(null, 'bikes'));
+    }
+
+    /**
+     * Decision C2: only the last part is written, and it is one part. A slash
+     * would be a deeper address typed by hand - a row whose parents do not
+     * exist - and a dot is the module separator of Nette's routing, with
+     * .html as its commonest shape.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function refusedLastParts(): iterable
+    {
+        yield 'a slash' => ['guides/first-ride', 'more than one part'];
+        yield 'an extension' => ['first-ride.html', 'a dot'];
+        yield 'a dot' => ['first.ride', 'a dot'];
+        yield 'upper case' => ['First-Ride', "'first-ride' says the same thing"];
+        yield 'nothing' => ['', 'cannot be empty'];
+    }
+
+    #[DataProvider('refusedLastParts')]
+    public function testALastPartThatIsNotOneSegmentIsRefused(string $written, string $sentence): void
+    {
+        $registry = $this->emptyRegistry();
+
+        $this->expectException(PathRefused::class);
+        $this->expectExceptionMessage($sentence);
+
+        $registry->addressUnder(null, $written);
+    }
+
+    /**
+     * A suggestion is a title put into the stored shape and then run through
+     * the same refusals saving runs through - which is why it is the register
+     * that makes it, and not the browser.
+     */
+    public function testASuggestionIsTheTitleInTheShapeAnAddressIsStoredIn(): void
+    {
+        self::assertSame('mountain-bikes-co', $this->emptyRegistry()->suggest('Mountain bikes & co.'));
+    }
+
+    /** Decision R2, asked before saving rather than after: a taken address is not suggested. */
+    public function testASuggestionSkipsAnAddressAlreadyTaken(): void
+    {
+        $registry = $this->emptyRegistry();
+        $registry->register(new ContentRef(self::PAGE, '1'), 'about', 'About');
+        $registry->register(new ContentRef(self::PAGE, '2'), 'about-2', 'About again');
+
+        self::assertSame('about-3', $registry->suggest('About'));
+    }
+
+    /** Decision R6: a title that is a reserved beginning is not suggested at the root of the site. */
+    public function testASuggestionAtTheRootSkipsAReservedBeginning(): void
+    {
+        $registry = $this->emptyRegistry();
+
+        $suggested = $registry->suggest(ucfirst(AdminRoutes::PATH));
+
+        self::assertSame(AdminRoutes::PATH . '-2', $suggested);
+        $registry->register(new ContentRef(self::PAGE, '1'), $suggested, 'Admin');
+    }
+
+    /** Taken means taken at the address it would really have, under whatever it is filed under. */
+    public function testASuggestionUnderAParentOnlyHasToBeFreeThere(): void
+    {
+        $registry = $this->threeLevelCatalogue();
+
+        self::assertSame('mountain-2', $registry->suggest('Mountain', 'bikes'));
+        self::assertSame('road', $registry->suggest('Road', 'bikes'));
+    }
+
+    /** An address is not taken from whoever already holds it, so re-suggesting for a saved page leaves it where it is. */
+    public function testASuggestionLeavesContentItsOwnAddress(): void
+    {
+        $registry = $this->emptyRegistry();
+        $page = new ContentRef(self::PAGE, '1');
+        $registry->register($page, 'about', 'About');
+
+        self::assertSame('about', $registry->suggest('About', null, $page));
+    }
+
+    /** Decision R7: the whole address has to fit the index, so a long title is cut to what is left under its parent. */
+    public function testASuggestionFitsTheLengthAnAddressMayHave(): void
+    {
+        $registry = $this->threeLevelCatalogue();
+
+        $suggested = $registry->suggest(str_repeat('word ', 80), 'bikes/mountain');
+
+        self::assertLessThanOrEqual(PublicPath::MAX_LENGTH, strlen('bikes/mountain/' . $suggested));
+        self::assertTrue(PublicPath::isSegment($suggested), $suggested . ' is not one segment');
+        $registry->register(new ContentRef(self::PAGE, '1'), 'bikes/mountain/' . $suggested, 'Long', 'bikes/mountain');
+    }
+
+    public function testATitleWithNothingToKeepSuggestsNothing(): void
+    {
+        self::assertSame('', $this->emptyRegistry()->suggest('!!!'));
+    }
+
+    /**
+     * Forgetting an address used to let the database's cascade take whatever
+     * was filed under it, behind Doctrine's back. It is refused instead, with
+     * a sentence, so that deleting a category never deletes a page.
+     */
+    public function testAnAddressWithSomethingFiledUnderItIsNotForgotten(): void
+    {
+        $registry = $this->threeLevelCatalogue();
+
+        $this->expectException(PathRefused::class);
+        $this->expectExceptionMessage('still has');
+
+        $registry->forget('bikes/mountain');
+    }
+
+    public function testAnAddressCannotBeMovedIntoItsOwnBranch(): void
+    {
+        $registry = $this->threeLevelCatalogue();
+
+        $this->expectException(PathRefused::class);
+        $this->expectExceptionMessage('inside it');
+
+        $registry->rename('bikes', 'bikes/mountain/bikes');
+    }
+
+    /** The same refusal register() makes, now made on a move too: a row whose parent does not answer is not a tree. */
+    public function testAnAddressCannotBeMovedUnderOneNobodyHolds(): void
+    {
+        $registry = $this->threeLevelCatalogue();
+
+        $this->expectException(PathRefused::class);
+        $this->expectExceptionMessage('no address answers there');
+
+        $registry->rename('bikes/mountain', 'cars/mountain');
     }
 
     private function threeLevelCatalogue(): PathRegistry

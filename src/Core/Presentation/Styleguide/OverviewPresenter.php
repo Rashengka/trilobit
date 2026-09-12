@@ -77,6 +77,10 @@ final class OverviewPresenter extends FrontPresenter
         '--layout-nav-position' => 'the same switch for the navigation, set apart from the banner',
         '--layout-z-chrome' => 'the layer whatever stays in view is drawn in, above the content that '
             . 'scrolls under it',
+        '--layout-z-menu' => 'the layer the entries a navigation opens as a block over the page are drawn '
+            . 'in, above what stays in view',
+        '--layout-nav-overflow' => 'whether the band the navigation is held in scrolls a menu longer than the '
+            . 'window (auto) or lets a block it opens hang out of it (visible)',
         '--layout-chrome-offset' => 'how much of the top of the window the held bands cover, which a jump '
             . 'to a heading keeps clear; measured by the page, not declared by a theme',
     ];
@@ -194,7 +198,34 @@ final class OverviewPresenter extends FrontPresenter
         $template->tableColumns = $this->sampleTableColumns();
         $template->tableRows = $this->sampleTableRows();
         $template->sampleNavigation = $this->sampleNavigation();
+        $template->sampleNestedNavigation = $this->sampleNestedNavigation();
         $template->sampleSignposts = $this->sampleSignposts();
+    }
+
+    /**
+     * Invented entries with entries under an entry: the case a submenu breaks,
+     * which is an entry leading somewhere of its own that also holds a level
+     * and a level under that. One branch goes a level deeper still, which is
+     * where the themes part - one draws it, the other stops at two.
+     *
+     * Every entry leads somewhere of its own, and somewhere a click can be seen
+     * to have reached: a bare "#" would be a parent with no click to lose.
+     *
+     * @return list<NavigationItem>
+     */
+    private function sampleNestedNavigation(): array
+    {
+        return [
+            new NavigationItem('Overview', '#overview', true, 'sample-subnav-overview'),
+            $this->sampleEntry('Collections', 'collections', $this->sampleEntry('Fossils', 'fossils', $this->sampleEntry('Trilobites', 'trilobites', $this->sampleEntry('Cambrian', 'cambrian'), $this->sampleEntry('Ordovician', 'ordovician')), $this->sampleEntry('Ammonites', 'ammonites')), $this->sampleEntry('Minerals', 'minerals', $this->sampleEntry('Quartz', 'quartz'), $this->sampleEntry('Feldspar', 'feldspar')), $this->sampleEntry('Field notes', 'field-notes')),
+            $this->sampleEntry('Loans', 'loans'),
+        ];
+    }
+
+    /** One invented entry of the nested specimen, leading to a place on this page named after it. */
+    private function sampleEntry(string $label, string $slug, NavigationItem ...$children): NavigationItem
+    {
+        return new NavigationItem($label, '#' . $slug, false, 'sample-subnav-' . $slug, array_values($children));
     }
 
     /**

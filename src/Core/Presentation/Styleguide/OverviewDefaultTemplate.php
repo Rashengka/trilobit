@@ -52,6 +52,9 @@ final class OverviewDefaultTemplate extends FrontTemplate
     /** @var list<NavigationItem> */
     public array $sampleNavigation = [];
 
+    /** @var list<NavigationItem> the same kind of entries, with entries under an entry */
+    public array $sampleNestedNavigation = [];
+
     /** @var list<SignpostLink> */
     public array $sampleSignposts = [];
 

@@ -10,10 +10,13 @@ use Trilobit\Core\Admin\Menu\MenuProvider;
 /**
  * What the Cms module puts in the administration menu.
  *
- * Two entries rather than one, because they are two jobs done at different
- * times: a page is written once, and where it is listed is rearranged whenever
- * the site grows. A build without this module registers neither, which is why
- * Core never has to know that either of them exists.
+ * Three entries rather than one, because they are three jobs done at
+ * different times: a page is written once, the categories it is filed under
+ * are the architecture of the site and change rarely, and where things are
+ * listed is rearranged whenever the site grows. A build without this module
+ * registers none of them, which is why Core never has to know that any of
+ * them exists - categories included, although they are Core's own: this is
+ * the module that files something into them.
  */
 final class CmsMenu implements MenuProvider
 {
@@ -21,6 +24,7 @@ final class CmsMenu implements MenuProvider
     public function provide(): iterable
     {
         yield new MenuItem('Pages', 'Cms:Admin:Page:default');
+        yield new MenuItem('Categories', 'Cms:Admin:Category:default');
         yield new MenuItem('Menus', 'Cms:Admin:Menu:default');
     }
 }
