@@ -1452,6 +1452,18 @@
         color: var(--color-danger-ink);
     }
 
+    /* The title over the sentence, set apart by the weight of emphasis rather
+       than by a size: it is not a heading of the page (see notice.latte). */
+    .c-notice--titled {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3xs);
+    }
+
+    .c-notice__title {
+        font-weight: var(--font-weight-strong);
+    }
+
     /*
      * ---- Waiting ------------------------------------------------------------
      *

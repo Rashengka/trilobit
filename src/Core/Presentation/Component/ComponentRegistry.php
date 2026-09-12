@@ -144,7 +144,7 @@ final class ComponentRegistry
                 'c-notice',
                 'One sentence a page has to say to whoever is reading it, which the reader may be allowed to put '
                 . 'away.',
-                ['info', 'danger', 'dismissible'],
+                ['info', 'danger', 'dismissible', 'with a title'],
             ),
             new Component(
                 'c-progress',

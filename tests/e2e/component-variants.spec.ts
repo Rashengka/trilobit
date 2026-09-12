@@ -78,6 +78,23 @@ test('a card\'s footer sits at its foot, lines up along the row, and is not part
     expect(footers[0]?.top, 'the footers of a row do not line up').toBeCloseTo(footers[1]?.top ?? -1, 0);
 });
 
+test('a notice with a title is one region holding the title and the sentence, and no heading', async ({ page }) => {
+    await page.goto(address('notice'));
+
+    const notice = stage(page, 'with a title');
+    const region = notice.getByRole('alert');
+    await expect(region).toHaveCount(1);
+    await expect(region).toContainText('The page was not published');
+    await expect(region).toContainText('Its address is taken by another page.');
+    await expect(notice.getByRole('heading')).toHaveCount(0);
+
+    const weightOf = async (selector: string): Promise<number> =>
+        Number(await notice.locator(selector).evaluate((node) => getComputedStyle(node).fontWeight));
+    expect(await weightOf('.c-notice__title'), 'the title does not stand out from the sentence').toBeGreaterThan(
+        await weightOf('.c-notice__message'),
+    );
+});
+
 for (const theme of themes) {
     for (const mode of modes) {
         const where = `${theme}, ${mode}`;
