@@ -177,6 +177,10 @@ final readonly class PermissionStructure
     /**
      * Puts every resource into an access list, each one after whatever it
      * falls under - Nette refuses a parent it has not been given yet.
+     *
+     * No access list the application answers from is built this way:
+     * Trilobit\Core\Security\AccessComposition registers every resource on its
+     * own and works out what falls under what itself.
      */
     public function addResourcesTo(Permission $access): void
     {

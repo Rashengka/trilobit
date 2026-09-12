@@ -19,9 +19,11 @@
 # a case missing from this file is refused too, because registration walks the
 # enum and would otherwise register a resource nobody has said anything about.
 #
-# `parent` is Nette's own resource inheritance: a rule written on the parent
-# answers for the child as well, so "may open the administration" needs saying
-# once rather than once per section.
+# `parent` means what it means in Nette: a rule written on the parent answers
+# for the child as well, so "may open the administration" needs saying once
+# rather than once per section. Nette is not given the parent, though - it is
+# worked out while an access list is composed, and the list holds a rule of its
+# own on every section; see Trilobit\Core\Security\AccessComposition.
 #
 # Not every pair a role could be assembled from is checked somewhere yet, and
 # that is allowed on purpose: a piece may be defined before the first section
