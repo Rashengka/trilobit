@@ -84,6 +84,11 @@
     --color-nav-ink-active: light-dark(oklch(0.99 0.008 85), oklch(0.97 0.01 85));
     --color-nav-marker: light-dark(oklch(0.72 0.14 55), oklch(0.72 0.13 40));
 
+    /* A step lighter than the dark column, so the light ink of the entry under
+       the pointer stays on a dark ground. The page's hover is a light wash,
+       and light ink on it could not be read. */
+    --color-nav-hover: light-dark(oklch(0.38 0.03 60), oklch(0.24 0.014 75));
+
     /* ---- Spacing ------------------------------------------------------ */
 
     --spacing: 0.22rem;

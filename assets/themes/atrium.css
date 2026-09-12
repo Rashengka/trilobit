@@ -92,6 +92,12 @@
     --color-nav-ink-active: var(--color-ink);
     --color-nav-marker: var(--color-accent);
 
+    /* Under the pointer in the navigation. A token of the navigation's own
+       rather than the page's hover, because a theme may paint its navigation
+       on a ground the page's hover would wash out; atrium's navigation is the
+       page's colour, so here the two are one. */
+    --color-nav-hover: var(--color-surface-hover);
+
     /* ---- Spacing ------------------------------------------------------ */
 
     /* Tailwind derives every one of its own spacing utilities from this, so a

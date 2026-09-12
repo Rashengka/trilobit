@@ -721,7 +721,7 @@
     }
 
     .c-nav__toggle:hover {
-        background-color: var(--color-surface-hover);
+        background-color: var(--color-nav-hover);
         color: var(--color-nav-ink-active);
     }
 
@@ -795,7 +795,7 @@
     }
 
     .c-nav__link:hover {
-        background-color: var(--color-surface-hover);
+        background-color: var(--color-nav-hover);
         color: var(--color-nav-ink-active);
     }
 
