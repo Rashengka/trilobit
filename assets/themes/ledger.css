@@ -165,6 +165,25 @@
     --layout-banner-position: sticky;
     --layout-nav-position: sticky;
 
+    /* The navigation is beside the banner, not under it, so it is held at the
+       top of the window. */
+    --layout-nav-inset: 0px;
+
+    /*
+     * Ledger's bands stay the size they are while the page scrolls: a column
+     * of accounts is not made smaller for being read further down. These are
+     * the sizes the rules drew with before they were tokens, and ledger never
+     * redeclares them - see atrium.css for the theme that does.
+     */
+    --layout-banner-padding-block: var(--space-md);
+    --layout-banner-brand-size: var(--text-xl);
+    --layout-nav-entry-scale: 1;
+    --layout-nav-entry-padding-block: var(--space-xs);
+    --layout-nav-entry-padding-inline: var(--space-sm);
+
+    /* Nothing changes size, and a switch into this theme is not animated either. */
+    --layout-chrome-motion: 0s;
+
     --layout-z-chrome: 1;
     --layout-z-menu: 2;
 

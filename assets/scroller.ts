@@ -20,3 +20,18 @@ export function scroller(): HTMLElement {
 
     return element instanceof HTMLElement ? element : document.documentElement;
 }
+
+/**
+ * What an IntersectionObserver watching against the thing that scrolls is
+ * given as its root - the same answer, in the form an observer takes it.
+ *
+ * The document is watched against the window, and null is how an observer
+ * names the window. Handing it the root element instead would look the same and
+ * be wrong in silence: the root element is as tall as the page, so everything
+ * on the page would intersect it wherever the page was scrolled.
+ */
+export function observedAgainst(): Element | null {
+    const element = scroller();
+
+    return element === document.documentElement || element === document.scrollingElement ? null : element;
+}
