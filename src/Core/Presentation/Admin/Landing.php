@@ -27,12 +27,13 @@ use Trilobit\Core\Security\Landlords;
  * none of them keeps an answer of its own.
  *
  * **What it answers is where somebody belongs, and that is not the same claim
- * as what they may open.** For the two kinds of account this was written for
- * the two coincide, and for a role assembled out of one section they do not:
- * `content:view` and nothing else opens that section and is refused the
- * overview, because the pairs in src/Core/Security/permissions.neon inherit
- * from parent to child. Anything that turns this answer into a link has to
- * ask the second question as well - the bar does, through
+ * as what they may open.** For every role holding a right in a section of the
+ * administration the two coincide, because such a right opens the
+ * administration it is a section of (see src/Core/Security/permissions.neon).
+ * They come apart for a role made only of pieces outside it - `redirection`
+ * falls under nothing - which is sent to an overview it may not open. Anything
+ * that turns this answer into a link therefore still has to ask the second
+ * question as well - the bar does, through
  * Trilobit\Core\Admin\Menu\ReachableMenu::wouldOpen(), and draws no way back
  * where there is none to draw.
  *
