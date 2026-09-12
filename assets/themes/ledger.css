@@ -107,6 +107,10 @@
     --border-hairline: 1px;
     --border-marker: 3px;
 
+    /* Icons no taller than the letters beside them, the way this theme is
+       smaller at everything else. */
+    --icon-size: 1em;
+
     /* Rules instead of shadows: the surface is separated by a line, the way a
        printed ledger separates one column from the next. */
     --shadow-raised: 0 0 0 0 transparent;

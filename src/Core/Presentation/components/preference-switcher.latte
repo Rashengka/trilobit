@@ -1,0 +1,55 @@
+{**
+ * c-preference-switcher - every preference this build has, each drawn as the
+ * set of answers somebody can switch between.
+ *
+ * One component for every place the switch appears - the top of the style
+ * guide, and the menu of whoever is signed in to the administration - so that
+ * there is one switch to keep right rather than two to keep alike.
+ *
+ * Nothing is listed here. The preferences and their answers come out of
+ * Trilobit\Core\Preference\PreferenceCatalogue by way of
+ * Preferences::offered(), and the words on the controls are derived from the
+ * names, so a fourth preference is an entry in the catalogue and not a line in
+ * this file. tests/Template/PreferenceSwitcherOffersEveryPreferenceTest fails
+ * when what is drawn and what the catalogue has part company in either
+ * direction.
+ *
+ * A control says which preference it sets and to what, and nothing else:
+ * assets/app.ts moves the attribute on <html> and tells the server. **Which
+ * control is the chosen one is said once, in aria-pressed.** It was said twice
+ * until 2026-09-09 - as the attribute and as the button's variant - and the
+ * script only ever moved the attribute, so clicking another theme repainted the
+ * page and left the mark on the theme that was no longer on. The variant is
+ * therefore fixed and assets/base.css draws .c-button[aria-pressed='true'] as
+ * the one in force.
+ *
+ * It is preferred() and not value() that decides which control is pressed: the
+ * switch shows the person's own setting, which is not always what the page it
+ * happens to be on is drawn at - see Trilobit\Core\Preference\Preferences.
+ *}
+
+{import 'button.latte'}
+
+{define preferenceSwitcher, Trilobit\Core\Preference\Preferences $preferences, ?string $testId = null}
+    <div class="c-preference-switcher" data-testid="{$testId}">
+        {foreach $preferences->offered() as $name => $preference}
+            {var string $label = ($name|replace: '-', ' '|firstUpper)}
+
+            <div class="c-preference-switcher__group" role="group" aria-label="{$label}">
+                <span class="c-preference-switcher__label" aria-hidden="true">{$label}</span>
+
+                {foreach $preference->values as $value}
+                    {include button,
+                        label: ($value|firstUpper),
+                        variant: 'quiet',
+                        testId: $name . '-choice-' . $value,
+                        attributes: [
+                            'data-preference' => $name,
+                            'data-preference-value' => $value,
+                            'aria-pressed' => $value === $preferences->preferred($name) ? 'true' : 'false',
+                        ]}
+                {/foreach}
+            </div>
+        {/foreach}
+    </div>
+{/define}

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 
 import { expect, test } from '@playwright/test';
 
+import { openAccountMenu } from './account-menu';
 import { choose, themeOf } from './preferences';
 
 /**
@@ -81,6 +82,7 @@ test('a device remembers, the profile takes it over, and afterwards the profile 
     expect(await themeOf(page)).toBe(chosen);
 
     // Signing out changes nothing about the way the device looks.
+    await openAccountMenu(page);
     await page.getByTestId('admin-sign-out').click();
     await expect(page).toHaveURL(/\/$/);
     await page.goto('/_styleguide');

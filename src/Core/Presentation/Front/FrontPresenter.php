@@ -7,7 +7,6 @@ namespace Trilobit\Core\Presentation\Front;
 use Nette\Application\UI\Presenter;
 use Trilobit\Core\Preference\PreferenceCatalogue;
 use Trilobit\Core\Preference\RememberedPreferences;
-use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 use Trilobit\Core\Presentation\Front\Signpost\Signpost;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
@@ -36,8 +35,6 @@ abstract class FrontPresenter extends Presenter
 {
     private SignpostList $signposts;
 
-    private DesignSystem $design;
-
     private RememberedPreferences $remembered;
 
     public function injectSignposts(SignpostList $signposts): void
@@ -45,9 +42,8 @@ abstract class FrontPresenter extends Presenter
         $this->signposts = $signposts;
     }
 
-    public function injectAppearance(DesignSystem $design, RememberedPreferences $remembered): void
+    public function injectAppearance(RememberedPreferences $remembered): void
     {
-        $this->design = $design;
         $this->remembered = $remembered;
     }
 
@@ -89,7 +85,6 @@ abstract class FrontPresenter extends Presenter
 
         $template->preferences = $this->remembered->forThisRequest();
         $template->preferenceUrl = $this->link(':Core:Preference:Choice:remember');
-        $template->themes = $this->design->themes;
         $template->homeUrl = $this->link(':Core:Front:Home:default');
         $template->navigation = $this->navigation();
     }

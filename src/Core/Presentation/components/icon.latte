@@ -1,0 +1,41 @@
+{**
+ * c-icon - a small drawing beside a word, or standing in for one.
+ *
+ * Drawn in the ink of the text around it (currentColor) and at a size read out
+ * of --icon-size, so a theme recolours and resizes every icon at once and none
+ * of them carries a colour or a length of its own.
+ *
+ * Beside a word that already says what it means, an icon is decoration and is
+ * hidden from assistive technology; given a label, it stands on its own and is
+ * announced as an image under that name. There is no third case - an icon a
+ * screen reader announces as nothing in particular.
+ *
+ * Which icons there are is Trilobit\Core\Presentation\Component\Icon, and a
+ * name that is not one of its cases stops the page rather than leaving an empty
+ * place in it.
+ *}
+
+{define icon, string $name, ?string $label = null}
+    {var Trilobit\Core\Presentation\Component\Icon $icon = Trilobit\Core\Presentation\Component\Icon::from($name)}
+
+    <svg
+        class="c-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        focusable="false"
+        n:attr="role: $label === null ? null : 'img', aria-label: $label, aria-hidden: $label === null ? 'true' : null"
+    >
+        {switch $icon->value}
+            {case 'sign-out'}
+                <path d="M10 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
+                <path d="M15 8l4 4-4 4" />
+                <path d="M19 12H10" />
+            {case 'chevron-down'}
+                <path d="M6 9l6 6 6-6" />
+        {/switch}
+    </svg>
+{/define}

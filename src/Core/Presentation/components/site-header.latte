@@ -6,6 +6,12 @@
  * business. The shell places it into a grid area named "banner" and a theme
  * decides where that area is, which is how assets/themes/ledger.css moves the
  * navigation beside it without a line of this file changing.
+ *
+ * Whatever a page has to put at the far end of the band goes into the
+ * siteHeaderEnd block, by {embed} - in the administration, the menu of whoever
+ * is signed in. Inside the band rather than under it, so that it shares the
+ * band's padding: a row drawn under the header had none, and sat on the
+ * banner's bottom rule. A page that puts nothing there gets no element for it.
  *}
 
 {define siteHeader, string $brand, string $href, string $tagline = '', ?string $testId = null}
@@ -13,5 +19,7 @@
         <a class="c-site-header__brand" href="{$href}" data-testid="{$testId}">{$brand}</a>
 
         <p class="c-site-header__tagline" n:if="$tagline !== ''">{$tagline}</p>
+
+        <div class="c-site-header__end" n:ifcontent>{block siteHeaderEnd}{/block}</div>
     </div>
 {/define}
