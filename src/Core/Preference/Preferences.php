@@ -135,6 +135,22 @@ final readonly class Preferences
         return $attributes;
     }
 
+    /**
+     * Every preference this build has, by name and in the catalogue's order,
+     * each with every answer it accepts: what a switch has to offer.
+     *
+     * It is the catalogue's list rather than a list of what was chosen, so a
+     * switch drawn out of it cannot leave out a preference nobody has an
+     * opinion about - which is most of them, for most people. See
+     * src/Core/Presentation/components/preference-switcher.latte.
+     *
+     * @return non-empty-array<string, Preference>
+     */
+    public function offered(): array
+    {
+        return $this->catalogue;
+    }
+
     private function preference(string $name): Preference
     {
         return $this->catalogue[$name] ?? throw new \InvalidArgumentException(sprintf(

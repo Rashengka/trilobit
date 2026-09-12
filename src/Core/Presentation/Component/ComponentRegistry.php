@@ -36,6 +36,15 @@ final class ComponentRegistry
     public function all(): array
     {
         return $this->components ??= [
+            // First, because its specimen is the switch at the top of the style
+            // guide itself: the one component on that page that is used rather
+            // than shown, and a second copy further down would put two controls
+            // for every answer on one page.
+            new Component(
+                'c-preference-switcher',
+                'Every preference this build has, each drawn as the set of answers somebody can switch between.',
+                ['default'],
+            ),
             new Component(
                 'c-site-header',
                 'The band across the top of every page: who this is, and the way back to the start.',

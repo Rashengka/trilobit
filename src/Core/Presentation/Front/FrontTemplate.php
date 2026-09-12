@@ -71,9 +71,6 @@ class FrontTemplate extends Template
     /** Where the switch says that somebody chose something; see PreferenceRoutes. */
     public string $preferenceUrl = '';
 
-    /** @var list<string> every theme this installation has, for the switcher */
-    public array $themes = [];
-
     public string $homeUrl = '';
 
     /**
