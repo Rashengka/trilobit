@@ -1825,6 +1825,271 @@
         text-align: end;
     }
 
+    /*
+     * c-modal and c-offcanvas: a native dialog shown with showModal().
+     *
+     * **No layer of their own.** A dialog shown as a modal is in the browser's
+     * top layer, above the whole page and every z-index in it, so neither
+     * reads one of the --layout-z-* layers; a layer written here would be a
+     * number nothing reads.
+     *
+     * A closed dialog is display: none by the browser's own stylesheet, and a
+     * display given to the class would win over it - an author's rule beats
+     * the browser's whatever its specificity - and draw every closed dialog on
+     * the page. So the layout is given to the open one alone.
+     */
+    .c-modal,
+    .c-offcanvas {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        box-shadow: var(--shadow-raised);
+        color: var(--color-ink);
+        padding: 0;
+    }
+
+    .c-modal[open],
+    .c-offcanvas[open] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Laid over the page behind an open dialog, which still shows through it. */
+    .c-modal::backdrop,
+    .c-offcanvas::backdrop {
+        background-color: var(--color-backdrop);
+    }
+
+    /*
+     * The page under a modal dialog stays where it is, and it is the
+     * stylesheet that holds it, with no script: nothing counts the dialogs
+     * that are open, so there is no count to be left wrong by one Naja takes
+     * away while it is open. The gutter keeps the room the scrollbar had, so
+     * the page does not move sideways as the scrollbar goes; a page too short
+     * to have had one gains the room for it instead.
+     *
+     * Any modal dialog holds it, not only these two, because the page scrolled
+     * behind any of them is the same fault.
+     */
+    :root:has(dialog:modal) {
+        overflow: hidden;
+        scrollbar-gutter: stable;
+    }
+
+    /*
+     * In the middle of the window. The browser puts a modal dialog there with
+     * automatic margins, and the reset at the top of this file takes every
+     * margin away, that one included - so it is given back here, or the
+     * dialog is drawn in the top corner.
+     */
+    .c-modal {
+        border-radius: var(--radius-lg);
+        inline-size: var(--layout-modal-width);
+        margin: auto;
+        max-block-size: calc(100% - 2 * var(--space-lg));
+        max-inline-size: calc(100% - 2 * var(--space-md));
+    }
+
+    /*
+     * Header, body and footer, one under another, with the body alone taking
+     * whatever is too long for the window - so the heading and the buttons
+     * stay in view. The frame is a div, or the form that closes the dialog.
+     */
+    .c-modal__frame {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-block-size: 0;
+    }
+
+    .c-modal__header,
+    .c-offcanvas__header {
+        align-items: flex-start;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    .c-modal__header {
+        border-block-end: var(--border-hairline) solid var(--color-line);
+    }
+
+    .c-modal__title,
+    .c-offcanvas__title {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: var(--font-weight-display);
+        letter-spacing: var(--tracking-display);
+        line-height: var(--leading-tight);
+    }
+
+    .c-modal__body,
+    .c-offcanvas__body {
+        align-content: start;
+        display: grid;
+        flex: 1 1 auto;
+        gap: var(--space-sm);
+        min-block-size: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    .c-offcanvas__body {
+        padding-block-start: 0;
+    }
+
+    .c-modal__footer {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+        justify-content: flex-end;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    /*
+     * Against an edge of the window. The browser puts a modal dialog between
+     * all four edges with automatic margins; taking the margins away and
+     * giving one back on the side away from the edge is what moves it there.
+     * The margins are logical, so the start and the end change sides with the
+     * direction of the text and nothing here has to know which it is.
+     */
+    .c-offcanvas {
+        border-width: 0;
+        margin: 0;
+        max-block-size: 100%;
+        max-inline-size: 100%;
+    }
+
+    .c-offcanvas--start,
+    .c-offcanvas--end {
+        block-size: 100%;
+        inline-size: min(var(--layout-offcanvas-size), 100%);
+    }
+
+    .c-offcanvas--start {
+        border-inline-end-width: var(--border-hairline);
+        margin-inline-end: auto;
+    }
+
+    .c-offcanvas--end {
+        border-inline-start-width: var(--border-hairline);
+        margin-inline-start: auto;
+    }
+
+    /* As tall as what is in it, which the browser would otherwise stretch between the top and the bottom. */
+    .c-offcanvas--top,
+    .c-offcanvas--bottom {
+        block-size: fit-content;
+        inline-size: 100%;
+        max-block-size: min(var(--layout-offcanvas-size), 100%);
+    }
+
+    .c-offcanvas--top {
+        border-block-end-width: var(--border-hairline);
+        margin-block-end: auto;
+    }
+
+    .c-offcanvas--bottom {
+        border-block-start-width: var(--border-hairline);
+        margin-block-start: auto;
+    }
+
+    /*
+     * Drawn in over a moment - the modal rising a little as it appears, the
+     * offcanvas sliding in from its edge - and out again the same way, for
+     * nobody who asked for reduced motion, who gets the same dialog at once.
+     *
+     * The way in is where the dialog starts from as it opens (@starting-style),
+     * and the way out is the closed dialog's place, reached before the browser
+     * takes it off the page: display and overlay are handed over at the end of
+     * the moment rather than at its start. A browser that cannot do either
+     * shows and hides the dialog at once, which is the same dialog.
+     *
+     * The start and the end slide from the side they are drawn against, which
+     * changes with the direction of the text, so the slide does too. The
+     * direction is read off the dir attribute, where a page says it, and not
+     * with :dir(rtl): the build compiles that into a list of :lang() for older
+     * browsers, so the slide followed the language rather than the direction,
+     * and a page marked right to left in a language not on the list slid its
+     * panel in from the wrong side while it came to rest on the right one.
+     * Where it comes to rest needs neither - the margins above are logical.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-modal,
+        .c-modal::backdrop,
+        .c-offcanvas,
+        .c-offcanvas::backdrop {
+            transition:
+                display var(--motion-layer) allow-discrete,
+                opacity var(--motion-layer),
+                overlay var(--motion-layer) allow-discrete,
+                translate var(--motion-layer);
+        }
+
+        .c-modal:not([open]),
+        .c-modal:not([open])::backdrop,
+        .c-offcanvas:not([open])::backdrop {
+            opacity: 0;
+        }
+
+        .c-modal:not([open]) {
+            translate: 0 var(--space-md);
+        }
+
+        .c-offcanvas--start:not([open]),
+        [dir='rtl'] .c-offcanvas--end:not([open]) {
+            translate: -100% 0;
+        }
+
+        .c-offcanvas--end:not([open]),
+        [dir='rtl'] .c-offcanvas--start:not([open]) {
+            translate: 100% 0;
+        }
+
+        .c-offcanvas--top:not([open]) {
+            translate: 0 -100%;
+        }
+
+        .c-offcanvas--bottom:not([open]) {
+            translate: 0 100%;
+        }
+
+        @starting-style {
+            .c-modal[open],
+            .c-modal[open]::backdrop,
+            .c-offcanvas[open]::backdrop {
+                opacity: 0;
+            }
+
+            .c-modal[open] {
+                translate: 0 var(--space-md);
+            }
+
+            .c-offcanvas--start[open],
+            [dir='rtl'] .c-offcanvas--end[open] {
+                translate: -100% 0;
+            }
+
+            .c-offcanvas--end[open],
+            [dir='rtl'] .c-offcanvas--start[open] {
+                translate: 100% 0;
+            }
+
+            .c-offcanvas--top[open] {
+                translate: 0 -100%;
+            }
+
+            .c-offcanvas--bottom[open] {
+                translate: 0 100%;
+            }
+        }
+    }
+
     /* ==== The style guide's own furniture ================================ */
 
     /*

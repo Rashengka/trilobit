@@ -77,6 +77,9 @@
     --color-highlight: light-dark(oklch(0.9 0.11 90), oklch(0.42 0.09 85));
     --color-highlight-ink: light-dark(oklch(0.26 0.04 60), oklch(0.95 0.015 85));
 
+    /* Behind an open dialog: the brown ink of the page, thinned. */
+    --color-backdrop: light-dark(oklch(0.26 0.024 60 / 0.4), oklch(0.08 0.01 75 / 0.7));
+
     /* The code the style guide highlights, which sits on --color-canvas-sunken:
        each pair holds 4.5:1 against it in both modes, measured by
        tests/e2e/styleguide-code.spec.ts. Inks, as a printer would set a
@@ -132,6 +135,9 @@
 
     --motion-fast: 90ms ease;
 
+    /* Quicker than atrium, the way this theme is quicker at everything else. */
+    --motion-layer: 140ms ease-out;
+
     /* ---- Layout -------------------------------------------------------- */
 
     /*
@@ -167,6 +173,10 @@
 
     /* About ten choices at this theme's smaller size, before the list scrolls. */
     --layout-combobox-list-size: 18rem;
+
+    /* Narrower than atrium, like the content column. */
+    --layout-modal-width: 32rem;
+    --layout-offcanvas-size: 20rem;
 
     /*
      * Ledger holds both bands in view while the page scrolls: the banner over
