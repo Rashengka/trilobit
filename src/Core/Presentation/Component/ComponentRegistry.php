@@ -81,6 +81,11 @@ final class ComponentRegistry
                 ['primary', 'quiet', 'without a destination'],
             ),
             new Component(
+                'c-icon',
+                'A small drawing beside a word, or standing in for one, in the ink of the text around it.',
+                ['sign-out', 'chevron-down'],
+            ),
+            new Component(
                 'c-badge',
                 'A short label attached to something else: a state, a count, a name.',
                 ['plain', 'accent'],

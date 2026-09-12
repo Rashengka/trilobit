@@ -36,6 +36,7 @@
 {import '../../../components/signpost.latte'}
 {import '../../../components/button.latte'}
 {import '../../../components/badge.latte'}
+{import '../../../components/icon.latte'}
 {import '../../../components/field.latte'}
 {import '../../../components/notice.latte'}
 {import '../../../components/marker-list.latte'}
@@ -553,6 +554,26 @@
             {embed block sgSpecimen, variant: 'without a destination'}
                 {block sgSpecimenStage}
                     {include button, label: 'Recalculate'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {*
+     * Each icon on its own, which is the case where it has to carry a name -
+     * beside a word that already says what it means it would carry none.
+     *}
+    {embed block sgSection, component: $components['c-icon']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'sign-out'}
+                {block sgSpecimenStage}
+                    {include icon, name: 'sign-out', label: 'Sign out'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'chevron-down'}
+                {block sgSpecimenStage}
+                    {include icon, name: 'chevron-down', label: 'Opens underneath'}
                 {/block}
             {/embed}
         {/block}

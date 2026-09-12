@@ -662,6 +662,20 @@
         font-size: var(--text-sm);
     }
 
+    /*
+     * As tall as the text it stands beside and drawn in that text's ink, so a
+     * theme resizes and recolours every icon at once. In a line of text it is
+     * centred on the line; in a control it is one more flex item and never
+     * shrinks to make room for the label.
+     */
+    .c-icon {
+        block-size: var(--icon-size);
+        display: inline-block;
+        flex: none;
+        inline-size: var(--icon-size);
+        vertical-align: middle;
+    }
+
     .c-badge {
         background-color: var(--color-canvas-sunken);
         border-radius: var(--radius-pill);
