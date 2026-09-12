@@ -152,6 +152,10 @@
        got. Nobody who asked for reduced motion sees any of them move. */
     --motion-loop: 1s;
 
+    /* What a disclosure takes to open or close: long enough to be seen to
+       unfold, the way this theme takes its time. */
+    --motion-unfold: 240ms ease;
+
     /* ---- Layout -------------------------------------------------------- */
 
     /*

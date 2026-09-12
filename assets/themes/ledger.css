@@ -140,6 +140,10 @@
     /* Slower than atrium's: a ledger waits without fuss. */
     --motion-loop: 1.6s;
 
+    /* What a disclosure takes to open or close: brisk, the way this theme
+       is quick at everything else. */
+    --motion-unfold: 160ms ease;
+
     /* ---- Layout -------------------------------------------------------- */
 
     /*
