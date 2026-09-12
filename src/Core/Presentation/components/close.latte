@@ -9,10 +9,15 @@
  *
  * What putting away means is the caller's: c-notice hides itself when it is
  * pressed (assets/notice.ts), and whatever else carries one says what it does.
+ * c-modal and c-offcanvas say it through the attributes, as the dialog the
+ * button commands and the command close.
+ *
+ * @param array<string, string|null> $attributes anything the caller has to hang
+ *     on the button itself, the way c-button takes them.
  *}
 
 {import 'icon.latte'}
 
-{define close, string $label = 'Close', ?string $testId = null}
-    <button type="button" class="c-close" aria-label="{$label}" data-testid="{$testId}">{include icon, name: 'close'}</button>
+{define close, string $label = 'Close', ?string $testId = null, array $attributes = []}
+    <button n:attr="$attributes + ['type' => 'button', 'class' => 'c-close', 'aria-label' => $label, 'data-testid' => $testId]">{include icon, name: 'close'}</button>
 {/define}

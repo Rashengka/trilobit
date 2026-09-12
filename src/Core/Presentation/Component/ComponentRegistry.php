@@ -28,7 +28,7 @@ namespace Trilobit\Core\Presentation\Component;
 final class ComponentRegistry
 {
     /** Under the project root. */
-    public const string DIRECTORY = 'src/Core/Presentation/components'; // check-leaks:allow rule=high_entropy reason=a directory path that happens to be long enough to read as an opaque literal
+    public const string DIRECTORY = 'src/Core/Presentation/components';
 
     /** What a component's root class starts with, and what its name is derived from. */
     public const string PREFIX = 'c-';
@@ -192,6 +192,18 @@ final class ComponentRegistry
                 'c-panel',
                 'A boxed area of a page, with a heading and whatever belongs under it.',
                 ['default'],
+            ),
+            new Component(
+                'c-modal',
+                'A question the page stops to ask over everything else on it, until it is answered or put '
+                . 'away: the browser\'s own dialog, shown as a modal.',
+                ['default', 'with a form that closes it', 'with a body longer than the window', 'redrawn by Naja'],
+            ),
+            new Component(
+                'c-offcanvas',
+                'The same dialog drawn in from an edge of the window - a basket, a set of filters, a menu - and '
+                . 'put away by a click on the page beside it.',
+                ['at the end', 'at the start', 'at the top', 'at the bottom'],
             ),
             new Component(
                 'c-collapse',
