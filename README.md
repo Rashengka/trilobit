@@ -318,6 +318,12 @@ names; a checkout with no `var/build/modules.json` fails the build with a
 message naming the command to run, rather than bundling every module's code
 regardless of `config/modules.neon`.
 
+The licences of the third-party packages whose code the build bundled are in
+`www/build/licenses.txt`, collected from the bundled modules and from the
+packages their stylesheets `@import` by `vite-plugins/bundled-licenses.ts`,
+which fails the build when such a package
+ships no licence file or declares no `license`.
+
 ### The build is in the repository
 
 `www/build` is committed, so a clone runs without Node at all: point a document

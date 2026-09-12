@@ -141,7 +141,7 @@ function checkExemptPaths(array &$failures): void
 {
     $czech = (string) file_get_contents(FIXTURES . '/czech_text.sample');
 
-    foreach (['translations/cs.neon', 'LICENSE'] as $path) {
+    foreach (['translations/cs.neon', 'LICENSE', 'www/build/licenses.txt'] as $path) {
         [$code, $out] = checkFiles([$path => $czech]);
         assertSame(0, $code, sprintf('Czech in %s is allowed (output: %s)', $path, oneLine($out)), $failures);
     }

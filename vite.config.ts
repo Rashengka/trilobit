@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import nette from '@nette/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
+// With its extension, because Vite is moving to loading this file natively,
+// and Node resolves no import that leaves it out.
+import { bundledLicenses } from './vite-plugins/bundled-licenses.ts';
 
 /**
  * The shape src/Core/Build/BuildManifest.php writes to var/build/modules.json:
@@ -125,5 +128,8 @@ export default defineConfig({
     plugins: [
         nette({ entry: [...entryNames.keys()] }),
         tailwindcss(),
+        // The bundles are committed and public, and they carry other people's
+        // code; this writes those people's copyright and licence next to it.
+        bundledLicenses(),
     ],
 });
