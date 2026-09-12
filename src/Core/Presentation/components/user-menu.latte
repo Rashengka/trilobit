@@ -1,0 +1,86 @@
+{**
+ * c-user-menu - whoever is signed in: a button carrying their name, and the
+ * panel it opens with who they are, whatever the page offers them, and the ways
+ * out.
+ *
+ * The panel is a native popover, opened by the button's popovertarget. That is
+ * everything a menu has to do besides being drawn, and none of it is script of
+ * this project's: a click outside it or Escape closes it, focus goes back to the
+ * button, and the panel is drawn in the top layer - over the page and under
+ * nothing, without a z-index. There is no token for one yet, and a panel that
+ * needs none is no reason to invent it.
+ *
+ * The panel hangs under the button by CSS anchor positioning. The button is the
+ * anchor and is named after the panel's id, so two menus on one page each find
+ * their own button. Where a browser cannot anchor, assets/base.css puts the
+ * panel in a fixed place under the banner instead, measured in theme tokens.
+ *
+ * Between who they are and the ways out sits whatever the caller puts in the
+ * userMenuBody block - in the administration, the preference switch. The switch
+ * is not drawn here, because the style guide shows this component on the very
+ * page whose own switch is the specimen of c-preference-switcher, and two
+ * switches on one page would be two controls for every answer.
+ *
+ * @param string $id the panel's id, which has to be unique on the page
+ * @param string|null $testIdPrefix when given, every part carries a testid made
+ *     from it: <prefix>-account-menu on the button, <prefix>-account-menu-panel
+ *     on the panel, and <prefix>-identity, <prefix>-identity-email,
+ *     <prefix>-public-link and <prefix>-sign-out inside it
+ *}
+
+{import 'button.latte'}
+
+{define userMenu, string $id, string $name, string $email, string $signOutUrl, string $publicSiteUrl = '', ?string $testIdPrefix = null}
+    {var array $testIds = $testIdPrefix === null ? [] : [
+        'trigger' => $testIdPrefix . '-account-menu',
+        'panel' => $testIdPrefix . '-account-menu-panel',
+        'name' => $testIdPrefix . '-identity',
+        'email' => $testIdPrefix . '-identity-email',
+        'publicSite' => $testIdPrefix . '-public-link',
+        'signOut' => $testIdPrefix . '-sign-out',
+    ]}
+
+    <div class="c-user-menu">
+        {include button,
+            label: $name,
+            variant: 'quiet',
+            icon: 'chevron-down',
+            testId: $testIds['trigger'] ?? null,
+            attributes: [
+                'popovertarget' => $id,
+                'style' => 'anchor-name: --' . $id,
+            ]}
+
+        <div
+            id="{$id}"
+            class="c-user-menu__panel"
+            popover
+            style="position-anchor: --{$id}"
+            data-testid="{$testIds['panel'] ?? null}"
+        >
+            <p class="c-user-menu__who">
+                <span class="c-user-menu__name" data-testid="{$testIds['name'] ?? null}">{$name}</span>
+                <span class="c-user-menu__email" data-testid="{$testIds['email'] ?? null}">{$email}</span>
+            </p>
+
+            <div class="c-user-menu__body" n:ifcontent>{block userMenuBody}{/block}</div>
+
+            <div class="c-user-menu__actions">
+                {if $publicSiteUrl !== ''}
+                    {include button,
+                        label: 'Open the site',
+                        href: $publicSiteUrl,
+                        variant: 'quiet',
+                        testId: $testIds['publicSite'] ?? null}
+                {/if}
+
+                {include button,
+                    label: 'Sign out',
+                    href: $signOutUrl,
+                    variant: 'quiet',
+                    icon: 'sign-out',
+                    testId: $testIds['signOut'] ?? null}
+            </div>
+        </div>
+    </div>
+{/define}

@@ -117,6 +117,11 @@
     --border-hairline: 1px;
     --border-marker: 2px;
 
+    /* In em, so an icon is as tall as the text it stands beside wherever that
+       text is set; a touch larger than the letters, which are shorter than
+       their line. */
+    --icon-size: 1.125em;
+
     --shadow-raised: 0 1px 2px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
         0 8px 24px light-dark(oklch(0.24 0.02 255 / 0.07), oklch(0 0 0 / 0.35));
 

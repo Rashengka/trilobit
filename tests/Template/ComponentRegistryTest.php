@@ -161,8 +161,10 @@ final class ComponentRegistryTest extends TestCase
                 continue;
             }
 
+            // A class type is a type too, and it is written with its namespace:
+            // a component is a file of its own with no `use` to shorten it.
             self::assertMatchesRegularExpression(
-                '/^\??[A-Za-z_][A-Za-z0-9_|]*\s+\$/',
+                '/^\??[A-Za-z_\\\\][A-Za-z0-9_|\\\\]*\s+\$/',
                 $parameter,
                 sprintf('%s declares %s without a type', basename($file), $parameter),
             );

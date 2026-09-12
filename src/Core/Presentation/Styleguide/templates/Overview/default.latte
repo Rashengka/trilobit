@@ -27,7 +27,9 @@
  * The example content is invented and has to stay invented.
  *}
 
+{import '../../../components/preference-switcher.latte'}
 {import '../../../components/site-header.latte'}
+{import '../../../components/user-menu.latte'}
 {import '../../../components/nav.latte'}
 {import '../../../components/site-footer.latte'}
 {import '../../../components/page-heading.latte'}
@@ -35,6 +37,7 @@
 {import '../../../components/signpost.latte'}
 {import '../../../components/button.latte'}
 {import '../../../components/badge.latte'}
+{import '../../../components/icon.latte'}
 {import '../../../components/field.latte'}
 {import '../../../components/notice.latte'}
 {import '../../../components/marker-list.latte'}
@@ -109,102 +112,39 @@
         testId: 'styleguide-headline'}
 
     {*
-     * The switch. A control says which preference it sets and to what, and
-     * nothing else: assets/app.ts moves the attribute on <html> and tells the
-     * server, so a fourth preference is one more control here and no more
-     * script. The state a control is drawn in comes from the server too, which
-     * is what makes a reload show what was chosen rather than what the build
-     * starts in - decision D8.
+     * The switch, which is at once the specimen of c-preference-switcher: the
+     * one component on this page that is used rather than shown, so it is shown
+     * by being used. A second copy further down would put two controls for
+     * every answer on one page, and the script moving aria-pressed would have
+     * two of everything to keep in step. That is why the component is first in
+     * Trilobit\Core\Presentation\Component\ComponentRegistry - the sections
+     * are checked in the register's order.
      *
-     * It is preferred() and not value() that decides which control is pressed:
-     * the switch shows the person's own setting, which is not always the width
-     * the page it happens to be on is drawn at - see
-     * Trilobit\Core\Preference\Preferences.
-     *
-     * **Which control is the chosen one is said once, in aria-pressed.** It was
-     * said twice until 2026-09-09 - as the attribute and as the button's
-     * variant - and the script only ever moved the attribute, so clicking
-     * another theme repainted the whole page and left the mark sitting on the
-     * theme that was no longer on. The variant is therefore fixed here and
-     * assets/base.css draws .c-button[aria-pressed='true'] as the one in force,
-     * which makes the appearance a consequence of the state rather than a
-     * second copy of it to keep in step.
-     *
-     * tests/Template/StyleguideOffersEveryPreferenceTest fails when this list
-     * and the catalogue part company in either direction.
+     * The state a control is drawn in comes from the server, which is what
+     * makes a reload show what was chosen rather than what the build starts
+     * in - decision D8.
      *}
-    <div class="l-stack" data-testid="theme-switcher">
-        <div class="l-cluster">
-            <span class="text-sm text-ink-muted">Theme</span>
+    {embed block sgSection, component: $components['c-preference-switcher']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include preferenceSwitcher, preferences: $preferences, testId: 'theme-switcher'}
+                {/block}
+            {/embed}
 
-            {foreach $themes as $available}
-                {var bool $chosen = $available === $preferences->preferred('theme')}
-
-                {include button,
-                    label: $available,
-                    variant: 'quiet',
-                    testId: 'theme-choice-' . $available,
-                    attributes: [
-                        'data-preference' => 'theme',
-                        'data-preference-value' => $available,
-                        'aria-pressed' => $chosen ? 'true' : 'false',
-                    ]}
-            {/foreach}
-        </div>
-
-        <div class="l-cluster">
-            <span class="text-sm text-ink-muted">Mode</span>
-
-            {foreach ['system' => 'System', 'light' => 'Light', 'dark' => 'Dark'] as $mode => $label}
-                {var bool $chosen = $mode === $preferences->preferred('theme-mode')}
-
-                {include button,
-                    label: $label,
-                    variant: 'quiet',
-                    testId: 'theme-mode-choice-' . $mode,
-                    attributes: [
-                        'data-preference' => 'theme-mode',
-                        'data-preference-value' => $mode,
-                        'aria-pressed' => $chosen ? 'true' : 'false',
-                    ]}
-            {/foreach}
-        </div>
-
-        {*
-         * How much of the screen the content is given. The names are the
-         * modes themselves rather than sizes, because what each of them
-         * measures is the theme's to decide and changes when the theme does.
-         *}
-        <div class="l-cluster">
-            <span class="text-sm text-ink-muted">Width</span>
-
-            {foreach ['content' => 'Content', 'wide' => 'Wide', 'full' => 'Full'] as $mode => $label}
-                {var bool $chosen = $mode === $preferences->preferred('content-width')}
-
-                {include button,
-                    label: $label,
-                    variant: 'quiet',
-                    testId: 'content-width-choice-' . $mode,
-                    attributes: [
-                        'data-preference' => 'content-width',
-                        'data-preference-value' => $mode,
-                        'aria-pressed' => $chosen ? 'true' : 'false',
-                    ]}
-            {/foreach}
-        </div>
-
-        {*
-         * The other half of the arrangement, and the only place it can be
-         * seen: a page the application draws at a width of its own, whatever
-         * is chosen above. It is a second action of this very presenter,
-         * which is the point - a width belongs to the page and not to the
-         * class behind it.
-         *}
-        <p class="text-sm text-ink-muted">
-            A page may insist on a width of its own where it has to:
-            <a href="{$fullWidthUrl}" data-testid="styleguide-full-width-link">see one that does</a>.
-        </p>
-    </div>
+            {*
+             * The other half of the arrangement, and the only place it can be
+             * seen: a page the application draws at a width of its own,
+             * whatever is chosen above. It is a second action of this very
+             * presenter, which is the point - a width belongs to the page and
+             * not to the class behind it.
+             *}
+            <p class="text-sm text-ink-muted">
+                A page may insist on a width of its own where it has to:
+                <a href="{$fullWidthUrl}" data-testid="styleguide-full-width-link">see one that does</a>.
+            </p>
+        {/block}
+    {/embed}
 
     {embed block panel, testId: 'styleguide-tokens'}
         {block panelTitle}Colour tokens{/block}
@@ -503,6 +443,42 @@
                         tagline: 'Modular commerce, contacts and content.'}
                 {/block}
             {/embed}
+
+            {embed block sgSpecimen, variant: 'with something at the end'}
+                {block sgSpecimenStage}
+                    {embed block siteHeader, brand: 'Trilobit', href: '#', tagline: 'Administration'}
+                        {block siteHeaderEnd}
+                            {include button, label: 'Somebody', variant: 'quiet', icon: 'chevron-down'}
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {*
+     * The menu is drawn closed, as it is in the banner; the button opens it.
+     * What the administration puts between who they are and the ways out is the
+     * preference switch, which is not repeated here - the one at the top of
+     * this page is that switch's specimen, and a second would put two controls
+     * for every answer on one page.
+     *}
+    {embed block sgSection, component: $components['c-user-menu']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block userMenu,
+                        id: 'sg-user-menu-panel',
+                        name: 'Pia Paradoxides',
+                        email: 'pia@example.com',
+                        signOutUrl: '#',
+                        publicSiteUrl: '#'}
+                        {block userMenuBody}
+                            <p class="text-sm text-ink-muted">Whatever the page offers the person it belongs to.</p>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
         {/block}
     {/embed}
 
@@ -615,6 +591,32 @@
             {embed block sgSpecimen, variant: 'without a destination'}
                 {block sgSpecimenStage}
                     {include button, label: 'Recalculate'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with an icon'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Sign out', href: '#', variant: 'quiet', icon: 'sign-out'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {*
+     * Each icon on its own, which is the case where it has to carry a name -
+     * beside a word that already says what it means it would carry none.
+     *}
+    {embed block sgSection, component: $components['c-icon']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'sign-out'}
+                {block sgSpecimenStage}
+                    {include icon, name: 'sign-out', label: 'Sign out'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'chevron-down'}
+                {block sgSpecimenStage}
+                    {include icon, name: 'chevron-down', label: 'Opens underneath'}
                 {/block}
             {/embed}
         {/block}

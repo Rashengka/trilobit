@@ -120,6 +120,26 @@ final class PreferencesTest extends TestCase
         $this->chosen([])->overruledWith('column-count', 'three');
     }
 
+    /**
+     * What a switch has to offer: every preference this build has, in the
+     * catalogue's order, each with every answer it accepts - and nothing about
+     * what was chosen or what a page insists on changes that list.
+     */
+    public function testItOffersEveryPreferenceTheCatalogueHasWhateverWasChosen(): void
+    {
+        $catalogue = PreferenceCatalogue::of(DesignSystem::of(Bootstrap::rootDirectory(), 'atrium'));
+
+        $offered = $this
+            ->chosen([PreferenceCatalogue::THEME => 'ledger'])
+            ->overruledWith(PreferenceCatalogue::CONTENT_WIDTH, 'full')
+            ->offered();
+
+        self::assertSame($catalogue->names(), array_keys($offered));
+        foreach ($catalogue->all() as $name => $preference) {
+            self::assertSame($preference->values, $offered[$name]->values, $name . ' is offered with other answers');
+        }
+    }
+
     /** @param array<string, string> $chosen */
     private function chosen(array $chosen): Preferences
     {

@@ -21,10 +21,10 @@
  *}
 
 {import '../../components/site-header.latte'}
+{import '../../components/user-menu.latte'}
+{import '../../components/preference-switcher.latte'}
 {import '../../components/nav.latte'}
 {import '../../components/site-footer.latte'}
-{import '../../components/button.latte'}
-{import '../../components/badge.latte'}
 
 <!DOCTYPE html>
 <html lang="en" n:attr="$preferences->attributes()">
@@ -39,28 +39,30 @@
 <body class="l-shell" data-testid="admin-layout" data-preference-url="{$preferenceUrl}">
 
 <header class="l-shell__banner" data-testid="admin-header">
-    {include siteHeader,
+    {embed block siteHeader,
         brand: $siteName,
         href: $overviewUrl,
         tagline: 'Administration',
         testId: 'admin-home-link'}
-
-    <div class="l-container l-cluster" n:if="$signedIn" data-testid="admin-account">
-        {include badge, label: $identityName, variant: 'accent', testId: 'admin-identity'}
-        {include badge, label: $identityEmail, testId: 'admin-identity-email'}
-
-        {include button,
-            label: 'Open the site',
-            href: $publicSiteUrl,
-            variant: 'quiet',
-            testId: 'admin-public-link'}
-
-        {include button,
-            label: 'Sign out',
-            href: $signOutUrl,
-            variant: 'quiet',
-            testId: 'admin-sign-out'}
-    </div>
+        {block siteHeaderEnd}
+            {* Whoever is signed in, and everything that is theirs rather than
+               the page's: who they are, the switch, the public site and the
+               way out. The sign-in page has nobody yet, so it has no menu. *}
+            {if $signedIn}
+                {embed block userMenu,
+                    id: 'admin-account-menu-panel',
+                    name: $identityName,
+                    email: $identityEmail,
+                    signOutUrl: $signOutUrl,
+                    publicSiteUrl: $publicSiteUrl,
+                    testIdPrefix: 'admin'}
+                    {block userMenuBody}
+                        {include preferenceSwitcher, preferences: $preferences}
+                    {/block}
+                {/embed}
+            {/if}
+        {/block}
+    {/embed}
 </header>
 
 {* Absent rather than empty while nobody is signed in: there is nothing to

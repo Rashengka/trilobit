@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 
 import { expect, test } from '@playwright/test';
 
+import { openAccountMenu } from './account-menu';
+
 /**
  * Signing in, in a real browser.
  *
@@ -115,12 +117,21 @@ function passwordOf(output: string): string {
     return match[1];
 }
 
-/** Signs in through the form, the way somebody arriving at the address does. */
+/**
+ * Signs in through the form, the way somebody arriving at the address does,
+ * and waits until the page it leads to has loaded.
+ *
+ * The wait is what every caller relies on. What follows reads the page with
+ * evaluateAll, which answers at once rather than waiting for anything - so read
+ * before the redirect has landed, it reads the sign-in page, finds no menu on
+ * it, and fails a claim about the administration with a count of nothing.
+ */
 async function signIn(page: import('@playwright/test').Page, address: string, entered: string): Promise<void> {
     await page.goto('/admin/sign-in');
     await page.getByTestId('sign-in-email').fill(address);
     await page.getByTestId('sign-in-password').fill(entered);
     await page.getByTestId('sign-in-submit').click();
+    await page.waitForURL((url) => !url.pathname.endsWith('/sign-in'));
 }
 
 /** Every address the administration bar leads to, in the order it draws them. */
@@ -165,6 +176,9 @@ test('signing in opens the administration, and signing out closes it again', asy
 
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByTestId('admin-headline')).toHaveText('Overview');
+
+    // Who is signed in is in their menu, which is closed until somebody opens it.
+    await openAccountMenu(page);
     await expect(page.getByTestId('admin-identity')).toHaveText(displayName);
     await expect(page.getByTestId('admin-identity-email')).toHaveText(email);
 
@@ -217,6 +231,7 @@ test('signing in opens the administration, and signing out closes it again', asy
     // Signing out is the application's own act and not the administration's:
     // the address carries no admin/ and it leaves nobody inside a section they
     // are no longer signed in to.
+    await openAccountMenu(page);
     await page.getByTestId('admin-sign-out').click();
     await expect(page).toHaveURL(/\/$/);
 
@@ -242,6 +257,7 @@ test('the administrator of the installation signs in to their own section', asyn
 
     await expect(page).toHaveURL(/\/admin\/installation$/);
     await expect(page.getByTestId('installation-headline')).toHaveText('Installation');
+    await openAccountMenu(page);
     await expect(page.getByTestId('admin-identity')).toHaveText(installationName);
 
     // The way into the section is the signpost, and it is built from the same

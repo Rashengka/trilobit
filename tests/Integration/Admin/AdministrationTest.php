@@ -201,6 +201,56 @@ final class AdministrationTest extends TestCase
     }
 
     /**
+     * Who is signed in, the switch and the ways out are one menu in the
+     * banner: a button carrying the name, and a panel the browser opens and
+     * closes over the page.
+     *
+     * The testids are the ones the row beside the banner used to carry, so
+     * what the rest of this suite asserts of them still holds - which is why
+     * they are asserted here to be inside the panel. A name drawn beside the
+     * menu rather than in it would satisfy every other test in this file.
+     */
+    public function testWhoIsSignedInAndTheWaysOutAreInTheirMenu(): void
+    {
+        $this->submitSignIn('alice@example.com', $this->password());
+
+        $page = $this->pageOf($this->request(self::DASHBOARD, 'default'));
+
+        $trigger = $page->querySelector('[data-testid="admin-account-menu"]');
+        $panel = $page->querySelector('[data-testid="admin-account-menu-panel"]');
+        self::assertNotNull($trigger, 'there is no button for the menu of whoever is signed in');
+        self::assertNotNull($panel, 'there is no panel for that button to open');
+
+        self::assertStringContainsString('Alice Ammonite', $trigger->textContent ?? '');
+        self::assertTrue($panel->hasAttribute('popover'), 'the panel is not a popover, so nothing would close it');
+        self::assertNotSame('', $panel->getAttribute('id') ?? '');
+        self::assertSame($panel->getAttribute('id'), $trigger->getAttribute('popovertarget'));
+
+        foreach (['admin-identity', 'admin-identity-email', 'admin-public-link', 'admin-sign-out'] as $inside) {
+            self::assertNotNull(
+                $panel->querySelector(sprintf('[data-testid="%s"]', $inside)),
+                sprintf('%s is not inside the menu', $inside),
+            );
+        }
+
+        self::assertNotNull($panel->querySelector('[data-preference="theme"]'), 'the menu offers no switch');
+        self::assertNotNull(
+            $panel->querySelector('[data-testid="admin-sign-out"] svg.c-icon'),
+            'the way out carries no icon',
+        );
+    }
+
+    /** Nobody has signed in yet, so there is no menu to open and no name to put in one. */
+    public function testTheSignInPageHasNoMenuOfWhoeverIsSignedIn(): void
+    {
+        $page = $this->pageOf($this->request(self::SIGN, 'in'));
+
+        self::assertNull($page->querySelector('[data-testid="admin-account-menu"]'));
+        self::assertNull($page->querySelector('[data-testid="admin-account-menu-panel"]'));
+        self::assertNull($page->querySelector('[data-testid="admin-identity"]'));
+    }
+
+    /**
      * The overview's other cluster is drawn from the permission snapshot on the
      * identity, which is made out of the roles granted on the account row -
      * and a person administering a business holds none of those, so the cluster
