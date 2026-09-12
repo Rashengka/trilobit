@@ -142,6 +142,10 @@
 
     --motion-fast: 120ms ease;
 
+    /* What a disclosure takes to open or close: long enough to be seen to
+       unfold, the way this theme takes its time. */
+    --motion-unfold: 240ms ease;
+
     /* ---- Layout -------------------------------------------------------- */
 
     /*

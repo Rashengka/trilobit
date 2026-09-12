@@ -1,0 +1,30 @@
+{**
+ * c-accordion - a column of c-collapse drawn as one block.
+ *
+ * The items are c-collapse and nothing else, the way c-signpost is made of
+ * c-card: an item is a disclosure with a title and whatever it folds away, and
+ * c-collapse already is one. So this block is only the frame, and the items go
+ * in its accordionItems block:
+ *
+ *     {embed block accordion}
+ *         {block accordionItems}
+ *             {embed block collapse, title: 'First', level: 2, name: 'questions'}
+ *                 {block collapseBody}...{/block}
+ *             {/embed}
+ *             ...
+ *         {/block}
+ *     {/embed}
+ *
+ * **One open at a time or any number open is one attribute, and it is the
+ * browser's.** Items that share a name are opened one at a time - opening one
+ * closes the others - with no script; items without a name open and close each
+ * on its own. A browser too old to know a shared name opens any number, which
+ * is the other variant and not a broken one.
+ *
+ * The level of the titles is the caller's too, because only the caller knows
+ * where in the outline of the page the group lies.
+ *}
+
+{define accordion, ?string $testId = null}
+    <div class="c-accordion" data-testid="{$testId}">{block accordionItems}{/block}</div>
+{/define}

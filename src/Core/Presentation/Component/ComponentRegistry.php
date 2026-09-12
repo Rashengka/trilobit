@@ -165,6 +165,17 @@ final class ComponentRegistry
                 ['default'],
             ),
             new Component(
+                'c-collapse',
+                'One thing folded away under its title, opened and closed by the browser\'s own disclosure.',
+                ['default', 'open from the start', 'with a heading'],
+            ),
+            new Component(
+                'c-accordion',
+                'A column of c-collapse drawn as one block: opened one item at a time when the items share a '
+                . 'name, any number at once when they do not.',
+                ['one open at a time', 'any number open'],
+            ),
+            new Component(
                 'c-prose',
                 'Running text made of the elements a browser already knows, given back the rhythm and the '
                 . 'list markers the reset takes away everywhere else.',
