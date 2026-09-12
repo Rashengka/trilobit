@@ -1,5 +1,7 @@
 /**
- * Putting away a dismissible c-notice: its c-close hides it.
+ * Putting away a dismissible c-notice: its c-close hides it. A toast of
+ * c-toast is put away the same way, by the c-close beside its sentence, and
+ * everything below is as true of it: "notice" is either.
  *
  * **Nothing is set up per notice and nothing is cleaned up.** The click is
  * listened for on the document, so a notice Naja draws into the page later
@@ -20,7 +22,7 @@
  * notice: a click that left it somewhere else leaves it there.
  */
 
-const CLOSE = '.c-notice--dismissible > .c-close';
+const CLOSE = '.c-notice--dismissible > .c-close, .c-toast__item > .c-close';
 
 /** What takes the focus by the keyboard, before whether it is drawn and enabled is asked. */
 const FOCUSABLE = [

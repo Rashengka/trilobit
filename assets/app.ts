@@ -4,6 +4,7 @@
  */
 import naja from 'naja';
 
+import { turnTheCarousels } from './carousel';
 import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
 import { comboboxesInSnippets, enhanceWithin } from './combobox';
 import { answerTheDialogButtons, dialogsInSnippets } from './dialog';
@@ -13,6 +14,7 @@ import { dismissTheNotices } from './notice';
 import { followTheChrome, scrollspiesInSnippets, spyWithin } from './scrollspy';
 import { layTabsWithin, switchTheTabs, tabsInSnippets } from './tabs';
 import './segment-suggestion';
+import { announceTheToasts } from './toast';
 import './app.css';
 
 /**
@@ -163,3 +165,9 @@ dismissTheNotices();
 // The same kind of listener, for the buttons that open and close a dialog in
 // a browser that does not answer them itself. See assets/dialog.ts.
 answerTheDialogButtons();
+
+// The same for the carousels and the toasts: each listens on the document or
+// watches it, and prepares nothing a snippet could bring in or take away. See
+// assets/carousel.ts and assets/toast.ts.
+turnTheCarousels();
+announceTheToasts();

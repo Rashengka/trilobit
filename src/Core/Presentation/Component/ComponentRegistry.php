@@ -103,6 +103,12 @@ final class ComponentRegistry
                 ['default', 'without media', 'with a footer'],
             ),
             new Component(
+                'c-carousel',
+                'A strip of slides seen one at a time, turned by hand, by key, or by the buttons and the '
+                . 'indicators under it - and never on its own.',
+                ['default'],
+            ),
+            new Component(
                 'c-signpost',
                 'The way into each part of something, drawn as a grid of linked tiles built out of c-card.',
                 ['default'],
@@ -173,6 +179,12 @@ final class ComponentRegistry
                 'c-placeholder',
                 'The shape of content still on its way, announced once for the whole block.',
                 ['lines of text', 'in place of a card'],
+            ),
+            new Component(
+                'c-toast',
+                'Short news drawn over the page in a corner of the window, one for every message - what came of '
+                . 'something just done, a flash message among them - staying until it is put away.',
+                ['info', 'danger', 'several at once', 'from a flash message'],
             ),
             new Component(
                 'c-marker-list',

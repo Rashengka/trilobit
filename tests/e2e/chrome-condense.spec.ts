@@ -164,6 +164,9 @@ async function wheel(page: Page, by: number): Promise<void> {
  */
 const distance = 600;
 
+/** Every sixteenth of a pixel, to shift a heading by: every way a jump to it can be rounded. */
+const sixteenths = Array.from({ length: 16 }, (_, index) => index / 16);
+
 for (const size of windows) {
     test(`in atrium at ${size.width}px the banner and the navigation stay in view, made smaller`, async ({ page }) => {
         await open(page, size);
@@ -190,8 +193,10 @@ for (const size of windows) {
         );
         expect(small.entryPadding, 'the room around an entry was not made markedly smaller').toBeLessThan(full.entryPadding / 2);
 
-        // What a jump keeps clear is what the two bands cover now, not what they covered at the top.
-        expect(small.offset, 'the clearance a jump keeps is not the height of the smaller bands').toBeCloseTo(small.navBottom, 0);
+        // What a jump keeps clear is what the two bands cover now, not what they
+        // covered at the top - and half a pixel more, for the browser rounding
+        // the jump to a whole one (assets/chrome.ts).
+        expect(small.offset, 'the clearance a jump keeps is not the height of the smaller bands').toBeCloseTo(small.navBottom + 0.5, 2);
 
         // And held: scrolled further, neither band moves while the content does.
         await wheel(page, 300);
@@ -202,6 +207,19 @@ for (const size of windows) {
         expect(further.bannerHeight).toBeCloseTo(small.bannerHeight, 0);
     });
 
+    /*
+     * Wherever in its pixel the heading happens to sit. The browser scrolls the
+     * document by whole pixels and rounds the position a jump asks for to the
+     * nearest one, so which way a jump is rounded depends on the fraction of a
+     * pixel the heading sits at - and that is decided by everything above it on
+     * the page. One jump would pass or fail by the luck of the content; a jump at
+     * every sixteenth of a pixel is every way the rounding can go.
+     *
+     * The heading may not be left under the navigation by any amount. Layout
+     * keeps positions in sixty-fourths of a pixel and the scroll position is a
+     * whole one, so both edges compared here are exact and there is no error of
+     * measurement to allow for.
+     */
     test(`in atrium at ${size.width}px a jump to an anchor leaves the heading whole under the smaller bands`, async ({ page }) => {
         await open(page, size);
         await addJumpTarget(page);
@@ -209,16 +227,26 @@ for (const size of windows) {
         // Made smaller first, so that what is measured is the clearance of the smaller bands.
         await wheel(page, distance);
         expect((await measure(page)).bannerHeight).toBeLessThan((await fullHeightOf(page)) * 0.75);
+        const from = await page.evaluate(() => window.scrollY);
 
-        await page.getByTestId('chrome-jump').evaluate((link) => (link as HTMLElement).click());
-        await page.waitForFunction(() => window.location.hash === '#chrome-jump-target');
-        await steady(page);
+        const under: string[] = [];
+        for (const fraction of sixteenths) {
+            await shiftJumpTarget(page, fraction, from);
 
-        const landed = await landing(page);
-        expect(landed.scrolled, 'the jump did not scroll, so nothing was measured').toBeGreaterThan(distance);
-        expect(landed.navTop, 'the navigation is not held, so there is nothing to stop under').toBeCloseTo(landed.bannerBottom, 0);
-        expect(landed.heading, 'the heading ended under the navigation').toBeGreaterThanOrEqual(landed.navBottom - 0.5);
-        expect(landed.heading, 'the jump stopped short of where the navigation ends').toBeLessThanOrEqual(landed.navBottom + 1);
+            await page.getByTestId('chrome-jump').evaluate((link) => (link as HTMLElement).click());
+            await page.waitForFunction(() => window.location.hash === '#chrome-jump-target');
+            await steady(page);
+
+            const landed = await landing(page);
+            expect(landed.scrolled, 'the jump did not scroll, so nothing was measured').toBeGreaterThan(distance);
+            expect(landed.navTop, 'the navigation is not held, so there is nothing to stop under').toBeCloseTo(landed.bannerBottom, 0);
+            expect(landed.heading, 'the jump stopped short of where the navigation ends').toBeLessThanOrEqual(landed.navBottom + 1);
+            if (landed.heading < landed.navBottom) {
+                under.push(`${fraction}: ${landed.navBottom - landed.heading}px`);
+            }
+        }
+
+        expect(under, 'the heading ended under the navigation, at shift: by how much').toEqual([]);
     });
 }
 
@@ -378,6 +406,7 @@ test('in atrium a narrow window is neither held nor made smaller', async ({ page
     expect(before.bannerTop - after.bannerTop, 'the banner is held on a narrow window').toBeCloseTo(distance, 0);
     expect(after.bannerHeight, 'the banner was made smaller on a narrow window').toBeCloseTo(before.bannerHeight, 0);
     expect(after.entryFont, 'the navigation was made smaller on a narrow window').toBeCloseTo(before.entryFont, 1);
+    expect(after.offset, 'a jump keeps clear of bands that are not held').toBe(0);
 });
 
 /**
@@ -578,7 +607,12 @@ async function addJumpTarget(page: Page): Promise<void> {
         link.textContent = 'Jump';
         link.dataset.testid = 'chrome-jump';
 
-        container?.append(heading);
+        // Nothing tall until a case shifts the heading by part of a pixel with it.
+        const shift = document.createElement('div');
+        shift.dataset.testid = 'chrome-jump-shift';
+        shift.style.blockSize = '0';
+
+        container?.append(shift, heading);
         container?.prepend(link);
         const after = document.createElement('div');
         after.style.blockSize = '100vh';
@@ -588,6 +622,28 @@ async function addJumpTarget(page: Page): Promise<void> {
         const element = document.querySelector(banner);
         element?.setAttribute('data-full-height', String(element.getBoundingClientRect().height));
     }, BANNER);
+    await steady(page);
+}
+
+/**
+ * Moves the heading down by $fraction of a pixel, and puts the page back where
+ * the next jump is to start from, with no jump taken yet: the address loses its
+ * anchor, so that waiting for it again waits for the next jump.
+ */
+async function shiftJumpTarget(page: Page, fraction: number, from: number): Promise<void> {
+    await page.evaluate(
+        ([by, to]) => {
+            const shift = document.querySelector<HTMLElement>('[data-testid="chrome-jump-shift"]');
+            if (shift === null) {
+                throw new Error('the heading has nothing above it to shift it by');
+            }
+
+            shift.style.blockSize = `${by}px`;
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+            window.scrollTo(0, to);
+        },
+        [fraction, from] as const,
+    );
     await steady(page);
 }
 

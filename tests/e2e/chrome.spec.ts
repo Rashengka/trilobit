@@ -182,9 +182,19 @@ for (const size of windows) {
 
 /**
  * The first of the four: a jump to an anchor stops under the banner, not
- * behind it. The heading lands with its top on the banner's bottom edge,
- * because what the jump keeps clear is exactly how much of the window the held
- * banner covers - one number, measured, and not a second one written down.
+ * behind it. The heading lands with its top on the banner's bottom edge, or
+ * less than a pixel below it, because what the jump keeps clear is how much of
+ * the window the held banner covers - one number, measured, and not a second
+ * one written down - and half a pixel more for the browser rounding the jump to
+ * a whole pixel (assets/chrome.ts).
+ *
+ * Which way the jump is rounded depends on the fraction of a pixel the heading
+ * sits at, which everything above it on the page decides, so the heading is
+ * jumped to at every sixteenth of a pixel rather than wherever it happens to
+ * be. It may not be left under the banner by any amount: layout keeps
+ * positions in sixty-fourths of a pixel and the scroll position is a whole one,
+ * so both edges compared are exact and there is no error of measurement to
+ * allow for.
  */
 for (const size of windows) {
     test(`in ledger at ${size.width}px a jump to an anchor leaves the heading whole under the banner`, async ({
@@ -206,8 +216,13 @@ for (const size of windows) {
             link.textContent = 'Jump';
             link.dataset.testid = 'chrome-jump';
 
+            // What shifts the heading by part of a pixel.
+            const shift = document.createElement('div');
+            shift.dataset.testid = 'chrome-jump-shift';
+            shift.style.blockSize = '0';
+
             // After the filler, so that the page has to scroll to reach it.
-            container?.append(heading);
+            container?.append(shift, heading);
             container?.prepend(link);
             // And room after it, so that it can be scrolled to the top.
             const after = document.createElement('div');
@@ -216,26 +231,48 @@ for (const size of windows) {
         });
         await settled(page);
 
-        await page.getByTestId('chrome-jump').click();
-        await page.waitForFunction(() => window.location.hash === '#chrome-jump-target' && window.scrollY > 0);
-        await settled(page);
+        const under: string[] = [];
+        for (let sixteenth = 0; sixteenth < 16; sixteenth += 1) {
+            const fraction = sixteenth / 16;
+            // Back at the top with no anchor in the address, so that waiting
+            // for the anchor waits for this jump and not the one before.
+            await page.evaluate((by) => {
+                const shift = document.querySelector<HTMLElement>('[data-testid="chrome-jump-shift"]');
+                if (shift === null) {
+                    throw new Error('the heading has nothing above it to shift it by');
+                }
 
-        const landed = await page.evaluate(() => {
-            const banner = document.querySelector('[data-testid="layout-header"]')?.getBoundingClientRect();
-            const heading = document.getElementById('chrome-jump-target')?.getBoundingClientRect();
-            if (banner === undefined || heading === undefined) {
-                throw new Error('the banner or the heading is missing');
+                shift.style.blockSize = `${by}px`;
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+                window.scrollTo(0, 0);
+            }, fraction);
+            await settled(page);
+
+            await page.getByTestId('chrome-jump').click();
+            await page.waitForFunction(() => window.location.hash === '#chrome-jump-target' && window.scrollY > 0);
+            await settled(page);
+
+            const landed = await page.evaluate(() => {
+                const banner = document.querySelector('[data-testid="layout-header"]')?.getBoundingClientRect();
+                const heading = document.getElementById('chrome-jump-target')?.getBoundingClientRect();
+                if (banner === undefined || heading === undefined) {
+                    throw new Error('the banner or the heading is missing');
+                }
+
+                return { bannerTop: banner.top, bannerBottom: banner.bottom, heading: heading.top, scrolled: window.scrollY };
+            });
+
+            expect(landed.scrolled, 'the jump did not scroll, so nothing was measured').toBeGreaterThan(distance);
+            expect(landed.bannerTop, 'the banner is not held, so there is nothing to stop under').toBeCloseTo(0, 0);
+            expect(landed.heading, 'the jump stopped short of where the banner ends').toBeLessThanOrEqual(
+                landed.bannerBottom + 1,
+            );
+            if (landed.heading < landed.bannerBottom) {
+                under.push(`${fraction}: ${landed.bannerBottom - landed.heading}px`);
             }
+        }
 
-            return { bannerTop: banner.top, bannerBottom: banner.bottom, heading: heading.top, scrolled: window.scrollY };
-        });
-
-        expect(landed.scrolled, 'the jump did not scroll, so nothing was measured').toBeGreaterThan(distance);
-        expect(landed.bannerTop, 'the banner is not held, so there is nothing to stop under').toBeCloseTo(0, 0);
-        expect(landed.heading, 'the heading ended under the banner').toBeGreaterThanOrEqual(landed.bannerBottom - 0.5);
-        expect(landed.heading, 'the jump stopped short of where the banner ends').toBeLessThanOrEqual(
-            landed.bannerBottom + 1,
-        );
+        expect(under, 'the heading ended under the banner, at shift: by how much').toEqual([]);
     });
 }
 
