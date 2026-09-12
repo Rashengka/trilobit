@@ -309,6 +309,10 @@ final class AccountCommand extends Command
      * row an earlier build called `administrator` is carried over by
      * Trilobit\Core\Migrations\Version20260912114800, not here.
      *
+     * Two runs at once - for two accounts of this business or of another -
+     * both reach for the one owner's role, and the role is made once between
+     * them; how, is on Trilobit\Core\Security\Accounts::roleWithCodeMadeIfMissing().
+     *
      * $both is what --also-installation said, and it is what chooses the way
      * the membership is made - not whether the account happens to administer
      * the installation. Reading the flag off the account here would turn the
@@ -318,10 +322,9 @@ final class AccountCommand extends Command
      */
     private function administer(Tenant $tenant, User $account, bool $both): void
     {
-        $role = $this->accounts->roleWithCode(Role::OWNER) ?? new Role(Role::OWNER, self::ROLE_NAME);
+        $role = $this->accounts->roleWithCodeMadeIfMissing(Role::OWNER, self::ROLE_NAME);
         $role->redefine([new Grant($this->structure->root(), null)->code()]);
 
-        $this->entityManager->persist($role);
         $this->entityManager->flush();
 
         $held = $this->entityManager->getRepository(Membership::class)

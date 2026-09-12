@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { expect, type Page, test } from '@playwright/test';
 
 import { openAccountMenu } from './account-menu';
+import { addressFor } from './accounts';
 import { choose, themeOf } from './preferences';
 
 /**
@@ -23,14 +24,17 @@ import { choose, themeOf } from './preferences';
 /** Trilobit\Core\Console\AccountCommand::PASSWORD_LINE. */
 const passwordLine = /^ {2}(\S+)$/m;
 
-const email = 'e2e-account-menu@example.com';
 const displayName = 'Dora Dalmanites';
 
 test.describe.configure({ mode: 'serial' });
 
+/** This copy's address; see tests/e2e/accounts.ts. */
+let email = '';
 let generated = '';
 
 test.beforeAll(() => {
+    email = addressFor('e2e-account-menu@example.com');
+
     // The host the business this suite works in answers at; see
     // playwright.config.ts.
     const output = execFileSync(

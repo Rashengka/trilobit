@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 
 import { openAccountMenu } from './account-menu';
+import { addressFor } from './accounts';
 import { choose, themeOf } from './preferences';
 
 /**
@@ -28,8 +29,6 @@ import { choose, themeOf } from './preferences';
 /** Trilobit\Core\Console\AccountCommand::PASSWORD_LINE. */
 const passwordLine = /^ {2}(\S+)$/m;
 
-const email = 'e2e-preference@example.com';
-
 /** The theme config/common.neon starts this build in; anything else is a choice. */
 const configured = 'atrium';
 
@@ -37,9 +36,13 @@ const chosen = 'ledger';
 
 test.describe.configure({ mode: 'serial' });
 
+/** This copy's address; see tests/e2e/accounts.ts. */
+let email = '';
 let generated = '';
 
 test.beforeAll(() => {
+    email = addressFor('e2e-preference@example.com');
+
     // The host the business this suite works in answers at; see
     // playwright.config.ts. Without it `app:account` would make somebody who
     // administers the installation and belongs to no business, which is not who
