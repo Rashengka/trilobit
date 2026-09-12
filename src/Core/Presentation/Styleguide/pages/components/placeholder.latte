@@ -1,0 +1,34 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The shape of content on its way: lines of text, and a tile beside a real one
+ * so that the two can be compared.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/placeholder.latte'}
+{import '../../../components/card.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-placeholder']}
+        {block sgSectionBody}
+            {specimen 'lines of text'}
+                {include placeholder, label: 'Loading the note…'}
+            {/specimen}
+
+            {specimen 'in place of a card'}
+                <div class="l-grid">
+                    {include card,
+                        title: 'Ammonite mug',
+                        href: '#',
+                        text: 'Stoneware, spiral in relief, holds three hundred millilitres.',
+                        media: 'A'}
+
+                    {include placeholder, label: 'Loading more products…', shape: 'card', lines: 2}
+                </div>
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

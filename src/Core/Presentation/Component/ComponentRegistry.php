@@ -78,7 +78,7 @@ final class ComponentRegistry
             new Component(
                 'c-card',
                 'A linked tile: something to look at, a title that is the link, and a sentence about it.',
-                ['default', 'without media'],
+                ['default', 'without media', 'with a footer'],
             ),
             new Component(
                 'c-signpost',
@@ -88,7 +88,7 @@ final class ComponentRegistry
             new Component(
                 'c-button',
                 'The one thing a page wants you to do, and the quieter things beside it.',
-                ['primary', 'quiet', 'without a destination', 'with an icon'],
+                ['primary', 'quiet', 'danger', 'small', 'without a destination', 'with an icon', 'with only an icon'],
             ),
             new Component(
                 'c-icon',
@@ -98,7 +98,7 @@ final class ComponentRegistry
             new Component(
                 'c-badge',
                 'A short label attached to something else: a state, a count, a name.',
-                ['plain', 'accent'],
+                ['plain', 'accent', 'danger'],
             ),
             new Component(
                 'c-field',
@@ -122,6 +122,23 @@ final class ComponentRegistry
                 'c-notice',
                 'One sentence a page has to say to whoever is reading it.',
                 ['info', 'danger'],
+            ),
+            new Component(
+                'c-progress',
+                'How far something has got, or how much of something there is: the browser\'s own bar for '
+                . 'each, named by a label and saying its value in words.',
+                ['under way', 'not known how far', 'a measure', 'a measure past its high bound'],
+            ),
+            new Component(
+                'c-spinner',
+                'A wait, said in words: a status naming what is being loaded, and a turning shape beside the '
+                . 'words for whoever can see it turn.',
+                ['default', 'small', 'with its words shown'],
+            ),
+            new Component(
+                'c-placeholder',
+                'The shape of content still on its way, announced once for the whole block.',
+                ['lines of text', 'in place of a card'],
             ),
             new Component(
                 'c-marker-list',

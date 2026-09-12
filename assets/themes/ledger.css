@@ -126,11 +126,19 @@
        smaller at everything else. */
     --icon-size: 1em;
 
+    /* A thinner bar and a smaller spinner, the way this theme is smaller at
+       everything else. */
+    --progress-size: 0.375rem;
+    --spinner-size: 1.75rem;
+
     /* Rules instead of shadows: the surface is separated by a line, the way a
        printed ledger separates one column from the next. */
     --shadow-raised: 0 0 0 0 transparent;
 
     --motion-fast: 90ms ease;
+
+    /* Slower than atrium's: a ledger waits without fuss. */
+    --motion-loop: 1.6s;
 
     /* ---- Layout -------------------------------------------------------- */
 
