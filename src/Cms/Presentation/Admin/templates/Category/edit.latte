@@ -1,0 +1,96 @@
+{templateType Trilobit\Cms\Presentation\Admin\CategoriesTemplate}
+
+{*
+ * One category, arranged: what it is called, what it is filed under, and the
+ * last part of its address.
+ *
+ * Changing either of the last two moves the category and everything inside it,
+ * and every address that moves keeps leading to where it went - which is why
+ * the lead says so before anybody saves.
+ *
+ * Deleting is refused while something is still filed inside, with a sentence
+ * on this form; where those pages should go instead is a question for later
+ * (.ai/plans/16-soft-delete.md), not something to decide by deleting them.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/panel.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+{import '../../../../../Core/Presentation/components/field.latte'}
+{import '../../../../../Core/Presentation/components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'cms-category-headline',
+        leadTestId: 'cms-category-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'All categories', href: $listUrl, variant: 'quiet', testId: 'cms-category-back'}
+    </div>
+
+    {embed block panel, testId: 'cms-category-panel'}
+        {block panelTitle}The category{/block}
+
+        {block panelBody}
+            <form n:name="category" class="l-stack" data-testid="cms-category-form">
+                {foreach $errors as $error}
+                    {include notice, message: $error, variant: 'danger', testId: 'cms-category-error'}
+                {/foreach}
+
+                {embed block field, testId: 'cms-category-name-field'}
+                    {block fieldLabel}<label n:name="name">Name</label>{/block}
+
+                    {block fieldControl}
+                        <input n:name="name" data-testid="cms-category-name-input">
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-category-parent-field'}
+                    {block fieldLabel}<label n:name="parent">Filed under</label>{/block}
+
+                    {block fieldControl}
+                        <select n:name="parent" data-testid="cms-category-parent-input"></select>
+                    {/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-category-segment-field', hintId: 'cms-category-segment-hint'}
+                    {block fieldLabel}<label n:name="segment">Last part of the address</label>{/block}
+
+                    {block fieldControl}
+                        <div class="l-cluster">
+                            <input n:name="segment" aria-describedby="cms-category-segment-hint" data-testid="cms-category-segment-input">
+
+                            {include button,
+                                label: 'Suggest from the name',
+                                variant: 'quiet',
+                                testId: 'cms-category-suggest',
+                                attributes: [
+                                    'data-suggest-segment' => $suggestUrl,
+                                    'data-suggest-from' => 'name',
+                                    'data-suggest-under' => 'parent',
+                                    'data-suggest-into' => 'segment',
+                                ]}
+
+                            <output data-suggest-status aria-live="polite" data-testid="cms-category-suggest-status"></output>
+                        </div>
+                    {/block}
+
+                    {block fieldHint}Lower case letters, digits and hyphens - no slash and no dot.{/block}
+                {/embed}
+
+                {* See the note in Page/edit.latte: the controls of a form are
+                   the form's own elements, so they carry the class of c-button
+                   rather than being drawn by it. *}
+                <div class="l-cluster">
+                    <button n:name="send" class="c-button" data-testid="cms-category-save">Save</button>
+
+                    {if !$isNew}
+                        <button n:name="delete" class="c-button c-button--quiet" data-testid="cms-category-delete">Delete this category</button>
+                    {/if}
+                </div>
+            </form>
+        {/block}
+    {/embed}
+{/block}

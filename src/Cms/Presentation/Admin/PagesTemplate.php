@@ -34,6 +34,19 @@ final class PagesTemplate extends AdminTemplate
     /** The address the visitor would use, drawn as a link where there is one. */
     public string $publicUrl = '';
 
+    /**
+     * Where the form asks the register for a last part made of the title;
+     * see Trilobit\Cms\Presentation\Admin\PagePresenter::handleSuggestSegment().
+     */
+    public string $suggestUrl = '';
+
+    /**
+     * The address, with its leading slash, when it was typed out whole before
+     * categories existed and no category and last part can say it; '' for
+     * every other page. The form says so while it is not empty.
+     */
+    public string $typedAddress = '';
+
     public bool $isNew = true;
 
     /** @var list<string> whatever the form refused, in sentences the editor can act on */

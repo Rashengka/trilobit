@@ -52,6 +52,13 @@ final readonly class PathRegistry implements PathLookup
      */
     public const string LANGUAGE = 'en';
 
+    /**
+     * How many numbered variants of a title suggest() tries before giving up.
+     * A hundred pages of one name under one category is somebody who needs a
+     * different name, not a hundred and first number.
+     */
+    private const int SUGGESTION_ATTEMPTS = 100;
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ReservedSegments $reserved,
@@ -76,13 +83,12 @@ final readonly class PathRegistry implements PathLookup
      */
     public function register(ContentRef $ref, string $path, string $label, ?string $parentPath = null): Address
     {
-        $this->refuseUnusableAddress($path);
-
-        $standing = $this->rowAt($path);
-        if ($standing instanceof ContentPath && !$standing->movedTo() instanceof ContentPath) {
-            throw PathRefused::alreadyTaken($path);
+        $refusal = $this->refusalOf($path, null);
+        if ($refusal instanceof PathRefused) {
+            throw $refusal;
         }
 
+        $standing = $this->rowAt($path);
         if ($standing instanceof ContentPath) {
             // A redirect left behind by an earlier rename. A live address
             // outranks one, and it has to be gone before the new row can be
@@ -105,6 +111,76 @@ final readonly class PathRegistry implements PathLookup
         $this->entityManager->flush();
 
         return $this->addressOf($row);
+    }
+
+    /**
+     * The address $segment would have filed under $parentPath, or a refusal
+     * when $segment is not one part of an address (decision C2).
+     *
+     * A form asks for a category and a last part, never for a whole address,
+     * because a deeper address typed by hand is a row whose parents do not
+     * exist; this is where the two halves are put back together, so that
+     * every caller refuses the same things in the same words.
+     */
+    public function addressUnder(?string $parentPath, string $segment): string
+    {
+        if (!PublicPath::isSegment($segment)) {
+            throw PathRefused::notASegment($segment);
+        }
+
+        return PublicPath::join($parentPath, $segment);
+    }
+
+    /**
+     * A last part for something called $text, filed under $parentPath, that
+     * saving would accept - or '' when $text holds nothing to make one of.
+     *
+     * **It is asked here and not worked out in the browser**, because the
+     * answer is only worth having if it is the same answer saving gives: the
+     * candidates go through refusalOf(), the very check register() makes, so a
+     * reserved beginning, an address too long for the index and one somebody
+     * else holds are skipped by construction rather than by a second copy of
+     * the rules that would drift from the first. An address $for already
+     * holds is not taken from it, so asking again for a saved page suggests
+     * the address it has.
+     *
+     * A taken candidate is followed by the same one with -2, -3 and so on,
+     * cut short where the whole address would outgrow the index.
+     */
+    public function suggest(string $text, ?string $parentPath = null, ?ContentRef $for = null): string
+    {
+        $base = PublicPath::segmentOf($text);
+        $room = PublicPath::MAX_LENGTH - ($parentPath === null ? 0 : strlen($parentPath) + 1);
+        if ($base === '' || $room < 1) {
+            return '';
+        }
+
+        for ($attempt = 1; $attempt <= self::SUGGESTION_ATTEMPTS; ++$attempt) {
+            $suffix = $attempt === 1 ? '' : '-' . $attempt;
+            $segment = rtrim(substr($base, 0, max(0, $room - strlen($suffix))), '-') . $suffix;
+            if (!PublicPath::isSegment($segment)) {
+                continue;
+            }
+
+            if (!$this->refusalOf(PublicPath::join($parentPath, $segment), $for) instanceof PathRefused) {
+                return $segment;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Every live address of every content of $type, by address.
+     *
+     * @return list<Address>
+     */
+    public function addressesOfType(string $type): array
+    {
+        return array_map(
+            $this->addressOf(...),
+            $this->rows()->findBy(['type' => $type, 'movedTo' => null], ['path' => 'ASC']),
+        );
     }
 
     public function canonicalPathOf(ContentRef $ref): ?string
@@ -163,7 +239,25 @@ final readonly class PathRegistry implements PathLookup
             throw PathRefused::notRegistered($from);
         }
 
-        $this->refuseUnusableAddress($to);
+        $unusable = $this->unusable($to);
+        if ($unusable instanceof PathRefused) {
+            throw $unusable;
+        }
+
+        if (str_starts_with($to, $from . '/')) {
+            // Its own branch would be renamed under itself and then filed
+            // under one of its own descendants: a loop, not a tree.
+            throw PathRefused::intoItself($from, $to);
+        }
+
+        // The same refusal register() makes. Without it the branch would be
+        // filed under nothing at an address that says it is under something -
+        // the row without parents categories exist to prevent.
+        $parentPath = PublicPath::parentOf($to);
+        $parent = $parentPath === null ? null : $this->rowAt($parentPath);
+        if ($parentPath !== null && (!$parent instanceof ContentPath || $parent->movedTo() instanceof ContentPath)) {
+            throw PathRefused::noSuchParent($to, $parentPath);
+        }
 
         $branch = $this->branchFrom($root);
         $renamed = [];
@@ -195,8 +289,7 @@ final readonly class PathRegistry implements PathLookup
             $row->rename($to . substr($was, strlen($from)));
         }
 
-        $parentPath = PublicPath::parentOf($to);
-        $root->fileUnder($parentPath === null ? null : $this->rowAt($parentPath));
+        $root->fileUnder($parent);
         $this->entityManager->flush();
 
         foreach ($renamed as $was => $row) {
@@ -220,6 +313,15 @@ final readonly class PathRegistry implements PathLookup
     {
         $row = $this->rowAt($path) ?? throw PathRefused::notRegistered($path);
         $ref = new ContentRef($row->type(), $row->contentId());
+
+        // The database would take everything filed under it along - the
+        // foreign key cascades - and Doctrine would not know it had. Deleting
+        // a category must never delete a page, so it is refused instead, and
+        // where the pages should go is asked of a person (plan 16).
+        $children = $this->rows()->count(['parent' => $row]);
+        if ($children > 0) {
+            throw PathRefused::stillHasChildren($path, $children);
+        }
 
         if ($row->isCanonical() && count($this->addressesOf($ref)) > 1) {
             throw PathRefused::stillTheCanonicalAddress($path);
@@ -256,20 +358,45 @@ final readonly class PathRegistry implements PathLookup
         return $addresses;
     }
 
-    private function refuseUnusableAddress(string $path): void
+    /**
+     * Why $path cannot be claimed by $for, or null when it can.
+     *
+     * One question for register() and for suggest() alike, so that a
+     * suggestion is by construction something saving accepts. An address
+     * $for already holds is its own and not taken; one left behind as a
+     * redirect is free, because a live address outranks one.
+     */
+    private function refusalOf(string $path, ?ContentRef $for): ?PathRefused
+    {
+        $unusable = $this->unusable($path);
+        if ($unusable instanceof PathRefused) {
+            return $unusable;
+        }
+
+        $standing = $this->rowAt($path);
+        if (!$standing instanceof ContentPath || $standing->movedTo() instanceof ContentPath) {
+            return null;
+        }
+
+        $holder = new ContentRef($standing->type(), $standing->contentId());
+
+        return $for instanceof ContentRef && $holder->equals($for) ? null : PathRefused::alreadyTaken($path);
+    }
+
+    /** Whatever makes $path an address nobody may hold, whoever asks: its shape, its length, its beginning. */
+    private function unusable(string $path): ?PathRefused
     {
         if (!PublicPath::isCanonical($path)) {
-            throw PathRefused::notCanonical($path);
+            return PathRefused::notCanonical($path);
         }
 
         if (strlen($path) > PublicPath::MAX_LENGTH) {
-            throw PathRefused::tooLong($path);
+            return PathRefused::tooLong($path);
         }
 
         $first = PublicPath::firstSegment($path);
-        if ($this->reserved->isReserved($first)) {
-            throw PathRefused::reservedSegment($path, $first);
-        }
+
+        return $this->reserved->isReserved($first) ? PathRefused::reservedSegment($path, $first) : null;
     }
 
     /**

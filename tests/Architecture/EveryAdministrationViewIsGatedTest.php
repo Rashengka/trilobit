@@ -126,6 +126,9 @@ final class EveryAdministrationViewIsGatedTest extends TestCase
 
         self::assertSame(
             [
+                'Cms/Presentation/Admin/CategoryPresenter.php: add',
+                'Cms/Presentation/Admin/CategoryPresenter.php: default',
+                'Cms/Presentation/Admin/CategoryPresenter.php: edit',
                 'Cms/Presentation/Admin/MenuPresenter.php: add',
                 'Cms/Presentation/Admin/MenuPresenter.php: default',
                 'Cms/Presentation/Admin/MenuPresenter.php: edit',

@@ -25,9 +25,15 @@ use Trilobit\Core\Domain\Content\ContentPath;
  * about which extensions the image installs. That costs nothing here, where
  * the question is only which of several spellings of an existing address a
  * visitor typed, and the router redirects to a normalised address only after
- * finding that something answers there. It will cost something the day a
- * module turns a title into a slug for the first time, and that is the day to
- * decide whether the application depends on ext-intl.
+ * finding that something answers there.
+ *
+ * Turning a title into a segment is a different job, and segmentOf() does it:
+ * there a letter does become the letter it is built on, because a title is
+ * written in the site's own language and dropping every accented letter out
+ * of it would leave a suggestion nobody wants. It asks ext-intl where that is
+ * loaded and iconv where it is not, and neither is a new dependency - iconv is
+ * compiled into the image. What comes out is only ever a suggestion: it goes
+ * through the same refusals as anything typed by hand before it is stored.
  */
 final class PublicPath
 {
@@ -78,5 +84,50 @@ final class PublicPath
         array_pop($segments);
 
         return $segments === [] ? null : implode('/', $segments);
+    }
+
+    /**
+     * Whether $segment is one part of an address in the stored shape - what a
+     * form may hold as the last part, under whatever category was chosen.
+     *
+     * A slash is two parts, typed by hand, and a deeper address typed by hand
+     * is a row whose parents do not exist. A dot is refused with everything
+     * else outside a-z, 0-9 and the hyphen, and it is the one worth naming:
+     * Nette's routing reads it as the boundary between two module names.
+     */
+    public static function isSegment(string $segment): bool
+    {
+        return !str_contains($segment, '/') && self::isCanonical($segment);
+    }
+
+    public static function join(?string $parent, string $segment): string
+    {
+        return $parent === null ? $segment : $parent . '/' . $segment;
+    }
+
+    /**
+     * $text as one segment: letters folded onto the ones they are built on,
+     * everything else a hyphen, a slash included. Empty when nothing in it
+     * could be kept.
+     */
+    public static function segmentOf(string $text): string
+    {
+        return self::normalize(str_replace('/', ' ', self::toAscii($text)));
+    }
+
+    private static function toAscii(string $text): string
+    {
+        $text = mb_scrub($text, 'UTF-8');
+
+        if (class_exists(\Transliterator::class)) {
+            $ascii = \Transliterator::create('Any-Latin; Latin-ASCII')?->transliterate($text);
+            if (is_string($ascii)) {
+                return $ascii;
+            }
+        }
+
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+
+        return is_string($ascii) ? $ascii : $text;
     }
 }

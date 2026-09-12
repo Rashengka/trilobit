@@ -1186,6 +1186,16 @@ to, so lowering it is made impossible rather than discouraged. The same goes for
 the analysis level: `max` from the first commit, because it is never raised
 afterwards either.
 
+`phpstan.neon` also pins `phpVersion` to `80400` - PHP 8.4, the floor
+`composer.json`'s `require.php` (`>=8.4`) still allows - instead of leaving
+PHPStan to infer it from whatever PHP the analyser itself runs on. CI runs the
+gate on both 8.4 and 8.5, and a developer's or CI's own container drifts ahead
+of the floor over time; without the pin, `stan` silently checks against the
+newer runtime and API that only exists there passes locally and in the 8.5 CI
+job, then fails the 8.4 job the first time somebody uses it.
+`tests/Architecture/PhpVersionMatchesComposerTest` keeps the pin and the floor
+from drifting apart.
+
 ### The test suites
 
 `phpunit.xml` declares one suite per level, including the ones that are still
