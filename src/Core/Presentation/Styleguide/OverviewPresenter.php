@@ -96,8 +96,9 @@ final class OverviewPresenter extends FrontPresenter
             . 'everything else named here',
         '--layout-nav-overflow' => 'whether the band the navigation is held in scrolls a menu longer than the '
             . 'window (auto) or lets a block it opens hang out of it (visible)',
-        '--layout-chrome-offset' => 'how much of the top of the window the held bands cover, which a jump '
-            . 'to a heading keeps clear; measured by the page, not declared by a theme',
+        '--layout-chrome-offset' => 'how much of the top of the window the held bands cover, and half a pixel '
+            . 'for the browser rounding a jump to a whole one, which a jump to a heading keeps clear; measured '
+            . 'by the page, not declared by a theme',
     ];
 
     /**
