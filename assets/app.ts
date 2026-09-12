@@ -6,6 +6,7 @@ import naja from 'naja';
 
 import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
 import { comboboxesInSnippets, enhanceWithin } from './combobox';
+import { answerTheDialogButtons, dialogsInSnippets } from './dialog';
 import { openWhatTheAddressNames } from './disclosure';
 import { unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
@@ -135,6 +136,10 @@ openWhatTheAddressNames();
 // combobox drawn before that would come back from history.back() as a control
 // with nothing behind it. See assets/combobox.ts.
 naja.registerExtension(comboboxesInSnippets);
+// Keeps a dialog Naja redraws while it is open open, and closes one that
+// history.back() brings back; before Naja starts, like the one above, so that
+// no redraw can happen without it. See assets/dialog.ts.
+naja.registerExtension(dialogsInSnippets);
 naja.registerExtension(tabsInSnippets);
 naja.registerExtension(scrollspiesInSnippets);
 naja.initialize({ history: true });
@@ -154,3 +159,7 @@ spyWithin(document);
 // a snippet could bring in unprepared or take away with something left on it.
 // See assets/notice.ts.
 dismissTheNotices();
+
+// The same kind of listener, for the buttons that open and close a dialog in
+// a browser that does not answer them itself. See assets/dialog.ts.
+answerTheDialogButtons();

@@ -59,6 +59,7 @@ final class OverviewPresenter extends FrontPresenter
         '--color-accent' => 'the action a page is about',
         '--color-danger' => 'something the page had to refuse',
         '--color-nav' => 'behind the navigation',
+        '--color-backdrop' => 'laid over the page behind an open dialog, thin enough to show it through',
     ];
 
     /**
@@ -125,12 +126,16 @@ final class OverviewPresenter extends FrontPresenter
     }
 
     /**
-     * The snippet a page of the guide draws under this name, drawn again: the
-     * specimens Naja redraws - of c-combobox, c-tabs and c-scrollspy, one to a
-     * page - which is how the guide shows, and tests/e2e measures, a component
-     * surviving the markup under it being replaced. Asked for by the button
-     * beside it, through Naja; a request that is not Naja's draws the whole
-     * page as usual.
+     * The snippet of a page of the guide, drawn again: the specimen of
+     * c-combobox whose select Naja replaces, the one of c-modal Naja replaces
+     * while it is open, and the ones of c-tabs and c-scrollspy whose markup
+     * Naja replaces under the script laid over it. That is how the guide
+     * shows - and tests/e2e/combobox.spec.ts, layers.spec.ts, tabs.spec.ts and
+     * scrollspy.spec.ts measure - a component surviving Naja. Every page that
+     * has such a specimen calls its snippet redrawnSpecimen, and a page draws
+     * only its own snippets, so the one signal serves them all. Asked for by a
+     * button in the specimen, through Naja; a request that is not Naja's draws
+     * the whole page as usual.
      */
     public function handleRedrawSpecimen(): void
     {
