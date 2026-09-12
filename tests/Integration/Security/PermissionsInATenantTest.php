@@ -176,6 +176,41 @@ final class PermissionsInATenantTest extends TestCase
     }
 
     /**
+     * An account that administers the installation and holds a role in one
+     * business is asked about as a member of that business and nothing more:
+     * allowed what the role there allows, and told no in the business where it
+     * holds nothing - the same answers an ordinary account holding the same
+     * role gets.
+     *
+     * The half worth the case is the second. Administering the installation is
+     * the wider scope, so the tempting reading is that it opens every business
+     * a little; it opens none, because a right is held in a business and the
+     * flag is not held in any.
+     */
+    public function testAnAccountThatAlsoAdministersTheInstallationIsAskedAsAMemberAndOnlyWhereItIsOne(): void
+    {
+        $this->installation();
+
+        $accounts = $this->container()->getByType(Accounts::class);
+        $cora = $this->account($accounts, 'cora@example.com', 'Cora Crinoid', landlord: true);
+        $entityManager = $this->container()->getByType(EntityManagerInterface::class);
+        $editor = $accounts->roleWithCode(self::EDITOR);
+        self::assertInstanceOf(Role::class, $editor);
+        $entityManager->persist(Membership::forTheInstallationsAdministrator($this->business(), $cora, $editor));
+        $entityManager->flush();
+
+        $this->signInAs('cora@example.com');
+
+        self::assertTrue($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Delete));
+
+        Tenants::switchTo($this->container(), $this->tenantWithoutAnyRole());
+
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Administration, Privilege::View));
+    }
+
+    /**
      * A tenant, a second tenant, an account holding a role in the first one
      * only, and the process working inside the first.
      *
@@ -224,7 +259,7 @@ final class PermissionsInATenantTest extends TestCase
      * repository is public, and a fixture password would be a disclosure git
      * keeps for ever.
      */
-    private function account(Accounts $accounts, string $email, string $name): User
+    private function account(Accounts $accounts, string $email, string $name, bool $landlord = false): User
     {
         $password = Random::generate(24, 'a-zA-Z0-9');
         $this->passwords[$email] = $password;
@@ -234,6 +269,7 @@ final class PermissionsInATenantTest extends TestCase
             $this->container()->getByType(Passwords::class)->hash($password),
             $name,
             new DateTimeImmutable('2026-09-06T08:00:00+00:00'),
+            landlord: $landlord,
         );
         $accounts->save($account);
 
@@ -248,6 +284,14 @@ final class PermissionsInATenantTest extends TestCase
     private function signInAs(string $email): void
     {
         $this->container()->getByType(SignedIn::class)->login($email, $this->passwords[$email] ?? '');
+    }
+
+    /** The tenant the process starts in, where the first account holds its role. */
+    private function business(): Tenant
+    {
+        self::assertInstanceOf(Tenant::class, $this->bikes);
+
+        return $this->bikes;
     }
 
     private function tenantWithoutAnyRole(): Tenant

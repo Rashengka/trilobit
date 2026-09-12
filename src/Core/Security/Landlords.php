@@ -16,10 +16,17 @@ use Trilobit\Core\Domain\User\User;
  * takes a tenant from Trilobit\Core\Tenancy\Tenancy and has no mode without
  * one, which is the whole of what it is for: a permission question asked
  * outside a tenant would be answered with somebody else's rights, so it raises
- * instead. Someone administering the installation is in no tenant, so asking
- * about them through it would mean giving it the "no tenant" mode that its
- * refusal exists to deny. Two services with two questions is the cheaper half
- * of that trade: nothing here weakens anything there.
+ * instead. Administering the installation happens in no tenant, so asking
+ * about it through that service would mean giving it the "no tenant" mode that
+ * its refusal exists to deny. Two services with two questions is the cheaper
+ * half of that trade: nothing here weakens anything there. An account that also
+ * holds a role in a business does not change this - it is asked about there as
+ * a member of that business, and nowhere as the installation's administrator.
+ *
+ * **The answer is the flag and nothing worked out from anything else.** In
+ * particular it is not "belongs to no business": an account may be both, and
+ * that reading would take the installation away from its administrator on the
+ * day they were given a shop - quietly, as a refusal like any other.
  *
  * **There is no resource and no privilege.** Administering the installation is
  * not assembled out of pieces the way a role is - somebody either does it or
