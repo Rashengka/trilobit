@@ -1,0 +1,45 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * What stays in view while the page scrolls, and the layer it is drawn in.
+ *
+ * There is nothing to put on a stage here: the specimen is the chrome of this
+ * very page, which the theme switch above holds or lets go. What the page
+ * shows is the tokens deciding it, as the themes name them - the list is
+ * OverviewPresenter::CHROME_TOKENS, and every layer a theme declares has to be
+ * named in it (tests/Template/StyleguideFoundationsTest).
+ *}
+
+{import '../../../components/table.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        While the page scrolls, a theme may hold its banner and its navigation in view, each on a
+        switch of its own. Ledger holds both wherever the window is wide enough for its side column;
+        atrium holds neither. Nothing is held on a window too narrow to give the room away, and
+        nothing is held on paper.
+    </p>
+
+    <p class="l-measure">
+        Whatever is held is drawn in a layer above the content that scrolls under it. A menu that
+        opens is drawn above every layer named here, by the browser, and needs none of its own. A jump
+        to a heading, and a link reached with the keyboard, stop under what is held rather than behind
+        it.
+    </p>
+
+    {embed block table, caption: 'The tokens that decide what stays in view', testId: 'chrome-tokens'}
+        {block tableHead}
+            <tr>
+                <th scope="col">Token</th>
+                <th scope="col">What it decides</th>
+            </tr>
+        {/block}
+
+        {block tableBody}
+            <tr n:foreach="$chromeTokens as $token => $decides" data-testid="chrome-token-{$token}">
+                <th scope="row"><code>{$token}</code></th>
+                <td>{$decides}</td>
+            </tr>
+        {/block}
+    {/embed}
+{/block}

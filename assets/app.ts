@@ -4,6 +4,7 @@
  */
 import naja from 'naja';
 
+import { keepJumpsClearOfTheChrome } from './chrome';
 import './app.css';
 
 /**
@@ -114,5 +115,7 @@ function remember(preference: string, value: string): Promise<void> {
 
     return pending;
 }
+
+keepJumpsClearOfTheChrome();
 
 naja.initialize({ history: true });

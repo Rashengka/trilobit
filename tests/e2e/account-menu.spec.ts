@@ -147,6 +147,57 @@ for (const theme of ['atrium', 'ledger']) {
     });
 }
 
+/**
+ * In ledger the banner stays in view while the page scrolls under it, and the
+ * menu opens out of that held banner. The panel is a popover, drawn in the top
+ * layer rather than in any layer the stylesheet names, so nothing held can be
+ * drawn over it - which is asserted by asking the browser what is at the
+ * middle of the panel, after the page has scrolled.
+ */
+test('the panel opened from the held banner is drawn over everything, in ledger', async ({ page }) => {
+    await signIn(page);
+    await drawIn(page, 'ledger');
+
+    await page.evaluate(() => {
+        const filler = document.createElement('div');
+        filler.style.position = 'relative';
+        filler.style.blockSize = '300vh';
+        document.querySelector('[data-testid="admin-content"] .l-container')?.prepend(filler);
+    });
+    await page.mouse.move(10, 10);
+    await page.mouse.wheel(0, 600);
+    await page.waitForFunction(() => window.scrollY >= 600);
+
+    await openAccountMenu(page);
+
+    const drawn = await page.evaluate(() => {
+        const banner = document.querySelector('[data-testid="admin-header"]');
+        const trigger = document.querySelector('[data-testid="admin-account-menu"]');
+        const panel = document.querySelector('[data-testid="admin-account-menu-panel"]');
+        if (banner === null || trigger === null || panel === null) {
+            throw new Error('the banner, the button or the panel is missing');
+        }
+
+        const box = panel.getBoundingClientRect();
+
+        return {
+            scrolled: window.scrollY,
+            bannerTop: banner.getBoundingClientRect().top,
+            triggerBottom: trigger.getBoundingClientRect().bottom,
+            panelTop: box.top,
+            onTop: panel.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
+        };
+    });
+
+    // Asked first, because a click scrolls whatever it clicks into view: a
+    // banner that was not held would be brought back to the top of the page
+    // by opening the menu, and would then read as held.
+    expect(drawn.scrolled, 'opening the menu scrolled the page back to its top').toBeGreaterThanOrEqual(600);
+    expect(drawn.bannerTop, 'the banner scrolled away, so nothing held is under the panel').toBeCloseTo(0, 0);
+    expect(drawn.panelTop, 'the panel does not hang under the button').toBeGreaterThanOrEqual(drawn.triggerBottom);
+    expect(drawn.onTop, 'something is drawn over the panel').toBe(true);
+});
+
 test('a theme and a mode chosen in the menu are on the page and still there after a reload', async ({ page }) => {
     await signIn(page);
     await openAccountMenu(page);
