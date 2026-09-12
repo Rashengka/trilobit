@@ -144,6 +144,14 @@ function checkWindowsDriveLettersBeginAToken(array &$failures): void
         'a path in double quotes' => "\$data = \"D" . $drive . 'data";',
         'a path in parentheses' => 'copy(E' . $drive . 'tmp);',
         'a path at the start of a line' => 'F' . $drive . 'projects\\notes.txt',
+        // A backslash before the drive letter does not always end an escape.
+        // Behind the long-path and the device prefix it is the start of the path
+        // itself, and behind an escaped newline or tab - a path in a JSON string
+        // or a log line - the letter is the first of the path again.
+        'a path behind the long-path prefix' => '\\\\?\\' . 'C' . $drive . 'Users\\someone',
+        'a path behind the device prefix' => '\\\\.\\' . 'D' . $drive . 'data',
+        'a path behind an escaped newline' => '"message": "line\\n' . 'C' . $drive . 'Users\\someone"',
+        'a path behind an escaped tab' => '"path": "\\t' . 'E' . $drive . 'tmp"',
     ];
     foreach ($paths as $case => $line) {
         [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
