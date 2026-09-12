@@ -95,112 +95,102 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-combobox']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'searching a long list'}
-                {block sgSpecimenStage}
-                    {embed block field}
-                        {block fieldLabel}<label for="sg-combobox-genus">Genus</label>{/block}
+            {specimen 'searching a long list'}
+                {embed block field}
+                    {block fieldLabel}<label for="sg-combobox-genus">Genus</label>{/block}
 
-                        {block fieldControl}
-                            {include combobox,
-                                id: 'sg-combobox-genus',
-                                name: 'genus',
-                                choices: $genera,
-                                chosen: 'phacops',
-                                testId: 'sg-combobox-long'}
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                    {block fieldControl}
+                        {include combobox,
+                            id: 'sg-combobox-genus',
+                            name: 'genus',
+                            choices: $genera,
+                            chosen: 'phacops',
+                            testId: 'sg-combobox-long'}
+                    {/block}
+                {/embed}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'a short list, without a line to search it by'}
-                {block sgSpecimenStage}
-                    {embed block field}
-                        {block fieldLabel}<label for="sg-combobox-period">Period</label>{/block}
+            {specimen 'a short list, without a line to search it by'}
+                {embed block field}
+                    {block fieldLabel}<label for="sg-combobox-period">Period</label>{/block}
 
-                        {block fieldControl}
-                            {include combobox,
-                                id: 'sg-combobox-period',
-                                name: 'period',
-                                choices: $periods,
-                                chosen: 'ordovician',
-                                testId: 'sg-combobox-short'}
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                    {block fieldControl}
+                        {include combobox,
+                            id: 'sg-combobox-period',
+                            name: 'period',
+                            choices: $periods,
+                            chosen: 'ordovician',
+                            testId: 'sg-combobox-short'}
+                    {/block}
+                {/embed}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'with a reason and a hint'}
-                {block sgSpecimenStage}
-                    {embed block field, errorId: 'sg-combobox-drawer-error', hintId: 'sg-combobox-drawer-hint'}
-                        {block fieldLabel}<label for="sg-combobox-drawer">Drawer</label>{/block}
+            {specimen 'with a reason and a hint'}
+                {embed block field, errorId: 'sg-combobox-drawer-error', hintId: 'sg-combobox-drawer-hint'}
+                    {block fieldLabel}<label for="sg-combobox-drawer">Drawer</label>{/block}
 
-                        {block fieldControl}
-                            {include combobox,
-                                id: 'sg-combobox-drawer',
-                                name: 'drawer',
-                                choices: $drawers,
-                                chosen: 'b1',
-                                describedBy: 'sg-combobox-drawer-error sg-combobox-drawer-hint',
-                                invalid: true,
-                                testId: 'sg-combobox-refused'}
-                        {/block}
+                    {block fieldControl}
+                        {include combobox,
+                            id: 'sg-combobox-drawer',
+                            name: 'drawer',
+                            choices: $drawers,
+                            chosen: 'b1',
+                            describedBy: 'sg-combobox-drawer-error sg-combobox-drawer-hint',
+                            invalid: true,
+                            testId: 'sg-combobox-refused'}
+                    {/block}
 
-                        {block fieldError}Drawer B1 is full; pick another one.{/block}
+                    {block fieldError}Drawer B1 is full; pick another one.{/block}
 
-                        {block fieldHint}Counted from the left of the cabinet.{/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                    {block fieldHint}Counted from the left of the cabinet.{/block}
+                {/embed}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'disabled'}
-                {block sgSpecimenStage}
-                    {embed block field}
-                        {block fieldLabel}<label for="sg-combobox-cabinet">Cabinet</label>{/block}
+            {specimen 'disabled'}
+                {embed block field}
+                    {block fieldLabel}<label for="sg-combobox-cabinet">Cabinet</label>{/block}
 
-                        {block fieldControl}
-                            {include combobox,
-                                id: 'sg-combobox-cabinet',
-                                name: 'cabinet',
-                                choices: $drawers,
-                                chosen: 'a2',
-                                disabled: true,
-                                testId: 'sg-combobox-disabled'}
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                    {block fieldControl}
+                        {include combobox,
+                            id: 'sg-combobox-cabinet',
+                            name: 'cabinet',
+                            choices: $drawers,
+                            chosen: 'a2',
+                            disabled: true,
+                            testId: 'sg-combobox-disabled'}
+                    {/block}
+                {/embed}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'redrawn by Naja'}
-                {block sgSpecimenStage}
-                    {embed block field, hintId: 'sg-combobox-redrawn-hint'}
-                        {block fieldLabel}<label for="sg-combobox-redrawn">Genus, drawn again by the server</label>{/block}
+            {specimen 'redrawn by Naja'}
+                {embed block field, hintId: 'sg-combobox-redrawn-hint'}
+                    {block fieldLabel}<label for="sg-combobox-redrawn">Genus, drawn again by the server</label>{/block}
 
-                        {block fieldControl}
-                            <div class="l-stack">
-                                <div n:snippet="redrawnSpecimen" data-testid="sg-combobox-snippet">
-                                    {include combobox,
-                                        id: 'sg-combobox-redrawn',
-                                        name: 'redrawn',
-                                        choices: $genera,
-                                        chosen: 'calymene',
-                                        describedBy: 'sg-combobox-redrawn-hint',
-                                        testId: 'sg-combobox-redrawn'}
-                                </div>
-
-                                <div class="l-cluster">
-                                    <a
-                                        n:href="redrawSpecimen!"
-                                        class="c-button c-button--quiet ajax"
-                                        data-testid="sg-combobox-redraw"
-                                    >Draw it again</a>
-                                </div>
+                    {block fieldControl}
+                        <div class="l-stack">
+                            <div n:snippet="redrawnSpecimen" data-testid="sg-combobox-snippet">
+                                {include combobox,
+                                    id: 'sg-combobox-redrawn',
+                                    name: 'redrawn',
+                                    choices: $genera,
+                                    chosen: 'calymene',
+                                    describedBy: 'sg-combobox-redrawn-hint',
+                                    testId: 'sg-combobox-redrawn'}
                             </div>
-                        {/block}
 
-                        {block fieldHint}The button asks the server for this field again, through Naja, and the page puts the answer in its place.{/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                            <div class="l-cluster">
+                                <a
+                                    n:href="redrawSpecimen!"
+                                    class="c-button c-button--quiet ajax"
+                                    data-testid="sg-combobox-redraw"
+                                >Draw it again</a>
+                            </div>
+                        </div>
+                    {/block}
+
+                    {block fieldHint}The button asks the server for this field again, through Naja, and the page puts the answer in its place.{/block}
+                {/embed}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

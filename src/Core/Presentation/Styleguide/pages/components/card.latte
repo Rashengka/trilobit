@@ -12,34 +12,30 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-card']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    <div class="l-grid">
-                        {include card,
-                            title: 'Ammonite mug',
-                            href: '#',
-                            text: 'Stoneware, spiral in relief, holds three hundred millilitres.',
-                            media: 'A'}
+            {specimen 'default'}
+                <div class="l-grid">
+                    {include card,
+                        title: 'Ammonite mug',
+                        href: '#',
+                        text: 'Stoneware, spiral in relief, holds three hundred millilitres.',
+                        media: 'A'}
 
-                        {include card,
-                            title: 'Crinoid print',
-                            href: '#',
-                            text: 'Ink on cotton paper, unframed, four hundred by five hundred.',
-                            media: 'C'}
-                    </div>
-                {/block}
-            {/embed}
+                    {include card,
+                        title: 'Crinoid print',
+                        href: '#',
+                        text: 'Ink on cotton paper, unframed, four hundred by five hundred.',
+                        media: 'C'}
+                </div>
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'without media'}
-                {block sgSpecimenStage}
-                    <div class="l-grid">
-                        {include card,
-                            title: 'Brachiopod cast',
-                            href: '#',
-                            text: 'Plaster, hand finished, one of a numbered run of forty.'}
-                    </div>
-                {/block}
-            {/embed}
+            {specimen 'without media'}
+                <div class="l-grid">
+                    {include card,
+                        title: 'Brachiopod cast',
+                        href: '#',
+                        text: 'Plaster, hand finished, one of a numbered run of forty.'}
+                </div>
+            {/specimen}
         {/block}
     {/embed}
 {/block}

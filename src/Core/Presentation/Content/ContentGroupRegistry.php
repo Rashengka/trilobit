@@ -55,7 +55,13 @@ final class ContentGroupRegistry
                 . 'at a size of its own, because how far it has to be brought down to sit level with the '
                 . 'body text depends on which two faces a theme picked.',
                 ['code', 'kbd', 'samp', 'pre'],
-                ['inline', 'a key and sampled output', 'a block wider than its frame'],
+                [
+                    'inline',
+                    'a key and sampled output',
+                    'a block wider than its frame',
+                    'highlighted, a block in every language the guide knows',
+                    'highlighted, inline',
+                ],
             ),
             new ContentGroup(
                 'images',

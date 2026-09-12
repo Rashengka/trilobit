@@ -29,13 +29,14 @@ use PHPUnit\Framework\TestCase;
  * class listed and no longer styled fails too, so the list cannot outlive what
  * it excuses.
  *
- * **A library whose code the build bundles is held to what it writes.** A rule
+ * **A library is held to what it writes.** A rule
  * about one of its class names is a rule about its behaviour, and it holds only
  * as long as the library still writes that name - a name it stopped writing is
- * a state quietly no longer drawn, with nothing failing and the control still
- * looking finished. So such a library also names the version its list was read
- * off, which package.json has to pin, and the bundle its code ends up in, which
- * has to carry every name on the list.
+ * a state quietly no longer drawn, with nothing failing and the page still
+ * looking finished. So every library names the version its list was read off,
+ * which package.json has to pin; and one that writes its names as literals
+ * also names the bundle its code ends up in, which has to carry every name on
+ * the list.
  */
 #[CoversNothing]
 final class StylesheetClassesAreNamedByKindTest extends TestCase
@@ -45,6 +46,10 @@ final class StylesheetClassesAreNamedByKindTest extends TestCase
 
     /**
      * Library => the classes it writes into the page that base.css styles.
+     *
+     * prismjs: the highlighter of the style guide's code (assets/styleguide.ts)
+     * wraps every token in `<span class="token TYPE">`, TYPE being what its
+     * grammar calls the token or an alias of it.
      *
      * tom-select: draws c-combobox in front of a select (assets/combobox.ts).
      * The classes it lets us choose carry the component's name; these it
@@ -56,6 +61,17 @@ final class StylesheetClassesAreNamedByKindTest extends TestCase
      * @var array<string, list<string>>
      */
     private const array LIBRARIES = [
+        'prismjs' => [
+            'token',
+            'comment', 'prolog', 'doctype', 'cdata',
+            'punctuation',
+            'tag', 'keyword', 'important', 'selector', 'atrule', 'rule',
+            'attr-name', 'property', 'function', 'class-name', 'builtin',
+            'string', 'attr-value', 'char', 'regex', 'url',
+            'number', 'boolean', 'constant', 'symbol', 'variable',
+            'operator', 'entity',
+            'bold', 'italic',
+        ],
         'tom-select' => [
             'dropdown-active', 'invalid', 'disabled',
             'active', 'selected',
@@ -71,12 +87,18 @@ final class StylesheetClassesAreNamedByKindTest extends TestCase
      * @var array<string, string>
      */
     private const array VERSIONS = [
+        'prismjs' => '1.30.0',
         'tom-select' => '2.6.2',
     ];
 
     /**
      * Library => the bundle its code ends up in, which has to carry every name
      * on its list as the literal the library writes.
+     *
+     * Only a library that writes its names as literals is here. prismjs is
+     * not: it builds `token TYPE` at run time out of the keys of its grammars,
+     * which a minifier writes unquoted, so its names are held by the version
+     * above alone.
      *
      * @var array<string, string>
      */

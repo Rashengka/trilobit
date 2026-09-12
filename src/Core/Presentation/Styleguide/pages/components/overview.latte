@@ -1,0 +1,22 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The way into the Components group: every component by its name, with what it
+ * is for and the way to its page - the list Bootstrap's documentation keeps
+ * down the side, on a page of its own.
+ *
+ * It is drawn out of the same pages the menu is, so it cannot list a
+ * component the guide has no page for or leave one out, and
+ * tests/Template/StyleguideListsEveryComponentTest holds it to the register
+ * itself. It shows no specimen: that is each component's own page.
+ *}
+
+{block sgPage}
+    <ul class="sg-index" data-testid="styleguide-component-index">
+        <li n:foreach="$groupPages as $entry" class="sg-index__entry">
+            <a class="sg-index__name" href="{$entry->href}" data-testid="{$entry->testId}"><code>{$entry->label}</code></a>
+
+            <p class="sg-index__summary">{$entry->summary}</p>
+        </li>
+    </ul>
+{/block}

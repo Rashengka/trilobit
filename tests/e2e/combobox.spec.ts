@@ -190,7 +190,9 @@ test('how many choices match what is typed is said out loud', async ({ page }) =
     await page.goto(address);
 
     const genus = drawnFor(page, 'sg-combobox-long').getByRole('combobox');
-    const status = specimen(page, 'searching a long list').getByRole('status');
+    // The combobox's own live region, right after the control: the specimen's
+    // frame has a status of its own, for the code it shows.
+    const status = page.locator('[data-testid="sg-combobox-long"] + .c-combobox + [role="status"]');
     await expect(status).toHaveText('');
 
     await genus.pressSequentially('phac');

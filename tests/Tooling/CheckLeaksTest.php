@@ -51,6 +51,7 @@ function run(): int
     $failures = [];
 
     checkRuleSamples($failures);
+    checkWindowsDriveLettersBeginAToken($failures);
     checkFixtureDirectory($failures);
     checkExemptPaths($failures);
     checkMissingLocalConfig($failures);
@@ -105,6 +106,57 @@ function checkRuleSamples(array &$failures): void
 
         [$code, $out] = checkFiles([$path => file_get_contents($clean)]);
         assertSame(0, $code, sprintf('%s.clean.sample must pass (output: %s)', $rule, oneLine($out)), $failures);
+    }
+}
+
+/**
+ * A drive letter begins a Windows path only where it begins a token.
+ *
+ * A letter straight after a backslash is the end of an escape - the `d` of a
+ * digit class in a regular expression reading a time of day - and a letter
+ * straight after a word character is the middle of a word. The rule used to
+ * take the first for a drive, and failed the build on the grammar of a code
+ * highlighter bundled into www/build. Both directions are held here: every
+ * escape passes, and every place a real path starts in is still reported.
+ *
+ * The paths are assembled from pieces so that this file does not carry the
+ * very shapes it hands the tool. The escapes are written out as they are,
+ * because this file is scanned too, and they have to pass there as well.
+ *
+ * @param list<string> $failures
+ */
+function checkWindowsDriveLettersBeginAToken(array &$failures): void
+{
+    $drive = ':' . '\\';
+
+    $escapes = [
+        'a time of day in a regular expression' => 'const time = /\d\d:\d\d/;',
+        'an escape on either side of a colon' => '$pattern = \'/\x:\y/\';',
+        'the grammar as the bundle carries it' => 'datetime:{pattern:/\d\d?(?:[Tt]| +)\d\d?:\d\d:\d\d/}',
+    ];
+    foreach ($escapes as $case => $line) {
+        [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
+        assertSame(0, $code, sprintf('%s is not a Windows path (output: %s)', $case, oneLine($out)), $failures);
+    }
+
+    $paths = [
+        'a path in single quotes' => "\$path = 'C" . $drive . "Users\\someone\\x';",
+        'a path in double quotes' => "\$data = \"D" . $drive . 'data";',
+        'a path in parentheses' => 'copy(E' . $drive . 'tmp);',
+        'a path at the start of a line' => 'F' . $drive . 'projects\\notes.txt',
+        // A backslash before the drive letter does not always end an escape.
+        // Behind the long-path and the device prefix it is the start of the path
+        // itself, and behind an escaped newline or tab - a path in a JSON string
+        // or a log line - the letter is the first of the path again.
+        'a path behind the long-path prefix' => '\\\\?\\' . 'C' . $drive . 'Users\\someone',
+        'a path behind the device prefix' => '\\\\.\\' . 'D' . $drive . 'data',
+        'a path behind an escaped newline' => '"message": "line\\n' . 'C' . $drive . 'Users\\someone"',
+        'a path behind an escaped tab' => '"path": "\\t' . 'E' . $drive . 'tmp"',
+    ];
+    foreach ($paths as $case => $line) {
+        [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
+        assertSame(1, $code, sprintf('%s is still a finding (output: %s)', $case, oneLine($out)), $failures);
+        assertContains('[absolute_path]', $out, sprintf('%s is still reported by absolute_path', $case), $failures);
     }
 }
 

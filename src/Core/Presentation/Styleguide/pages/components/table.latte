@@ -14,142 +14,132 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-table']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {embed block table, caption: 'Where each drawer is kept'}
-                        {block tableHead}
-                            <tr>
-                                <th scope="col">Drawer</th>
-                                <th scope="col">Room</th>
-                            </tr>
-                        {/block}
+            {specimen 'default'}
+                {embed block table, caption: 'Where each drawer is kept'}
+                    {block tableHead}
+                        <tr>
+                            <th scope="col">Drawer</th>
+                            <th scope="col">Room</th>
+                        </tr>
+                    {/block}
 
-                        {block tableBody}
-                            <tr>
-                                <th scope="row">Head shields</th>
-                                <td>The one with the window</td>
-                            </tr>
+                    {block tableBody}
+                        <tr>
+                            <th scope="row">Head shields</th>
+                            <td>The one with the window</td>
+                        </tr>
 
-                            <tr>
-                                <th scope="row">Tail shields</th>
-                                <td>The one without</td>
-                            </tr>
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                        <tr>
+                            <th scope="row">Tail shields</th>
+                            <td>The one without</td>
+                        </tr>
+                    {/block}
+                {/embed}
+            {/specimen}
 
             {*
              * The caption is there either way - a frame that scrolls has to
              * have a name for anybody arriving at it by keyboard. What this
              * variant changes is only whether the name is also drawn.
              *}
-            {embed block sgSpecimen, variant: 'with a visible caption'}
-                {block sgSpecimenStage}
-                    {embed block table, caption: 'Where each drawer is kept', captionVisible: true}
-                        {block tableHead}
-                            <tr>
-                                <th scope="col">Drawer</th>
-                                <th scope="col">Room</th>
-                            </tr>
-                        {/block}
+            {specimen 'with a visible caption'}
+                {embed block table, caption: 'Where each drawer is kept', captionVisible: true}
+                    {block tableHead}
+                        <tr>
+                            <th scope="col">Drawer</th>
+                            <th scope="col">Room</th>
+                        </tr>
+                    {/block}
 
-                        {block tableBody}
-                            <tr>
-                                <th scope="row">Head shields</th>
-                                <td>The one with the window</td>
-                            </tr>
+                    {block tableBody}
+                        <tr>
+                            <th scope="row">Head shields</th>
+                            <td>The one with the window</td>
+                        </tr>
 
-                            <tr>
-                                <th scope="row">Tail shields</th>
-                                <td>The one without</td>
-                            </tr>
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                        <tr>
+                            <th scope="row">Tail shields</th>
+                            <td>The one without</td>
+                        </tr>
+                    {/block}
+                {/embed}
+            {/specimen}
 
             {*
              * A rule between columns, drawn only where one column meets the
              * next - never on the outer edge, which is what .c-table--framed
              * is for below.
              *}
-            {embed block sgSpecimen, variant: 'with column rules'}
-                {block sgSpecimenStage}
-                    {embed block table, caption: 'Where each drawer is kept', columnRules: true}
-                        {block tableHead}
-                            <tr>
-                                <th scope="col">Drawer</th>
-                                <th scope="col">Room</th>
-                            </tr>
-                        {/block}
+            {specimen 'with column rules'}
+                {embed block table, caption: 'Where each drawer is kept', columnRules: true}
+                    {block tableHead}
+                        <tr>
+                            <th scope="col">Drawer</th>
+                            <th scope="col">Room</th>
+                        </tr>
+                    {/block}
 
-                        {block tableBody}
-                            <tr>
-                                <th scope="row">Head shields</th>
-                                <td>The one with the window</td>
-                            </tr>
+                    {block tableBody}
+                        <tr>
+                            <th scope="row">Head shields</th>
+                            <td>The one with the window</td>
+                        </tr>
 
-                            <tr>
-                                <th scope="row">Tail shields</th>
-                                <td>The one without</td>
-                            </tr>
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                        <tr>
+                            <th scope="row">Tail shields</th>
+                            <td>The one without</td>
+                        </tr>
+                    {/block}
+                {/embed}
+            {/specimen}
 
             {* The outer border, and nothing between the columns. *}
-            {embed block sgSpecimen, variant: 'framed'}
-                {block sgSpecimenStage}
-                    {embed block table, caption: 'Where each drawer is kept', framed: true}
-                        {block tableHead}
-                            <tr>
-                                <th scope="col">Drawer</th>
-                                <th scope="col">Room</th>
-                            </tr>
-                        {/block}
+            {specimen 'framed'}
+                {embed block table, caption: 'Where each drawer is kept', framed: true}
+                    {block tableHead}
+                        <tr>
+                            <th scope="col">Drawer</th>
+                            <th scope="col">Room</th>
+                        </tr>
+                    {/block}
 
-                        {block tableBody}
-                            <tr>
-                                <th scope="row">Head shields</th>
-                                <td>The one with the window</td>
-                            </tr>
+                    {block tableBody}
+                        <tr>
+                            <th scope="row">Head shields</th>
+                            <td>The one with the window</td>
+                        </tr>
 
-                            <tr>
-                                <th scope="row">Tail shields</th>
-                                <td>The one without</td>
-                            </tr>
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                        <tr>
+                            <th scope="row">Tail shields</th>
+                            <td>The one without</td>
+                        </tr>
+                    {/block}
+                {/embed}
+            {/specimen}
 
             {* The two modifiers combined: an outer border and a rule between every pair of columns. *}
-            {embed block sgSpecimen, variant: 'framed with column rules'}
-                {block sgSpecimenStage}
-                    {embed block table, caption: 'Where each drawer is kept', framed: true, columnRules: true}
-                        {block tableHead}
-                            <tr>
-                                <th scope="col">Drawer</th>
-                                <th scope="col">Room</th>
-                            </tr>
-                        {/block}
+            {specimen 'framed with column rules'}
+                {embed block table, caption: 'Where each drawer is kept', framed: true, columnRules: true}
+                    {block tableHead}
+                        <tr>
+                            <th scope="col">Drawer</th>
+                            <th scope="col">Room</th>
+                        </tr>
+                    {/block}
 
-                        {block tableBody}
-                            <tr>
-                                <th scope="row">Head shields</th>
-                                <td>The one with the window</td>
-                            </tr>
+                    {block tableBody}
+                        <tr>
+                            <th scope="row">Head shields</th>
+                            <td>The one with the window</td>
+                        </tr>
 
-                            <tr>
-                                <th scope="row">Tail shields</th>
-                                <td>The one without</td>
-                            </tr>
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                        <tr>
+                            <th scope="row">Tail shields</th>
+                            <td>The one without</td>
+                        </tr>
+                    {/block}
+                {/embed}
+            {/specimen}
         {/block}
     {/embed}
 {/block}
