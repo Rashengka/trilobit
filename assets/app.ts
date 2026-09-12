@@ -123,7 +123,6 @@ function remember(preference: string, value: string): Promise<void> {
 keepJumpsClearOfTheChrome();
 markTheChromeScrolledPast();
 unfoldTheNavigation();
-dismissTheNotices();
 
 // The order of these three is the whole of getting comboboxes through Naja,
 // and tests/e2e/combobox.spec.ts measures it: the extension has to be there
@@ -134,3 +133,9 @@ dismissTheNotices();
 naja.registerExtension(comboboxesInSnippets);
 naja.initialize({ history: true });
 enhanceWithin(document);
+
+// After Naja has started, like the comboboxes, and with no extension of its
+// own: it listens on the document and prepares no notice, so there is nothing
+// a snippet could bring in unprepared or take away with something left on it.
+// See assets/notice.ts.
+dismissTheNotices();
