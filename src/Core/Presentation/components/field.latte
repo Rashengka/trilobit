@@ -1,6 +1,6 @@
 {**
- * c-field - one thing a form asks for: what it is called, and the control that
- * answers it.
+ * c-field - one thing a form asks for: what it is called, the control that
+ * answers it, and what there is to say about the answer.
  *
  * It takes slots rather than a label and a control as strings, because the
  * control belongs to whatever form it is part of - a component that accepted it
@@ -8,13 +8,29 @@
  * knew about nette/forms would be a component the style guide could not show
  * without a form to show it in.
  *
- * Use it with {embed block field}, filling in fieldLabel and fieldControl.
+ * It arranges; it does not style the control. The control is drawn by its own
+ * name in assets/base.css, the same inside this component as anywhere else, so
+ * that a form laid out another way does not get a control that looks another
+ * way (see Trilobit\Core\Presentation\Form\FormElementRegistry).
+ *
+ * Under the control go the two sentences a browser has no element for: why the
+ * answer was refused (fieldError) and what the field is for (fieldHint). Each
+ * is drawn only when filled in, and each takes the id it is given, which the
+ * control's aria-describedby names - the component cannot write that attribute
+ * itself, because the control is the caller's element and not its own.
+ *
+ * Use it with {embed block field}, filling in fieldLabel and fieldControl, and
+ * fieldError or fieldHint when there is something to say.
  *}
 
-{define field, ?string $testId = null}
+{define field, ?string $testId = null, ?string $hintId = null, ?string $errorId = null}
     <div class="c-field" data-testid="{$testId}">
         <div class="c-field__label">{block fieldLabel}{/block}</div>
 
         <div class="c-field__control">{block fieldControl}{/block}</div>
+
+        <p class="c-field__error" id="{$errorId}" n:ifcontent>{block fieldError}{/block}</p>
+
+        <p class="c-field__hint" id="{$hintId}" n:ifcontent>{block fieldHint}{/block}</p>
     </div>
 {/define}

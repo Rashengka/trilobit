@@ -101,8 +101,9 @@ final class ComponentRegistry
             ),
             new Component(
                 'c-field',
-                'One thing a form asks for: what it is called, and the control that answers it.',
-                ['default', 'with a control that is not a line of text'],
+                'One thing a form asks for: what it is called, the control that answers it, and what there is '
+                . 'to say about the answer.',
+                ['default', 'with a control that is not a line of text', 'with a reason and a hint'],
             ),
             new Component(
                 'c-notice',

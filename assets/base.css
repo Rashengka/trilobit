@@ -42,7 +42,8 @@
  * by name in @layer base and are catalogued too: every one of them belongs to a
  * group in Trilobit\Core\Presentation\Content\ContentGroupRegistry, and
  * tests/Template/ContentGroupRegistryTest fails when a group claims a selector
- * this file does not carry.
+ * this file does not carry. The controls of a form are the same kind of thing,
+ * catalogued the same way in Trilobit\Core\Presentation\Form\FormElementRegistry.
  *
  * Inside a component no Tailwind utility is used, on purpose and only there: a
  * utility written into the markup is a decision about appearance that a theme
@@ -385,6 +386,112 @@
     caption,
     th {
         text-align: start;
+    }
+
+    /*
+     * ==== The controls of a form ==========================================
+     *
+     * Styled by name, here, and never through whatever is drawn around them.
+     * A form comes in three arrangements (.ai/plans/19) - side by side,
+     * stacked, label beside control - and the arrangement is a layer on top of
+     * these rules rather than a reason for a control to look different: an
+     * input styled as "an input inside this wrapper" would look one way in the
+     * wrapper written first and another, or not at all, in the next.
+     * tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest refuses a
+     * rule that reaches a control through something around it, and every
+     * selector below is claimed by a group in
+     * Trilobit\Core\Presentation\Form\FormElementRegistry.
+     *
+     * A control fills the place it is put in. How wide that place is, is the
+     * arrangement's to decide, so no width of a control is written here.
+     *
+     * Tailwind's preflight, earlier in this same layer, strips every control
+     * of its border, background and radius with rules as heavy as a bare
+     * element. The rules below weigh at least as much and come later, so they
+     * win; the states weigh more than the rule they modify, so which of them
+     * applies never depends on the order they are written in.
+     */
+    input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
+    select,
+    textarea {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-sm);
+        color: var(--color-ink);
+        inline-size: 100%;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    :is(input, textarea)::placeholder {
+        color: var(--color-ink-muted);
+    }
+
+    /*
+     * The browser draws a box to tick and a radio button better than a
+     * stylesheet can imitate one - with the state, the focus and the forced
+     * colours of an operating system all handled - so they are left to it and
+     * handed the theme's accent and the size of the text beside them.
+     */
+    input:is([type='checkbox'], [type='radio']) {
+        accent-color: var(--color-accent);
+        block-size: var(--icon-size);
+        flex: none;
+        inline-size: var(--icon-size);
+    }
+
+    /* The label a choice is written inside keeps the box and its words on one
+       line, the way nette/forms writes a checkbox: the input inside its label. */
+    label:has(> input[type='checkbox'], > input[type='radio']) {
+        align-items: center;
+        display: inline-flex;
+        gap: var(--space-xs);
+    }
+
+    fieldset {
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        min-inline-size: 0;
+        padding: var(--space-md);
+    }
+
+    /* Named the way a single field is named by c-field, because it names what
+       the fields inside are together. */
+    legend {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+        padding-inline: var(--space-2xs);
+    }
+
+    /*
+     * The states. The outline itself is the :focus-visible rule at the top of
+     * this layer, the same for every focusable thing; a control adds the
+     * border.
+     *
+     * Refused beats focused: the two weigh the same and refused is written
+     * after, so a control somebody is correcting stays marked until it is
+     * correct - the outline still says where the focus is. :user-invalid is
+     * the browser's own check and matches only once somebody has had a go at
+     * the control, so an empty required field is not drawn as a mistake before
+     * anyone typed; aria-invalid is the server's verdict and needs no go.
+     */
+    :is(input, select, textarea):focus-visible {
+        border-color: var(--color-accent);
+    }
+
+    :is(input, select, textarea):is([aria-invalid='true'], :user-invalid) {
+        border-color: var(--color-danger);
+    }
+
+    :is(input, select, textarea):disabled {
+        background-color: var(--color-canvas-sunken);
+        color: var(--color-ink-muted);
+        cursor: not-allowed;
+    }
+
+    label:has(> :disabled) {
+        color: var(--color-ink-muted);
     }
 }
 
@@ -884,21 +991,20 @@
         font-weight: var(--font-weight-display);
     }
 
-    /* The control is styled where it sits rather than through a class of its
-       own. What a form puts into this slot is an element the framework wrote,
-       and it carries no class this file could name. */
-    .c-field__control :is(input, select, textarea) {
-        background-color: var(--color-surface);
-        border: var(--border-hairline) solid var(--color-line);
-        border-radius: var(--radius-sm);
-        color: var(--color-ink);
-        inline-size: 100%;
-        padding-block: var(--space-xs);
-        padding-inline: var(--space-sm);
+    /* Nothing styles the control here. What a form puts into the slot is an
+       element the framework wrote, and it is drawn by its own name in @layer
+       base - the same in this component as in any other arrangement. */
+
+    /* The two sentences under a control. The reason is in the colour the
+       control's border turns when it is refused, so the two read as one. */
+    .c-field__error {
+        color: var(--color-danger);
+        font-size: var(--text-sm);
     }
 
-    .c-field__control :is(input, select, textarea):focus-visible {
-        border-color: var(--color-accent);
+    .c-field__hint {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
     }
 
     .c-notice {

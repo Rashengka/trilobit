@@ -42,6 +42,9 @@ final class StyleguideSpecimens
     /** What a section showing a group of native elements is marked with. */
     public const string CONTENT = 'data-styleguide-content';
 
+    /** What a section showing a group of native form elements is marked with. */
+    public const string FORM = 'data-styleguide-form';
+
     /** What every specimen inside either kind of section is marked with. */
     public const string VARIANT = 'data-styleguide-variant';
 

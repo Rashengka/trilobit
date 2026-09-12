@@ -7,6 +7,7 @@ namespace Trilobit\Core\Presentation\Styleguide;
 use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Content\ContentGroup;
+use Trilobit\Core\Presentation\Form\FormElementGroup;
 use Trilobit\Core\Presentation\Front\FrontTemplate;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
@@ -29,6 +30,9 @@ final class OverviewDefaultTemplate extends FrontTemplate
 
     /** @var array<string, ContentGroup> keyed by name, the way the template asks for them */
     public array $contentGroups = [];
+
+    /** @var array<string, FormElementGroup> keyed by name, the way the template asks for them */
+    public array $formElements = [];
 
     /** @var array<string, string> token name => what it is for */
     public array $colourTokens = [];
