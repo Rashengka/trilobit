@@ -272,8 +272,8 @@ final class AccessListsAreFlatTest extends TestCase
         $accounts->save($alice);
 
         $entityManager = $this->container->getByType(EntityManagerInterface::class);
-        $editor = new Role(self::EDITOR, 'Content editor', ['content:edit']);
-        $keeper = new Role(self::KEEPER, 'Redirection keeper', ['redirection:force_redirect']);
+        $editor = new Role(self::EDITOR, 'Content editor', ['app.administration.content:edit']);
+        $keeper = new Role(self::KEEPER, 'Redirection keeper', ['app.redirection:force_redirect']);
         $entityManager->persist($editor);
         $entityManager->persist($keeper);
         $entityManager->persist(new Membership($bikes, $alice, $editor));

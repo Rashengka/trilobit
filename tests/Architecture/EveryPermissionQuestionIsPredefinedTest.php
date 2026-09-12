@@ -56,7 +56,7 @@ final class EveryPermissionQuestionIsPredefinedTest extends TestCase
     public function testTheRuleReportsAPairNobodyOffers(): void
     {
         self::assertSame(
-            ['AskingAboutAPairNobodyOffers.php: account, force_redirect'],
+            ['AskingAboutAPairNobodyOffers.php: app.administration.account, force_redirect'],
             $this->notOfferedIn($this->fixtures()),
         );
     }
@@ -83,8 +83,8 @@ final class EveryPermissionQuestionIsPredefinedTest extends TestCase
 
         self::assertSame(
             [
-                'AskingAboutAPairNobodyOffers.php: account, force_redirect',
-                'AskingAboutAPairThatIsOffered.php: content, edit',
+                'AskingAboutAPairNobodyOffers.php: app.administration.account, force_redirect',
+                'AskingAboutAPairThatIsOffered.php: app.administration.content, edit',
             ],
             $read,
         );

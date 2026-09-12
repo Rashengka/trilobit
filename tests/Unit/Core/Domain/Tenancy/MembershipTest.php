@@ -53,7 +53,7 @@ final class MembershipTest extends TestCase
 
     private function role(): Role
     {
-        return new Role('administrator', 'Administrator', ['administration:view']);
+        return new Role('administrator', 'Administrator', ['app.administration:view']);
     }
 
     private function landlord(): User

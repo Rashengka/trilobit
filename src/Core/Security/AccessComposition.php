@@ -21,8 +21,8 @@ use Nette\Security\Permission;
  *   the administration is not reading every section of it, which is what
  *   made a door into a bundle.
  * - Any right on a resource opens everything it falls under - `view` on each
- *   of its ancestors in src/Core/Security/permissions.neon. Somebody who may
- *   work in a section may get to it.
+ *   of its ancestors, which are the resource's name up to each of its dots.
+ *   Somebody who may work in a section may get to it.
  * - The whole of a resource, `x:*`, is every privilege of it and of
  *   everything under it. Granted, it is honoured only where the structure
  *   offers the resource as a bundle and is dropped elsewhere, as an outdated
@@ -45,11 +45,6 @@ use Nette\Security\Permission;
  * whose effect depends on the order the rules were written in. So neither is
  * ever handed to Nette, and tests/Integration/Security/AccessListsAreFlatTest
  * asks that of the lists both services really hold.
- *
- * What falls under each resource is worked out for every resource before any
- * role is read. A structure whose resources fall under each other in a circle
- * is therefore refused every time a list is built, and not only once somebody
- * holds a piece of it.
  */
 final readonly class AccessComposition
 {

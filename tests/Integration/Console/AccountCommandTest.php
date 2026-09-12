@@ -164,8 +164,8 @@ final class AccountCommandTest extends TestCase
 
         $role = $container->getByType(Accounts::class)->roleWithCode('administrator');
         self::assertInstanceOf(Role::class, $role);
-        self::assertContains('administration:view', $role->permissions());
-        self::assertContains('content:change_priority', $role->permissions());
+        self::assertContains('app.administration:view', $role->permissions());
+        self::assertContains('app.administration.content:change_priority', $role->permissions());
         self::assertCount(
             count(PermissionStructure::of(Bootstrap::rootDirectory())->everyPair()),
             $role->permissions(),
@@ -193,7 +193,7 @@ final class AccountCommandTest extends TestCase
         $role = $container->getByType(Accounts::class)->roleWithCode('administrator');
         self::assertInstanceOf(Role::class, $role);
         self::assertNotContains('administration', $role->permissions());
-        self::assertContains('administration:view', $role->permissions());
+        self::assertContains('app.administration:view', $role->permissions());
     }
 
     /**

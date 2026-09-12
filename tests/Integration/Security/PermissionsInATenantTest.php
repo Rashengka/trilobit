@@ -145,7 +145,7 @@ final class PermissionsInATenantTest extends TestCase
      */
     public function testAPieceOnASectionOpensTheAdministration(): void
     {
-        $this->installation(['content:edit']);
+        $this->installation(['app.administration.content:edit']);
         $this->signIn();
 
         self::assertTrue($this->permissions()->isAllowed(Resource::Administration, Privilege::View));
@@ -168,7 +168,7 @@ final class PermissionsInATenantTest extends TestCase
      */
     public function testAPieceNamingSomethingThisBuildNoLongerHasIsLeftOut(): void
     {
-        $this->installation(['invoicing:view', 'content:edit', 'content:apostille']);
+        $this->installation(['invoicing:view', 'app.administration.content:edit', 'app.administration.content:apostille']);
         $this->signIn();
 
         self::assertTrue($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
@@ -192,7 +192,7 @@ final class PermissionsInATenantTest extends TestCase
      * @param list<string> $editing what the role this account holds is
      *     assembled from
      */
-    private function installation(array $editing = ['administration:view', 'content:edit']): void
+    private function installation(array $editing = ['app.administration:view', 'app.administration.content:edit']): void
     {
         $this->schema = Database::schemaFor(self::class);
         $this->container = Boot::coreAlone();
@@ -207,7 +207,7 @@ final class PermissionsInATenantTest extends TestCase
 
         $entityManager = $this->container->getByType(EntityManagerInterface::class);
         $editor = new Role(self::EDITOR, 'Content editor', $editing);
-        $administrator = new Role(self::ADMINISTRATOR, 'Administrator', ['administration:view', 'content:edit']);
+        $administrator = new Role(self::ADMINISTRATOR, 'Administrator', ['app.administration:view', 'app.administration.content:edit']);
         $entityManager->persist($editor);
         $entityManager->persist($administrator);
         $entityManager->persist(new Membership($this->bikes, $alice, $editor));
