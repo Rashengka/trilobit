@@ -252,6 +252,28 @@ test('a supplied text the build does not use fails the build and is named', (t) 
     });
 });
 
+test('the real build lists tom-select, and sifter with the text supplied for it', () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'trilobit-licenses-supplied-'));
+    const modulesFile = join(mkdtempSync(join(tmpdir(), 'trilobit-modules-')), 'modules.json');
+    writeFileSync(modulesFile, JSON.stringify(MODULES));
+
+    execFileSync(VITE_BIN, ['build', '--outDir', outDir], {
+        cwd: ROOT,
+        env: { ...process.env, TRILOBIT_MODULES_FILE: modulesFile },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    const licenses = readFileSync(join(outDir, 'licenses.txt'), 'utf8');
+    const version = (name) => JSON.parse(readFileSync(join(ROOT, 'node_modules', name, 'package.json'), 'utf8')).version;
+
+    assert.ok(licenses.includes(`Package: tom-select ${version('tom-select')}\nLicense: Apache-2.0`), 'tom-select is not listed');
+    assert.ok(licenses.includes(`Package: @orchidjs/sifter ${version('@orchidjs/sifter')}\nLicense: Apache-2.0`), 'sifter is not listed');
+    assert.ok(licenses.includes('Copyright (c) 2013–2020 Brian Reavis & contributors'), "sifter's copyright line is not carried");
+
+    rmSync(outDir, { recursive: true, force: true });
+});
+
 test('a bundled package without a license field fails the build and is named', (t) => {
     const { root, run } = buildFixture({
         'main.js': "import { quiet } from 'unlabelled';\ndocument.title = quiet();\n",

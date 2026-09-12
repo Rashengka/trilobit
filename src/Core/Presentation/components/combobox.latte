@@ -1,0 +1,43 @@
+{**
+ * c-combobox - one answer picked from a list, with a line to search the list
+ * by once it is long.
+ *
+ * What this block writes is a plain <select> carrying data-combobox, and
+ * nothing more: the control in front of it is drawn in the browser, by
+ * assets/combobox.ts, and styled in assets/base.css. The select stays in the
+ * page, hidden, and is what the form sends - so without the script the page
+ * still has a working list, and with it the list is still the one the server
+ * wrote.
+ *
+ * A control of a nette form is the form's own element, resolved by n:name on
+ * the element itself, so a form writes `<select n:name="..." data-combobox>`
+ * instead of including this block - the way a form's submit carries c-button's
+ * class rather than being drawn by it (see the CMS page form). This block is
+ * for a list that is not a control of a nette form, and it is what the style
+ * guide shows.
+ *
+ * Whether the list offers a line to search it by is decided by how many
+ * choices it has; $search says it outright where that is known - 'on' or
+ * 'off'. What the control is described by is named by $describedBy, the ids of
+ * the sentences c-field draws under it, and the script carries that over to
+ * the control that takes the focus.
+ *
+ * @param array<int|string, string> $choices the value sent => what is shown
+ *}
+
+{define combobox, string $id, string $name, array $choices, string $chosen = '', ?string $search = null, ?string $describedBy = null, bool $invalid = false, bool $disabled = false, ?string $testId = null}
+    <select
+        id="{$id}"
+        name="{$name}"
+        data-combobox
+        n:attr="
+            data-combobox-search: $search,
+            aria-describedby: $describedBy,
+            aria-invalid: $invalid ? 'true' : null,
+            disabled: $disabled,
+            data-testid: $testId
+        "
+    >
+        <option n:foreach="$choices as $value => $label" value="{$value}" n:attr="selected: (string) $value === $chosen">{$label}</option>
+    </select>
+{/define}

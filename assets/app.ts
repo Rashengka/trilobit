@@ -5,6 +5,7 @@
 import naja from 'naja';
 
 import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
+import { comboboxesInSnippets, enhanceWithin } from './combobox';
 import { unfoldTheNavigation } from './nav';
 import './segment-suggestion';
 import './app.css';
@@ -122,4 +123,12 @@ keepJumpsClearOfTheChrome();
 markTheChromeScrolledPast();
 unfoldTheNavigation();
 
+// The order of these three is the whole of getting comboboxes through Naja,
+// and tests/e2e/combobox.spec.ts measures it: the extension has to be there
+// before Naja starts, and the page's own comboboxes may be drawn only once it
+// has. Naja keeps the markup of every snippet as it initialises, and a
+// combobox drawn before that would come back from history.back() as a control
+// with nothing behind it. See assets/combobox.ts.
+naja.registerExtension(comboboxesInSnippets);
 naja.initialize({ history: true });
+enhanceWithin(document);

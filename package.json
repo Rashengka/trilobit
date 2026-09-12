@@ -10,7 +10,8 @@
     "test:frontend": "node --test \"tests/frontend/*.test.mjs\""
   },
   "dependencies": {
-    "naja": "3.3.3"
+    "naja": "3.3.3",
+    "tom-select": "2.6.2"
   },
   "devDependencies": {
     "@nette/vite-plugin": "1.1.0",

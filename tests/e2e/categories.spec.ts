@@ -72,7 +72,17 @@ test('a page filed in a category keeps answering at its old address after the ca
     await page.getByTestId('cms-page-title-input').fill(`First ride ${run}`);
     await page.getByTestId('cms-page-title-input').press('Tab');
     await expect(page.getByTestId('cms-page-segment-input')).toHaveValue(`first-ride-${run}`);
-    await page.getByTestId('cms-page-category-input').selectOption({ label: `Guides ${run} (/guides-${run})` });
+    // The category is a combobox, and it is chosen the way somebody would -
+    // opened and picked from - rather than by setting the select behind it,
+    // which would pass whether or not the control in front of it worked. The
+    // list is long or short depending on how many categories earlier runs
+    // left in the database, so it is opened by a click, which both answer.
+    const category = page.getByRole('combobox', { name: 'Category' });
+    await expect(category).toHaveAccessibleDescription(/What the page is filed under/);
+    await expect(page.getByTestId('cms-page-category-field').getByRole('combobox')).toHaveCount(1);
+    await category.click();
+    await page.getByRole('option', { name: `Guides ${run} (/guides-${run})` }).click();
+    await expect(page.getByTestId('cms-page-category-input')).toHaveValue(/.+/);
     await page.getByTestId('cms-page-status-input').selectOption('published');
     await page.getByTestId('cms-page-save').click();
 
