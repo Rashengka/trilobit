@@ -28,6 +28,7 @@ use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\DI\CoreExtension;
 use Trilobit\Core\Domain\Tenancy\Membership;
+use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
 use Trilobit\Core\Module\ModuleList;
@@ -489,6 +490,95 @@ final class AdministrationTest extends TestCase
         self::assertStringContainsString('/admin/installation', $installation->getUrl());
     }
 
+    /**
+     * Somebody who administers the installation and owns this business as
+     * well is taken to the business by the address the administration begins
+     * at - the overview is drawn for them where it is, rather than turning
+     * them round to the installation.
+     *
+     * The business is where the everyday work is and the installation is
+     * looked after now and then, and the installation is one entry away in
+     * the bar (decision O2 in .ai/plans/23-instalace-na-zelene-louce.md).
+     */
+    public function testTheAddressTheAdministrationBeginsAtTakesSomebodyInBothToTheBusiness(): void
+    {
+        $this->signInAsSomebodyInBoth();
+
+        $drawn = $this->pageOf($this->request(self::DASHBOARD, 'default'));
+
+        self::assertSame('Overview', $drawn->querySelector('[data-testid="admin-headline"]')?->textContent);
+    }
+
+    /** And signing in lands them there too: the same answer, asked from the sign-in page. */
+    public function testSigningInLandsSomebodyInBothOnTheOverview(): void
+    {
+        $sent = $this->signInAsSomebodyInBoth();
+
+        self::assertInstanceOf(RedirectResponse::class, $sent);
+        self::assertStringEndsWith('/admin', $sent->getUrl());
+    }
+
+    /**
+     * Being both is two sections drawn for one person and not a third one:
+     * the bar holds the sections of the business and the way into the
+     * installation, and it begins with the way back to the business on either
+     * side - the mark in the banner agreeing. Every address it offers is
+     * followed and opens, which is what "sees both" means as a claim rather
+     * than as a list written here.
+     */
+    public function testSomebodyInBothIsOfferedBothSectionsAndOneWayBack(): void
+    {
+        $this->signInAsSomebodyInBoth();
+
+        $overview = $this->pageOf($this->request(self::DASHBOARD, 'default'));
+        $addresses = $this->menuAddressesOn($overview);
+
+        self::assertSame('/admin', $addresses[0] ?? null);
+        self::assertSame('/admin', $overview->querySelector('[data-testid="admin-home-link"]')?->getAttribute('href'));
+        self::assertContains('/admin/cms/pages', $addresses, 'the bar offered no section of the business');
+        self::assertContains('/admin/installation/businesses', $addresses, 'the bar offered no way into the installation');
+
+        foreach ($addresses as $address) {
+            [$presenter, $action] = $this->routed($address);
+
+            self::assertInstanceOf(
+                TextResponse::class,
+                $this->request($presenter, $action),
+                $address . ' is offered in the bar and refuses the person reading it',
+            );
+        }
+
+        $installation = $this->pageOf($this->request(self::INSTALLATION, 'default'));
+
+        self::assertSame('/admin', $this->menuAddressesOn($installation)[0] ?? null);
+        self::assertSame('/admin', $installation->querySelector('[data-testid="admin-home-link"]')?->getAttribute('href'));
+    }
+
+    /**
+     * Neither section changes because the person reading it is both. The
+     * installation's section says to them exactly what it says to somebody who
+     * administers only the installation, and the overview exactly what it says
+     * to somebody holding the same role in the business and nothing else.
+     *
+     * The content is compared and not the banner, which carries who is signed
+     * in and therefore differs on purpose.
+     */
+    public function testNeitherSectionChangesForSomebodyInBoth(): void
+    {
+        $this->submitSignIn('cora@example.com', $this->password());
+        $installationForCora = $this->contentOf($this->request(self::INSTALLATION, 'default'));
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+        $this->submitSignIn('alice@example.com', $this->password());
+        $overviewForAlice = $this->contentOf($this->request(self::DASHBOARD, 'default'));
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+        $this->signInAsSomebodyInBoth();
+
+        self::assertSame($installationForCora, $this->contentOf($this->request(self::INSTALLATION, 'default')));
+        self::assertSame($overviewForAlice, $this->contentOf($this->request(self::DASHBOARD, 'default')));
+    }
+
     /** The businesses of this installation are what the section holds in this first version. */
     public function testTheSectionListsTheBusinessesThisInstallationHas(): void
     {
@@ -819,6 +909,49 @@ final class AdministrationTest extends TestCase
         return trim($error->textContent ?? '');
     }
 
+    /** What a page draws in its content, as text: everything but the banner, the bar and the footer. */
+    private function contentOf(Response $response): string
+    {
+        $content = $this->pageOf($response)->querySelector('[data-testid="admin-content"]');
+        self::assertNotNull($content, 'the page drew no content');
+
+        return trim((string) preg_replace('/\s+/', ' ', $content->textContent ?? ''));
+    }
+
+    /**
+     * Signs in as somebody who administers the installation and owns this
+     * business as well - the one person of a simple installation.
+     *
+     * Made here rather than with the other four, because the membership is
+     * given the deliberate way and every other case in this suite is about an
+     * account that is one thing. It holds the same role as the first account,
+     * so that whatever differs between the two is being both and nothing else.
+     */
+    private function signInAsSomebodyInBoth(): Response
+    {
+        $container = $this->container();
+
+        $account = new User(
+            'eve@example.com',
+            $container->getByType(Passwords::class)->hash($this->password()),
+            'Eve Eurypterid',
+            new DateTimeImmutable('2026-09-04T08:00:00+00:00'),
+            landlord: true,
+        );
+        $container->getByType(Accounts::class)->save($account);
+
+        $entityManager = $container->getByType(EntityManagerInterface::class);
+        $business = $entityManager->getRepository(Tenant::class)->findOneBy(['name' => 'Ammonite Bikes']);
+        $owner = $container->getByType(Accounts::class)->roleWithCode('owner');
+        self::assertInstanceOf(Tenant::class, $business);
+        self::assertInstanceOf(Role::class, $owner);
+
+        $entityManager->persist(Membership::forTheInstallationsAdministrator($business, $account, $owner));
+        $entityManager->flush();
+
+        return $this->submitSignIn('eve@example.com', $this->password());
+    }
+
     private function password(): string
     {
         $this->container();
@@ -845,8 +978,9 @@ final class AdministrationTest extends TestCase
      *
      * **The third is the administrator of the installation**, which is what
      * `app:account` makes when it is given no business: the flag on the row
-     * and no membership anywhere, because the two cannot be held by one
-     * account. It is a separate account from the second on purpose - holding
+     * and no membership anywhere. An account that is both is a fifth shape,
+     * made only by the cases about it - see signInAsSomebodyInBoth(). It is a
+     * separate account from the second on purpose - holding
      * nothing here and administering the installation are answered by
      * different services and would otherwise be one fixture standing for both.
      *

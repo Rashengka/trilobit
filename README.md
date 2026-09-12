@@ -854,18 +854,22 @@ The two kinds of administrator are different scopes rather than different
 levels, so they get two addresses and two pages: `/admin` for somebody who
 administers a business, and `/admin/installation` - written in
 `src/Core/Presentation/Installation/` - for somebody who administers the
-installation. Which of them a person lands on
-is decided once, in `Trilobit\Core\Presentation\Admin\Landing`, and it is a
-redirect they can see in the address bar.
+installation. An account that is both - see "The administration" above - is
+admitted to both and offered both in the bar, and begins in the business:
+`/admin`, signing in and the mark in the banner take it to the overview,
+because that is where the everyday work is, and the installation is one entry
+away. Which of them a person lands on is decided once, in
+`Trilobit\Core\Presentation\Admin\Landing`, and it is a redirect they can see in
+the address bar.
 
 The rejected shape was one section that showed different things according to
 who was looking. Both of these pages exist for everybody and say the same thing
 to whoever opens them; a single page drawing one thing for one reader and
 another for another is a difference nobody can point at, and there would be
-nowhere to stand to ask whether it was right. It also has to be lived with in
-the other direction: somebody who administers the installation and types
-`/admin` by hand is refused, on purpose, because the alternative is one address
-meaning two pages.
+nowhere to stand to ask whether it was right. Being both does not make a third,
+mixed section either: it is the same two, each saying to that account what it
+says to everybody else - `tests/Integration/Admin/AdministrationTest` compares
+what each draws for somebody in both with what it draws for somebody in one.
 
 The installation's section asks no permission question of any kind and may not.
 The access list has no meaning outside a business, so such a question would not
