@@ -92,7 +92,6 @@ final class OverviewPresenter extends FrontPresenter
         $template->pageTitle = 'Style guide';
         $template->lead = 'Every component this application is built out of, rendered by the application itself.';
         $this->fillIn($template, null);
-        $template->fullWidthUrl = $this->link('page', ['group' => 'foundations', 'page' => 'full-width']);
     }
 
     /**

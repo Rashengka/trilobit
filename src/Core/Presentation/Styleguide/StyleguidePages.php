@@ -41,6 +41,18 @@ final class StyleguidePages
                 'Foundations',
                 'What every component is drawn out of, and the settings a reader changes it with.',
                 [
+                    new StyleguidePage(
+                        'foundations',
+                        'colours',
+                        'Colours',
+                        'Every colour token, drawn as the colour it produces in the theme and the mode that are on.',
+                    ),
+                    new StyleguidePage(
+                        'foundations',
+                        'content-width',
+                        'Content width',
+                        'How wide the content runs: the reader chooses, and a page may insist where it has to.',
+                    ),
                     // The one page of the guide drawn at a width nobody chose,
                     // and the reason the width is a property of a page rather
                     // than of the class answering it: every page here is the

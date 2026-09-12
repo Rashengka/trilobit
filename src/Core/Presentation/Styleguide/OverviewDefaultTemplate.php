@@ -62,7 +62,4 @@ final class OverviewDefaultTemplate extends FrontTemplate
 
     /** The front page of the guide. */
     public string $guideUrl = '';
-
-    /** Where the page that insists on its own width lives, for the guide to point at. */
-    public string $fullWidthUrl = '';
 }

@@ -1,0 +1,28 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The colour tokens, each drawn as the colour it produces beside the name it is
+ * asked for by.
+ *
+ * Every swatch reads its token out of the theme the page is drawn in, so
+ * switching the theme or the mode above repaints this whole page, and a token
+ * one theme forgot would show here as a swatch with nothing in it. The list of
+ * tokens is OverviewPresenter::COLOUR_TOKENS, together with what each is for.
+ *}
+
+{import '../../../components/panel.latte'}
+{import '../../../components/swatch.latte'}
+
+{block sgPage}
+    {embed block panel, testId: 'styleguide-tokens'}
+        {block panelTitle}Colour tokens{/block}
+
+        {block panelBody}
+            <div class="l-grid">
+                {foreach $colourTokens as $token => $role}
+                    {include swatch, name: $token, role: $role, testId: 'swatch-' . $token}
+                {/foreach}
+            </div>
+        {/block}
+    {/embed}
+{/block}

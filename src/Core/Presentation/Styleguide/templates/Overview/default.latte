@@ -145,30 +145,6 @@
                     {include preferenceSwitcher, preferences: $preferences, testId: 'theme-switcher'}
                 {/block}
             {/embed}
-
-            {*
-             * The other half of the arrangement, and the only place it can be
-             * seen: a page the application draws at a width of its own,
-             * whatever is chosen above. It is a second action of this very
-             * presenter, which is the point - a width belongs to the page and
-             * not to the class behind it.
-             *}
-            <p class="text-sm text-ink-muted">
-                A page may insist on a width of its own where it has to:
-                <a href="{$fullWidthUrl}" data-testid="styleguide-full-width-link">see one that does</a>.
-            </p>
-        {/block}
-    {/embed}
-
-    {embed block panel, testId: 'styleguide-tokens'}
-        {block panelTitle}Colour tokens{/block}
-
-        {block panelBody}
-            <div class="l-grid">
-                {foreach $colourTokens as $token => $role}
-                    {include swatch, name: $token, role: $role, testId: 'swatch-' . $token}
-                {/foreach}
-            </div>
         {/block}
     {/embed}
 
