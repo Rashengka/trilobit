@@ -322,7 +322,11 @@ The licences of the third-party packages whose code the build bundled are in
 `www/build/licenses.txt`, collected from the bundled modules and from the
 packages their stylesheets `@import` by `vite-plugins/bundled-licenses.ts`,
 which fails the build when such a package
-ships no licence file or declares no `license`.
+ships no licence file or declares no `license`. A package that declares a
+licence and publishes no file of it has the text supplied by this repository,
+in `vite-plugins/licenses/<name>/<version>.txt` - one version at a time, so an
+update has to be looked at again - and a supplied text the build does not use
+fails the build too.
 
 ### The build is in the repository
 

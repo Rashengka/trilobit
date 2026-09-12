@@ -1222,6 +1222,167 @@
         font-size: var(--text-sm);
     }
 
+    /*
+     * A <select> with a line to search it by: the element Tom Select draws in
+     * front of a select carrying data-combobox (assets/combobox.ts). The select
+     * stays in the page, hidden, and is still what the form sends.
+     *
+     * Drawn here in full, out of the same tokens as a native select, and the
+     * library's own stylesheet is never loaded: the look lives in one place,
+     * and a new version of the library cannot change it without a line here
+     * changing too (.ai/plans/14-vyberovy-prvek.md, decision 2).
+     *
+     * The classes the library lets us name carry this component's name. The
+     * ones it writes itself - the state of the whole (focus, disabled, invalid,
+     * dropdown-active), of an option (active, selected), the highlight of what
+     * was typed and the hidden select - cannot be renamed, and are the only
+     * names here outside l-, c-, sg- and u-: tests/Architecture/
+     * StylesheetClassesAreNamedByKindTest allows them one by one, and holds
+     * that list to the version of the library the build bundles.
+     */
+    .c-combobox {
+        position: relative;
+    }
+
+    .c-combobox__control {
+        align-items: center;
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-sm);
+        color: var(--color-ink);
+        cursor: pointer;
+        display: flex;
+        gap: var(--space-2xs);
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    /* The mark that says a list opens here, drawn with two sides of a border so
+       that it takes the colour of the text. It turns over while the list is open. */
+    .c-combobox__control::after {
+        block-size: var(--space-xs);
+        border-block-end: var(--border-hairline) solid currentColor;
+        border-inline-end: var(--border-hairline) solid currentColor;
+        content: '';
+        flex: none;
+        inline-size: var(--space-xs);
+        margin-inline-start: auto;
+        rotate: 0.125turn;
+    }
+
+    .c-combobox.dropdown-active .c-combobox__control::after {
+        rotate: -0.375turn;
+    }
+
+    /* The answer chosen, and the line typed into beside it. Neither is a box
+       of its own: the control is the box. */
+    .c-combobox__item {
+        min-inline-size: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .c-combobox__input {
+        background-color: transparent;
+        border: 0;
+        color: inherit;
+        flex: 1 1 0;
+        min-inline-size: 0;
+        outline: 0;
+        padding: 0;
+    }
+
+    /* While something is typed, the answer chosen before steps out of its way. */
+    .c-combobox--searching .c-combobox__item {
+        display: none;
+    }
+
+    /*
+     * The open list, hung under the control. It is a block over the page, so it
+     * is drawn in the layer the navigation's blocks are: above whatever stays
+     * in view, the way a native select's list is.
+     */
+    .c-combobox__dropdown {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-raised);
+        inset-block-start: 100%;
+        inset-inline: 0;
+        margin-block-start: var(--space-3xs);
+        position: absolute;
+        z-index: var(--layout-z-menu);
+    }
+
+    .c-combobox__list {
+        max-block-size: var(--layout-combobox-list-size);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .c-combobox__option,
+    .c-combobox__message {
+        padding-block: var(--space-2xs);
+        padding-inline: var(--space-sm);
+    }
+
+    .c-combobox__option {
+        cursor: pointer;
+    }
+
+    /* Where the arrows are, and the answer that is chosen: two things, which
+       are one option only until somebody moves. */
+    .c-combobox__option.active {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-combobox__option.selected {
+        font-weight: var(--font-weight-strong);
+    }
+
+    .c-combobox__option[aria-disabled='true'],
+    .c-combobox__message {
+        color: var(--color-ink-muted);
+        cursor: default;
+    }
+
+    .c-combobox__heading {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+        padding-block-start: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    .c-combobox__option .highlight {
+        background-color: var(--color-highlight);
+        color: var(--color-highlight-ink);
+    }
+
+    /*
+     * The states, as a native select has them. The focus is on the line typed
+     * into, or on the control itself where there is no line, and the ring is
+     * drawn round the control either way - the line inside it would be a ring
+     * inside a box. Refused beats focused the way it does for a native control:
+     * the two weigh the same and refused comes after.
+     */
+    .c-combobox__control:is(:focus-visible, :has(:focus-visible)) {
+        border-color: var(--color-accent);
+        outline: var(--border-marker) solid var(--color-focus);
+        outline-offset: var(--space-3xs);
+    }
+
+    .c-combobox:is(.invalid, :has([aria-invalid='true'])) .c-combobox__control {
+        border-color: var(--color-danger);
+    }
+
+    .c-combobox.disabled .c-combobox__control {
+        background-color: var(--color-canvas-sunken);
+        color: var(--color-ink-muted);
+        cursor: not-allowed;
+    }
+
     .c-notice {
         background-color: var(--color-canvas-sunken);
         border: var(--border-hairline) solid var(--color-line);
@@ -1918,8 +2079,13 @@
 }
 
 @layer utilities {
-    /* Present to a screen reader, absent from the page. */
-    .u-visually-hidden {
+    /*
+     * Present to a screen reader, absent from the page. ts-hidden-accessible is
+     * Tom Select's name for the same thing, written on the select it draws a
+     * c-combobox in front of: the select stays in the form and out of sight.
+     */
+    .u-visually-hidden,
+    .ts-hidden-accessible {
         block-size: var(--border-hairline);
         clip-path: inset(50%);
         inline-size: var(--border-hairline);

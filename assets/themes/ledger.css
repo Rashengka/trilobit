@@ -165,6 +165,9 @@
     --layout-card-min: 15rem;
     --layout-card-media-ratio: 3 / 2;
 
+    /* About ten choices at this theme's smaller size, before the list scrolls. */
+    --layout-combobox-list-size: 18rem;
+
     /*
      * Ledger holds both bands in view while the page scrolls: the banner over
      * the content column, and the navigation as the column beside it, each on

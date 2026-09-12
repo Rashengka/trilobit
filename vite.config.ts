@@ -136,6 +136,8 @@ export default defineConfig({
         tailwindcss(),
         // The bundles are committed and public, and they carry other people's
         // code; this writes those people's copyright and licence next to it.
-        bundledLicenses(),
+        // A package that publishes no licence file has its text supplied
+        // under vite-plugins/licenses, for the version the build bundles.
+        bundledLicenses({ supplied: 'vite-plugins/licenses' }),
     ],
 });

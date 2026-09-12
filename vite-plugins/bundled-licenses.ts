@@ -17,6 +17,69 @@ interface BundledPackage {
     readonly text: string;
 }
 
+interface Options {
+    /**
+     * A directory, relative to the project root, holding the licence of a
+     * package that publishes none in its package, as `<name>/<version>.txt` -
+     * `@orchidjs/sifter/1.1.0.txt`. See SuppliedLicenses.
+     */
+    readonly supplied?: string;
+}
+
+/**
+ * The licences this repository supplies for packages that publish none.
+ *
+ * Some packages declare a licence that has to travel with their code and ship
+ * no file of it - the text is in their repository and not in what npm
+ * installs. Such a package still fails the build unless a text is supplied
+ * for it here, and it is supplied for one version: an update is a new package
+ * as far as this is concerned, and has to be looked at again. A supplied text
+ * the build did not use fails too - its package ships a licence of its own
+ * now, or is no longer bundled at that version - because a file claiming to
+ * be the licence of something the build does not contain is exactly the kind
+ * of claim nobody checks by hand.
+ */
+class SuppliedLicenses {
+    private readonly texts = new Map<string, string>();
+
+    private readonly used = new Set<string>();
+
+    constructor(private readonly label: string, directory: string) {
+        if (!existsSync(directory)) {
+            throw new Error(`${label}, where the build is told to find supplied licences, is not there.`);
+        }
+
+        const files = readdirSync(directory, { recursive: true, encoding: 'utf8' })
+            .map((file: string) => file.replace(/\\/g, '/'))
+            .filter((file: string) => file.endsWith('.txt'));
+        for (const file of files) {
+            this.texts.set(file, join(directory, file));
+        }
+    }
+
+    /** The key a package's text is kept under, as the reader of an error has to write it. */
+    where(name: string, version: string): string {
+        return `${this.label}/${name}/${version}.txt`;
+    }
+
+    take(name: string, version: string): string | null {
+        const key = `${name}/${version}.txt`;
+        const file = this.texts.get(key);
+        if (file === undefined) {
+            return null;
+        }
+
+        this.used.add(key);
+
+        return readFileSync(file, 'utf8');
+    }
+
+    /** @return every supplied text nothing asked for, as the reader of an error has to write it */
+    unused(): string[] {
+        return [...this.texts.keys()].filter((key) => !this.used.has(key)).sort().map((key) => `${this.label}/${key}`);
+    }
+}
+
 /**
  * The directory of the package a module belongs to, or null for the project's
  * own code.
@@ -42,7 +105,7 @@ function packageDirectory(id: string): string | null {
     return path.slice(0, at + marker.length) + segments.slice(0, length).join('/');
 }
 
-function readPackage(directory: string): BundledPackage | string {
+function readPackage(directory: string, supplied: SuppliedLicenses | null): BundledPackage | string {
     const manifest = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8')) as {
         name?: unknown;
         version?: unknown;
@@ -62,8 +125,13 @@ function readPackage(directory: string): BundledPackage | string {
     // Sorted, so that a package shipping two spellings gives the same answer
     // on every filesystem.
     const file = readdirSync(directory).filter((entry) => LICENSE_FILE.test(entry)).sort()[0];
-    if (file === undefined) {
-        return `${label} has no licence file (LICENSE, LICENCE or COPYING) in its package.`;
+    const text = file === undefined
+        ? supplied?.take(manifest.name, String(manifest.version)) ?? null
+        : readFileSync(join(directory, file), 'utf8');
+    if (text === null) {
+        const where = supplied === null ? '' : `, and none is supplied as ${supplied.where(manifest.name, String(manifest.version))}`;
+
+        return `${label} has no licence file (LICENSE, LICENCE or COPYING) in its package${where}.`;
     }
 
     return {
@@ -72,7 +140,7 @@ function readPackage(directory: string): BundledPackage | string {
         license: manifest.license,
         // Line endings are the packer's, not the author's; they are normalised
         // so that two machines write the same bytes.
-        text: readFileSync(join(directory, file), 'utf8').replace(/\r\n?/g, '\n').trim(),
+        text: text.replace(/\r\n?/g, '\n').trim(),
     };
 }
 
@@ -180,14 +248,29 @@ function stylesheetPackages(file: string, seen: Set<string>, found: Set<string>)
  *
  * A package with no licence file or no "license" field fails the build. Leaving
  * it out would produce a file that looks complete, and the whole point of the
- * file is that nobody has to check it by hand.
+ * file is that nobody has to check it by hand. The one way past a missing file
+ * is a text this repository supplies for that package at that version
+ * (options.supplied, see SuppliedLicenses), and a supplied text the build does
+ * not use fails the build as well.
  */
-export function bundledLicenses(): Plugin {
+export function bundledLicenses(options: Options = {}): Plugin {
+    // Vite's root, once it has resolved its configuration; an empty one
+    // resolves against the working directory, which is where Vite starts.
+    let root = '';
+
     return {
         name: 'trilobit:bundled-licenses',
         apply: 'build',
 
+        configResolved(config) {
+            root = config.root;
+        },
+
         generateBundle(_options, bundle) {
+            const supplied = options.supplied === undefined
+                ? null
+                : new SuppliedLicenses(options.supplied, resolve(root, options.supplied));
+
             const directories = new Set<string>();
             const stylesheets = new Set<string>();
             for (const output of Object.values(bundle)) {
@@ -214,11 +297,15 @@ export function bundledLicenses(): Plugin {
 
             const packages = new Map<string, BundledPackage>();
             for (const directory of directories) {
-                const read = readPackage(directory);
+                const read = readPackage(directory, supplied);
                 if (typeof read === 'string') {
                     this.error(`${read} Its code is bundled into the build, which is published, so its licence has to be shipped with it.`);
                 }
                 packages.set(`${read.name}@${read.version}`, read);
+            }
+
+            for (const unused of supplied?.unused() ?? []) {
+                this.error(`${unused} is not used: no package this build bundles at that version is without a licence of its own. Delete it, or name the version the build bundles.`);
             }
 
             const sorted = [...packages.values()].sort(

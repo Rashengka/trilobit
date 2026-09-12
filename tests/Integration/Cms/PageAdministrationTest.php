@@ -285,6 +285,23 @@ final class PageAdministrationTest extends TestCase
     }
 
     /**
+     * The category is picked in a combobox (.ai/plans/14): a site's categories
+     * grow with it, and the select asks for the control that can be searched
+     * once there are many. The control is drawn in the browser, so what is
+     * asked here is the mark it is drawn from, and that the hint under the
+     * field is still named - the script carries it over to the control.
+     */
+    public function testTheCategoryIsPickedInACombobox(): void
+    {
+        $document = $this->pageOf($this->submit('add', []));
+
+        $select = $document->querySelector('select[name="category"]');
+        self::assertNotNull($select, 'the form offers no category');
+        self::assertTrue($select->hasAttribute('data-combobox'), 'the category is not marked as a combobox');
+        self::assertSame('cms-page-category-hint', $select->getAttribute('aria-describedby'));
+    }
+
+    /**
      * Decision C2: writing the whole address by hand is gone. A slash, a dot
      * and an extension are each refused with a sentence saying which, and no
      * page is left behind without an address.
