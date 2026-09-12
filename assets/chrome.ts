@@ -39,6 +39,9 @@ const BANNER = '.l-shell__banner';
 /** The column whatever is held would be covering. */
 const CONTENT = '.l-shell__main';
 
+/** How many parts a CSS pixel is laid out in: every length layout keeps is a whole number of them. */
+const SIXTY_FOURTHS = 64;
+
 export function keepJumpsClearOfTheChrome(): void {
     const content = document.querySelector(CONTENT);
     if (content === null) {
@@ -143,7 +146,19 @@ export function markTheChromeScrolledPast(): void {
     ).observe(sentinel);
 }
 
-/** How far down the window $band reaches while it is held, and nothing when it is not. */
+/**
+ * How far down the window $band reaches while it is held, and nothing when it is not.
+ *
+ * The offset it is held at is read back from the computed style, and Chrome
+ * writes a computed length out to six significant digits: a band held at
+ * 39.390625px reads as 39.3906px. The difference is a forty-thousandth of a
+ * pixel, and it is enough to lose a whole sixty-fourth further on (clearance(),
+ * below). Layout keeps lengths in sixty-fourths of a pixel, and six digits of
+ * any offset shorter than ten thousand pixels are nearer to the sixty-fourth
+ * the band is laid out at than to either of its neighbours, so the nearest
+ * sixty-fourth is the offset exactly. The height comes from the box the band
+ * was laid out in, which is exact already.
+ */
 function reach(band: Element | null): number {
     if (band === null) {
         return 0;
@@ -156,7 +171,7 @@ function reach(band: Element | null): number {
 
     const offset = Number.parseFloat(style.insetBlockStart);
 
-    return (Number.isNaN(offset) ? 0 : offset) + band.getBoundingClientRect().height;
+    return (Number.isNaN(offset) ? 0 : Math.round(offset * SIXTY_FOURTHS) / SIXTY_FOURTHS) + band.getBoundingClientRect().height;
 }
 
 /**
@@ -177,10 +192,22 @@ function reach(band: Element | null): number {
  * after the heading's own fraction is added, which a whole-pixel margin leaves
  * where it was.
  *
+ * **The half pixel has to arrive whole.** Layout keeps a length in
+ * sixty-fourths of a pixel and takes a number between two of them down to the
+ * lower one, so a margin written a hair short of a sixty-fourth is laid out a
+ * whole sixty-fourth short - 69.0781px is laid out at 69.0625px - and a heading
+ * at the one place in its pixel that needed the whole half is left that much
+ * under the band. Nothing written here is short because of how it is written:
+ * a number of sixty-fourths prints exactly, and Chrome keeps the property as
+ * written. What made it short was a length read back from the computed style
+ * (reach(), above). The clearance is still taken up to the next sixty-fourth,
+ * so that a height measured off the grid - under a zoom, say - errs a little
+ * further down the page and never under the band.
+ *
  * Where nothing is held there is nothing to keep clear of, and zero stays zero.
  */
 function clearance(covered: number): number {
-    return covered > 0 ? covered + 0.5 : 0;
+    return covered > 0 ? Math.ceil((covered + 0.5) * SIXTY_FOURTHS) / SIXTY_FOURTHS : 0;
 }
 
 function covered(content: Element): number {
