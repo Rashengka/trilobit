@@ -29,12 +29,7 @@ import 'prismjs/components/prism-latte';
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-sql';
-// NEON is left out while bin/check-leaks reads a regular expression of its
-// grammar - a time of day, two digits, a colon and two digits - in the built
-// file as a Windows path, the letter of a digit class standing for the drive.
-// Whether that file is exempted from the rule or the rule narrowed is the
-// owner's decision, not this file's; until one of the two is made, NEON is not
-// highlighted.
+import 'prismjs/components/prism-neon';
 
 /** The part of Prism this bundle uses. The package ships no types, and adding a package for them is not worth it. */
 export interface Prism {

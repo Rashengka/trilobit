@@ -15,7 +15,7 @@ const themes = ['atrium', 'ledger'] as const;
 const modes = ['light', 'dark'] as const;
 
 /** Every language the code page shows a block of, by the name its class gives the highlighter. */
-const languages = ['markup', 'css', 'javascript', 'typescript', 'php', 'latte', 'json', 'bash', 'sql'] as const;
+const languages = ['markup', 'css', 'javascript', 'typescript', 'php', 'latte', 'json', 'bash', 'sql', 'neon'] as const;
 
 const BADGE = '/_styleguide/components/badge';
 
@@ -124,7 +124,7 @@ test.describe('the colours of highlighted code', () => {
      */
     test('are readable on the ground of the code in both themes and both modes', async ({ page }) => {
         await page.goto(CODE);
-        await expect(page.locator('[data-testid="styleguide-highlight-sql"] .token').first()).toBeAttached();
+        await expect(page.locator('[data-testid="styleguide-highlight-neon"] .token').first()).toBeAttached();
 
         const lowest: Record<string, number> = {};
 
