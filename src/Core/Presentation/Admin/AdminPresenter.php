@@ -336,7 +336,7 @@ abstract class AdminPresenter extends Presenter
      * **Being drawn here does not exempt it from the filter, and assuming it
      * did was wrong.** Landing answers where somebody belongs, and that reads
      * like the same question as what they may open - it is not, and the two
-     * came apart once at an ordinary role. Somebody holding `content:view` and
+     * came apart once at an ordinary role. Somebody holding `app.administration.content:view` and
      * nothing else was refused the overview while a section did not open the
      * administration it is a section of; the way back was drawn for them all
      * the same, on every page they were allowed to be in, and it led to a

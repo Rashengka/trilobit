@@ -45,7 +45,7 @@ use Trilobit\Core\Tenancy\Tenancy;
  * would mean nobody could rename an entry without also being trusted to
  * rearrange the menu, which is the opposite of what the pair is for.
  * **Exit condition:** a way of reordering that is an action of its own - which
- * is then gated on `content:change_priority`, and this form is not.
+ * is then gated on `app.administration.content:change_priority`, and this form is not.
  */
 #[Needs(Resource::Content, Privilege::View)]
 final class MenuPresenter extends AdminPresenter

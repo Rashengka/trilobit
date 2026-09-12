@@ -285,8 +285,8 @@ final class AskingThroughNetteTest extends TestCase
         $dave = $this->account($accounts, 'dave@example.com', 'Dave Dinocaris');
 
         $entityManager = $this->container->getByType(EntityManagerInterface::class);
-        $editor = new Role(self::EDITOR, 'Content editor', ['administration:view', 'content:edit']);
-        $administrator = new Role(self::ADMINISTRATOR, 'Administrator', ['administration:view', 'content:edit']);
+        $editor = new Role(self::EDITOR, 'Content editor', ['app.administration:view', 'app.administration.content:edit']);
+        $administrator = new Role(self::ADMINISTRATOR, 'Administrator', ['app.administration:view', 'app.administration.content:edit']);
         $entityManager->persist($editor);
         $entityManager->persist($administrator);
         $entityManager->persist(new Membership($this->bikes, $alice, $editor));
@@ -295,7 +295,7 @@ final class AskingThroughNetteTest extends TestCase
         $entityManager->persist(new Membership($this->books, $dave, $editor));
         $entityManager->flush();
 
-        $alice->grant(new Role(self::GRANTED_GLOBALLY, 'Granted globally', ['content:purge']));
+        $alice->grant(new Role(self::GRANTED_GLOBALLY, 'Granted globally', ['app.administration.content:purge']));
         $accounts->save($alice);
     }
 

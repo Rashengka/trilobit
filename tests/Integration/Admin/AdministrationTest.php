@@ -855,9 +855,9 @@ final class AdministrationTest extends TestCase
      *
      * **The fourth holds one section and was not given the administration**,
      * which is the ordinary shape of a role rather than an odd one:
-     * `content:view` opens that section, and the section opens the
-     * administration it is a section of - a door worked out from the tree in
-     * src/Core/Security/permissions.neon - and nothing else in it. It is the
+     * `app.administration.content:view` opens that section, and the section
+     * opens the administration it is a section of - a door worked out from the
+     * tree in the resource's name - and nothing else in it. It is the
      * account that shows what the bar may offer somebody: every other account
      * here either may open everything in this business or may open nothing in
      * it, and both hide an entry that leads to a refusal.
@@ -926,18 +926,23 @@ final class AdministrationTest extends TestCase
         $container->getByType(Accounts::class)->save($holdingOneSection);
 
         $entityManager = $container->getByType(EntityManagerInterface::class);
-        $administrator = new Role('administrator', 'Administrator', ['administration:view', 'content:view']);
+        $administrator = new Role(
+            'administrator',
+            'Administrator',
+            ['app.administration:view', 'app.administration.content:view'],
+        );
         $entityManager->persist($administrator);
         $entityManager->persist(new Membership($tenant, $account, $administrator));
 
         // The narrow role, and it is narrow the way src/Core/Security/
         // permissions.neon means it rather than by leaving something out.
         // Nothing is inherited downwards, and any right on a section opens
-        // what it falls under: `administration` is the parent of `content`,
-        // so somebody assembled out of `content:view` opens every page of that
-        // section that asks for no more, and the overview as well - and
-        // nothing else in the administration.
-        $editor = new Role('editor', 'Editor', ['content:view']);
+        // what it falls under: `app.administration.content` is under
+        // `app.administration` by its name, so somebody assembled out of
+        // `app.administration.content:view` opens every page of that section
+        // that asks for no more, and the overview as well - and nothing else
+        // in the administration.
+        $editor = new Role('editor', 'Editor', ['app.administration.content:view']);
         $entityManager->persist($editor);
         $entityManager->persist(new Membership($tenant, $holdingOneSection, $editor));
 

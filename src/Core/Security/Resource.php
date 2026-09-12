@@ -13,6 +13,15 @@ namespace Trilobit\Core\Security;
  * saying "a resource is a section" would only be worked around the first time
  * one page had two answers in it.
  *
+ * **The value is the path to the resource, and the path is the tree.**
+ * `app.administration.content` falls under `app.administration`, which falls
+ * under `app`; nothing else says so - see Trilobit\Core\Security\ResourceTree.
+ * Moving a resource is therefore renaming it, and renaming it is a migration
+ * of every role holding a piece of it: the pieces are stored under the value.
+ * That is meant to be loud. A tree kept beside the names could be changed
+ * without anybody looking at a role, and the roles would quietly start
+ * meaning something else.
+ *
  * **This enum is the complete list, and that is load-bearing.** Nette refuses a
  * resource it has not been given: Permission::checkResource() throws
  * "Resource 'x' does not exist" rather than answering false, and isAllowed()
@@ -22,33 +31,41 @@ namespace Trilobit\Core\Security;
  * written beside it; two lists would part company, and the day they did, the
  * one that lost would take a user's whole session with it.
  *
- * **The value carries no tenant.** It was tempting to make it - `tenant-7:
- * content` would let a rule be written for one business and nothing else, and
- * Nette's resource parents would even give it the right meaning. It is not
- * done, because the tenant is settled before any of this is asked (see
- * Trilobit\Core\Tenancy\Tenancy) and the access list is built for that tenant
- * alone; putting the tenant in the name as well would make the set of
- * resources grow with the number of businesses, and turn a table that is
- * constant from one build into one that has to be rebuilt whenever a business
- * is added. What a tenant may have of its own is roles - which of these pairs
- * they are made of - and that needs no tenant in here.
+ * **The value carries no tenant.** It was tempting to make it - `tenant-7.app`
+ * would let a rule be written for one business and nothing else, and the tree
+ * would even give it the right meaning. It is not done, because the tenant is
+ * settled before any of this is asked (see Trilobit\Core\Tenancy\Tenancy) and
+ * the access list is built for that tenant alone; putting the tenant in the
+ * name as well would make the set of resources grow with the number of
+ * businesses, and turn a table that is constant from one build into one that
+ * has to be rebuilt whenever a business is added. What a tenant may have of
+ * its own is roles - which of these pairs they are made of - and that needs no
+ * tenant in here.
  */
 enum Resource: string
 {
-    /** The administration as a whole, and the parent of every section of it. */
-    case Administration = 'administration';
+    /**
+     * The application inside one business, and what everything else falls
+     * under. Nobody needs to be given `view` of it by name: any right below
+     * opens it.
+     */
+    case App = 'app';
+
+    /** The administration as a whole, and what every section of it falls under. */
+    case Administration = 'app.administration';
 
     /** Who may sign in, and what they hold. */
-    case Account = 'account';
+    case Account = 'app.administration.account';
 
     /** What the public site is drawn from: the pages, the menus, the media. */
-    case Content = 'content';
+    case Content = 'app.administration.content';
 
     /**
      * Where a visitor ends up, as distinct from what they are shown. It is a
      * decision inside a page rather than a section of the administration,
      * which is the case the granularity of this enum is deliberately loose
-     * enough to hold.
+     * enough to hold - and why it is under the application and not under the
+     * administration.
      */
-    case Redirection = 'redirection';
+    case Redirection = 'app.redirection';
 }

@@ -24,30 +24,30 @@ final class GrantTest extends TestCase
 {
     public function testAPairReadsBackAsItWasWrittenOut(): void
     {
-        $grant = Grant::parse('content:edit');
+        $grant = Grant::parse('app.administration.content:edit');
 
         self::assertInstanceOf(Grant::class, $grant);
         self::assertSame(Resource::Content, $grant->resource);
         self::assertSame(Privilege::Edit, $grant->privilege);
         self::assertFalse($grant->isWhole());
-        self::assertSame('content:edit', $grant->code());
+        self::assertSame('app.administration.content:edit', $grant->code());
     }
 
     /** The star is the whole resource, and it is written back as a star rather than as a list. */
     public function testAStarIsTheWholeOfAResource(): void
     {
-        $grant = Grant::parse('administration:*');
+        $grant = Grant::parse('app.administration:*');
 
         self::assertInstanceOf(Grant::class, $grant);
         self::assertSame(Resource::Administration, $grant->resource);
         self::assertNull($grant->privilege);
         self::assertTrue($grant->isWhole());
-        self::assertSame('administration:*', $grant->code());
+        self::assertSame('app.administration:*', $grant->code());
     }
 
     public function testTheWholeOfAResourceIsWrittenOutAsAStar(): void
     {
-        self::assertSame('content:*', new Grant(Resource::Content, null)->code());
+        self::assertSame('app.administration.content:*', new Grant(Resource::Content, null)->code());
     }
 
     /** @return iterable<string, array{string}> */
@@ -55,12 +55,14 @@ final class GrantTest extends TestCase
     {
         yield 'a resource this build does not have' => ['invoicing:view'];
         yield 'the whole of a resource this build does not have' => ['invoicing:*'];
-        yield 'a privilege this build does not have' => ['content:apostille'];
-        yield 'no privilege at all' => ['content:'];
-        yield 'no separator' => ['content'];
-        yield 'two stars' => ['content:**'];
+        yield 'a privilege this build does not have' => ['app.administration.content:apostille'];
+        yield 'no privilege at all' => ['app.administration.content:'];
+        yield 'no separator' => ['app.administration.content'];
+        yield 'two stars' => ['app.administration.content:**'];
         yield 'a star in place of the resource' => ['*:view'];
         yield 'a star and nothing else' => ['*'];
+        yield 'a name an earlier build gave the resource' => ['content:edit'];
+        yield 'only the end of the name' => ['administration.content:edit'];
     }
 
     /**

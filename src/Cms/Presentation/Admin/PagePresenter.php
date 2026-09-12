@@ -208,7 +208,7 @@ final class PagePresenter extends AdminPresenter
      *
      * The action this arrives through is `edit`, and being trusted to rewrite
      * a page is not the same as being trusted to take it away - a role
-     * assembled out of `content:edit` and no `content:delete` is exactly the
+     * assembled out of `app.administration.content:edit` and no `app.administration.content:delete` is exactly the
      * one this pair exists for. The button is still drawn for them: hiding it
      * without refusing it would be the wrong half, and drawing what somebody
      * may not do is a question about menus rather than about gates.
