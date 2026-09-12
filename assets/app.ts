@@ -6,6 +6,7 @@ import naja from 'naja';
 
 import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
 import { unfoldTheNavigation } from './nav';
+import { dismissTheNotices } from './notice';
 import './segment-suggestion';
 import './app.css';
 
@@ -121,5 +122,6 @@ function remember(preference: string, value: string): Promise<void> {
 keepJumpsClearOfTheChrome();
 markTheChromeScrolledPast();
 unfoldTheNavigation();
+dismissTheNotices();
 
 naja.initialize({ history: true });

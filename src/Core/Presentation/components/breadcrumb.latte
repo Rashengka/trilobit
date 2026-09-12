@@ -1,0 +1,30 @@
+{**
+ * c-breadcrumb - the way up from the page being drawn: the pages it sits under,
+ * in order, and the page itself at the end.
+ *
+ * A navigation of its own, named so that a screen reader can tell it from the
+ * primary one, holding an ordered list, because the steps are an order. Every
+ * step up is a link; the page itself is the one entry that is not, and it is
+ * marked aria-current="page". It is handed separately from the trail rather
+ * than as its last crumb, so a trail cannot end in a link to where you already
+ * are.
+ *
+ * The separator between two steps is the stylesheet's, not text: written into
+ * the markup it would be read out between every two of them.
+ *
+ * @param list<Trilobit\Core\Presentation\Component\Crumb> $trail the steps up, from the start down
+ * @param string $current the name of the page being drawn
+ *}
+
+{define breadcrumb, array $trail, string $current, string $label = 'Breadcrumb', ?string $testId = null}
+    <nav class="c-breadcrumb" aria-label="{$label}" data-testid="{$testId}">
+        <ol class="c-breadcrumb__list">
+            <li class="c-breadcrumb__item" n:foreach="$trail as $crumb">
+                <a class="c-breadcrumb__link" href="{$crumb->href}" data-testid="{$crumb->testId}">{$crumb->label}</a>
+            </li>
+            <li class="c-breadcrumb__item">
+                <span class="c-breadcrumb__current" aria-current="page">{$current}</span>
+            </li>
+        </ol>
+    </nav>
+{/define}
