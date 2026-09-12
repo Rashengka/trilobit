@@ -245,9 +245,14 @@
      * So the block has a layer of its own, above what is held. The list a
      * c-combobox opens is drawn in the same layer, for the same reason: the
      * library shows and hides it in the page, beside the control.
+     *
+     * The toasts held in a corner of the window (c-toast) are over all of it:
+     * they report what came of something just done, which is worth more than
+     * whatever they happen to cover, and they are put away with a button.
      */
     --layout-z-chrome: 1;
     --layout-z-menu: 2;
+    --layout-z-toast: 3;
 
     /*
      * The entries under an entry of the navigation (c-nav).

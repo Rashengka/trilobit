@@ -92,6 +92,12 @@ final class ComponentRegistry
                 ['default', 'without media'],
             ),
             new Component(
+                'c-carousel',
+                'A strip of slides seen one at a time, turned by hand, by key, or by the buttons and the '
+                . 'indicators under it - and never on its own.',
+                ['default'],
+            ),
+            new Component(
                 'c-signpost',
                 'The way into each part of something, drawn as a grid of linked tiles built out of c-card.',
                 ['default'],
@@ -145,6 +151,12 @@ final class ComponentRegistry
                 'One sentence a page has to say to whoever is reading it, which the reader may be allowed to put '
                 . 'away.',
                 ['info', 'danger', 'dismissible'],
+            ),
+            new Component(
+                'c-toast',
+                'Short news drawn over the page in a corner of the window, one for every message - what came of '
+                . 'something just done, a flash message among them - staying until it is put away.',
+                ['info', 'danger', 'several at once', 'from a flash message'],
             ),
             new Component(
                 'c-marker-list',

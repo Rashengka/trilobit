@@ -4,12 +4,14 @@
  */
 import naja from 'naja';
 
+import { turnTheCarousels } from './carousel';
 import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
 import { comboboxesInSnippets, enhanceWithin } from './combobox';
 import { openWhatTheAddressNames } from './disclosure';
 import { unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
 import './segment-suggestion';
+import { announceTheToasts } from './toast';
 import './app.css';
 
 /**
@@ -141,3 +143,9 @@ enhanceWithin(document);
 // a snippet could bring in unprepared or take away with something left on it.
 // See assets/notice.ts.
 dismissTheNotices();
+
+// The same for the carousels and the toasts: each listens on the document or
+// watches it, and prepares nothing a snippet could bring in or take away. See
+// assets/carousel.ts and assets/toast.ts.
+turnTheCarousels();
+announceTheToasts();

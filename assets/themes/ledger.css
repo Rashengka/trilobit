@@ -203,6 +203,7 @@
 
     --layout-z-chrome: 1;
     --layout-z-menu: 2;
+    --layout-z-toast: 3;
 
     /*
      * Ledger unfolds the entries under an entry in place, inside the entry,

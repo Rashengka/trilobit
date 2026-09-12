@@ -25,6 +25,7 @@
 {import '../../components/preference-switcher.latte'}
 {import '../../components/nav.latte'}
 {import '../../components/site-footer.latte'}
+{import '../../components/toast.latte'}
 
 <!DOCTYPE html>
 <html lang="en" n:attr="$preferences->attributes()">
@@ -77,6 +78,11 @@
     <div class="l-container l-stack l-stack--loose">
         {include content}
     </div>
+
+    {* The flash messages, as toasts in a corner of the window, in the snippet
+       an answer to Naja puts them into - as in the public layout, and for the
+       same reasons. *}
+    <div n:snippet="flashes">{include toast, messages: $flashes, corner: true, testId: 'toasts'}</div>
 </main>
 
 <div class="l-shell__footer" data-testid="admin-footer">
