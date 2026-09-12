@@ -46,10 +46,22 @@ use Trilobit\Core\Tenancy\Tenancy;
  * rather than quietly given a business of its own: two ways to create one is
  * one too many, and the one that happens by accident is the wrong one.
  *
- * **The two shapes cannot be combined on one account.** Asking for a role
- * inside a business for the installation's administrator - or the reverse - is
- * refused and says why. What an account is, is settled when it is made; see the
- * constructor of Trilobit\Core\Domain\User\User.
+ * **Both at once is said, never implied.** --tenant together with
+ * --also-installation makes the account that administers the installation the
+ * owner of that business as well - the one person of a simple installation.
+ * Without the switch, a role inside a business for the installation's
+ * administrator is refused, and the refusal names the switch: being both is
+ * allowed, but an account that became both because the command was run with
+ * one option too few is the account nobody meant to have. The membership is
+ * then given through
+ * Trilobit\Core\Domain\Tenancy\Membership::forTheInstallationsAdministrator(),
+ * so the decision is written down in the one place that makes the row.
+ *
+ * **What the switch does not do is make an existing member the installation's
+ * administrator.** Whether an account administers the installation is settled
+ * when it is made - see the constructor of Trilobit\Core\Domain\User\User - so
+ * an account that already administers a business is refused either way, and
+ * the installation gets an account of its own or one made both from the start.
  *
  * The password is generated here and shown once. It is not an argument and not
  * an option: an argument is in the shell history of the machine it was typed
@@ -83,6 +95,9 @@ final class AccountCommand extends Command
     /** The option that decides which of the two administrators is meant, by naming a host the business answers at. */
     private const string TENANT = 'tenant';
 
+    /** The switch that says the account administers the installation as well as the business --tenant names. */
+    private const string ALSO_INSTALLATION = 'also-installation';
+
     /** Long enough that it is not worth attacking, short enough to be typed once. */
     private const int GENERATED_LENGTH = 24;
 
@@ -115,6 +130,13 @@ final class AccountCommand extends Command
             InputOption::VALUE_REQUIRED,
             'A host the business answers at. Left out, the account administers the installation instead.',
         );
+        $this->addOption(
+            self::ALSO_INSTALLATION,
+            null,
+            InputOption::VALUE_NONE,
+            'Together with --tenant: the account administers the installation as well. Being both is a decision, '
+            . 'so it is said here rather than implied.',
+        );
         $this->addOption('name', null, InputOption::VALUE_REQUIRED, 'What to call this person.', '');
     }
 
@@ -137,6 +159,22 @@ final class AccountCommand extends Command
         }
 
         $host = is_string($host) ? strtolower(trim($host)) : null;
+        $both = $input->getOption(self::ALSO_INSTALLATION) === true;
+
+        if ($both && $host === null) {
+            $style->error('--also-installation means "a business as well", so it needs --tenant to name the business.');
+            $style->writeln(
+                'Without --tenant the account administers the installation and nothing else, which is what leaving '
+                . 'both out already says.',
+            );
+
+            return self::FAILURE;
+        }
+
+        // What the account is being asked to be. Administering the installation
+        // is either the whole of it - no business named - or said outright
+        // beside the business that is.
+        $landlord = $host === null || $both;
         $tenant = null;
 
         if ($host !== null) {
@@ -154,17 +192,31 @@ final class AccountCommand extends Command
         }
 
         $account = $this->accounts->withEmail($email);
-        if ($account instanceof User && $account->isLandlord() !== ($host === null)) {
+        if ($account instanceof User && $account->isLandlord() !== $landlord) {
+            if ($account->isLandlord()) {
+                $style->error(sprintf(
+                    '%s administers the installation, so it is not given a role inside a business without that being said.',
+                    $email,
+                ));
+                $style->writeln(sprintf(
+                    'One account may be both, and it is a decision rather than a side effect of naming a business. '
+                    . 'Run the command again with --%s to make it the owner of the business answering at %s as well; '
+                    . 'make a second account if the business is meant to be administered by somebody else.',
+                    self::ALSO_INSTALLATION,
+                    $host,
+                ));
+
+                return self::FAILURE;
+            }
+
             $style->error(sprintf(
-                $account->isLandlord()
-                    ? '%s administers the installation, so it cannot be given a role inside a business as well.'
-                    : '%s administers a business, so it cannot be made the administrator of the installation as well.',
+                '%s administers a business, so it cannot be made the administrator of the installation as well.',
                 $email,
             ));
             $style->writeln(
-                'They are two scopes rather than two levels, and an account in both would make "which scope is '
-                . 'this question about" something every part of the application had to get right. Which of the two '
-                . 'an account is was settled when it was made; make a second account for the other one.',
+                'Whether an account administers the installation is settled when the account is made, and there is '
+                . 'no way to say it afterwards. Make a second account for the installation, or make one that is both '
+                . 'from the start with --tenant and --' . self::ALSO_INSTALLATION . '.',
             );
 
             return self::FAILURE;
@@ -181,7 +233,7 @@ final class AccountCommand extends Command
                 $this->passwords->hash($password),
                 $name,
                 new DateTimeImmutable(),
-                landlord: $host === null,
+                landlord: $landlord,
             );
             $existing = false;
         } else {
@@ -193,7 +245,7 @@ final class AccountCommand extends Command
         $this->accounts->save($account);
 
         if ($tenant instanceof Tenant) {
-            $this->administer($tenant, $account);
+            $this->administer($tenant, $account, $both);
         }
 
         $style->success(sprintf(
@@ -201,9 +253,15 @@ final class AccountCommand extends Command
             $existing ? 'The account that was already there' : 'A new account',
             $email,
         ));
-        $style->writeln($tenant instanceof Tenant
-            ? sprintf('It administers %s, the business answering at %s.', $tenant->name(), $host)
-            : 'It administers the installation: it belongs to no business and holds no role in one.');
+        $style->writeln(match (true) {
+            $tenant instanceof Tenant && $both => sprintf(
+                'It administers the installation, and %s as well, the business answering at %s.',
+                $tenant->name(),
+                $host,
+            ),
+            $tenant instanceof Tenant => sprintf('It administers %s, the business answering at %s.', $tenant->name(), $host),
+            default => 'It administers the installation, which is not a role in any business.',
+        });
         $style->writeln('');
         $style->writeln('The password for that account is');
         $style->writeln('');
@@ -250,8 +308,15 @@ final class AccountCommand extends Command
      * says the whole of the application again after the command has run. The
      * row an earlier build called `administrator` is carried over by
      * Trilobit\Core\Migrations\Version20260912114800, not here.
+     *
+     * $both is what --also-installation said, and it is what chooses the way
+     * the membership is made - not whether the account happens to administer
+     * the installation. Reading the flag off the account here would turn the
+     * decision back into a side effect; passing what was said means an
+     * account that is the installation's administrator and was not said to be
+     * both still meets the refusal in the constructor.
      */
-    private function administer(Tenant $tenant, User $account): void
+    private function administer(Tenant $tenant, User $account, bool $both): void
     {
         $role = $this->accounts->roleWithCode(Role::OWNER) ?? new Role(Role::OWNER, self::ROLE_NAME);
         $role->redefine([new Grant($this->structure->root(), null)->code()]);
@@ -263,7 +328,9 @@ final class AccountCommand extends Command
             ->findOneBy(['user' => $account, 'role' => $role]);
 
         if (!$held instanceof Membership) {
-            $this->entityManager->persist(new Membership($tenant, $account, $role));
+            $this->entityManager->persist($both
+                ? Membership::forTheInstallationsAdministrator($tenant, $account, $role)
+                : new Membership($tenant, $account, $role));
             $this->entityManager->flush();
         }
     }

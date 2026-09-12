@@ -116,14 +116,16 @@ final class UserTest extends TestCase
     }
 
     /**
-     * The half of "the two scopes never meet" that a check could not deliver.
+     * The half of "the two scopes never meet by accident" that a check could
+     * not deliver.
      *
      * The other half is a refusal - Trilobit\Core\Domain\Tenancy\Membership
-     * will not be built for an account that administers the installation. This
-     * half is not a refusal but the absence of anything to refuse: what an
-     * account is, is said once, when it is made, and an account being made
-     * holds no membership because nothing can point at a row that does not
-     * exist yet. So a member cannot be made an installation administrator, and
+     * is not built the ordinary way for an account that administers the
+     * installation, only through the one call that says so. This half is not a
+     * refusal but the absence of anything to refuse: what an account is, is
+     * said once, when it is made, and an account being made holds no
+     * membership because nothing can point at a row that does not exist yet.
+     * So a member cannot be made an installation administrator afterwards, and
      * that is true because there is no way to say it rather than because
      * somewhere it is checked.
      *

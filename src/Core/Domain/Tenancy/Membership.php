@@ -26,15 +26,26 @@ use Trilobit\Core\Domain\User\User;
  * The three columns are unique together, so granting the same role twice is
  * refused by the database rather than by whoever remembers to look.
  *
- * **One kind of account may not have a row here at all.** An account that
- * administers the installation (Trilobit\Core\Domain\User\User::isLandlord())
- * is above the businesses rather than inside one, and being both would turn
- * "which scope am I asking in" into a question every calling place has to
- * answer correctly - the sort of decision this design exists to remove rather
- * than to make carefully. The refusal is in the constructor because a
- * membership is made in more than one place, and a check in one of them is a
- * check the others do not have. What it prevents is quiet: an account with a
- * foot in both scopes works, it just works with rights nobody meant it to have.
+ * **One kind of account has a row here only when that is said outright.** An
+ * account that administers the installation
+ * (Trilobit\Core\Domain\User\User::isLandlord()) may hold a role in a business
+ * as well - one person running one shop is both, and that is what a simple
+ * installation is made of. What must not happen is that it holds one because
+ * nobody stopped it: the constructor, which is the way for everybody else,
+ * refuses such an account and names the other way, and
+ * forTheInstallationsAdministrator() is that other way and takes nobody else.
+ * So every place that makes a membership either never meets the question or
+ * answers it in writing, and a reader can find every such answer by name.
+ *
+ * Being both changes nothing about how either scope is asked. In a business
+ * the account is asked about as a member of it, through
+ * Trilobit\Core\Security\Permissions, and nowhere else; whether it administers
+ * the installation is still the flag on the account, read by
+ * Trilobit\Core\Security\Landlords and never worked out from having no row
+ * here. The refusal is in this class because a membership is made in more than
+ * one place, and a check in one of them is a check the others do not have.
+ * What it prevents is quiet: an account with a foot in both scopes works, it
+ * just works with rights nobody meant it to have.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_tenant_membership')]
@@ -59,14 +70,49 @@ class Membership
     ) {
         if ($user->isLandlord()) {
             throw new \LogicException(sprintf(
-                '%s administers the installation, so it cannot also hold a role in %s. The two are different '
-                    . 'scopes rather than different levels: an account above the businesses has no rights inside '
-                    . 'one, and seeing what a business sees is done by taking somebody else\'s identity for a '
-                    . 'while rather than by belonging to both at once.',
+                '%s administers the installation, so it is not given a role in %s the ordinary way. Holding one as '
+                    . 'well is allowed, but it is a decision rather than a side effect: say it with '
+                    . '%s::forTheInstallationsAdministrator(), and only where somebody meant the installation\'s '
+                    . 'administrator to work inside this business too.',
                 $user->email(),
+                $tenant->name(),
+                self::class,
+            ));
+        }
+    }
+
+    /**
+     * A role in $tenant for an account that administers the installation -
+     * the one way such an account is given one, and the way for nobody else.
+     *
+     * It does not go through the constructor, because the constructor is the
+     * ordinary way and refuses exactly this; the object is made the way
+     * Doctrine makes one it reads back, and the three fields are set here.
+     * That keeps the refusal in the constructor unconditional rather than
+     * behind a parameter any caller could pass without reading what it means.
+     *
+     * An account that does not administer the installation is refused here in
+     * turn. A way that took anybody would be the one every caller reached for
+     * so as not to have to think, and the decision this exists to make visible
+     * would be made everywhere without being made anywhere.
+     */
+    public static function forTheInstallationsAdministrator(Tenant $tenant, User $landlord, Role $role): self
+    {
+        if (!$landlord->isLandlord()) {
+            throw new \LogicException(sprintf(
+                '%s does not administer the installation, so there is nothing to decide about giving it a role in '
+                    . '%s: the constructor is the way for every such account.',
+                $landlord->email(),
                 $tenant->name(),
             ));
         }
+
+        $membership = new \ReflectionClass(self::class)->newInstanceWithoutConstructor();
+        $membership->tenant = $tenant;
+        $membership->user = $landlord;
+        $membership->role = $role;
+
+        return $membership;
     }
 
     public function id(): ?int

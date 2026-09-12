@@ -571,8 +571,8 @@ overview, the section belonging to the installation rather than to any business
 in it, and a menu made of the way back to where this person's administration
 begins and whatever the enabled modules put a section on it.
 
-Make somebody who can sign in. There are two kinds of administrator and the
-command says which it means:
+Make somebody who can sign in. There are two kinds of administrator, one
+account may be both, and the command says which it means:
 
 ```sh
 # administers the installation: no business, no role, no membership
@@ -581,21 +581,34 @@ bin/trilobit app:account you@example.com --name 'Your Name'
 # administers one business: the account, the role, and the membership joining
 # them in the business that answers at that host
 bin/trilobit app:account someone@example.com --tenant localhost --name 'Their Name'
+
+# both: administers the installation and owns the business at that host - the
+# one person of a simple installation running one shop
+bin/trilobit app:account you@example.com --tenant localhost --also-installation --name 'Your Name'
 ```
 
 They are **different scopes rather than different levels**. An account
-administering the installation creates and looks after the businesses and holds
-nothing inside any of them; an account administering a business is its owner
-and holds the whole of the application - `app:*`, every permission this build
-offers and every one a later build adds - in that business and nowhere else.
-The owner is the one role the application defines rather than a business, and
-the command writes it again on every run, so a row under its code saying
-anything else says the whole of the application once more. The two cannot
-be combined: an account that is one is refused the other, and
-`Trilobit\Core\Domain\Tenancy\Membership` will not be constructed for an account
-administering the installation at all, so no screen and no command can arrange
-it by accident. Seeing what a business sees is a job for taking somebody's
-identity for a while, not for belonging to both.
+administering the installation creates and looks after the businesses, and
+that gives it nothing inside any of them; an account administering a business
+is its owner and holds the whole of the application - `app:*`, every permission
+this build offers and every one a later build adds - in that business and
+nowhere else. The owner is the one role the application defines rather than a
+business, and the command writes it again on every run, so a row under its code
+saying anything else says the whole of the application once more.
+
+**One account may be both, and only when that is said.** Without
+`--also-installation` the command refuses to give the installation's
+administrator a role in a business and names the switch, and
+`Trilobit\Core\Domain\Tenancy\Membership` refuses the same thing through its
+constructor and names the one way that takes it -
+`Membership::forTheInstallationsAdministrator()`, which takes nobody else. So
+no screen and no command makes an account both by accident, and every place
+that does it says so by name. Being both changes neither scope: in a business
+the account is asked about as a member of it and nowhere else, and whether it
+administers the installation is still the flag on the account, never worked out
+from belonging to no business. What the switch does not do is make an existing
+member of a business the installation's administrator - that is settled when
+an account is made.
 
 The business is named by a host rather than by an identifier, because a host is
 what a person knows and what `app:tenant` was given. A host nobody has claimed
