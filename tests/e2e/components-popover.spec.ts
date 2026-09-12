@@ -91,6 +91,30 @@ async function placement(anchor: Locator, floating: Locator) {
  */
 async function scrollTo(locator: Locator, where: 'center' | 'end'): Promise<void> {
     await locator.evaluate((element, block) => element.scrollIntoView({ block }), where);
+
+    // A theme makes its held bands smaller once the page has scrolled, over a
+    // moment, and the page moves under them while it does. A popover opened in
+    // that moment is placed against where its element was, and the browser keeps
+    // the side it chose for as long as it still fits - so the element is let
+    // come to rest before anything is opened.
+    await locator.evaluate(
+        (element) =>
+            new Promise<void>((resolve) => {
+                let last = '';
+                let same = 0;
+                const tick = (): void => {
+                    const now = String(element.getBoundingClientRect().top);
+                    same = now === last ? same + 1 : 0;
+                    last = now;
+                    if (same >= 6) {
+                        resolve();
+                    } else {
+                        requestAnimationFrame(tick);
+                    }
+                };
+                requestAnimationFrame(tick);
+            }),
+    );
 }
 
 /** Whether what is drawn at the middle of $locator belongs to it - nothing is drawn over it. */
@@ -182,12 +206,16 @@ test.describe('c-dropdown', () => {
         await button.focus();
         await page.keyboard.press('Enter');
         await expect(menu).toBeVisible();
+        // The menu takes the focus when the browser reports it open, a moment
+        // after the key; every key below waits for that first.
+        await expect(page.getByRole('menuitem', { name: 'Duplicate' })).toBeFocused();
         await page.keyboard.press('Escape');
         await expect(menu).toBeHidden();
         await expect(button).toBeFocused();
 
         // An action chosen closes the menu, and the focus is back on the button.
         await page.keyboard.press('Enter');
+        await expect(page.getByRole('menuitem', { name: 'Duplicate' })).toBeFocused();
         await page.keyboard.press('ArrowDown');
         await page.keyboard.press('Enter');
         await expect(menu).toBeHidden();
@@ -195,7 +223,7 @@ test.describe('c-dropdown', () => {
 
         // Tab leaves the menu for whatever comes after the dropdown.
         await page.keyboard.press('Enter');
-        await expect(menu).toBeVisible();
+        await expect(page.getByRole('menuitem', { name: 'Duplicate' })).toBeFocused();
         await page.keyboard.press('Tab');
         await expect(menu).toBeHidden();
         const after = await dropdown.evaluate(
@@ -210,6 +238,7 @@ test.describe('c-dropdown', () => {
         // Shift+Tab leaves it for the button that opened it.
         await button.focus();
         await page.keyboard.press('Enter');
+        await expect(page.getByRole('menuitem', { name: 'Duplicate' })).toBeFocused();
         await page.keyboard.press('Shift+Tab');
         await expect(menu).toBeHidden();
         await expect(button).toBeFocused();
@@ -287,6 +316,9 @@ test.describe('c-dropdown', () => {
         const button = page.getByTestId('redrawn-sample').getByRole('button');
         await button.focus();
         await page.keyboard.press('Enter');
+        // The menu takes the focus when the browser reports it open, a moment
+        // after the key; an arrow pressed before that is the button's.
+        await expect(page.getByTestId('redrawn-sample').getByRole('menuitem', { name: 'Duplicate' })).toBeFocused();
         await page.keyboard.press('ArrowDown');
         await expect(page.getByTestId('redrawn-sample').getByRole('menuitem', { name: 'Move to a drawer' })).toBeFocused();
     });
