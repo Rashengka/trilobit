@@ -1,0 +1,67 @@
+{templateType Trilobit\Cms\Presentation\Admin\CategoriesTemplate}
+
+{*
+ * Every category pages can be filed under, and where each of them answers.
+ *
+ * A category is a row of Core's register with other addresses filed under it,
+ * so its address is the beginning of every address inside it - which is why
+ * the list shows the address rather than only the name.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/panel.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+{import '../../../../../Core/Presentation/components/badge.latte'}
+{import '../../../../../Core/Presentation/components/notice.latte'}
+{import '../../../../../Core/Presentation/components/table.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'cms-categories-headline',
+        leadTestId: 'cms-categories-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'Add a category', href: $addUrl, testId: 'cms-categories-add'}
+    </div>
+
+    {embed block panel, testId: 'cms-categories-panel'}
+        {block panelTitle}Categories{/block}
+
+        {block panelBody}
+            {if $categories === []}
+                {include notice,
+                    message: 'There are no categories yet; every page answers at the root of the site.',
+                    testId: 'cms-categories-empty'}
+            {else}
+                {embed block table, caption: 'Every category and where it answers', testId: 'cms-category-list'}
+                    {block tableHead}
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Address</th>
+                        </tr>
+                    {/block}
+
+                    {block tableBody}
+                        <tr n:foreach="$categories as $category" data-testid="cms-category-{$category->id}">
+                            <th scope="row">
+                                {include button,
+                                    label: $category->name,
+                                    href: $category->editUrl,
+                                    variant: 'quiet',
+                                    testId: 'cms-category-open-' . $category->id}
+                            </th>
+
+                            <td>
+                                {include badge,
+                                    label: $category->address,
+                                    testId: 'cms-category-address-' . $category->id}
+                            </td>
+                        </tr>
+                    {/block}
+                {/embed}
+            {/if}
+        {/block}
+    {/embed}
+{/block}

@@ -5,6 +5,7 @@
 import naja from 'naja';
 
 import { keepJumpsClearOfTheChrome } from './chrome';
+import './segment-suggestion';
 import './app.css';
 
 /**
