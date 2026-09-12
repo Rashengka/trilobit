@@ -1,6 +1,9 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
-{* One sentence a page has to say, as information and as a refusal. *}
+{*
+ * One sentence a page has to say, as information and as a refusal, and one the
+ * reader may put away with its c-close.
+ *}
 
 {import '../../templates/furniture.latte'}
 {import '../../../components/notice.latte'}
@@ -14,6 +17,14 @@
 
             {specimen 'danger'}
                 {include notice, message: 'The address or the password is not right.', variant: 'danger'}
+            {/specimen}
+
+            {specimen 'dismissible'}
+                {include notice,
+                    message: 'The draft was kept for you.',
+                    dismissible: true,
+                    testId: 'sample-notice-dismissible',
+                }
             {/specimen}
         {/block}
     {/embed}

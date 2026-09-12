@@ -1,0 +1,48 @@
+{**
+ * c-pagination - the way through a listing too long for one page.
+ *
+ * A navigation of its own, named so a screen reader can tell it from the
+ * primary one. The steps first, previous, next and last are always drawn, so
+ * the row does not move under the pointer as somebody pages through it; a step
+ * that cannot be taken - back from the first page, on from the last - is drawn
+ * disabled. It is then not a link with an address, which the keyboard would
+ * stop on and which would lead back to where it is, but an element the
+ * accessibility tree reports as a disabled link and the keyboard passes over.
+ *
+ * Which numbers are drawn and where each leads is decided by
+ * Trilobit\Core\Presentation\Component\Pagination, not here. Every number is
+ * named "Page N", because "5" on its own does not say five of what, and the
+ * current one is marked aria-current="page". A gap is text: it leads nowhere.
+ *
+ * One page is nothing to move between, and nothing is drawn for it.
+ *}
+
+{define pagination, Trilobit\Core\Presentation\Component\Pagination $pagination, string $label = 'Pages', ?string $testId = null}
+    {var $before = ['First' => [$pagination->first(), null], 'Previous' => [$pagination->previous(), 'prev']]}
+    {var $after = ['Next' => [$pagination->next(), 'next'], 'Last' => [$pagination->last(), null]]}
+
+    <nav n:if="$pagination->hasMoreThanOnePage()" class="c-pagination" aria-label="{$label}" data-testid="{$testId}">
+        <ul class="c-pagination__list">
+            <li class="c-pagination__item" n:foreach="$before as $step => [$page, $rel]">
+                <a n:if="$page !== null" class="c-pagination__link" href="{$pagination->href($page)}" rel="{$rel}">{$step}</a>
+                <a n:else class="c-pagination__link" role="link" aria-disabled="true">{$step}</a>
+            </li>
+
+            <li n:foreach="$pagination->pages() as $page" n:class="'c-pagination__item', $page === null ? 'c-pagination__gap'">
+                {if $page === null}…{else}
+                    <a
+                        class="c-pagination__link"
+                        href="{$pagination->href($page)}"
+                        aria-label="Page {$page}"
+                        aria-current="{$page === $pagination->current ? 'page' : null}"
+                    >{$page}</a>
+                {/if}
+            </li>
+
+            <li class="c-pagination__item" n:foreach="$after as $step => [$page, $rel]">
+                <a n:if="$page !== null" class="c-pagination__link" href="{$pagination->href($page)}" rel="{$rel}">{$step}</a>
+                <a n:else class="c-pagination__link" role="link" aria-disabled="true">{$step}</a>
+            </li>
+        </ul>
+    </nav>
+{/define}

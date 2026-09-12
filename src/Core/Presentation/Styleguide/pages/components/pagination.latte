@@ -1,0 +1,40 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A long listing seen from its middle, from either end, and a short one with
+ * nothing to leave out.
+ *
+ * The pages lead to places on this one. A listing's own presenter hands its
+ * router instead: fn(int $page): string => $this->link('this', ['page' => $page]).
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/pagination.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-pagination']}
+        {block sgSectionBody}
+            {var $link = fn(int $page): string => '#page-' . $page}
+            {var $middle = new Trilobit\Core\Presentation\Component\Pagination(5, 12, $link)}
+            {var $first = new Trilobit\Core\Presentation\Component\Pagination(1, 12, $link)}
+            {var $last = new Trilobit\Core\Presentation\Component\Pagination(12, 12, $link)}
+            {var $few = new Trilobit\Core\Presentation\Component\Pagination(2, 4, $link)}
+
+            {specimen 'default'}
+                {include pagination, pagination: $middle, testId: 'sample-pagination'}
+            {/specimen}
+
+            {specimen 'on the first page'}
+                {include pagination, pagination: $first, testId: 'sample-pagination-first'}
+            {/specimen}
+
+            {specimen 'on the last page'}
+                {include pagination, pagination: $last}
+            {/specimen}
+
+            {specimen 'with few pages'}
+                {include pagination, pagination: $few}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

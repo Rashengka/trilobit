@@ -6,10 +6,27 @@
  * be, so a theme decides how loud either one looks. A refusal is announced to a
  * screen reader as soon as it appears, because somebody who cannot see the page
  * change would otherwise be left with a form that simply did nothing.
+ *
+ * A dismissible notice carries c-close, and pressing it hides the notice
+ * (assets/notice.ts). The live region is then the sentence alone rather than
+ * the whole notice, because a region holding the button would announce
+ * "Saved. Dismiss" every time it appeared. A notice that is not dismissible is
+ * drawn exactly as it always was.
  *}
 
-{define notice, string $message, string $variant = 'info', ?string $testId = null}
+{import 'close.latte'}
+
+{define notice, string $message, string $variant = 'info', ?string $testId = null, bool $dismissible = false}
+    <div
+        n:if="$dismissible"
+        n:class="'c-notice', 'c-notice--dismissible', $variant === 'danger' ? 'c-notice--danger'"
+        data-testid="{$testId}"
+    >
+        <p class="c-notice__message" role="{$variant === 'danger' ? 'alert' : 'status'}">{$message}</p>
+        {include close, label: 'Dismiss'}
+    </div>
     <p
+        n:else
         n:class="'c-notice', $variant === 'danger' ? 'c-notice--danger'"
         role="{$variant === 'danger' ? 'alert' : 'status'}"
         data-testid="{$testId}"

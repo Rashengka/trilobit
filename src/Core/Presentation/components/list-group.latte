@@ -1,0 +1,31 @@
+{**
+ * c-list-group - a column of entries, each its own row: records, sections, the
+ * ways into something.
+ *
+ * Not c-marker-list. That is a handful of short statements inside running
+ * content, each with a mark in front of it and nothing to do; this is a boxed
+ * list of separate things, each of which may be the way somewhere, may be the
+ * one that is on, and may carry a count.
+ *
+ * An entry with an address is a link; one without is a line, not a link that
+ * goes nowhere. The one that is on is marked aria-current: "page" in a list of
+ * links, where it is the page you are on, and "true" in a list of lines, where
+ * it is only the one that is on. A count is c-badge inside the entry, so it is
+ * read as part of the entry's name ("Awaiting a label 12").
+ *
+ * @param list<Trilobit\Core\Presentation\Component\ListGroupItem> $items
+ *}
+
+{import 'badge.latte'}
+
+{define listGroup, array $items, ?string $testId = null}
+    <ul class="c-list-group" data-testid="{$testId}">
+        <li class="c-list-group__item" n:foreach="$items as $item">
+            <a
+                n:tag="$item->href === null ? 'span' : 'a'"
+                class="c-list-group__entry"
+                n:attr="href: $item->href, aria-current: $item->current ? ($item->href === null ? 'true' : 'page') : null, data-testid: $item->testId"
+            ><span class="c-list-group__label">{$item->label}</span> {if $item->badge !== null}{include badge, label: $item->badge}{/if}</a>
+        </li>
+    </ul>
+{/define}

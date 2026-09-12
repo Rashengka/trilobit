@@ -8,6 +8,7 @@ import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
 import { comboboxesInSnippets, enhanceWithin } from './combobox';
 import { openWhatTheAddressNames } from './disclosure';
 import { unfoldTheNavigation } from './nav';
+import { dismissTheNotices } from './notice';
 import './segment-suggestion';
 import './app.css';
 
@@ -134,3 +135,9 @@ openWhatTheAddressNames();
 naja.registerExtension(comboboxesInSnippets);
 naja.initialize({ history: true });
 enhanceWithin(document);
+
+// After Naja has started, like the comboboxes, and with no extension of its
+// own: it listens on the document and prepares no notice, so there is nothing
+// a snippet could bring in unprepared or take away with something left on it.
+// See assets/notice.ts.
+dismissTheNotices();

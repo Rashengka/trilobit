@@ -1,0 +1,42 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Separate entries, each its own row: as lines, as the ways somewhere with the
+ * current one marked, and carrying a count.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/list-group.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-list-group']}
+        {block sgSectionBody}
+            {var $lines = [
+                new Trilobit\Core\Presentation\Component\ListGroupItem('Cambrian'),
+                new Trilobit\Core\Presentation\Component\ListGroupItem('Ordovician'),
+                new Trilobit\Core\Presentation\Component\ListGroupItem('Silurian'),
+            ]}
+            {var $links = [
+                new Trilobit\Core\Presentation\Component\ListGroupItem('Specimens', '#specimens'),
+                new Trilobit\Core\Presentation\Component\ListGroupItem('Excavations', '#excavations', current: true),
+                new Trilobit\Core\Presentation\Component\ListGroupItem('Loans', '#loans'),
+            ]}
+            {var $counts = [
+                new Trilobit\Core\Presentation\Component\ListGroupItem('Awaiting a label', '#awaiting', badge: '12'),
+                new Trilobit\Core\Presentation\Component\ListGroupItem('Out on loan', '#on-loan', badge: '3'),
+            ]}
+
+            {specimen 'default'}
+                {include listGroup, items: $lines}
+            {/specimen}
+
+            {specimen 'with links'}
+                {include listGroup, items: $links, testId: 'sample-list-links'}
+            {/specimen}
+
+            {specimen 'with counts'}
+                {include listGroup, items: $counts, testId: 'sample-list-counts'}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}
