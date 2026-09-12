@@ -1,8 +1,8 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
 {*
- * One sentence a page has to say, as information and as a refusal, and one the
- * reader may put away with its c-close.
+ * One sentence a page has to say, as information and as a refusal, one the
+ * reader may put away with its c-close, and a refusal with a title over it.
  *}
 
 {import '../../templates/furniture.latte'}
@@ -25,6 +25,13 @@
                     dismissible: true,
                     testId: 'sample-notice-dismissible',
                 }
+            {/specimen}
+
+            {specimen 'with a title'}
+                {include notice,
+                    title: 'The page was not published',
+                    message: 'Its address is taken by another page. Choose another one and publish it again.',
+                    variant: 'danger'}
             {/specimen}
         {/block}
     {/embed}

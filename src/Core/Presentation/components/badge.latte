@@ -2,10 +2,18 @@
  * c-badge - a short label attached to something else: a state, a count, a name.
  *
  * It says what a thing is, never how loud it should be. "accent" is the variant
- * for a badge that carries the page's own subject; a theme decides what that
- * looks like.
+ * for a badge that carries the page's own subject; "danger" is for a state that
+ * asks for attention - an invoice past its date, a product that ran out, an
+ * account that was suspended - and is the word c-notice uses for a refusal. A
+ * theme decides what either looks like.
+ *
+ * A variant nobody drew is refused rather than drawn as a plain badge: a state
+ * that asks for attention and quietly looks like every other one is the kind of
+ * mistake nobody notices.
  *}
 
 {define badge, string $label, string $variant = 'plain', ?string $testId = null}
-    <span n:class="'c-badge', $variant === 'accent' ? 'c-badge--accent'" data-testid="{$testId}">{$label}</span>
+    {do Trilobit\Core\Presentation\Component\Argument::oneOf('c-badge', 'variant', $variant, ['plain', 'accent', 'danger'])}
+
+    <span n:class="'c-badge', $variant !== 'plain' ? 'c-badge--' . $variant" data-testid="{$testId}">{$label}</span>
 {/define}
