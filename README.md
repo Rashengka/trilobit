@@ -1135,6 +1135,17 @@ class and table names taken from them. It is not in the repository and not in
 any ignore list either - a committed list of forbidden words would be exactly
 the disclosure it is meant to prevent.
 
+A bare `bin/check-leaks` (equivalently `bin/check-leaks --staged`) scans only
+what is staged in the ordinary index. Since this project commits with an
+explicit pathspec (`git commit -- <paths>`), which never touches that index,
+running it by hand between such commits usually finds nothing staged - and it
+says so, with exit code 3, rather than reporting the same "clean" result
+(exit 0) a real scan would. Run `bin/check-leaks --all` to scan everything
+that could end up in a commit instead. The pre-commit hook is unaffected by
+this: it skips the tool entirely when nothing is staged, because there is
+nothing there for a leak to hide in, and because that is also the shape of a
+deliberate `git commit --allow-empty`, which the hook must not block.
+
 ### The gate
 
 ```sh

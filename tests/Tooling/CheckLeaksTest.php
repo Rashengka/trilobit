@@ -60,6 +60,9 @@ function run(): int
     checkFileNameIsChecked($failures);
     checkAllModeReadsWhatCouldBeCommitted($failures);
     checkStagedModeAndHook($failures);
+    checkEmptyStagedModeIsNotSilentlyClean($failures);
+    checkStagedModeWithACleanFileIsClean($failures);
+    checkHookAllowsPathspecCommitsAndAllowEmpty($failures);
     checkRepositoryIsClean($failures);
 
     if ($failures === []) {
@@ -353,6 +356,139 @@ function checkStagedModeAndHook(array &$failures): void
     assertSame(true, $commitCode !== 0, 'the hook blocks git commit', $failures);
     assertSame($before, $after, 'no commit was created', $failures);
     assertContains('[email]', $commitOut . $commitErr, 'the blocked commit shows the finding', $failures);
+}
+
+/**
+ * `--staged` used to read `git diff --cached`, find nothing staged, and report
+ * the same clean result (exit 0) as a run that actually scanned something.
+ * A commit made with an explicit pathspec (`git commit -- <paths>`) never puts
+ * anything in the ordinary index first, so a manual `bin/check-leaks` run
+ * between such commits always looked clean, whether or not it had scanned a
+ * single line - a silent failure in the sense the project's own rules name:
+ * it produced the same observable output as success.
+ *
+ * @param list<string> $failures
+ */
+function checkEmptyStagedModeIsNotSilentlyClean(array &$failures): void
+{
+    $workspace = workspace([], LOCAL_PATTERNS);
+    $repo = $workspace['dir'] . '/repo';
+    $home = $workspace['home'];
+
+    mkdir($repo, 0777, true);
+    execute(['git', 'init', '--quiet'], $repo, $home);
+    copy(ROOT . '/.check-leaks.yaml', $repo . '/.check-leaks.yaml');
+
+    [$code, $out, $err] = execute([binary(), '--staged'], $repo, $home);
+
+    assertSame(
+        true,
+        $code !== 0 && $code !== 1,
+        sprintf('an empty stage is neither a clean result nor a finding (got %d, output: %s)', $code, oneLine($out . $err)),
+        $failures
+    );
+    assertContains('nothing', $out . $err, 'the message says nothing was staged', $failures);
+    assertContains('--all', $out . $err, 'the message names a mode that scans something', $failures);
+}
+
+/**
+ * A stage that holds a file without a finding still has to report 0 - only an
+ * empty stage is the new, distinct case.
+ *
+ * @param list<string> $failures
+ */
+function checkStagedModeWithACleanFileIsClean(array &$failures): void
+{
+    $workspace = workspace([], LOCAL_PATTERNS);
+    $repo = $workspace['dir'] . '/repo';
+    $home = $workspace['home'];
+
+    mkdir($repo, 0777, true);
+    execute(['git', 'init', '--quiet'], $repo, $home);
+    copy(ROOT . '/.check-leaks.yaml', $repo . '/.check-leaks.yaml');
+    mkdir($repo . '/src/Core', 0777, true);
+    file_put_contents($repo . '/src/Core/Clean.php', "<?php\n");
+    execute(['git', 'add', 'src/Core/Clean.php'], $repo, $home);
+
+    [$code, $out, $err] = execute([binary(), '--staged'], $repo, $home);
+
+    assertSame(0, $code, sprintf('a clean staged file is still a clean run (output: %s)', oneLine($out . $err)), $failures);
+}
+
+/**
+ * The hook must keep working for the two shapes this project actually
+ * commits with: an explicit pathspec, which never touches the ordinary index,
+ * and `--allow-empty`, which stages nothing at all on purpose. Neither may be
+ * blocked by the fix above - a hook that refuses a legitimate empty commit is
+ * not a safer hook, only a more annoying one.
+ *
+ * @param list<string> $failures
+ */
+function checkHookAllowsPathspecCommitsAndAllowEmpty(array &$failures): void
+{
+    $workspace = workspace([], LOCAL_PATTERNS);
+    $repo = $workspace['dir'] . '/repo';
+    $home = $workspace['home'];
+
+    mkdir($repo, 0777, true);
+    execute(['git', 'init', '--quiet'], $repo, $home);
+    foreach (['bin/check-leaks', '.githooks/pre-commit', '.check-leaks.yaml'] as $file) {
+        @mkdir($repo . '/' . dirname($file), 0777, true);
+        copy(ROOT . '/' . $file, $repo . '/' . $file);
+        chmod($repo . '/' . $file, 0755);
+    }
+    execute(['git', 'config', 'core.hooksPath', '.githooks'], $repo, $home);
+
+    $committer = ['git', '-c', 'user.name=Leak Test', '-c', 'user.email=leak-test@example.com'];
+
+    // A first, ordinary commit so the repository has a HEAD to diff against,
+    // and so both files pathspec commits touch below are already tracked -
+    // `git commit -- <path>` only picks up a change to a path git already
+    // knows, never a brand new untracked file.
+    @mkdir($repo . '/src/Core', 0777, true);
+    file_put_contents($repo . '/src/Core/Tracked.php', "<?php\n");
+    file_put_contents($repo . '/src/Core/Leak.php', "<?php\n// nothing here yet\n");
+    execute(['git', 'add', 'src/Core/Tracked.php', 'src/Core/Leak.php'], $repo, $home);
+    execute([...$committer, 'commit', '-m', 'Initial commit', '--quiet'], $repo, $home);
+    $afterFirst = trim(execute(['git', 'rev-list', '--count', '--all'], $repo, $home)[1]);
+
+    // Pathspec commit of a clean change: never staged with `git add`, so this
+    // is exactly the shape the hook must not block.
+    file_put_contents($repo . '/src/Core/Tracked.php', "<?php\n// clean change\n");
+    [$cleanCode] = execute([...$committer, 'commit', '-m', 'A clean pathspec commit', '--', 'src/Core/Tracked.php'], $repo, $home);
+    $afterClean = trim(execute(['git', 'rev-list', '--count', '--all'], $repo, $home)[1]);
+    assertSame(0, $cleanCode, 'a clean pathspec commit is not blocked', $failures);
+    assertSame((string) ((int) $afterFirst + 1), $afterClean, 'the clean pathspec commit was created', $failures);
+
+    // Pathspec commit of a leak: still never staged with `git add`. The hook
+    // sees it through the temporary index git builds for a pathspec commit.
+    file_put_contents($repo . '/src/Core/Leak.php', file_get_contents(FIXTURES . '/email.sample'));
+    [$leakCode, $leakOut, $leakErr] = execute(
+        [...$committer, 'commit', '-m', 'A leaking pathspec commit', '--', 'src/Core/Leak.php'],
+        $repo,
+        $home
+    );
+    $afterLeak = trim(execute(['git', 'rev-list', '--count', '--all'], $repo, $home)[1]);
+    assertSame(true, $leakCode !== 0, 'a leaking pathspec commit is blocked', $failures);
+    assertSame($afterClean, $afterLeak, 'no commit was created for the leaking pathspec commit', $failures);
+    assertContains('[email]', $leakOut . $leakErr, 'the blocked pathspec commit shows the finding', $failures);
+
+    // Nothing staged at all, on purpose: `--allow-empty` must go through even
+    // though `git diff --cached` is empty, the same condition the fix above
+    // reports on for a plain `--staged` run.
+    [$emptyCode, $emptyOut, $emptyErr] = execute(
+        [...$committer, 'commit', '--allow-empty', '-m', 'An intentionally empty commit'],
+        $repo,
+        $home
+    );
+    $afterEmpty = trim(execute(['git', 'rev-list', '--count', '--all'], $repo, $home)[1]);
+    assertSame(
+        0,
+        $emptyCode,
+        sprintf('--allow-empty is not blocked by the empty-stage guard (output: %s)', oneLine($emptyOut . $emptyErr)),
+        $failures
+    );
+    assertSame((string) ((int) $afterClean + 1), $afterEmpty, 'the intentionally empty commit was created', $failures);
 }
 
 /**

@@ -8,6 +8,7 @@
  *   0  clean (a summary of suppressions, if any, goes to stderr)
  *   1  finding
  *   2  tool error (missing local configuration, missing git, unreadable public configuration)
+ *   3  --staged had nothing staged to scan; stage a change first, or use --all
  *
  * The tool never writes to the working tree. It only reads.
  */
@@ -17,6 +18,7 @@ declare(strict_types=1);
 const EX_OK = 0;
 const EX_FINDING = 1;
 const EX_ERROR = 2;
+const EX_NOTHING_STAGED = 3;
 
 const LOCAL_CONFIG_RELATIVE = 'trilobit/check-leaks.local';
 const PUBLIC_CONFIG_NAME = '.check-leaks.yaml';
@@ -100,6 +102,25 @@ function main(array $args): int
             $localPath,
             'An empty file would let every private pattern through while looking green; fill it in or remove it deliberately.'
         ));
+    }
+
+    // A `--staged` run with nothing staged used to fall straight through to
+    // "no findings" and exit 0 - the same observable result as a run that had
+    // actually scanned something and found it clean. That is a silent
+    // failure: this project commits with an explicit pathspec
+    // (`git commit -- <paths>`), which never touches the ordinary index, so a
+    // manual `bin/check-leaks` run between such commits always had nothing
+    // staged and always looked clean, whether or not it read a single line.
+    // The pre-commit hook itself is unaffected - see .githooks/pre-commit for
+    // why an empty stage there is not this same case.
+    if ($mode === 'staged') {
+        $stagedNames = runGit(['diff', '--cached', '--name-only']);
+        if ($stagedNames === null) {
+            return toolError('git failed: git diff --cached --name-only');
+        }
+        if (trim($stagedNames) === '') {
+            return nothingStaged();
+        }
     }
 
     try {
@@ -253,7 +274,7 @@ function usage(): void
       --history           scan every commit of every branch, including messages
       --files <path>...   scan the given files as if they were entirely new
 
-    Exit codes: 0 clean, 1 finding, 2 tool error.
+    Exit codes: 0 clean, 1 finding, 2 tool error, 3 nothing staged (only for --staged).
     TXT;
     echo "\n";
 }
@@ -263,6 +284,16 @@ function toolError(string $message): int
     fwrite(STDERR, 'check-leaks: ' . $message . "\n");
 
     return EX_ERROR;
+}
+
+function nothingStaged(): int
+{
+    fwrite(STDERR, "check-leaks: nothing is staged, so nothing was scanned.\n");
+    fwrite(STDERR, "Stage the change first (git add <path>, or a pathspec commit stages it "
+        . "for the pre-commit hook on its own), or run bin/check-leaks --all to scan "
+        . "everything that could end up in a commit.\n");
+
+    return EX_NOTHING_STAGED;
 }
 
 function missingLocalConfigMessage(string $path): string
