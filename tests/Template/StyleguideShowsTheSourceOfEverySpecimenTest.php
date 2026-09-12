@@ -6,7 +6,6 @@ namespace Trilobit\Tests\Template;
 
 use Dom\Element;
 use Dom\HTMLDocument;
-use Dom\HTMLElement;
 use Nette\Utils\FileSystem;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -21,8 +20,15 @@ use Trilobit\Core\Routing\StyleguideRoutes;
  * specimen's, not a copy somebody typed beside it.
  *
  * The two are held to where they come from rather than merely looked for. The
- * HTML is read back as HTML and has to be the same markup as the specimen
- * drawn above it, whitespace aside. The Latte has to be found in the file that
+ * HTML is read back as HTML and has to be the same page as the specimen drawn
+ * above it - the same tree, compared by MarkupTree, which lets through only
+ * whitespace a browser draws nothing for. It is a tree and not the text
+ * because the HTML is laid out afresh before it is shown (Trilobit\Core\
+ * Presentation\Styleguide\HtmlSource), so its text is not the specimen's; and
+ * it is not the text with every run of whitespace between two tags taken out,
+ * as it once was, because that let through the one thing a layout must not do:
+ * glue two inline elements together, or push a word inside one away from its
+ * tag. The Latte has to be found in the file that
  * draws the page, line after line, indentation aside. A second copy kept by
  * hand would pass both on the day it was written and fail the day the specimen
  * changed and the copy did not - which is the day this is for.
@@ -83,6 +89,18 @@ final class StyleguideShowsTheSourceOfEverySpecimenTest extends TestCase
         );
     }
 
+    /**
+     * A space between two inline elements is drawn, so HTML that lost it is
+     * not the specimen - even though only whitespace between two tags went.
+     */
+    public function testTheRuleReportsHtmlThatLostASpaceBetweenInlineElements(): void
+    {
+        self::assertSame(
+            ['plain: the HTML under it is not the specimen above it'],
+            $this->problemsOn($this->page($this->specimen('<a href="#a">one</a> <a href="#b">two</a>', '<a href="#a">one</a><a href="#b">two</a>', '<b>x</b>')), '<b>x</b>'),
+        );
+    }
+
     /** Indentation is where the specimen sits in the file, not part of it, and counts for nothing either way. */
     public function testTheRuleLeavesSourceThatOnlyDiffersInIndentation(): void
     {
@@ -109,7 +127,7 @@ final class StyleguideShowsTheSourceOfEverySpecimenTest extends TestCase
 
             if (!$html instanceof Element) {
                 $problems[] = $variant . ': no HTML source under it';
-            } elseif (!$stage instanceof Element || $this->markup($stage->innerHTML) !== $this->markup($html->textContent ?? '')) {
+            } elseif (!$stage instanceof Element || MarkupTree::of($stage->innerHTML) !== MarkupTree::of($html->textContent ?? '')) {
                 $problems[] = $variant . ': the HTML under it is not the specimen above it';
             }
 
@@ -138,14 +156,6 @@ final class StyleguideShowsTheSourceOfEverySpecimenTest extends TestCase
         }
 
         return null;
-    }
-
-    /** HTML as a parser reads it, with the whitespace between and around elements taken out. */
-    private function markup(string $html): string
-    {
-        $body = HTMLDocument::createFromString('<!DOCTYPE html><html><body>' . $html . '</body></html>', LIBXML_NOERROR)->body;
-
-        return trim((string) preg_replace(['/>\s+</', '/\s+/'], ['><', ' '], $body instanceof HTMLElement ? $body->innerHTML : ''));
     }
 
     /** Source with every line's indentation taken off, so that where it sits in the file does not count. */
