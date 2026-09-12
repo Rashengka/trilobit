@@ -44,11 +44,14 @@ final class Bootstrap
      *     the ones config/modules.neon declares. A caller passing its own list
      *     gets a different container - the list is part of the cache key - so
      *     that a suite can compile one build per combination without them
-     *     overwriting each other.
+     *     overwriting each other. The list also says which checkout it is a
+     *     list of, and that checkout is the one booted - its configuration,
+     *     its environment file and its var/ - as configurationFiles() already
+     *     takes it to be.
      */
     public static function configurator(?ModuleList $modules = null): Configurator
     {
-        $root = self::rootDirectory();
+        $root = $modules?->rootDirectory() ?? self::rootDirectory();
         $modules ??= ModuleList::fromNeon($root . '/config/modules.neon', $root);
         $environment = Environment::load($root . '/.env');
 
