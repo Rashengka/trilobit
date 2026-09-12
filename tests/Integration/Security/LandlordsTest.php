@@ -13,13 +13,22 @@ use Nette\Security\User as SignedIn;
 use Nette\Utils\Random;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
+use Trilobit\Core\Domain\Tenancy\Membership;
+use Trilobit\Core\Domain\Tenancy\Tenant;
+use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Identity;
 use Trilobit\Core\Security\Landlords;
+use Trilobit\Core\Security\Permissions;
+use Trilobit\Core\Security\Privilege;
+use Trilobit\Core\Security\Resource;
+use Trilobit\Core\Tenancy\Tenancy;
+use Trilobit\Core\Tenancy\TenancyRefused;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
+use Trilobit\Tests\Tenants;
 
 /**
  * Whether the person making this request administers the installation, against
@@ -120,6 +129,61 @@ final class LandlordsTest extends TestCase
     }
 
     /**
+     * An account that administers the installation and holds a role in a
+     * business as well is still answered yes - asked inside that very business.
+     *
+     * This is what keeps the answer from being worked out of "belongs to no
+     * business". That reading gives the same answers as the flag for every
+     * other case in this suite - the ordinary account above belongs to none
+     * and is not one, which catches the reading in the opposite direction - and
+     * it is wrong the moment one person is both, which a simple installation is
+     * made of. It would be quiet too: the installation's administrator would
+     * lose their section on the day they were given a shop, and the page they
+     * met would be a refusal that looks like any other.
+     */
+    public function testAnAccountThatAlsoHoldsARoleInABusinessStillAdministersTheInstallation(): void
+    {
+        $this->installation();
+        $business = Tenants::enter($this->container(), 'Ammonite Bikes');
+        $this->alsoAMemberOf($business, 'landlord@example.com');
+
+        $this->signInAs('landlord@example.com');
+
+        self::assertTrue($this->landlords()->isLandlord());
+    }
+
+    /**
+     * And being both gives it no way to be asked about outside a business.
+     *
+     * The account holds a role in one, and is signed in with nothing entered -
+     * the process a command line or a request that has not been settled yet
+     * is. What it may do is still a question with no answer there, however
+     * much the account is: Trilobit\Core\Security\Permissions refuses rather
+     * than answering with the rights it holds in some business or other, and
+     * whether it administers the installation is still answered, because that
+     * question never needed one.
+     *
+     * The membership is written by one build and the question asked of a
+     * second over the same schema, because a process that has entered a
+     * business has no way back out of it - which is the rule, not a gap in it.
+     */
+    public function testBeingBothAnswersNothingAboutPermissionsWithoutABusiness(): void
+    {
+        $this->installation();
+        $this->alsoAMemberOf(Tenants::enter($this->container(), 'Ammonite Bikes'), 'landlord@example.com');
+
+        $this->container()->getByType(SignedIn::class)->logout(true);
+        $this->container = Boot::coreAlone();
+        $this->signInAs('landlord@example.com');
+
+        self::assertFalse($this->container()->getByType(Tenancy::class)->isEntered());
+        self::assertTrue($this->landlords()->isLandlord());
+
+        $this->expectException(TenancyRefused::class);
+        $this->container()->getByType(Permissions::class)->isAllowed(Resource::Administration, Privilege::View);
+    }
+
+    /**
      * The same claim from the other side, and the one a reader can check by
      * looking: the identity put into the session carries no answer to this at
      * all, so there is nothing there for anybody to read instead.
@@ -172,6 +236,22 @@ final class LandlordsTest extends TestCase
             new DateTimeImmutable('2026-09-07T08:00:00+00:00'),
             landlord: $landlord,
         ));
+    }
+
+    /**
+     * A role in $business for the account signing in as $email, given the one
+     * way an account administering the installation can be given one.
+     */
+    private function alsoAMemberOf(Tenant $business, string $email): void
+    {
+        $account = $this->container()->getByType(Accounts::class)->withEmail($email);
+        self::assertInstanceOf(User::class, $account);
+
+        $entityManager = $this->container()->getByType(EntityManagerInterface::class);
+        $role = new Role('owner', 'Owner', ['app:*']);
+        $entityManager->persist($role);
+        $entityManager->persist(Membership::forTheInstallationsAdministrator($business, $account, $role));
+        $entityManager->flush();
     }
 
     private function signInAs(string $email): void

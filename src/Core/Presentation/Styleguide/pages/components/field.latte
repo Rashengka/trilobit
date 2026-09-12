@@ -1,8 +1,9 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
 {*
- * One thing a form asks for, with a line of text and with a control that is
- * not one.
+ * One thing a form asks for, with a line of text, with a control that is not
+ * one, and with the two sentences that may go under a control. The controls
+ * themselves, in every state, are on the pages of the Forms group.
  *
  * The example content is invented and has to stay invented.
  *}
@@ -37,6 +38,28 @@
                                 <option>Silurian</option>
                             </select>
                         {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with a reason and a hint'}
+                {block sgSpecimenStage}
+                    {embed block field, errorId: 'sg-field-drawer-error', hintId: 'sg-field-drawer-hint'}
+                        {block fieldLabel}<label for="sg-field-drawer">Drawer</label>{/block}
+
+                        {block fieldControl}
+                            <input
+                                id="sg-field-drawer"
+                                type="text"
+                                value="Z-99"
+                                aria-invalid="true"
+                                aria-describedby="sg-field-drawer-error sg-field-drawer-hint"
+                            >
+                        {/block}
+
+                        {block fieldError}No drawer in the cabinet is numbered that.{/block}
+
+                        {block fieldHint}As it is written on the front of the drawer.{/block}
                     {/embed}
                 {/block}
             {/embed}

@@ -491,18 +491,28 @@ at `/_styleguide/<group>/<page>`:
 |---|---|
 | Foundations | the colour tokens, the content width, and a page that insists on a width of its own |
 | Content | one for every group of native elements - reboot, typography, code, images, tables, figures |
+| Forms | one for every group of form controls - controls, checks, fieldsets, states |
 | Components | one for every component |
 
 The pages are written down once, in
 `Trilobit\Core\Presentation\Styleguide\StyleguidePages`, and everything else is
 read from that list: a route per page, the menu down the side of every page,
-and `/_styleguide` itself, which is the way into all of them. Content and
+and `/_styleguide` itself, which is the way into all of them. Content, Forms and
 Components are derived from their registers, so a component has a page, a place
 in the menu and a tile on the front page the moment it is registered; what is
 left to write is the file under
 `src/Core/Presentation/Styleguide/pages/` that shows it, and the gates will not
-pass without it. Layout and Forms get a group when there is something to put
-in one.
+pass without it. Layout gets a group when there is something to put in one.
+
+The controls of a form - every kind of input, `select`, `textarea`, checkboxes
+and radio buttons, `label`, `fieldset` and `legend`, and their focused, refused
+and disabled states - are styled by their own names in `assets/base.css` and
+never through whatever is drawn around them, so a control looks the same in
+every arrangement of a form (`tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest`).
+They are catalogued in `Trilobit\Core\Presentation\Form\FormElementRegistry`
+the way the elements of running text are in `ContentGroupRegistry`. The two
+sentences a browser has no element for - why an answer was refused and what a
+field is for - are drawn under the control by `c-field`.
 
 It exists only where `trilobit.styleguide` is on - by default in debug mode, off
 in production, and `config/local.neon` overrides either. Off means none of its
@@ -571,8 +581,8 @@ overview, the section belonging to the installation rather than to any business
 in it, and a menu made of the way back to where this person's administration
 begins and whatever the enabled modules put a section on it.
 
-Make somebody who can sign in. There are two kinds of administrator and the
-command says which it means:
+Make somebody who can sign in. There are two kinds of administrator, one
+account may be both, and the command says which it means:
 
 ```sh
 # administers the installation: no business, no role, no membership
@@ -581,21 +591,34 @@ bin/trilobit app:account you@example.com --name 'Your Name'
 # administers one business: the account, the role, and the membership joining
 # them in the business that answers at that host
 bin/trilobit app:account someone@example.com --tenant localhost --name 'Their Name'
+
+# both: administers the installation and owns the business at that host - the
+# one person of a simple installation running one shop
+bin/trilobit app:account you@example.com --tenant localhost --also-installation --name 'Your Name'
 ```
 
 They are **different scopes rather than different levels**. An account
-administering the installation creates and looks after the businesses and holds
-nothing inside any of them; an account administering a business is its owner
-and holds the whole of the application - `app:*`, every permission this build
-offers and every one a later build adds - in that business and nowhere else.
-The owner is the one role the application defines rather than a business, and
-the command writes it again on every run, so a row under its code saying
-anything else says the whole of the application once more. The two cannot
-be combined: an account that is one is refused the other, and
-`Trilobit\Core\Domain\Tenancy\Membership` will not be constructed for an account
-administering the installation at all, so no screen and no command can arrange
-it by accident. Seeing what a business sees is a job for taking somebody's
-identity for a while, not for belonging to both.
+administering the installation creates and looks after the businesses, and
+that gives it nothing inside any of them; an account administering a business
+is its owner and holds the whole of the application - `app:*`, every permission
+this build offers and every one a later build adds - in that business and
+nowhere else. The owner is the one role the application defines rather than a
+business, and the command writes it again on every run, so a row under its code
+saying anything else says the whole of the application once more.
+
+**One account may be both, and only when that is said.** Without
+`--also-installation` the command refuses to give the installation's
+administrator a role in a business and names the switch, and
+`Trilobit\Core\Domain\Tenancy\Membership` refuses the same thing through its
+constructor and names the one way that takes it -
+`Membership::forTheInstallationsAdministrator()`, which takes nobody else. So
+no screen and no command makes an account both by accident, and every place
+that does it says so by name. Being both changes neither scope: in a business
+the account is asked about as a member of it and nowhere else, and whether it
+administers the installation is still the flag on the account, never worked out
+from belonging to no business. What the switch does not do is make an existing
+member of a business the installation's administrator - that is settled when
+an account is made.
 
 The business is named by a host rather than by an identifier, because a host is
 what a person knows and what `app:tenant` was given. A host nobody has claimed
@@ -841,18 +864,22 @@ The two kinds of administrator are different scopes rather than different
 levels, so they get two addresses and two pages: `/admin` for somebody who
 administers a business, and `/admin/installation` - written in
 `src/Core/Presentation/Installation/` - for somebody who administers the
-installation. Which of them a person lands on
-is decided once, in `Trilobit\Core\Presentation\Admin\Landing`, and it is a
-redirect they can see in the address bar.
+installation. An account that is both - see "The administration" above - is
+admitted to both and offered both in the bar, and begins in the business:
+`/admin`, signing in and the mark in the banner take it to the overview,
+because that is where the everyday work is, and the installation is one entry
+away. Which of them a person lands on is decided once, in
+`Trilobit\Core\Presentation\Admin\Landing`, and it is a redirect they can see in
+the address bar.
 
 The rejected shape was one section that showed different things according to
 who was looking. Both of these pages exist for everybody and say the same thing
 to whoever opens them; a single page drawing one thing for one reader and
 another for another is a difference nobody can point at, and there would be
-nowhere to stand to ask whether it was right. It also has to be lived with in
-the other direction: somebody who administers the installation and types
-`/admin` by hand is refused, on purpose, because the alternative is one address
-meaning two pages.
+nowhere to stand to ask whether it was right. Being both does not make a third,
+mixed section either: it is the same two, each saying to that account what it
+says to everybody else - `tests/Integration/Admin/AdministrationTest` compares
+what each draws for somebody in both with what it draws for somebody in one.
 
 The installation's section asks no permission question of any kind and may not.
 The access list has no meaning outside a business, so such a question would not

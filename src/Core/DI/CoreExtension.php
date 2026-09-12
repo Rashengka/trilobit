@@ -51,6 +51,7 @@ use Trilobit\Core\Presentation\Admin\Landing;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
+use Trilobit\Core\Presentation\Form\FormElementRegistry;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Presentation\Link\Destinations;
@@ -396,6 +397,11 @@ final class CoreExtension extends CompilerExtension
         // checked against.
         $builder->addDefinition($this->prefix('contentGroups'))
             ->setFactory(ContentGroupRegistry::class);
+
+        // And the controls of a form, which are native elements too and are
+        // checked the same way, by a register and gates of their own.
+        $builder->addDefinition($this->prefix('formElements'))
+            ->setFactory(FormElementRegistry::class);
 
         // The pages the style guide is split into. In every build, like the
         // two registers it is made of: it is a description, and a description
