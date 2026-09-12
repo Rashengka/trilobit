@@ -1,0 +1,53 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Every menu is drawn closed; its button opens it. Actions, the ways somewhere,
+ * and a menu lined up with the end of its button for the place at the end of a
+ * row where there is no room the other way.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/dropdown.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-dropdown']}
+        {block sgSectionBody}
+            {var $actions = [
+                new Trilobit\Core\Presentation\Component\DropdownItem('Duplicate'),
+                new Trilobit\Core\Presentation\Component\DropdownItem('Move to a drawer'),
+                new Trilobit\Core\Presentation\Component\DropdownItem('Withdraw', separated: true),
+            ]}
+            {var $places = [
+                new Trilobit\Core\Presentation\Component\DropdownItem('Catalogue', '#catalogue'),
+                new Trilobit\Core\Presentation\Component\DropdownItem('Excavations', '#excavations'),
+                new Trilobit\Core\Presentation\Component\DropdownItem('Loans', '#loans'),
+            ]}
+            {var $orders = [
+                new Trilobit\Core\Presentation\Component\DropdownItem('Name'),
+                new Trilobit\Core\Presentation\Component\DropdownItem('Date found'),
+                new Trilobit\Core\Presentation\Component\DropdownItem('Size'),
+            ]}
+
+            {specimen 'default'}
+                {include dropdown, id: 'sg-dropdown-actions', label: 'Actions', items: $actions, testId: 'sample-dropdown'}
+            {/specimen}
+
+            {specimen 'with links'}
+                {include dropdown, id: 'sg-dropdown-places', label: 'Go to', items: $places, testId: 'sample-dropdown-links'}
+            {/specimen}
+
+            {specimen 'lined up with the end'}
+                <div class="flex justify-end">
+                    {include dropdown,
+                        id: 'sg-dropdown-order',
+                        label: 'Sort by',
+                        items: $orders,
+                        align: 'end',
+                        testId: 'sample-dropdown-end'}
+                </div>
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

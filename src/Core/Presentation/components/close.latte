@@ -9,10 +9,14 @@
  *
  * What putting away means is the caller's: c-notice hides itself when it is
  * pressed (assets/notice.ts), and whatever else carries one says what it does.
+ *
+ * @param array<string, string|null> $attributes anything the caller has to hang
+ *     on the button itself, as c-button takes it: an aria- relationship such as
+ *     the aria-describedby of a c-tooltip.
  *}
 
 {import 'icon.latte'}
 
-{define close, string $label = 'Close', ?string $testId = null}
-    <button type="button" class="c-close" aria-label="{$label}" data-testid="{$testId}">{include icon, name: 'close'}</button>
+{define close, string $label = 'Close', ?string $testId = null, array $attributes = []}
+    <button type="button" class="c-close" aria-label="{$label}" data-testid="{$testId}" n:attr="$attributes">{include icon, name: 'close'}</button>
 {/define}

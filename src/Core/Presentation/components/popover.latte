@@ -1,0 +1,43 @@
+{**
+ * c-popover - a button that opens a small panel beside it, with a title and a
+ * sentence: what is worth knowing at this place and not worth a page.
+ *
+ * The panel is a native popover, opened by the button's popovertarget, so none
+ * of its opening and closing is script of this project's: a click outside it or
+ * Escape closes it, the focus goes back to the button, and the browser tells
+ * assistive technology the button is expanded while it is open. It is drawn in
+ * the top layer, without a z-index.
+ *
+ * It is a dialog named by its title - a piece of the page of its own that
+ * somebody opened - so it is announced as what it is about. It comes straight
+ * after the button in the page, which is where a screen reader reading on and
+ * the Tab key both find it.
+ *
+ * It hangs under the button, or over it when asked to, by CSS anchor
+ * positioning, and turns to the other side when there is no room; a browser that
+ * cannot anchor is served by assets/anchor.ts, which reads data-side.
+ *
+ * @param string $id the panel's id, which has to be unique on the page
+ * @param string $side below or above: where the panel hangs when there is room
+ *}
+
+{import 'button.latte'}
+
+{define popover, string $id, string $label, string $title, string $text, string $side = 'below', ?string $testId = null}
+    <div class="c-popover" style="anchor-name: --{$id}" data-testid="{$testId}">
+        {include button, label: $label, variant: 'quiet', attributes: ['popovertarget' => $id]}
+
+        <div
+            id="{$id}"
+            class="c-popover__panel"
+            popover
+            role="dialog"
+            aria-labelledby="{$id}-title"
+            data-side="{$side === 'above' ? 'above' : 'below'}"
+            style="position-anchor: --{$id}"
+        >
+            <p id="{$id}-title" class="c-popover__title">{$title}</p>
+            <p class="c-popover__text">{$text}</p>
+        </div>
+    </div>
+{/define}

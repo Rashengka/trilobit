@@ -4,10 +4,13 @@
  */
 import naja from 'naja';
 
+import { placeWhereTheBrowserCannotAnchor } from './anchor';
 import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
 import { comboboxesInSnippets, enhanceWithin } from './combobox';
+import { keepTheDropdownsToTheKeyboard } from './dropdown';
 import { unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
+import { showTheTooltips } from './tooltip';
 import './segment-suggestion';
 import './app.css';
 
@@ -139,3 +142,10 @@ enhanceWithin(document);
 // a snippet could bring in unprepared or take away with something left on it.
 // See assets/notice.ts.
 dismissTheNotices();
+
+// The same holds for the three popovers: each listens on the document and
+// prepares nothing. See assets/dropdown.ts, assets/tooltip.ts and
+// assets/anchor.ts.
+keepTheDropdownsToTheKeyboard();
+showTheTooltips();
+placeWhereTheBrowserCannotAnchor();

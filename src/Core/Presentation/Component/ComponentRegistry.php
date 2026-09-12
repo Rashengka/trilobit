@@ -118,6 +118,24 @@ final class ComponentRegistry
                 ['default'],
             ),
             new Component(
+                'c-dropdown',
+                'A button that opens a short menu of actions or of places to go, drawn over the page and moved '
+                . 'through with the arrow keys. Navigation is c-nav, and a panel of who somebody is is c-user-menu.',
+                ['default', 'with links', 'lined up with the end'],
+            ),
+            new Component(
+                'c-popover',
+                'A button that opens a small panel beside it, with a title and a sentence: what is worth knowing '
+                . 'at this place and not worth a page.',
+                ['default', 'above'],
+            ),
+            new Component(
+                'c-tooltip',
+                'A short description of an element, shown while the pointer rests on it or the focus is on it. '
+                . 'It describes the element and never names it.',
+                ['default', 'on a button drawn as an icon', 'below'],
+            ),
+            new Component(
                 'c-badge',
                 'A short label attached to something else: a state, a count, a name.',
                 ['plain', 'accent'],
