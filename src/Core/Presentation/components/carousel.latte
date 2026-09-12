@@ -1,0 +1,58 @@
+{**
+ * c-carousel - a strip of slides seen one at a time.
+ *
+ * The strip is the browser's own scrolling, snapped to a slide at a time
+ * (scroll-snap in assets/base.css), so it turns with no script at all: by
+ * swiping, by the scroll wheel, and by the arrow keys once the strip has the
+ * focus, which is why it is a stop for the keyboard. The buttons under it -
+ * back, on, and one indicator for every slide - only scroll that same strip
+ * (assets/carousel.ts), and a browser with no script is not shown them, so
+ * nobody is offered a button that does nothing.
+ *
+ * What a screen reader is told is the APG carousel pattern: the whole is a
+ * region described as a carousel and named by the caller, and every slide is
+ * a group described as a slide and named for its place among the others, so
+ * that "2 of 3" is heard on the way in. Every slide stays in the page, so a
+ * screen reader reads them one after the other like any other content, and
+ * the indicator of the slide in view carries aria-current.
+ *
+ * **It never turns on its own.** Something that moves by itself for longer
+ * than five seconds has to offer a way to pause it (WCAG 2.2.2), and a slide
+ * that moves on while it is being read takes it away from whoever reads
+ * slowly. Nothing a shop, a record or a page shows here needs to move by
+ * itself, so there is nothing to pause and no button for pausing.
+ *
+ * What is on a slide is the caller's, in carouselSlide, with the slide it was
+ * given as $slide.
+ *}
+
+{define carousel, string $label, array $slides, string $id, ?string $testId = null}
+    <section class="c-carousel" aria-roledescription="carousel" aria-label="{$label}" data-testid="{$testId}">
+        <div class="c-carousel__track" id="{$id}" tabindex="0" role="group" aria-label="Slides">
+            <div
+                n:foreach="$slides as $slide"
+                class="c-carousel__slide"
+                id="{$id}-{$iterator->counter}"
+                role="group"
+                aria-roledescription="slide"
+                aria-label="{$iterator->counter} of {count($slides)}"
+            >{block carouselSlide}{/block}</div>
+        </div>
+
+        <div class="c-carousel__controls">
+            <button type="button" class="c-button c-button--quiet c-carousel__previous" aria-controls="{$id}">Previous<span class="u-visually-hidden"> slide</span></button>
+
+            <div class="c-carousel__indicators">
+                <button
+                    n:foreach="$slides as $slide"
+                    type="button"
+                    class="c-carousel__indicator"
+                    aria-controls="{$id}-{$iterator->counter}"
+                    n:attr="aria-current: $iterator->first ? 'true' : null"
+                ><span class="u-visually-hidden">Slide {$iterator->counter}</span></button>
+            </div>
+
+            <button type="button" class="c-button c-button--quiet c-carousel__next" aria-controls="{$id}">Next<span class="u-visually-hidden"> slide</span></button>
+        </div>
+    </section>
+{/define}
