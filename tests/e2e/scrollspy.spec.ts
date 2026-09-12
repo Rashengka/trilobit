@@ -14,9 +14,14 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
  * would draw, a quarter of the way down the whole window. That is the case
  * that tells the two apart.
  *
- * Nothing listens for scrolling: an IntersectionObserver is told when a
- * section crosses the line. The page is loaded with every listener for the
- * scroll event counted, and the count has to stay at nought.
+ * Nothing listens for scrolling on the scrollspy's account: an
+ * IntersectionObserver is told when a section crosses the line. The page is
+ * loaded with every listener for the scroll event counted, and it may have no
+ * more of them than a page of the guide with no scrollspy on it. Compared
+ * rather than held at nought, because what the shared bundle listens for on
+ * every page - c-carousel follows the scrolling of its tracks from the
+ * document - is not the scrollspy's, and counting it would fail the case for
+ * another component's reason.
  */
 
 const themes = ['atrium', 'ledger'] as const;
@@ -153,7 +158,11 @@ test.describe('c-scrollspy', () => {
             await bringTopTo(page, 'Lifting the slab', -20);
             await expect.poll(() => current(spy)).toEqual(['Lifting the slab']);
 
-            expect(await page.evaluate(() => (window as unknown as { scrollListeners: number }).scrollListeners)).toBe(0);
+            const withTheSpy = await page.evaluate(() => (window as unknown as { scrollListeners: number }).scrollListeners);
+            await page.goto('/_styleguide/components/badge');
+            await expect(page.locator('.c-scrollspy')).toHaveCount(0);
+            const without = await page.evaluate(() => (window as unknown as { scrollListeners: number }).scrollListeners);
+            expect(withTheSpy, 'the scrollspy listens for scrolling').toBe(without);
         });
     }
 
