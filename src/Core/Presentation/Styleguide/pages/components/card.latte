@@ -1,7 +1,8 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
 {*
- * A linked tile, with something to look at and without.
+ * A linked tile, with something to look at and without, and with the line at
+ * its foot that says what it costs.
  *
  * The example content is invented and has to stay invented.
  *}
@@ -34,6 +35,24 @@
                         title: 'Brachiopod cast',
                         href: '#',
                         text: 'Plaster, hand finished, one of a numbered run of forty.'}
+                </div>
+            {/specimen}
+
+            {specimen 'with a footer'}
+                <div class="l-grid">
+                    {include card,
+                        title: 'Trilobite cast',
+                        href: '#',
+                        text: 'Resin, three lobes, as long as a thumb.',
+                        media: 'T',
+                        footer: '24.00 EUR · in stock'}
+
+                    {include card,
+                        title: 'Graptolite slate',
+                        href: '#',
+                        text: 'A dark stone with pale saw-teeth running across it, split along the bedding and waxed.',
+                        media: 'G',
+                        footer: '38.00 EUR · two left'}
                 </div>
             {/specimen}
         {/block}

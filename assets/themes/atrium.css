@@ -137,10 +137,24 @@
        their line. */
     --icon-size: 1.125em;
 
+    /* The thickness of a c-progress bar, and the size of a c-spinner standing
+       for a whole region that is loading. The small spinner is --icon-size. */
+    --progress-size: 0.5rem;
+    --spinner-size: 2.25rem;
+
     --shadow-raised: 0 1px 2px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
         0 8px 24px light-dark(oklch(0.24 0.02 255 / 0.07), oklch(0 0 0 / 0.35));
 
     --motion-fast: 120ms ease;
+
+    /* One turn of whatever loops while a page waits: a spinner's turn, a
+       placeholder's pulse, the run of a bar that does not know how far it has
+       got. Nobody who asked for reduced motion sees any of them move. */
+    --motion-loop: 1s;
+
+    /* What a disclosure takes to open or close: long enough to be seen to
+       unfold, the way this theme takes its time. */
+    --motion-unfold: 240ms ease;
 
     /* ---- Layout -------------------------------------------------------- */
 
