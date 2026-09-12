@@ -107,6 +107,18 @@ final class ComponentRegistry
                 ['default', 'with a control that is not a line of text', 'with a reason and a hint'],
             ),
             new Component(
+                'c-combobox',
+                'One answer picked from a list: a select the browser draws a control in front of, with a line '
+                . 'to search the list by once it is long.',
+                [
+                    'searching a long list',
+                    'a short list, without a line to search it by',
+                    'with a reason and a hint',
+                    'disabled',
+                    'redrawn by Naja',
+                ],
+            ),
+            new Component(
                 'c-notice',
                 'One sentence a page has to say to whoever is reading it.',
                 ['info', 'danger'],

@@ -90,7 +90,7 @@ final class OverviewPresenter extends FrontPresenter
         '--layout-z-chrome' => 'the layer whatever stays in view is drawn in, above the content that '
             . 'scrolls under it',
         '--layout-z-menu' => 'the layer the entries a navigation opens as a block over the page are drawn '
-            . 'in, above what stays in view',
+            . 'in, above what stays in view - and the list a combobox opens',
         '--layout-nav-overflow' => 'whether the band the navigation is held in scrolls a menu longer than the '
             . 'window (auto) or lets a block it opens hang out of it (visible)',
         '--layout-chrome-offset' => 'how much of the top of the window the held bands cover, which a jump '
@@ -122,6 +122,18 @@ final class OverviewPresenter extends FrontPresenter
         private readonly StyleguidePages $pages,
     ) {
         parent::__construct();
+    }
+
+    /**
+     * The one snippet of the guide, drawn again: the specimen of c-combobox
+     * that Naja redraws, which is how the guide shows - and
+     * tests/e2e/combobox.spec.ts measures - a combobox surviving its select
+     * being replaced. Asked for by the button beside it, through Naja; a
+     * request that is not Naja's draws the whole page as usual.
+     */
+    public function handleRedrawSpecimen(): void
+    {
+        $this->redrawControl('redrawnSpecimen');
     }
 
     public function renderDefault(): void

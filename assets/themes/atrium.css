@@ -180,6 +180,11 @@
     --layout-card-min: 17rem;
     --layout-card-media-ratio: 16 / 9;
 
+    /* How tall the list a combobox opens grows before it scrolls: about ten
+       choices, which is where a list starts offering a line to search it by
+       (assets/combobox.ts). */
+    --layout-combobox-list-size: 20rem;
+
     /*
      * What stays in view while the page scrolls under it, each band on a
      * switch of its own: `sticky` holds it, `static` lets it scroll away with
@@ -233,7 +238,9 @@
      * The entries a navigation opens as a block over the page are the one
      * thing that opens and cannot be a popover: the same list lies in the page
      * in a theme that unfolds it in place, and a popover is never in the page.
-     * So the block has a layer of its own, above what is held.
+     * So the block has a layer of its own, above what is held. The list a
+     * c-combobox opens is drawn in the same layer, for the same reason: the
+     * library shows and hides it in the page, beside the control.
      */
     --layout-z-chrome: 1;
     --layout-z-menu: 2;

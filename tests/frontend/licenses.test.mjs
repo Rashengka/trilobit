@@ -37,8 +37,11 @@ function write(path, contents) {
     writeFileSync(path, contents);
 }
 
-/** Builds a directory of files described as { relative path: contents } with only the plugin under test. */
-function buildFixture(files) {
+/**
+ * Builds a directory of files described as { relative path: contents } with
+ * only the plugin under test, given $options.
+ */
+function buildFixture(files, options = {}) {
     const root = mkdtempSync(join(tmpdir(), 'trilobit-licenses-fixture-'));
     for (const [path, contents] of Object.entries(files)) {
         write(join(root, path), contents);
@@ -49,7 +52,7 @@ function buildFixture(files) {
         'export default {',
         '    logLevel: "error",',
         '    build: { outDir: "out", rollupOptions: { input: "main.js" } },',
-        '    plugins: [bundledLicenses()],',
+        `    plugins: [bundledLicenses(${JSON.stringify(options)})],`,
         '};',
         '',
     ].join('\n'));
@@ -189,6 +192,86 @@ test('a bundled package without a licence file fails the build and is named', (t
         assert.match(String(error.stderr), /@example\/unlicensed 0\.1\.0 has no licence file/);
         return true;
     });
+});
+
+// Some packages publish no licence file although their licence requires one
+// to travel with the code - @orchidjs/sifter, which tom-select bundles, is one.
+// The text is then supplied by this repository, under the package's name and
+// version: an update has to be looked at again, and a text for a version the
+// build no longer bundles is a claim about nothing, so it fails too.
+test('a bundled package without a licence file is listed with the text supplied for its version', (t) => {
+    const { root, run } = buildFixture({
+        'main.js': "import { quiet } from '@example/unlicensed';\ndocument.title = quiet();\n",
+        'node_modules/@example/unlicensed/package.json': JSON.stringify({ name: '@example/unlicensed', version: '0.1.0', license: 'Apache-2.0', type: 'module', main: 'index.js' }),
+        'node_modules/@example/unlicensed/index.js': "export const quiet = () => 'q';\n",
+        'licenses/@example/unlicensed/0.1.0.txt': 'Copyright (c) Unlicensed Example Authors\r\n\r\nThe text supplied for it.\n',
+    }, { supplied: 'licenses' });
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+
+    run();
+
+    const licenses = readFileSync(join(root, 'out', 'licenses.txt'), 'utf8');
+    const listed = [...licenses.matchAll(/^Package: (.+)$/gm)].map((match) => match[1]);
+
+    assert.deepEqual(listed, ['@example/unlicensed 0.1.0']);
+    assert.ok(licenses.includes('License: Apache-2.0'));
+    assert.ok(licenses.includes('Copyright (c) Unlicensed Example Authors\n\nThe text supplied for it.'));
+});
+
+test('a text supplied for another version does not stand in, and the package is named', (t) => {
+    const { root, run } = buildFixture({
+        'main.js': "import { quiet } from '@example/unlicensed';\ndocument.title = quiet();\n",
+        'node_modules/@example/unlicensed/package.json': JSON.stringify({ name: '@example/unlicensed', version: '0.2.0', license: 'Apache-2.0', type: 'module', main: 'index.js' }),
+        'node_modules/@example/unlicensed/index.js': "export const quiet = () => 'q';\n",
+        'licenses/@example/unlicensed/0.1.0.txt': 'Copyright (c) Unlicensed Example Authors\n',
+    }, { supplied: 'licenses' });
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+
+    assert.throws(run, (error) => {
+        assert.notEqual(error.status, 0);
+        assert.match(String(error.stderr), /@example\/unlicensed 0\.2\.0 has no licence file/);
+        return true;
+    });
+});
+
+test('a supplied text the build does not use fails the build and is named', (t) => {
+    const { root, run } = buildFixture({
+        'main.js': "import { loud } from 'licensed';\ndocument.title = loud();\n",
+        'node_modules/licensed/package.json': JSON.stringify({ name: 'licensed', version: '1.0.0', license: 'MIT', type: 'module', main: 'index.js' }),
+        'node_modules/licensed/LICENSE': 'Copyright (c) Licensed Example Authors\n',
+        'node_modules/licensed/index.js': "export const loud = () => 'l';\n",
+        // It ships its own, so the one supplied for it is never read.
+        'licenses/licensed/1.0.0.txt': 'Copyright (c) Somebody Else\n',
+    }, { supplied: 'licenses' });
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+
+    assert.throws(run, (error) => {
+        assert.notEqual(error.status, 0);
+        assert.match(String(error.stderr), /licensed\/1\.0\.0\.txt is not used/);
+        return true;
+    });
+});
+
+test('the real build lists tom-select, and sifter with the text supplied for it', () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'trilobit-licenses-supplied-'));
+    const modulesFile = join(mkdtempSync(join(tmpdir(), 'trilobit-modules-')), 'modules.json');
+    writeFileSync(modulesFile, JSON.stringify(MODULES));
+
+    execFileSync(VITE_BIN, ['build', '--outDir', outDir], {
+        cwd: ROOT,
+        env: { ...process.env, TRILOBIT_MODULES_FILE: modulesFile },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    const licenses = readFileSync(join(outDir, 'licenses.txt'), 'utf8');
+    const version = (name) => JSON.parse(readFileSync(join(ROOT, 'node_modules', name, 'package.json'), 'utf8')).version;
+
+    assert.ok(licenses.includes(`Package: tom-select ${version('tom-select')}\nLicense: Apache-2.0`), 'tom-select is not listed');
+    assert.ok(licenses.includes(`Package: @orchidjs/sifter ${version('@orchidjs/sifter')}\nLicense: Apache-2.0`), 'sifter is not listed');
+    assert.ok(licenses.includes('Copyright (c) 2013–2020 Brian Reavis & contributors'), "sifter's copyright line is not carried");
+
+    rmSync(outDir, { recursive: true, force: true });
 });
 
 test('a bundled package without a license field fails the build and is named', (t) => {
