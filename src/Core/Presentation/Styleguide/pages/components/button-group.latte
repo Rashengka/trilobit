@@ -1,0 +1,36 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A named group of actions, and a set of choices of which one is on - made of
+ * real radio buttons, so the arrow keys move through it.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/button-group.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-button-group']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {embed block buttonGroup, label: 'Specimen', testId: 'sample-button-group'}
+                    {block buttonGroupBody}
+                        {include button, label: 'Catalogue', variant: 'quiet'}
+                        {include button, label: 'Duplicate', variant: 'quiet'}
+                        {include button, label: 'Withdraw', variant: 'quiet'}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {var $order = new Trilobit\Core\Presentation\Component\Choices(
+                'sample-order',
+                ['name' => 'Name', 'age' => 'Age', 'size' => 'Size'],
+                'age',
+            )}
+
+            {specimen 'as a set of choices'}
+                {include buttonGroup, label: 'Order by', choices: $order, testId: 'sample-choices'}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

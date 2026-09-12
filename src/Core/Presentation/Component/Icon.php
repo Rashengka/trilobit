@@ -28,4 +28,7 @@ enum Icon: string
 
     /** Something that opens underneath whatever carries this. */
     case ChevronDown = 'chevron-down';
+
+    /** Putting something away: the cross c-close is drawn with. */
+    case Close = 'close';
 }
