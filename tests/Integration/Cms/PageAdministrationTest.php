@@ -10,6 +10,7 @@ use Dom\HTMLDocument;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Request;
 use Nette\Application\Response;
+use Nette\Application\Responses\JsonResponse;
 use Nette\Application\Responses\RedirectResponse;
 use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Presenter;
@@ -18,10 +19,12 @@ use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
 use Nette\Utils\Random;
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Cms\Application\Page\Pages;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Content\Categories;
 use Trilobit\Core\Content\PathRegistry;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\User\Role;
@@ -119,7 +122,7 @@ final class PageAdministrationTest extends TestCase
         $this->submit('add', $this->values());
         $page = $this->onlyPage();
 
-        $this->submit('edit', $this->values(['address' => 'who-we-are']), ['id' => (string) $page->id()]);
+        $this->submit('edit', $this->values(['segment' => 'who-we-are']), ['id' => (string) $page->id()]);
 
         self::assertSame('who-we-are', $this->pages()->addressOf($this->onlyPage()));
     }
@@ -130,7 +133,7 @@ final class PageAdministrationTest extends TestCase
      */
     public function testAnAddressTheRegisterRefusesIsShownOnTheForm(): void
     {
-        $response = $this->submit('add', $this->values(['address' => 'admin']));
+        $response = $this->submit('add', $this->values(['segment' => 'admin']));
 
         $error = $this->pageOf($response)->querySelector('[data-testid="cms-page-error"]');
 
@@ -240,6 +243,139 @@ final class PageAdministrationTest extends TestCase
     }
 
     /**
+     * Decision C4: the category is chosen, and only the last part of the
+     * address is written - the form puts the two together.
+     */
+    public function testAPageFiledInACategoryAnswersUnderIt(): void
+    {
+        $guides = $this->categories()->create('Guides', 'guides', null);
+
+        $response = $this->submit('add', $this->values(['category' => $guides->ref->id, 'segment' => 'first-ride']));
+
+        self::assertInstanceOf(RedirectResponse::class, $response, 'the form did not accept the page');
+        self::assertSame('guides/first-ride', $this->pages()->addressOf($this->onlyPage()));
+        self::assertSame('guides', $this->container()->getByType(PathRegistry::class)->find('guides/first-ride')?->parentPath);
+    }
+
+    /** Moving a page into a category from the form leaves its old address answering. */
+    public function testFilingAPageIntoACategoryFromTheFormMovesItThere(): void
+    {
+        $this->submit('add', $this->values());
+        $page = $this->onlyPage();
+        $guides = $this->categories()->create('Guides', 'guides', null);
+
+        $this->submit('edit', $this->values(['category' => $guides->ref->id]), ['id' => (string) $page->id()]);
+
+        self::assertSame('guides/about-us', $this->pages()->addressOf($this->onlyPage()));
+        self::assertSame('guides/about-us', $this->container()->getByType(PathRegistry::class)->find('about-us')?->movedTo);
+    }
+
+    public function testTheCategoriesAreOfferedToChooseFrom(): void
+    {
+        $this->categories()->create('Guides', 'guides', null);
+
+        $document = $this->pageOf($this->submit('add', []));
+
+        $offered = [];
+        foreach ($document->querySelectorAll('select[name="category"] option') as $option) {
+            $offered[] = trim((string) $option->textContent);
+        }
+
+        self::assertContains('Guides (/guides)', $offered);
+    }
+
+    /**
+     * Decision C2: writing the whole address by hand is gone. A slash, a dot
+     * and an extension are each refused with a sentence saying which, and no
+     * page is left behind without an address.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function refusedLastParts(): iterable
+    {
+        yield 'a slash' => ['page-test/slash/test', 'more than one part'];
+        yield 'an extension' => ['fun.html', 'a dot'];
+        yield 'a dot' => ['fun.page', 'a dot'];
+    }
+
+    #[DataProvider('refusedLastParts')]
+    public function testALastPartThatIsNotOneSegmentIsRefusedOnTheForm(string $segment, string $sentence): void
+    {
+        $response = $this->submit('add', $this->values(['segment' => $segment]));
+
+        $error = $this->pageOf($response)->querySelector('[data-testid="cms-page-error"]');
+
+        self::assertNotNull($error, 'the form said nothing about the address having been refused');
+        self::assertStringContainsString($sentence, (string) $error->textContent);
+        self::assertSame([], $this->pages()->all(), 'a page with no address was left behind');
+    }
+
+    /** The suggestion is the register's, so it knows what is taken in the category chosen. */
+    public function testTheFormSuggestsTheLastPartFromTheTitle(): void
+    {
+        $guides = $this->categories()->create('Guides', 'guides', null);
+        $this->pages()->create('First ride', 'first-ride', $guides->ref->id);
+
+        self::assertSame(
+            ['segment' => 'first-ride-2', 'message' => ''],
+            $this->suggestion('add', ['title' => 'First ride', 'category' => $guides->ref->id]),
+        );
+        self::assertSame(
+            ['segment' => 'first-ride', 'message' => ''],
+            $this->suggestion('add', ['title' => 'First ride', 'category' => '']),
+        );
+    }
+
+    public function testASuggestionForThePageBeingEditedLeavesItItsOwnAddress(): void
+    {
+        $this->submit('add', $this->values());
+        $page = $this->onlyPage();
+
+        self::assertSame(
+            ['segment' => 'about-us', 'message' => ''],
+            $this->suggestion('edit', ['title' => 'About us', 'category' => ''], ['id' => (string) $page->id()]),
+        );
+    }
+
+    /** An empty title is answered with a sentence, rather than with an empty field and nothing said. */
+    public function testASuggestionWithNothingToGoOnSaysSo(): void
+    {
+        $payload = $this->suggestion('add', ['title' => '', 'category' => '']);
+
+        self::assertSame('', $payload['segment'] ?? null);
+        self::assertNotSame('', $payload['message'] ?? '');
+    }
+
+    /**
+     * An address typed out in full before categories existed has no category
+     * and last part to show. Saving the form without touching either must not
+     * move the page quietly; the form says what it is instead, and the page
+     * moves only once somebody changes where it is filed.
+     */
+    public function testAnAddressTypedOutBeforeCategoriesStaysUntilSomebodyMovesIt(): void
+    {
+        $this->submit('add', $this->values());
+        $page = $this->onlyPage();
+        $ref = $page->ref();
+        self::assertNotNull($ref);
+        $registry = $this->container()->getByType(PathRegistry::class);
+        $registry->forget('about-us');
+        $registry->register($ref, 'typed/out/about-us', 'About us');
+        $id = ['id' => (string) $page->id()];
+
+        $notice = $this->pageOf($this->submit('edit', [], $id))->querySelector('[data-testid="cms-page-legacy-address"]');
+        self::assertNotNull($notice, 'the form did not say the address was typed out by hand');
+        self::assertStringContainsString('/typed/out/about-us', (string) $notice->textContent);
+
+        $this->submit('edit', $this->values(['title' => 'About us, again']), $id);
+        self::assertSame('typed/out/about-us', $this->pages()->addressOf($this->onlyPage()));
+
+        $this->submit('edit', $this->values(['segment' => 'about']), $id);
+        self::assertSame('about', $this->pages()->addressOf($this->onlyPage()));
+        self::assertSame('about', $registry->find('typed/out/about-us')?->movedTo);
+    }
+
+    /**
      * @param array<string, string> $overrides
      *
      * @return array<string, string>
@@ -248,7 +384,8 @@ final class PageAdministrationTest extends TestCase
     {
         return [
             'title' => 'About us',
-            'address' => 'about-us',
+            'category' => '',
+            'segment' => 'about-us',
             'perex' => 'Who we are.',
             'content' => 'We make bicycles.',
             'seoTitle' => '',
@@ -276,6 +413,36 @@ final class PageAdministrationTest extends TestCase
             ['action' => $action, ...($post === [] ? [] : ['do' => self::SUBMIT]), ...$parameters],
             $post,
         ));
+    }
+
+    /**
+     * @param array<string, string> $query
+     * @param array<string, string> $parameters
+     *
+     * @return array<mixed>
+     */
+    private function suggestion(string $action, array $query, array $parameters = []): array
+    {
+        $presenter = $this->container()->getByType(IPresenterFactory::class)->createPresenter(self::PRESENTER);
+        self::assertInstanceOf(Presenter::class, $presenter);
+        $presenter->autoCanonicalize = false;
+
+        $response = $presenter->run(new Request(
+            self::PRESENTER,
+            'GET',
+            ['action' => $action, 'do' => 'suggestSegment', ...$query, ...$parameters],
+        ));
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $payload = $response->getPayload();
+        self::assertIsArray($payload);
+
+        return $payload;
+    }
+
+    private function categories(): Categories
+    {
+        return $this->container()->getByType(Categories::class);
     }
 
     private function pageOf(Response $response): HTMLDocument

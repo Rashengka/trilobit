@@ -9,8 +9,10 @@ use LogicException;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Cms\Domain\Page\PageRepository;
 use Trilobit\Core\Content\Address;
+use Trilobit\Core\Content\Categories;
 use Trilobit\Core\Content\PathRefused;
 use Trilobit\Core\Content\PathRegistry;
+use Trilobit\Core\Content\Placement;
 use Trilobit\Core\Contract\Content\ContentRef;
 use Trilobit\Core\Tenancy\Tenancy;
 
@@ -25,18 +27,24 @@ use Trilobit\Core\Tenancy\Tenancy;
  * presenter calling the repository and the register in turn would be the same
  * knowledge written out again in every place a page can be edited from.
  *
+ * **Where a page answers is given as a category and a last part**, never as a
+ * whole address (.ai/plans/11-cms-po-prvnim-proklikani.md, C2 and C4). A
+ * deeper address typed by hand is a row whose parents do not exist, so the
+ * part above the last one is always a category somebody chose, and Core puts
+ * the two together - see Trilobit\Core\Content\PathRegistry::addressUnder().
+ *
  * Every refusal comes back as Trilobit\Core\Content\PathRefused with a
  * sentence for whoever is typing - the address is taken, it begins with
- * something reserved, it is spelled in a way addresses are not stored in - and
- * nothing is left behind when one happens: a page whose address was refused is
- * removed again, because a page nothing can reach is not a draft, it is
- * litter.
+ * something reserved, the last part holds a slash or a dot - and nothing is
+ * left behind when one happens: a page whose address was refused is removed
+ * again, because a page nothing can reach is not a draft, it is litter.
  */
 final readonly class Pages
 {
     public function __construct(
         private PageRepository $pages,
         private PathRegistry $addresses,
+        private Categories $categories,
         private Tenancy $tenancy,
     ) {}
 
@@ -58,18 +66,36 @@ final readonly class Pages
     }
 
     /**
-     * A new page at $address, in draft.
+     * Where $page answers, as the category it is filed under and its last
+     * part - or null for an address typed out whole before categories
+     * existed, which no category and last part can say.
+     */
+    public function placementOf(Page $page): ?Placement
+    {
+        $address = $this->addressOf($page);
+
+        return $address === null ? new Placement(null, '') : $this->categories->placementOf($address);
+    }
+
+    /**
+     * A new page at $segment, filed under the category $category or at the
+     * root of the site, in draft.
      *
      * The address is claimed straight away, before anybody may see the page,
      * so that writing a page and holding on to where it will live are one act.
+     * It is worked out before the page is saved, so that a last part refused
+     * for its shape leaves nothing behind at all.
      */
-    public function create(string $title, string $address): Page
+    public function create(string $title, string $segment, ?string $category = null): Page
     {
+        $parentPath = $this->categories->pathOf($category);
+        $address = $this->addresses->addressUnder($parentPath, $segment);
+
         $page = new Page($this->tenancy->tenant(), $title, $this->now());
         $this->pages->save($page);
 
         try {
-            $this->addresses->register($this->refOf($page), $address, $title);
+            $this->addresses->register($this->refOf($page), $address, $title, $parentPath);
         } catch (PathRefused $refused) {
             $this->pages->remove($page);
 
@@ -94,24 +120,37 @@ final readonly class Pages
     }
 
     /**
-     * Moves the page to $address, leaving the old one behind as a permanent
-     * redirect - which is the register's doing and the reason a page is not
-     * free to change where it lives without saying so.
+     * Moves the page to $segment under the category $category, leaving the
+     * old address behind as a permanent redirect - which is the register's
+     * doing, and the very call a category is renamed with.
      */
-    public function moveTo(Page $page, string $address): void
+    public function moveTo(Page $page, string $segment, ?string $category = null): void
     {
+        $parentPath = $this->categories->pathOf($category);
+        $address = $this->addresses->addressUnder($parentPath, $segment);
+
         $standing = $this->addressOf($page);
         if ($standing === $address) {
             return;
         }
 
         if ($standing === null) {
-            $this->addresses->register($this->refOf($page), $address, $page->title());
+            $this->addresses->register($this->refOf($page), $address, $page->title(), $parentPath);
 
             return;
         }
 
         $this->addresses->rename($standing, $address);
+    }
+
+    /**
+     * A last part for a page called $title under $category that saving would
+     * accept, or '' when the title holds nothing to make one of. The page
+     * being edited keeps its own address rather than being told it is taken.
+     */
+    public function suggestSegment(string $title, ?string $category, ?Page $page): string
+    {
+        return $this->addresses->suggest($title, $this->categories->pathOf($category), $page?->ref());
     }
 
     public function publish(Page $page): void

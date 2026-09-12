@@ -10,7 +10,10 @@ use Nette\Http\IResponse;
 use Trilobit\Cms\Application\Page\Pages;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Cms\Domain\Page\PageStatus;
+use Trilobit\Core\Content\Categories;
 use Trilobit\Core\Content\PathRefused;
+use Trilobit\Core\Content\Placement;
+use Trilobit\Core\Content\PublicPath;
 use Trilobit\Core\Presentation\Admin\AdminPresenter;
 use Trilobit\Core\Security\Needs;
 use Trilobit\Core\Security\Privilege;
@@ -19,12 +22,25 @@ use Trilobit\Core\Security\Resource;
 /**
  * Writing pages: the list of them, and the form one is written in.
  *
- * **Where a page answers is a field of this form.** It has to be, because it
+ * **Where a page answers is two fields of this form.** It has to be, because it
  * is not a field of the page: the address lives in Core's register, which is
- * the one table an address is unique in across every module (decision R2). So
- * the register is what refuses one - taken, reserved, spelled in a way
- * addresses are not stored in - and every refusal arrives here as a sentence
- * and is shown on the form rather than as a stack trace.
+ * the one table an address is unique in across every module (decision R2). The
+ * form asks for the category the page is filed under and the last part of the
+ * address, and never for a whole address (decisions C2 and C4): a deeper
+ * address typed by hand is a row whose parents do not exist. The register
+ * puts the two together and refuses what it will not hold - taken, reserved,
+ * a slash or a dot in the last part - and every refusal arrives here as a
+ * sentence shown on the form rather than as a stack trace.
+ *
+ * **The last part can be asked for.** handleSuggestSegment() hands the title to
+ * the register and returns what saving would accept; the browser only carries
+ * the question, so the rules exist once.
+ *
+ * **An address is only moved when somebody moved it.** A page saved with the
+ * category and last part the form offered stays where it is - which matters
+ * for an address typed out whole before categories existed: the form cannot
+ * offer it as a category and a last part, says so, and leaves it alone until
+ * one of the two is changed.
  *
  * **Publishing is a field too, and not a button of its own.** An editor
  * changing a page and publishing it is one act with one outcome; two buttons
@@ -40,7 +56,7 @@ use Trilobit\Core\Security\Resource;
  * pair is not decoration beside them: a submitted form arrives through
  * processSignal(), which asks nothing of any method, so the floor and the
  * action of the same request are the two things standing in front of every
- * form on this page.
+ * form on this page - and in front of the suggestion, which is a signal too.
  *
  * **Deleting is asked about in the handler**, because it is not a view. It is
  * a second button on the form of a page somebody may already edit, and an
@@ -58,6 +74,7 @@ final class PagePresenter extends AdminPresenter
 
     public function __construct(
         private readonly Pages $pages,
+        private readonly Categories $categories,
     ) {
         parent::__construct();
     }
@@ -78,15 +95,39 @@ final class PagePresenter extends AdminPresenter
         }
 
         $this->edited = $page;
+        $offered = $this->offeredPlacement($page);
         $this->form()->setDefaults([
             'title' => $page->title(),
-            'address' => $this->pages->addressOf($page) ?? '',
+            'category' => $offered->category,
+            'segment' => $offered->segment,
             'perex' => $page->perex(),
             'content' => $page->content(),
             'seoTitle' => $page->seoTitle() === $page->title() ? '' : $page->seoTitle(),
             'seoDescription' => $page->seoDescription(),
             'status' => $page->status()->value,
         ]);
+    }
+
+    /**
+     * The last part of an address made of $title under $category, as the
+     * register would accept it, answered as JSON for the form's button.
+     *
+     * Whatever cannot be answered comes back as a sentence beside an empty
+     * suggestion, so that pressing the button is never met with nothing.
+     */
+    public function handleSuggestSegment(string $title = '', string $category = ''): void
+    {
+        try {
+            $segment = $this->pages->suggestSegment($title, $category === '' ? null : $category, $this->edited);
+            $message = $segment === ''
+                ? 'There is nothing in the title to make the last part of an address from; write it by hand.'
+                : '';
+        } catch (PathRefused $refused) {
+            $segment = '';
+            $message = $refused->getMessage();
+        }
+
+        $this->sendJson(['segment' => $segment, 'message' => $message]);
     }
 
     public function renderDefault(): void
@@ -112,10 +153,14 @@ final class PagePresenter extends AdminPresenter
             ? 'A page starts as a draft, and the address it will answer at is held for it from the moment it is saved.'
             : 'What this page says, where it answers, and whether a visitor may see it.';
         $template->listUrl = $this->link('default');
+        $template->suggestUrl = $this->link('suggestSegment!');
         $template->address = $page instanceof Page ? ($this->pages->addressOf($page) ?? '') : '';
         $template->publicUrl = $template->address === ''
             ? ''
             : $this->getHttpRequest()->getUrl()->getBasePath() . $template->address;
+        $template->typedAddress = $page instanceof Page && $template->address !== '' && !$this->pages->placementOf($page) instanceof Placement
+            ? '/' . $template->address
+            : '';
         $template->errors = array_map(strval(...), $this->form()->getOwnErrors());
     }
 
@@ -135,8 +180,10 @@ final class PagePresenter extends AdminPresenter
         $form->addText('title', 'Title')
             ->setRequired('A page needs a title.')
             ->setMaxLength(Page::MAX_TITLE_LENGTH);
-        $form->addText('address', 'Address')
-            ->setRequired('A page needs an address to answer at.');
+        $form->addSelect('category', 'Category', $this->categoryChoices())
+            ->setPrompt('--- none, at the root of the site');
+        $form->addText('segment', 'Last part of the address')
+            ->setRequired('A page needs the last part of the address it answers at.');
         $form->addTextArea('perex', 'Lead');
         $form->addTextArea('content', 'Body');
         $form->addText('seoTitle', 'Title for search engines')
@@ -168,14 +215,15 @@ final class PagePresenter extends AdminPresenter
         $values = $form->getValues('array');
 
         $title = $this->text($values, 'title');
-        $address = $this->text($values, 'address');
+        $category = $this->choice($values, 'category');
+        $segment = $this->text($values, 'segment');
 
         try {
             $page = $this->edited;
-            if ($page instanceof Page) {
-                $this->pages->moveTo($page, $address);
-            } else {
-                $page = $this->pages->create($title, $address);
+            if (!$page instanceof Page) {
+                $page = $this->pages->create($title, $segment, $category);
+            } elseif (!$this->isWhereItWasOffered($page, $category, $segment)) {
+                $this->pages->moveTo($page, $segment, $category);
             }
 
             $this->pages->revise(
@@ -224,6 +272,50 @@ final class PagePresenter extends AdminPresenter
 
         $this->pages->delete($page);
         $this->redirect('default');
+    }
+
+    /**
+     * The category and last part the form offers for $page - where it is, or,
+     * for an address typed out whole before categories existed, no category
+     * and the last segment of it.
+     *
+     * Saving compares what was submitted against this and moves the page only
+     * when the two differ, so that an address the form cannot say is never
+     * rewritten by somebody who only changed the title.
+     */
+    private function offeredPlacement(Page $page): Placement
+    {
+        $placement = $this->pages->placementOf($page);
+        if ($placement instanceof Placement) {
+            return $placement;
+        }
+
+        $segments = PublicPath::segments($this->pages->addressOf($page) ?? '');
+
+        return new Placement(null, (string) end($segments));
+    }
+
+    private function isWhereItWasOffered(Page $page, ?string $category, string $segment): bool
+    {
+        $offered = $this->offeredPlacement($page);
+
+        return $offered->category === $category && $offered->segment === $segment;
+    }
+
+    /**
+     * Every category a page may be filed under, by its identifier, named with
+     * its address so that two categories called the same are told apart.
+     *
+     * @return array<string, string>
+     */
+    private function categoryChoices(): array
+    {
+        $choices = [];
+        foreach ($this->categories->all() as $category) {
+            $choices[$category->ref->id] = $category->label . ' (/' . $category->path . ')';
+        }
+
+        return $choices;
     }
 
     /** @return list<PageSummary> */
@@ -297,5 +389,20 @@ final class PagePresenter extends AdminPresenter
         $value = $values[$field] ?? '';
 
         return is_string($value) ? trim($value) : '';
+    }
+
+    /**
+     * What was chosen in a select with a prompt, or null for the prompt.
+     *
+     * An identifier made of digits alone comes back from the array the choices
+     * are kept in as a number, so it is turned back into the string it is.
+     *
+     * @param array<string, mixed> $values
+     */
+    private function choice(array $values, string $field): ?string
+    {
+        $value = $values[$field] ?? null;
+
+        return is_string($value) || is_int($value) ? (string) $value : null;
     }
 }

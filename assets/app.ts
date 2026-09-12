@@ -6,6 +6,7 @@ import naja from 'naja';
 
 import { keepJumpsClearOfTheChrome } from './chrome';
 import { unfoldTheNavigation } from './nav';
+import './segment-suggestion';
 import './app.css';
 
 /**
