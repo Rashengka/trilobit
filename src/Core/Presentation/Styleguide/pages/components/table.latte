@@ -68,6 +68,88 @@
                     {/embed}
                 {/block}
             {/embed}
+
+            {*
+             * A rule between columns, drawn only where one column meets the
+             * next - never on the outer edge, which is what .c-table--framed
+             * is for below.
+             *}
+            {embed block sgSpecimen, variant: 'with column rules'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Where each drawer is kept', columnRules: true}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Drawer</th>
+                                <th scope="col">Room</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Head shields</th>
+                                <td>The one with the window</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shields</th>
+                                <td>The one without</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {* The outer border, and nothing between the columns. *}
+            {embed block sgSpecimen, variant: 'framed'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Where each drawer is kept', framed: true}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Drawer</th>
+                                <th scope="col">Room</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Head shields</th>
+                                <td>The one with the window</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shields</th>
+                                <td>The one without</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {* The two modifiers combined: an outer border and a rule between every pair of columns. *}
+            {embed block sgSpecimen, variant: 'framed with column rules'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Where each drawer is kept', framed: true, columnRules: true}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Drawer</th>
+                                <th scope="col">Room</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Head shields</th>
+                                <td>The one with the window</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shields</th>
+                                <td>The one without</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
         {/block}
     {/embed}
 {/block}
