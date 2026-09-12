@@ -167,6 +167,28 @@ function enhance(select: Drawn): void {
         }
     }
 
+    // With a line to search by, the element with the focus is that line, and
+    // it is empty until somebody types: a screen reader would say the label
+    // and no answer, where a native select says the answer chosen. So the
+    // answer is named with the label, and named again whenever it changes.
+    // Without the line the control holds the answer and says it as its
+    // value; naming it too would read it out twice.
+    if (searchable) {
+        const label = focus.getAttribute('aria-labelledby');
+        const nameAfterAnswer = (): void => {
+            const item = combobox.control.querySelector<HTMLElement>('.c-combobox__item');
+            if (item !== null) {
+                item.id = `${select.id}-ts-answer`;
+            }
+
+            const names = [label, item?.id].filter((id): id is string => typeof id === 'string' && id !== '');
+            focus.setAttribute('aria-labelledby', names.join(' '));
+        };
+
+        nameAfterAnswer();
+        combobox.on('change', nameAfterAnswer);
+    }
+
     // Hidden by a clip rather than taken out of the page, so that the form
     // still sends it - and a clipped element is still in the accessibility
     // tree, as a second list with no name once its label points at the control

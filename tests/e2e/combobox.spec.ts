@@ -86,7 +86,7 @@ test('a long list is not opened by tabbing into it, and is searched by typing', 
     const problems = problemsOn(page);
     await page.goto(address);
 
-    const genus = page.getByRole('combobox', { name: 'Genus', exact: true });
+    const genus = drawnFor(page, 'sg-combobox-long').getByRole('combobox');
     await genus.focus();
     await expect(genus).toBeFocused();
     await expect(genus).toHaveAttribute('aria-expanded', 'false');
@@ -120,7 +120,7 @@ test('a click opens the list, and a second click closes it and keeps the focus',
     await page.goto(address);
 
     for (const [name, testId] of [['Genus', 'sg-combobox-long'], ['Period', 'sg-combobox-short']] as const) {
-        const control = page.getByRole('combobox', { name, exact: true });
+        const control = drawnFor(page, testId).getByRole('combobox');
         const box = drawnFor(page, testId).locator('.c-combobox__control');
 
         await box.click();
@@ -144,9 +144,33 @@ test('what is typed straight after a click is not lost', async ({ page }) => {
     await drawnFor(page, 'sg-combobox-long').locator('.c-combobox__control').click();
     await page.keyboard.type('trim');
 
-    const genus = page.getByRole('combobox', { name: 'Genus', exact: true });
+    const genus = drawnFor(page, 'sg-combobox-long').getByRole('combobox');
     await expect(genus).toHaveValue('trim');
     await expect(page.getByRole('listbox', { name: 'Genus', exact: true }).getByRole('option')).toHaveCount(1);
+});
+
+/**
+ * A closed control has to say the answer chosen, as a native select does. With
+ * a line to search it by, the element with the focus is that line, and it is
+ * empty until somebody types - so the answer chosen is named with the label.
+ * Without the line the control itself holds the answer, and says it as its
+ * value; naming it again would read it out twice.
+ */
+test('a closed control says the answer chosen, with a line to search it by and without', async ({ page }) => {
+    await page.goto(address);
+
+    const genus = drawnFor(page, 'sg-combobox-long').getByRole('combobox');
+    await expect(genus).toHaveAccessibleName('Genus Phacops');
+
+    await genus.focus();
+    await genus.pressSequentially('trim');
+    await expect(page.getByRole('listbox', { name: 'Genus', exact: true }).getByRole('option')).toHaveCount(1);
+    await genus.press('Enter');
+    await expect(genus).toHaveAttribute('aria-expanded', 'false');
+    await expect(genus).toHaveAccessibleName('Genus Trimerus');
+
+    const period = drawnFor(page, 'sg-combobox-short').getByRole('combobox');
+    await expect(period).toMatchAriaSnapshot('- combobox "Period": Ordovician');
 });
 
 test('every choice of a long list is there to be found, not only the first fifty', async ({ page }) => {
@@ -155,7 +179,7 @@ test('every choice of a long list is there to be found, not only the first fifty
     const written = await page.getByTestId('sg-combobox-long').locator('option').count();
     expect(written, 'the specimen has to be longer than the library would show by default').toBeGreaterThan(50);
 
-    const genus = page.getByRole('combobox', { name: 'Genus', exact: true });
+    const genus = drawnFor(page, 'sg-combobox-long').getByRole('combobox');
     await genus.focus();
     await genus.press('ArrowDown');
 
@@ -165,7 +189,7 @@ test('every choice of a long list is there to be found, not only the first fifty
 test('how many choices match what is typed is said out loud', async ({ page }) => {
     await page.goto(address);
 
-    const genus = page.getByRole('combobox', { name: 'Genus', exact: true });
+    const genus = drawnFor(page, 'sg-combobox-long').getByRole('combobox');
     const status = specimen(page, 'searching a long list').getByRole('status');
     await expect(status).toHaveText('');
 
@@ -192,7 +216,7 @@ test('how many choices match what is typed is said out loud', async ({ page }) =
 test('Home, End, Page Up and Page Down move through the open list', async ({ page }) => {
     await page.goto(address);
 
-    const genus = page.getByRole('combobox', { name: 'Genus', exact: true });
+    const genus = drawnFor(page, 'sg-combobox-long').getByRole('combobox');
     const options = page.getByRole('listbox', { name: 'Genus', exact: true }).getByRole('option');
     const active = async (): Promise<number> => {
         const id = await genus.getAttribute('aria-activedescendant');
@@ -300,6 +324,7 @@ test('a control survives Naja redrawing its select, and history.back() bringing 
 
     await expect(snippet.locator('.c-combobox')).toHaveCount(1);
     await expect(control).toHaveAccessibleDescription(/asks the server for this field again/);
+    await expect(control).toHaveAccessibleName(`${name} Calymene`);
     await control.click();
     await expect(page.getByRole('listbox', { name })).toBeVisible();
     await control.press('Escape');
@@ -309,6 +334,7 @@ test('a control survives Naja redrawing its select, and history.back() bringing 
 
     await expect(snippet.locator('.c-combobox')).toHaveCount(1);
     await expect(control).toHaveCount(1);
+    await expect(control).toHaveAccessibleName(`${name} Calymene`);
     await control.click();
     await expect(page.getByRole('listbox', { name })).toBeVisible();
     await expect(page.getByRole('option', { name: 'Calymene', exact: true })).toBeVisible();
@@ -344,7 +370,7 @@ for (const theme of themes) {
 
             // Focused from the keyboard: the ring is the control's, not the
             // line's inside it.
-            const genus = page.getByRole('combobox', { name: 'Genus', exact: true });
+            const genus = drawnFor(page, 'sg-combobox-long').getByRole('combobox');
             await genus.focus();
             expect(await computed(control, 'outline-style')).toBe('solid');
             await expectFromToken(control, 'outline-color', '--color-focus', `the focused control in ${where}`);
