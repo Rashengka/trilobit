@@ -62,7 +62,7 @@ final class FieldTest extends TestCase
         // Dom\Element has only from PHP 8.5; :scope > * is not a selector the
         // parser supports.
         foreach ($field->childNodes as $child) {
-            if ($child instanceof \Dom\Element) {
+            if ($child instanceof Element) {
                 $order[] = $child->getAttribute('class');
             }
         }
