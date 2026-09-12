@@ -84,6 +84,11 @@
     --color-nav-ink-active: light-dark(oklch(0.99 0.008 85), oklch(0.97 0.01 85));
     --color-nav-marker: light-dark(oklch(0.72 0.14 55), oklch(0.72 0.13 40));
 
+    /* A step lighter than the dark column, so the light ink of the entry under
+       the pointer stays on a dark ground. The page's hover is a light wash,
+       and light ink on it could not be read. */
+    --color-nav-hover: light-dark(oklch(0.38 0.03 60), oklch(0.24 0.014 75));
+
     /* ---- Spacing ------------------------------------------------------ */
 
     --spacing: 0.22rem;
@@ -161,6 +166,24 @@
     --layout-nav-position: sticky;
 
     --layout-z-chrome: 1;
+    --layout-z-menu: 2;
+
+    /*
+     * Ledger unfolds the entries under an entry in place, inside the entry,
+     * each level set in from the one above it and as deep as the tree goes -
+     * the way a ledger's accounts sit under the account they belong to. Nothing
+     * is laid over the page, so the list has no surface or rule of its own, and
+     * a navigation longer than the window scrolls inside its column.
+     */
+    --layout-nav-overflow: auto;
+    --layout-nav-sub-position: static;
+    --layout-nav-sub-column: 100%;
+    --layout-nav-sub-padding: 0 0 0 0.875rem;
+    --layout-nav-sub-indent: 0.875rem;
+    --layout-nav-inner-toggle: inline-flex;
+    --layout-nav-inner-folded: none;
+    --color-nav-panel: transparent;
+    --color-nav-panel-line: transparent;
 }
 
 /*
