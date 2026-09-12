@@ -1,0 +1,76 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The style guide's own furniture: the frames the specimens are drawn in, on
+ * whichever page of the guide they are. Every page imports this file rather
+ * than drawing a frame of its own, so a specimen looks the same and is marked
+ * the same wherever it lives.
+ *
+ * These are not components (the .sg-* classes in assets/base.css): they frame
+ * the specimens and are used nowhere else. They are what makes a page
+ * measurable - every section carries data-styleguide-component or
+ * data-styleguide-content and every specimen carries data-styleguide-variant,
+ * which is what tests/Template/StyleguideShowsEveryComponentTest and its twin
+ * read off every page the router sends to the guide.
+ *}
+
+{define sgSection, Trilobit\Core\Presentation\Component\Component $component}
+    <section class="sg-section l-stack" data-styleguide-component="{$component->name}">
+        <h2 class="sg-section__name">{$component->name}</h2>
+
+        <p class="sg-section__summary">{$component->summary}</p>
+
+        <div class="l-stack">{block sgSectionBody}{/block}</div>
+    </section>
+{/define}
+
+{*
+ * One registered group of native elements. The page it is on is that group's
+ * page, and the frame already draws the group's name and what it is for as the
+ * page's heading, so the section is only the mark the gates read around the
+ * specimens.
+ *}
+{define sgContentSection, Trilobit\Core\Presentation\Content\ContentGroup $group}
+    <section class="sg-section l-stack" data-styleguide-content="{$group->name}">
+        {block sgContentSectionBody}{/block}
+    </section>
+{/define}
+
+{*
+ * Something to look at, for the specimens that need a picture.
+ *
+ * Drawn here rather than loaded, because an image file would be one more thing
+ * to keep beside the page and this one has to follow the ink of whichever theme
+ * is on - which it does by being filled with currentColor. It carries width and
+ * height so that the rule about images having to keep their own shape has
+ * something to keep.
+ *}
+{define sgSpecimenDrawing}
+    <svg
+        width="320"
+        height="180"
+        viewBox="0 0 320 180"
+        role="img"
+        aria-label="An invented specimen: seven segments narrowing from a head shield to a tail."
+    >
+        <rect x="1" y="1" width="318" height="178" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-width="2" />
+
+        <g fill="currentColor" fill-opacity="0.6">
+            <ellipse cx="160" cy="36" rx="60" ry="22" />
+            <ellipse cx="160" cy="66" rx="53" ry="12" />
+            <ellipse cx="160" cy="88" rx="46" ry="11" />
+            <ellipse cx="160" cy="108" rx="39" ry="10" />
+            <ellipse cx="160" cy="126" rx="31" ry="9" />
+            <ellipse cx="160" cy="142" rx="23" ry="8" />
+            <ellipse cx="160" cy="157" rx="14" ry="7" />
+        </g>
+    </svg>
+{/define}
+
+{define sgSpecimen, string $variant, bool $narrow = false}
+    <div class="sg-specimen" data-styleguide-variant="{$variant}">
+        <div n:class="'sg-specimen__stage', $narrow ? 'sg-specimen__stage--narrow'">{block sgSpecimenStage}{/block}</div>
+
+        <p class="sg-specimen__label">{$variant}</p>
+    </div>
+{/define}

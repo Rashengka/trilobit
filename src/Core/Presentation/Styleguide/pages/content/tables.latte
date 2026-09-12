@@ -1,0 +1,126 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Rows and columns, and the frame they scroll inside - including the table
+ * .ai/plans/09-chrome-a-sirka-obsahu.md was written for, which is wider than
+ * the frame at any content width.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/table.latte'}
+{import '../../../components/button.latte'}
+
+{block sgPage}
+    {embed block sgContentSection, group: $contentGroups['tables']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Three invented specimens'}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Specimen</th>
+                                <th scope="col">Period</th>
+                                <th scope="col">Found in</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Segmented disc</th>
+                                <td>Cambrian</td>
+                                <td>A quarry nobody named</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Rolled specimen</th>
+                                <td>Ordovician</td>
+                                <td>A road cutting</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shield</th>
+                                <td>Silurian</td>
+                                <td>A drawer in a museum</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'figures and an actions column'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Specimens, with what may be done to each'}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Specimen</th>
+                                <th scope="col" class="c-table__number">Length</th>
+                                <th scope="col" class="c-table__number">Segments</th>
+                                <th scope="col" class="c-table__actions">
+                                    <span class="u-visually-hidden">What may be done</span>
+                                </th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Segmented disc</th>
+                                <td class="c-table__number">118</td>
+                                <td class="c-table__number">11</td>
+                                <td class="c-table__actions">
+                                    {include button, label: 'Open', href: '#', variant: 'quiet'}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Rolled specimen</th>
+                                <td class="c-table__number">64</td>
+                                <td class="c-table__number">9</td>
+                                <td class="c-table__actions">
+                                    {include button, label: 'Open', href: '#', variant: 'quiet'}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shield</th>
+                                <td class="c-table__number">7</td>
+                                <td class="c-table__number">4</td>
+                                <td class="c-table__actions">
+                                    {include button, label: 'Open', href: '#', variant: 'quiet'}
+                                </td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {*
+             * The case .ai/plans/09-chrome-a-sirka-obsahu.md was written for: a
+             * column for every day of a month, which is wider than the frame at
+             * any content width. It has to scroll here and leave the page alone.
+             *}
+            {embed block sgSpecimen, variant: 'wider than its frame'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Specimens catalogued on each day of the month', testId: 'styleguide-table-wide'}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Month</th>
+
+                                <th n:foreach="$tableColumns as $day" scope="col" class="c-table__number">{$day}</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr n:foreach="$tableRows as $label => $counts">
+                                <th scope="row">{$label}</th>
+
+                                <td n:foreach="$counts as $count" class="c-table__number">{$count}</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

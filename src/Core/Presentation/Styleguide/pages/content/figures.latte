@@ -1,0 +1,28 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Something to look at and the sentence that says what it is, kept together.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    {embed block sgContentSection, group: $contentGroups['figures']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    <figure>
+                        {include sgSpecimenDrawing}
+
+                        <figcaption>
+                            An invented specimen, drawn rather than photographed, so that it costs the
+                            page no request and follows the ink of whichever theme is on.
+                        </figcaption>
+                    </figure>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

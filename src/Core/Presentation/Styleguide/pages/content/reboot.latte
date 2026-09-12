@@ -1,0 +1,76 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * What a browser draws when nobody wrote a component. Like every page of the
+ * Content group it names the rules it stands for in
+ * Trilobit\Core\Presentation\Content\ContentGroupRegistry, and
+ * tests/Template/ContentGroupRegistryTest checks them against assets/base.css:
+ * a paragraph about <mark> would render whether or not anything ever styled
+ * <mark>.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    {embed block sgContentSection, group: $contentGroups['reboot']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'a rule'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        <p>Segments counted from the front of the head shield.</p>
+
+                        <hr>
+
+                        <p>Segments counted from the back of the tail shield.</p>
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'emphasis and small print'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        <p>
+                            A specimen is <strong>complete</strong> when the head, the body and the tail
+                            are all present; anything else is <mark>a fragment</mark>, however good it
+                            looks. Measurements are given in <abbr title="millimetres">mm</abbr>.
+                        </p>
+
+                        <p><small>Every measurement on this page was invented for it.</small></p>
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'a quotation'}
+                {block sgSpecimenStage}
+                    <blockquote>
+                        Three lobes along one axis, which is where the name comes from, and not three
+                        parts from front to back, which is what everybody guesses.
+                    </blockquote>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'a list of terms'}
+                {block sgSpecimenStage}
+                    <dl class="l-stack">
+                        <div>
+                            <dt>Cephalon</dt>
+                            <dd>The head shield, and the part that survives on its own most often.</dd>
+                        </div>
+
+                        <div>
+                            <dt>Thorax</dt>
+                            <dd>The jointed middle, which is what let the animal roll up.</dd>
+                        </div>
+
+                        <div>
+                            <dt>Pygidium</dt>
+                            <dd>The tail shield, fused from segments the thorax never released.</dd>
+                        </div>
+                    </dl>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

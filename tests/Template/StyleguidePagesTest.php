@@ -7,12 +7,15 @@ namespace Trilobit\Tests\Template;
 use Nette\Utils\Finder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
+use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Styleguide\StyleguideGroup;
 use Trilobit\Core\Presentation\Styleguide\StyleguidePage;
 use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
+use Trilobit\Core\Routing\StyleguideRoutes;
 
 /**
  * The list of the style guide's pages and the files that draw them say the
@@ -26,8 +29,10 @@ use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
  * Trilobit\Tests\Template\ComponentRegistryTest holds the components and their
  * directory together.
  *
- * That every registered component and content group is actually shown on some
- * page is a claim about rendered pages, and is made by
+ * What a page says it shows is held to what it draws, and every registered
+ * group of native elements has one page saying it shows it. That every
+ * registered component and content group is actually shown somewhere is still
+ * a claim about rendered pages, made by
  * Trilobit\Tests\Template\StyleguideShowsEveryComponentTest and its twin.
  */
 #[CoversClass(StyleguidePages::class)]
@@ -117,6 +122,52 @@ final class StyleguidePagesTest extends TestCase
         self::assertSame([], array_values(array_diff($page->contentGroups, new ContentGroupRegistry()->names())));
     }
 
+    /**
+     * Every registered group of native elements is one page of the guide, so
+     * that the menu offers it and there is one place to look for it.
+     */
+    #[DataProviderExternal(ContentGroupRegistryTest::class, 'registered')]
+    public function testEveryContentGroupIsListedOnExactlyOnePage(ContentGroup $group): void
+    {
+        $on = array_filter(
+            self::pages()->pages(),
+            static fn(StyleguidePage $page): bool => in_array($group->name, $page->contentGroups, true),
+        );
+
+        self::assertCount(
+            1,
+            $on,
+            sprintf('%s is a registered content group and %d pages of the style guide say they show it', $group->name, count($on)),
+        );
+    }
+
+    /**
+     * What the list says a page shows is what the page draws, and nothing
+     * besides - so the menu cannot send somebody to a page for a component
+     * that is on another one.
+     */
+    public function testEveryPageShowsWhatTheListSaysItDoesAndNothingElse(): void
+    {
+        $everyPage = StyleguideSpecimens::everyPage();
+
+        foreach (StyleguideSpecimens::pages()->pages() as $page) {
+            $path = '/' . StyleguideRoutes::PATH . '/' . $page->path();
+            self::assertArrayHasKey($path, $everyPage, sprintf('%s is listed and was not rendered', $path));
+
+            $drawn = [$path => $everyPage[$path]];
+            self::assertSame(
+                $page->components,
+                array_keys(StyleguideSpecimens::shownIn($drawn, StyleguideSpecimens::COMPONENT)),
+                sprintf('the components %s draws are not the ones the list says it shows', $path),
+            );
+            self::assertSame(
+                $page->contentGroups,
+                array_keys(StyleguideSpecimens::shownIn($drawn, StyleguideSpecimens::CONTENT)),
+                sprintf('the content groups %s draws are not the ones the list says it shows', $path),
+            );
+        }
+    }
+
     #[DataProvider('listed')]
     public function testItIsFoundByItsAddress(StyleguidePage $page): void
     {
@@ -130,6 +181,6 @@ final class StyleguidePagesTest extends TestCase
 
     private static function pages(): StyleguidePages
     {
-        return new StyleguidePages();
+        return new StyleguidePages(new ContentGroupRegistry());
     }
 }

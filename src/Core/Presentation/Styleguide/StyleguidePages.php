@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Styleguide;
 
+use Trilobit\Core\Presentation\Content\ContentGroup;
+use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
+
 /**
  * Every page of the style guide, in the groups the menu lists them under.
  *
@@ -18,6 +21,12 @@ namespace Trilobit\Core\Presentation\Styleguide;
  * Bootstrap's documentation is, into groups of pages, because a page that grows
  * with every component becomes a page nobody can find anything on.
  *
+ * A group that mirrors a register is not written out here but derived from
+ * it, one page per entry: a new group of native elements then has a page, a
+ * place in the menu and a tile on the front page the moment it is registered,
+ * and the only thing left to write is the file that shows it - which the gates
+ * insist on.
+ *
  * tests/Template/StyleguidePagesTest holds this list and the files under
  * directory() together in both directions.
  */
@@ -25,6 +34,10 @@ final class StyleguidePages
 {
     /** @var non-empty-list<StyleguideGroup>|null */
     private ?array $groups = null;
+
+    public function __construct(
+        private readonly ContentGroupRegistry $contentGroups,
+    ) {}
 
     /** Where the files drawing the pages are, one directory per group. */
     public static function directory(): string
@@ -65,6 +78,21 @@ final class StyleguidePages
                         width: 'full',
                     ),
                 ],
+            ),
+            new StyleguideGroup(
+                'content',
+                'Content',
+                'The elements a browser hands us before any class is written, one page for every group of them.',
+                array_map(
+                    static fn(ContentGroup $group): StyleguidePage => new StyleguidePage(
+                        'content',
+                        $group->name,
+                        ucfirst($group->name),
+                        $group->summary,
+                        contentGroups: [$group->name],
+                    ),
+                    $this->contentGroups->all(),
+                ),
             ),
         ];
     }
