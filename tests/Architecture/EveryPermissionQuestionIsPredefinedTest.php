@@ -34,11 +34,11 @@ use Trilobit\Core\Security\Resource;
  * assembles its roles from, and a vocabulary is allowed to have a word in it
  * before the first sentence uses it.
  *
- * **The application asks nothing yet**, which is why the rule is also run over
- * fixtures. A rule that reports nothing over an empty subject reports nothing
- * over a wrong one just as happily; the three fixtures are one of each kind -
- * a question that is fine, a pair nobody offers, and a question that cannot be
- * read - and the rule has to pick out the right one each time.
+ * A rule that reports nothing reads the same whether the code is right or the
+ * rule has stopped finding questions, so it is held from both sides. Over the
+ * source it has to find some questions at all; over fixtures it has to pick out
+ * the right one of three - a question that is fine, a pair nobody offers, and a
+ * question that cannot be read.
  */
 #[CoversNothing]
 final class EveryPermissionQuestionIsPredefinedTest extends TestCase
@@ -51,6 +51,15 @@ final class EveryPermissionQuestionIsPredefinedTest extends TestCase
     public function testEveryQuestionTheApplicationAsksCanBeRead(): void
     {
         self::assertSame([], $this->unreadableIn(Bootstrap::rootDirectory() . '/src'));
+    }
+
+    /**
+     * The two tests above pass over a source in which the rule finds nothing,
+     * so it has to be seen finding something there.
+     */
+    public function testTheRuleFindsTheQuestionsTheApplicationAsks(): void
+    {
+        self::assertNotSame([], PermissionQuestions::askedIn(Bootstrap::rootDirectory() . '/src'));
     }
 
     public function testTheRuleReportsAPairNobodyOffers(): void
