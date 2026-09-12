@@ -34,9 +34,11 @@ use Trilobit\Core\Tenancy\TenancyRefused;
  * "no". Here a pair the structure does not offer is a LogicException, in the
  * same breath as a pair spelled with a string would not have been.
  *
- * **The list is built for one tenant.** Its resources and its inheritance come
- * from the shared structure, its rules from the roles held in this tenant, and
- * it is kept for as long as the process stays in that tenant. Nothing from
+ * **The list is built for one tenant.** Its resources and what falls under what
+ * come from the shared structure, its rules from the roles held in this tenant,
+ * and Trilobit\Core\Security\AccessComposition puts them together - the same
+ * one Trilobit\Core\Security\Authorizator uses. It is kept for as long as the
+ * process stays in that tenant. Nothing from
  * another tenant is in it, so a rule cannot reach across even if the same role
  * name is held in both.
  *
@@ -109,6 +111,10 @@ final class Permissions
     /**
      * The access list of one tenant, and who holds which role in it.
      *
+     * A role with an empty code is not put down as held by anybody, because
+     * Trilobit\Core\Security\AccessComposition leaves it out of the list and
+     * Nette raises on a role it was not given rather than answering.
+     *
      * @return array{access: Permission, roles: array<int, list<string>>}
      */
     private function inThisTenant(int $tenant): array
@@ -117,25 +123,18 @@ final class Permissions
             return $this->tenants[$tenant];
         }
 
-        $access = new Permission();
-        $this->structure->addResourcesTo($access);
-
+        $held = [];
         $roles = [];
         foreach ($this->membershipsHere() as [$role, $person]) {
             $code = $role->code();
+            $held[] = ['code' => $code, 'permissions' => $role->permissions()];
 
-            if (!$access->hasRole($code)) {
-                $access->addRole($code);
-                foreach ($role->permissions() as $written) {
-                    $piece = Grant::parse($written);
-                    if ($piece instanceof Grant && $this->structure->offers($piece->resource, $piece->privilege)) {
-                        $access->allow($code, $piece->resource->value, $piece->privilege->value);
-                    }
-                }
+            if ($code !== '') {
+                $roles[$person][] = $code;
             }
-
-            $roles[$person][] = $code;
         }
+
+        $access = new AccessComposition($this->structure)->compose($held);
 
         return $this->tenants[$tenant] = ['access' => $access, 'roles' => $roles];
     }

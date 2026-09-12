@@ -30,7 +30,8 @@ use Trilobit\Core\Tenancy\TenancyRefused;
  * authorizator that reached for Permissions would be a circular reference the
  * container refuses to build. The access list is therefore assembled twice,
  * from the same structure and the same rows, which is the cost of keeping the
- * framework's own shape.
+ * framework's own shape - but by one Trilobit\Core\Security\AccessComposition,
+ * so that the two lists cannot come to be put together differently.
  *
  * Three things about the way it answers are decisions:
  *
@@ -128,38 +129,13 @@ final class Authorizator implements NetteAuthorizator
 
     /**
      * The access list of one tenant: every resource this build has, and the
-     * rules of the roles somebody holds here.
-     *
-     * A role naming a piece this build no longer has keeps the rest of what it
-     * names, exactly as Trilobit\Core\Security\Permissions does. The name was
-     * written by an earlier build, and carrying it as far as Nette would raise
-     * rather than deny - which stops a person using the application instead of
-     * stopping them doing one thing.
+     * rules of the roles somebody holds here, put together by
+     * Trilobit\Core\Security\AccessComposition exactly as
+     * Trilobit\Core\Security\Permissions has its own put together.
      */
     private function inThisTenant(int $tenant): Permission
     {
-        if (isset($this->tenants[$tenant])) {
-            return $this->tenants[$tenant];
-        }
-
-        $access = new Permission();
-        $this->structure->addResourcesTo($access);
-
-        foreach ($this->memberships->rolesHeldHere() as $role) {
-            $name = $role['code'];
-            if ($name === '' || $access->hasRole($name)) {
-                continue;
-            }
-
-            $access->addRole($name);
-            foreach ($role['permissions'] as $piece) {
-                $grant = Grant::parse($piece);
-                if ($grant instanceof Grant && $this->structure->offers($grant->resource, $grant->privilege)) {
-                    $access->allow($name, $grant->resource->value, $grant->privilege->value);
-                }
-            }
-        }
-
-        return $this->tenants[$tenant] = $access;
+        return $this->tenants[$tenant]
+            ??= new AccessComposition($this->structure)->compose($this->memberships->rolesHeldHere());
     }
 }

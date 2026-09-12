@@ -123,8 +123,10 @@ final class PermissionsInATenantTest extends TestCase
 
     /**
      * A rule written about the administration answers for a section of it,
-     * because the section is registered as falling under it. One rule rather
-     * than one per section is the whole reason the structure has parents.
+     * because src/Core/Security/permissions.neon says the section falls under
+     * it and Trilobit\Core\Security\AccessComposition works that out into a rule
+     * of the section's own. One rule rather than one per section is the whole
+     * reason the structure has parents.
      */
     public function testARuleOnTheAdministrationAnswersForASectionOfIt(): void
     {

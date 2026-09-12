@@ -234,8 +234,9 @@ final class AskingThroughNetteTest extends TestCase
     /**
      * A rule written about the administration answers for a section of it,
      * through this route as much as through Trilobit\Core\Security\Permissions:
-     * the access list an authorizator is built on is the same one, with the same
-     * parents out of src/Core/Security/permissions.neon.
+     * the access list an authorizator is built on is put together by the same
+     * Trilobit\Core\Security\AccessComposition, out of the same
+     * src/Core/Security/permissions.neon.
      */
     public function testARuleOnTheAdministrationAnswersForASectionOfIt(): void
     {

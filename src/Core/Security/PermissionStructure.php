@@ -151,8 +151,36 @@ final readonly class PermissionStructure
     }
 
     /**
+     * Everything that falls under this resource, however deep.
+     *
+     * It is what a rule written on the resource answers for as well - the
+     * meaning `parent` has in Nette, and the one this file is written in. It
+     * is asked for here rather than left to Nette because a parent inside an
+     * access list is the route a right taken away further down would come
+     * back by; see Trilobit\Core\Security\AccessComposition.
+     *
+     * @return list<Resource>
+     */
+    public function descendantsOf(Resource $resource): array
+    {
+        $under = [];
+        foreach ($this->fromTheTopDown() as $candidate) {
+            $parent = $this->parentOf($candidate);
+            if ($parent === $resource || ($parent instanceof Resource && isset($under[$parent->value]))) {
+                $under[$candidate->value] = $candidate;
+            }
+        }
+
+        return array_values($under);
+    }
+
+    /**
      * Puts every resource into an access list, each one after whatever it
      * falls under - Nette refuses a parent it has not been given yet.
+     *
+     * No access list the application answers from is built this way:
+     * Trilobit\Core\Security\AccessComposition registers every resource on its
+     * own and works out what falls under what itself.
      */
     public function addResourcesTo(Permission $access): void
     {

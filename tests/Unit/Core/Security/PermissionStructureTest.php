@@ -76,6 +76,43 @@ final class PermissionStructureTest extends TestCase
         self::assertFalse($access->isAllowed('administrator', Resource::Redirection->value, Privilege::View->value));
     }
 
+    /**
+     * Everything under a resource, however deep, because that is how far a
+     * rule on it reaches in Nette. The shipped file is one level deep, so the
+     * second level is written here: a walk that stopped at the children would
+     * agree with the shipped file and be wrong the day a section gets one of
+     * its own.
+     */
+    public function testEverythingUnderAResourceIsFoundHoweverDeep(): void
+    {
+        $structure = $this->structureOf(
+            $this->describing(Resource::Administration->value)
+                . $this->describing(Resource::Content->value, Resource::Administration->value)
+                . $this->describing(Resource::Account->value, Resource::Content->value)
+                . $this->describing(Resource::Redirection->value),
+        );
+
+        self::assertEqualsCanonicalizing(
+            [Resource::Content, Resource::Account],
+            $structure->descendantsOf(Resource::Administration),
+        );
+        self::assertSame([Resource::Account], $structure->descendantsOf(Resource::Content));
+        self::assertSame([], $structure->descendantsOf(Resource::Account));
+        self::assertSame([], $structure->descendantsOf(Resource::Redirection));
+    }
+
+    /** The shipped file, which is what every access list is composed from. */
+    public function testTheSectionsOfTheAdministrationFallUnderIt(): void
+    {
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+
+        self::assertEqualsCanonicalizing(
+            [Resource::Account, Resource::Content],
+            $structure->descendantsOf(Resource::Administration),
+        );
+        self::assertSame([], $structure->descendantsOf(Resource::Redirection));
+    }
+
     public function testAResourceThisBuildDoesNotHaveIsRefused(): void
     {
         $this->expectException(\RuntimeException::class);
