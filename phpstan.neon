@@ -14,6 +14,15 @@
 parameters:
     level: max
 
+    # Analysed as PHP 8.4 - the floor `composer.json`'s `require.php` (">=8.4",
+    # no upper bound) still allows - regardless of which PHP the analyser
+    # itself happens to run on. Without this, PHPStan reports on the runtime's
+    # own version, so API that only exists on a newer PHP (say, 8.5) passes
+    # here and fails in CI's 8.4 job the moment somebody's editor or container
+    # is ahead of the floor. tests/Architecture/PhpVersionMatchesComposerTest
+    # keeps this number from drifting apart from `require.php`.
+    phpVersion: 80400
+
     paths:
         - src
         - tests
