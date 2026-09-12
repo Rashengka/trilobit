@@ -35,7 +35,7 @@ rules:
   service_token:
     description: a token in the published shape of a hosting or cloud service
   high_entropy:
-    description: a long opaque literal assigned to a name
+    description: a long opaque literal assigned to a name, or a JSON web token
   absolute_path:
     description: a path rooted in somebody's machine
   public_ip:
