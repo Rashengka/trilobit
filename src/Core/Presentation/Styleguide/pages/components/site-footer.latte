@@ -1,0 +1,20 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{* The closing band, with whatever a page has to say last in its slot. *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/site-footer.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-site-footer']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block siteFooter}
+                        {block siteFooterBody}<p>Trilobit &mdash; open source, MIT.</p>{/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

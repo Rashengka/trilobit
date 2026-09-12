@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Styleguide;
 
+use Trilobit\Core\Presentation\Component\Component;
+use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 
@@ -22,10 +24,14 @@ use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
  * with every component becomes a page nobody can find anything on.
  *
  * A group that mirrors a register is not written out here but derived from
- * it, one page per entry: a new group of native elements then has a page, a
- * place in the menu and a tile on the front page the moment it is registered,
- * and the only thing left to write is the file that shows it - which the gates
- * insist on.
+ * it, one page per entry: a new component or group of native elements then has
+ * a page, a place in the menu and a tile on the front page the moment it is
+ * registered, and the only thing left to write is the file that shows it -
+ * which the gates insist on.
+ *
+ * Layout and Forms are not here yet, on purpose: a group with nothing to show
+ * would be a heading in the menu leading nowhere. Layout waits for
+ * .ai/plans/09-chrome-a-sirka-obsahu.md, Forms for the plan that brings them.
  *
  * tests/Template/StyleguidePagesTest holds this list and the files under
  * directory() together in both directions.
@@ -37,6 +43,7 @@ final class StyleguidePages
 
     public function __construct(
         private readonly ContentGroupRegistry $contentGroups,
+        private readonly ComponentRegistry $components,
     ) {}
 
     /** Where the files drawing the pages are, one directory per group. */
@@ -92,6 +99,21 @@ final class StyleguidePages
                         contentGroups: [$group->name],
                     ),
                     $this->contentGroups->all(),
+                ),
+            ),
+            new StyleguideGroup(
+                'components',
+                'Components',
+                'Everything the application is assembled out of, one page for every component.',
+                array_map(
+                    static fn(Component $component): StyleguidePage => new StyleguidePage(
+                        'components',
+                        substr($component->name, strlen(ComponentRegistry::PREFIX)),
+                        $component->name,
+                        $component->summary,
+                        components: [$component->name],
+                    ),
+                    $this->components->all(),
                 ),
             ),
         ];

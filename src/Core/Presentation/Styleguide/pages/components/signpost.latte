@@ -1,0 +1,21 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The way into each part of something, drawn with invented entries - the same
+ * component the front page of this guide is drawn with.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/signpost.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-signpost']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include signpost, items: $sampleSignposts, label: 'Specimen', testId: 'sample-signpost'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

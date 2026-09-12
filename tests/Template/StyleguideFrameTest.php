@@ -89,6 +89,27 @@ final class StyleguideFrameTest extends TestCase
         self::assertSame(array_keys($this->listed()), $linked);
     }
 
+    /**
+     * And nothing else: every specimen has a page of its own, reached through
+     * the menu or the tiles. A specimen left on the front page would be one
+     * the menu sends nobody to, and the front page would start growing back
+     * into the page the guide was split out of.
+     */
+    public function testTheFrontPageShowsNoSpecimen(): void
+    {
+        $front = StyleguideSpecimens::everyPage()[self::FRONT_PAGE] ?? null;
+        self::assertNotNull($front, 'the style guide has no front page');
+
+        $specimens = [];
+        foreach ($front->querySelectorAll('[data-styleguide-component], [data-styleguide-content]') as $section) {
+            $specimens[] = $section->getAttribute('data-styleguide-component')
+                ?? $section->getAttribute('data-styleguide-content')
+                ?? '';
+        }
+
+        self::assertSame([], $specimens, 'the front page of the style guide still carries specimens');
+    }
+
     /** @return array<string, StyleguidePage> keyed by the path each answers at */
     private function listed(): array
     {

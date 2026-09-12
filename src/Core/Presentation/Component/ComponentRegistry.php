@@ -12,14 +12,18 @@ namespace Trilobit\Core\Presentation\Component;
  * there, and the point is to have something for the directory to be compared
  * against. tests/Template/ComponentRegistryTest fails when the two disagree in
  * either direction, and tests/Template/StyleguideShowsEveryComponentTest fails
- * when a registered variant has no specimen on the style guide page. A component
- * without an example is a component nobody can see before using it, which is how
- * a second one that does almost the same thing gets written.
+ * when a registered variant has no specimen on any page of the style guide. A
+ * component without an example is a component nobody can see before using it,
+ * which is how a second one that does almost the same thing gets written.
+ *
+ * Every entry is also a page of the style guide's Components group, derived
+ * from this list by Trilobit\Core\Presentation\Styleguide\StyleguidePages, so a
+ * registered component has a page and a place in the guide's menu at once.
  *
  * A component belongs here when more than one page needs it, or when a theme has
  * to be able to change it. The style guide's own furniture (the .sg-* classes in
- * assets/base.css) is deliberately not in the list: it dresses the page that
- * shows the components and is not part of the vocabulary anything else draws on.
+ * assets/base.css) is deliberately not in the list: it dresses the pages that
+ * show the components and is not part of the vocabulary anything else draws on.
  */
 final class ComponentRegistry
 {
@@ -32,14 +36,13 @@ final class ComponentRegistry
     /** @var non-empty-list<Component>|null */
     private ?array $components = null;
 
-    /** @return non-empty-list<Component> in the order the style guide shows them */
+    /** @return non-empty-list<Component> in the order the style guide's menu lists them */
     public function all(): array
     {
         return $this->components ??= [
-            // First, because its specimen is the switch at the top of the style
-            // guide itself: the one component on that page that is used rather
-            // than shown, and a second copy further down would put two controls
-            // for every answer on one page.
+            // First, because it is the one component the guide uses rather than
+            // shows: it is the switch above every page of the guide, and its own
+            // page draws it as its specimen instead of a second copy.
             new Component(
                 'c-preference-switcher',
                 'Every preference this build has, each drawn as the set of answers somebody can switch between.',

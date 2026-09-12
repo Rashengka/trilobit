@@ -1,0 +1,24 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{* One sentence a page has to say, as information and as a refusal. *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/notice.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-notice']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'info'}
+                {block sgSpecimenStage}
+                    {include notice, message: 'The catalogue was saved.'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'danger'}
+                {block sgSpecimenStage}
+                    {include notice, message: 'The address or the password is not right.', variant: 'danger'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

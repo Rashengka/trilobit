@@ -1000,16 +1000,6 @@
         padding-block-start: var(--space-lg);
     }
 
-    .sg-section__name {
-        font-family: var(--font-mono);
-        font-size: var(--text-xl);
-    }
-
-    .sg-section__summary {
-        color: var(--color-ink-muted);
-        max-inline-size: var(--layout-measure);
-    }
-
     .sg-specimen {
         border: var(--border-hairline) dashed var(--color-line);
         border-radius: var(--radius-md);

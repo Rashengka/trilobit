@@ -1,0 +1,39 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The one thing a page wants you to do, the quieter things beside it, and a
+ * button that goes nowhere because it does something where it is.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/button.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-button']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'primary'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Add to basket', href: '#'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'quiet'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Keep looking', href: '#', variant: 'quiet'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'without a destination'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Recalculate'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with an icon'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Sign out', href: '#', variant: 'quiet', icon: 'sign-out'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

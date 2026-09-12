@@ -14,22 +14,18 @@
  * read off every page the router sends to the guide.
  *}
 
+{*
+ * One registered component, or one registered group of native elements. Each
+ * is on a page of its own, and the frame already draws its name and what it is
+ * for as that page's heading, so a section is only the mark the gates read
+ * around the specimens.
+ *}
 {define sgSection, Trilobit\Core\Presentation\Component\Component $component}
     <section class="sg-section l-stack" data-styleguide-component="{$component->name}">
-        <h2 class="sg-section__name">{$component->name}</h2>
-
-        <p class="sg-section__summary">{$component->summary}</p>
-
-        <div class="l-stack">{block sgSectionBody}{/block}</div>
+        {block sgSectionBody}{/block}
     </section>
 {/define}
 
-{*
- * One registered group of native elements. The page it is on is that group's
- * page, and the frame already draws the group's name and what it is for as the
- * page's heading, so the section is only the mark the gates read around the
- * specimens.
- *}
 {define sgContentSection, Trilobit\Core\Presentation\Content\ContentGroup $group}
     <section class="sg-section l-stack" data-styleguide-content="{$group->name}">
         {block sgContentSectionBody}{/block}

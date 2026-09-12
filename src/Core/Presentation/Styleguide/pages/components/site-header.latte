@@ -1,0 +1,41 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The band across the top of every page, on its own, with a tagline and with
+ * something at its end.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/site-header.latte'}
+{import '../../../components/button.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-site-header']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include siteHeader, brand: 'Trilobit', href: '#'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with a tagline'}
+                {block sgSpecimenStage}
+                    {include siteHeader,
+                        brand: 'Trilobit',
+                        href: '#',
+                        tagline: 'Modular commerce, contacts and content.'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with something at the end'}
+                {block sgSpecimenStage}
+                    {embed block siteHeader, brand: 'Trilobit', href: '#', tagline: 'Administration'}
+                        {block siteHeaderEnd}
+                            {include button, label: 'Somebody', variant: 'quiet', icon: 'chevron-down'}
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

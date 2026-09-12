@@ -1,0 +1,21 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * One design token shown as the thing it produces. Every colour token of the
+ * design system is drawn this way on the Colours page of Foundations.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/swatch.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-swatch']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include swatch, name: '--color-accent', role: 'the action a page is about'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

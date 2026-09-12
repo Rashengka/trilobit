@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
+use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
@@ -30,10 +31,10 @@ use Trilobit\Core\Routing\StyleguideRoutes;
  * directory together.
  *
  * What a page says it shows is held to what it draws, and every registered
- * group of native elements has one page saying it shows it. That every
- * registered component and content group is actually shown somewhere is still
- * a claim about rendered pages, made by
- * Trilobit\Tests\Template\StyleguideShowsEveryComponentTest and its twin.
+ * component and group of native elements has one page saying it shows it.
+ * That every one of them is actually shown somewhere is still a claim about
+ * rendered pages, made by Trilobit\Tests\Template\StyleguideShowsEveryComponentTest
+ * and its twin.
  */
 #[CoversClass(StyleguidePages::class)]
 #[CoversClass(StyleguidePage::class)]
@@ -123,6 +124,26 @@ final class StyleguidePagesTest extends TestCase
     }
 
     /**
+     * Every registered component is one page of the guide, the way Bootstrap
+     * gives every component a page: the menu offers it, and there is one place
+     * to look for it.
+     */
+    #[DataProviderExternal(ComponentRegistryTest::class, 'registered')]
+    public function testEveryComponentIsListedOnExactlyOnePage(Component $component): void
+    {
+        $on = array_filter(
+            self::pages()->pages(),
+            static fn(StyleguidePage $page): bool => $page->shows($component->name),
+        );
+
+        self::assertCount(
+            1,
+            $on,
+            sprintf('%s is a registered component and %d pages of the style guide say they show it', $component->name, count($on)),
+        );
+    }
+
+    /**
      * Every registered group of native elements is one page of the guide, so
      * that the menu offers it and there is one place to look for it.
      */
@@ -181,6 +202,6 @@ final class StyleguidePagesTest extends TestCase
 
     private static function pages(): StyleguidePages
     {
-        return new StyleguidePages(new ContentGroupRegistry());
+        return new StyleguidePages(new ContentGroupRegistry(), new ComponentRegistry());
     }
 }

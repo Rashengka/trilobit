@@ -1,0 +1,22 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The primary navigation, drawn with invented entries so that the specimen is
+ * the same whichever modules this build is made of. Whether it reads as a row
+ * or as a column is the theme's to decide - switch it above and watch.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/nav.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-nav']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include nav, items: $sampleNavigation, label: 'Specimen'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}
