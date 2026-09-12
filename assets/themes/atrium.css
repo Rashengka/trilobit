@@ -178,12 +178,41 @@
      * navigation are worth something for different reasons, and somebody who
      * wants one should not get the other with it.
      *
-     * Atrium holds neither. Its banner and its navigation are two rows on top
-     * of the page, and holding both for good would take the room they are
-     * worth only while the page is at its top.
+     * Atrium holds both, one under the other, on a window wide enough - see
+     * the end of this file. Here are the values for everywhere else: a narrow
+     * window, and paper.
      */
     --layout-banner-position: static;
     --layout-nav-position: static;
+
+    /*
+     * How far down the window a held navigation stays. Atrium's is a row under
+     * the banner, so it is held where the held banner ends - a length the page
+     * measures (assets/chrome.ts), because the banner is as tall as what is in
+     * it. A banner that is not held reaches nowhere, and the navigation is then
+     * held at the top.
+     */
+    --layout-nav-inset: var(--layout-banner-reach);
+
+    /*
+     * The size of the two bands, which is what atrium changes once the page
+     * has scrolled (the end of this file). The rules that draw them read these
+     * and nothing else, so the smaller bands are these tokens given other
+     * values, and not a second description of the bands.
+     *
+     * The scale applies to the navigation's own entries and not to the entries
+     * a block opens under them: the block is read when it is opened, and it
+     * opens at the size of the page.
+     */
+    --layout-banner-padding-block: var(--space-md);
+    --layout-banner-brand-size: var(--text-xl);
+    --layout-nav-entry-scale: 1;
+    --layout-nav-entry-padding-block: var(--space-xs);
+    --layout-nav-entry-padding-inline: var(--space-sm);
+
+    /* How long the bands take to change size. Nobody who asked for reduced
+       motion sees it take any time: assets/base.css leaves the transition out. */
+    --layout-chrome-motion: var(--motion-fast);
 
     /*
      * The layer whatever is held is drawn in: above the content that scrolls
@@ -247,4 +276,46 @@
     inline-size: min(100%, var(--layout-content-width));
     margin-inline: auto;
     padding-inline: var(--layout-gutter);
+}
+
+/*
+ * On a window wide enough, atrium holds its banner and its navigation in view,
+ * the navigation under the banner - and once the content has scrolled up under
+ * them, it makes both smaller (.ai/plans/09-chrome-a-sirka-obsahu.md, L3). The
+ * menu stays within reach wherever the page is, and the two bands give back
+ * most of the room they take at the top of the page.
+ *
+ * Smaller is these tokens and nothing else: the banner lower, the entries of
+ * the navigation at three quarters of their size with far less room around
+ * them. The page marks its own two bands with data-scrolled="true" when the
+ * content has gone up under them (assets/chrome.ts), so what is redeclared here
+ * reaches the chrome and not a specimen of the same components further down the
+ * page.
+ *
+ * Only on a screen. Paper holds nothing and makes nothing smaller, and a narrow
+ * window keeps the values above for the same reason ledger lets go there: on a
+ * window that small, a banner and a row of links held for good would take the
+ * room the content scrolls in.
+ *
+ * And only once the page measures its chrome (data-chrome-measured, set by
+ * assets/chrome.ts). The navigation is held where the held banner ends, and
+ * that is a length the page measures; without the script it would be held at
+ * the top of the window, over the banner. So a page without the script holds
+ * nothing and lets both bands scroll away, which is what atrium did before it
+ * held them.
+ */
+@media screen and (width >= 52rem) {
+    [data-theme='atrium'][data-chrome-measured] {
+        --layout-banner-position: sticky;
+        --layout-nav-position: sticky;
+    }
+
+    [data-theme='atrium'] [data-scrolled='true'] {
+        --layout-banner-padding-block: var(--space-2xs);
+        --layout-banner-brand-size: var(--text-lg);
+        --layout-nav-padding: var(--space-3xs) 0;
+        --layout-nav-entry-scale: 0.75;
+        --layout-nav-entry-padding-block: var(--space-3xs);
+        --layout-nav-entry-padding-inline: var(--space-xs);
+    }
 }

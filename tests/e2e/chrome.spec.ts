@@ -4,11 +4,12 @@ import { expect, type Page, test } from '@playwright/test';
  * What stays in view while the page scrolls, measured rather than looked at.
  *
  * A theme may hold the banner and the navigation in view, each by a token of
- * its own (.ai/plans/09-chrome-a-sirka-obsahu.md, L1): ledger holds both,
- * atrium holds neither. What is asserted here is where the browser put them
- * after the document scrolled, in both themes and at two windows far apart -
- * the side column is a different share of the window at each, and a rule that
- * only worked at one of them would pass a suite that looked at one.
+ * its own (.ai/plans/09-chrome-a-sirka-obsahu.md, L1). Ledger holds both; so
+ * does atrium, and makes them smaller as well (L3), which has a suite of its
+ * own in chrome-condense.spec.ts. What is asserted here is where the browser put
+ * them after the document scrolled, at two windows far apart - the side column
+ * is a different share of the window at each, and a rule that only worked at
+ * one of them would pass a suite that looked at one.
  *
  * Every case also measures the content moving. "The banner did not move" reads
  * the same whether it was held or whether the page never scrolled at all, and
@@ -119,32 +120,28 @@ async function scrollAndMeasure(page: Page): Promise<{ before: Placement; after:
     return { before, after };
 }
 
-for (const theme of themes) {
-    for (const size of windows) {
-        const held = theme === 'ledger';
+/*
+ * Atrium holds both bands too on these windows, but it also makes them
+ * smaller once the page has scrolled, and a band changing size moves the
+ * scroll position with it - so "the page scrolled by exactly the distance",
+ * which every case here stands on, is not true there. Atrium's held bands are
+ * measured in chrome-condense.spec.ts, against the content rather than against
+ * the scroll position.
+ */
+for (const size of windows) {
+    test(`in ledger at ${size.width}px the banner and the navigation stay`, async ({ page }) => {
+        await page.setViewportSize(size);
+        await page.goto('/_styleguide');
+        await drawIn(page, 'ledger');
+        await lengthen(page);
 
-        test(`in ${theme} at ${size.width}px the banner and the navigation ${held ? 'stay' : 'scroll away'}`, async ({
-            page,
-        }) => {
-            await page.setViewportSize(size);
-            await page.goto('/_styleguide');
-            await drawIn(page, theme);
-            await lengthen(page);
+        const { before, after } = await scrollAndMeasure(page);
 
-            const { before, after } = await scrollAndMeasure(page);
-
-            const moved = { banner: before.banner - after.banner, nav: before.nav - after.nav };
-            if (held) {
-                expect(moved.banner, 'the banner scrolled away').toBeCloseTo(0, 0);
-                expect(moved.nav, 'the navigation scrolled away').toBeCloseTo(0, 0);
-                expect(after.banner).toBeCloseTo(0, 0);
-                expect(after.nav).toBeCloseTo(0, 0);
-            } else {
-                expect(moved.banner, 'the banner stayed where it was').toBeCloseTo(distance, 0);
-                expect(moved.nav, 'the navigation stayed where it was').toBeCloseTo(distance, 0);
-            }
-        });
-    }
+        expect(before.banner - after.banner, 'the banner scrolled away').toBeCloseTo(0, 0);
+        expect(before.nav - after.nav, 'the navigation scrolled away').toBeCloseTo(0, 0);
+        expect(after.banner).toBeCloseTo(0, 0);
+        expect(after.nav).toBeCloseTo(0, 0);
+    });
 }
 
 /**

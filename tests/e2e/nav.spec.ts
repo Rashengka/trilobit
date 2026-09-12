@@ -276,12 +276,20 @@ test('in atrium resting on the entry opens a block over the page, two levels dee
     // a position, because resting on the entry scrolls it into view first, and
     // everything moves with that - the block pushing the page down is what
     // would change the distance.
-    const below = async (): Promise<number> => {
-        const label = await specimen.boundingBox();
-        const parent = await page.getByTestId(entry.parent).boundingBox();
+    //
+    // Both read in one go, from one layout. Scrolling the entry into view can
+    // set off a change the chrome animates while the page is held under it,
+    // and two reads taken a frame apart then disagreed by a fraction of a
+    // pixel; a block pushing the page down moves it by the height of the block.
+    const below = (): Promise<number> =>
+        specimen.evaluate((label, id) => {
+            const parent = document.querySelector(`[data-testid="${id}"]`);
+            if (parent === null) {
+                throw new Error(`nothing has the testid ${id}`);
+            }
 
-        return (label?.y ?? Number.NaN) - (parent?.y ?? Number.NaN);
-    };
+            return label.getBoundingClientRect().top - parent.getBoundingClientRect().top;
+        }, entry.parent);
     const distanceBefore = await below();
 
     await page.getByTestId(entry.parent).hover();

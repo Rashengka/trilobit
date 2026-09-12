@@ -75,6 +75,18 @@ final class OverviewPresenter extends FrontPresenter
         '--layout-banner-position' => 'whether the banner stays in view while the page scrolls (sticky) '
             . 'or scrolls away with it (static)',
         '--layout-nav-position' => 'the same switch for the navigation, set apart from the banner',
+        '--layout-nav-inset' => 'how far down the window a held navigation stays: at the top beside the banner, '
+            . 'or where the held banner ends when it is under it',
+        '--layout-banner-reach' => 'how far down the window the held banner reaches, which a navigation held '
+            . 'under it is held at; measured by the page, not declared by a theme',
+        '--layout-banner-padding-block' => 'how much room there is above and below what is in the banner',
+        '--layout-banner-brand-size' => 'the size the name of the site is set at in the banner',
+        '--layout-nav-entry-scale' => 'the size of the navigation\'s own entries, as a share of the size they '
+            . 'would otherwise have',
+        '--layout-nav-entry-padding-block' => 'the room above and below each of the navigation\'s own entries',
+        '--layout-nav-entry-padding-inline' => 'the room either side of each of the navigation\'s own entries',
+        '--layout-chrome-motion' => 'how long the bands take to change size; nothing is animated for '
+            . 'somebody who asked for reduced motion',
         '--layout-z-chrome' => 'the layer whatever stays in view is drawn in, above the content that '
             . 'scrolls under it',
         '--layout-z-menu' => 'the layer the entries a navigation opens as a block over the page are drawn '

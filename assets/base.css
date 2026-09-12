@@ -18,14 +18,15 @@
  * ratio such as 100% or 1fr describes a relationship between parts rather than a
  * size - "as wide as its container" stays true in every theme.
  *
- * Two tokens are declared here rather than by a theme. --layout-content-width
+ * Three tokens are declared here rather than by a theme. --layout-content-width
  * is derived by the block below from the theme's three widths and the attribute
  * on <html>. Deriving is not deciding - the three values it picks between are
  * still the theme's - and the test above knows the difference: a token this file
  * declares is exempt from "every theme has to declare it", and every token that
- * declaration reads is checked as usual. --layout-chrome-offset is not a value
- * anybody chooses at all but one the page measures (assets/chrome.ts); what this
- * file gives it is the zero it starts from.
+ * declaration reads is checked as usual. --layout-chrome-offset and
+ * --layout-banner-reach are not values anybody chooses at all but ones the page
+ * measures (assets/chrome.ts); what this file gives them is the zero they start
+ * from.
  *
  * Class names say what a thing is, never what it looks like (decision D3):
  *
@@ -151,6 +152,7 @@
      */
     :root {
         --layout-chrome-offset: 0;
+        --layout-banner-reach: 0;
     }
 
     .l-shell__main *,
@@ -569,10 +571,23 @@
      * block to hang out of the band, and a band that scrolls clips whatever
      * hangs out of it at its edge - so such a theme lets it overflow, and its
      * navigation, a row under the banner, is never the height of a window.
+     *
+     * **The one switch holds both elements, and in each theme only one of them
+     * can move.** Where the navigation is a row under the banner (atrium) the
+     * region is exactly as tall as what it holds, so the hold has nowhere to
+     * stick to inside it, and it is the region that stays - as far down as the
+     * held banner reaches (--layout-nav-inset). Where the region is the side
+     * column stretched down the page (ledger), sticking the region does nothing,
+     * because it is as tall as the page it would move in, and the hold does the
+     * work. A second switch for which of the two is held could be set to
+     * disagree with the first; this one cannot.
      */
     .l-shell__nav {
         background-color: var(--color-nav);
         grid-area: nav;
+        inset-block-start: var(--layout-nav-inset);
+        position: var(--layout-nav-position);
+        z-index: var(--layout-z-chrome);
     }
 
     .l-shell__nav-hold {
@@ -584,12 +599,36 @@
     }
 
     /*
+     * Where the page's content begins, as assets/chrome.ts watches it to tell
+     * the bands the content has scrolled up under them. The script puts it
+     * into the shell; it takes no room and draws nothing.
+     *
+     * It spans the rows above the content, from the top of the page to the
+     * line the content starts at, whichever rows a theme has put there - one in
+     * ledger, two in atrium. Its lower edge is the threshold, and because it is
+     * a line of the grid rather than a length, it moves with the content when
+     * the bands above change size. That is what keeps the change from undoing
+     * itself; chrome.ts says how.
+     *
+     * Never the element a browser keeps the reader's place by: that has to be
+     * the content, or keeping the place would move the threshold.
+     */
+    .l-shell > [data-chrome-sentinel] {
+        grid-column: main;
+        grid-row: 1 / main-start;
+        overflow-anchor: none;
+        pointer-events: none;
+        visibility: hidden;
+    }
+
+    /*
      * Nothing is held on paper. A held band would be printed at the top of every
      * sheet, and a navigation bounded to one window would be printed cut off
      * where the window ended.
      */
     @media print {
-        .l-shell__banner {
+        .l-shell__banner,
+        .l-shell__nav {
             position: static;
         }
 
@@ -672,6 +711,8 @@
 
     /* ==== Components ==================================================== */
 
+    /* Its height and the size of the name are the banner's tokens, which a
+       theme may give smaller values once the page has scrolled (atrium). */
     .c-site-header {
         align-items: baseline;
         color: var(--color-banner-ink);
@@ -679,12 +720,12 @@
         flex-wrap: wrap;
         gap: var(--space-sm) var(--space-md);
         justify-content: space-between;
-        padding-block: var(--space-md);
+        padding-block: var(--layout-banner-padding-block);
     }
 
     .c-site-header__brand {
         font-family: var(--font-display);
-        font-size: var(--text-xl);
+        font-size: var(--layout-banner-brand-size);
         font-weight: var(--font-weight-display);
         letter-spacing: var(--tracking-display);
         text-decoration: none;
@@ -838,6 +879,70 @@
 
     .c-nav__toggle[aria-expanded='true'] .c-icon {
         rotate: 0.5turn;
+    }
+
+    /*
+     * The entries of the navigation itself - the row or the column - as against
+     * the entries under an entry. Their size and the room around them are the
+     * band's tokens, which a theme may give smaller values once the page has
+     * scrolled (atrium). The scale is of whatever size the entry would have had,
+     * so a theme that never changes it draws exactly what it drew before.
+     *
+     * The entries a block opens under one of these are left at the size of the
+     * page: the block is read when it is opened.
+     */
+    .c-nav__list > .c-nav__item > .c-nav__link,
+    .c-nav__list > .c-nav__item > .c-nav__toggle {
+        font-size: calc(100% * var(--layout-nav-entry-scale));
+        padding-block: var(--layout-nav-entry-padding-block);
+    }
+
+    .c-nav__list > .c-nav__item > .c-nav__link {
+        padding-inline: var(--layout-nav-entry-padding-inline);
+    }
+
+    /*
+     * A band that changes size while the page scrolls changes it over a moment
+     * rather than at once - for nobody who asked for reduced motion, who gets
+     * the same sizes with nothing drawn in between. The length of the moment is
+     * the theme's (--layout-chrome-motion), and a theme whose bands never change
+     * size gives it none, so a switch into that theme is not animated either.
+     *
+     * **Only inside a band assets/chrome.ts has reported on** (it carries
+     * data-scrolled, true or false). A browser styles the top of the page once
+     * before the stylesheet has arrived, with no token defined and so no
+     * padding at all, and a transition declared everywhere animated the
+     * stylesheet's arrival: every page opened with its banner and navigation
+     * growing out of nothing, and anything measured in that moment was measured
+     * moving. By the time the script has reported, the stylesheet is in, so the
+     * only change left to animate is the one the transition is for.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        [data-scrolled] .c-site-header {
+            transition: padding-block var(--layout-chrome-motion);
+        }
+
+        [data-scrolled] .c-site-header__brand {
+            transition: font-size var(--layout-chrome-motion);
+        }
+
+        [data-scrolled] .c-nav__list {
+            transition: padding var(--layout-chrome-motion);
+        }
+
+        [data-scrolled] .c-nav__list > .c-nav__item > .c-nav__link {
+            transition:
+                background-color var(--motion-fast),
+                color var(--motion-fast),
+                font-size var(--layout-chrome-motion),
+                padding var(--layout-chrome-motion);
+        }
+
+        [data-scrolled] .c-nav__list > .c-nav__item > .c-nav__toggle {
+            transition:
+                font-size var(--layout-chrome-motion),
+                padding var(--layout-chrome-motion);
+        }
     }
 
     /*
