@@ -1,0 +1,31 @@
+{**
+ * c-spinner - a wait, said in words: a status naming what is being loaded, and
+ * a turning shape beside the words for whoever can see it turn.
+ *
+ * The words are the component and the shape is its decoration, hidden from
+ * assistive technology. A shape alone would tell somebody who cannot see it
+ * nothing, and would tell somebody who asked for less motion nothing either
+ * once it stopped turning - so for them the shape stands still and the words
+ * are shown beside it (assets/base.css). Everybody else sees the shape turn and
+ * has the words read out, unless labelShown asks for them on the page too.
+ *
+ * It is a status, so a screen reader says the words when the spinner appears
+ * without the focus moving to it. The label is required: "loading" on its own
+ * does not say what is being waited for.
+ *
+ * Two sizes, both the theme's: the default one for a region that is loading,
+ * and the small one as tall as the text beside it, for a line or a button row.
+ *}
+
+{define spinner, string $label, string $size = 'default', bool $labelShown = false, ?string $testId = null}
+    {do Trilobit\Core\Presentation\Component\Argument::oneOf('c-spinner', 'size', $size, ['default', 'small'])}
+
+    <span
+        n:class="'c-spinner', $size === 'small' ? 'c-spinner--small', $labelShown ? 'c-spinner--labelled'"
+        role="status"
+        data-testid="{$testId}"
+    >
+        <span class="c-spinner__shape" aria-hidden="true"></span>
+        <span class="c-spinner__label">{$label}</span>
+    </span>
+{/define}

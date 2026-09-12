@@ -1,6 +1,6 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
-{* A short label attached to something else, plain and in the accent. *}
+{* A short label attached to something else: plain, in the accent, and a state that asks for attention. *}
 
 {import '../../templates/furniture.latte'}
 {import '../../../components/badge.latte'}
@@ -14,6 +14,10 @@
 
             {specimen 'accent'}
                 {include badge, label: 'In this build', variant: 'accent'}
+            {/specimen}
+
+            {specimen 'danger'}
+                {include badge, label: 'Overdue', variant: 'danger'}
             {/specimen}
         {/block}
     {/embed}
