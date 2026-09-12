@@ -20,11 +20,21 @@
  *
  * The same holds for the build's own plugins: "transform", in a comment in
  * vite-plugins, became a utility as well.
+ *
+ * And it holds for the build's own output: www/build is committed (see the
+ * README), so it is not excluded by the same .gitignore-based rule that keeps
+ * node_modules/ and var/ out of the scan. It carries bundled third-party code
+ * - Tom Select, among others - whose own source happens to contain words that
+ * are also Tailwind utility names, "blur" the one found. Without this
+ * line, a build's output becomes an input to the next build: an empty
+ * www/build produces a smaller app.css than a populated one, for the same
+ * templates and the same code.
  */
 
 @import "tailwindcss";
 @source not "../tests";
 @source not "../vite-plugins";
+@source not "../www/build";
 @import "../var/build/sources.css";
 
 @import "./themes/atrium.css";
