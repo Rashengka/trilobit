@@ -3,8 +3,8 @@
 // tests/ and vite-plugins/ having done exactly that. www/build is committed
 // (see the README), so it is not excluded by the same .gitignore-based rule
 // that keeps node_modules/ and var/ out of the scan - and it holds bundled
-// third-party code such as Tom Select, whose own source carries words like
-// "blur" and "resize" that also happen to be Tailwind utility names. Without
+// third-party code such as Tom Select, whose own source carries words that
+// also happen to be Tailwind utility names ("blur" was the one). Without
 // an explicit `@source not`, a build's output becomes an input to the next
 // build: an empty www/build produces a smaller app.css than a populated one,
 // for the same sources and the same templates.
