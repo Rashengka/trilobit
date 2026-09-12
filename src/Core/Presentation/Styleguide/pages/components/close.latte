@@ -1,0 +1,19 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The button on its own, named for what it closes. What pressing it does is the
+ * caller's; a notice that carries one is on the page of c-notice.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/close.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-close']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {include close, label: 'Close the panel', testId: 'sample-close'}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

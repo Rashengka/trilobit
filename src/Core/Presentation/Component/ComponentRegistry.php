@@ -66,6 +66,17 @@ final class ComponentRegistry
                 ['default', 'with entries nested under an entry'],
             ),
             new Component(
+                'c-breadcrumb',
+                'The way up from the page being drawn: the pages it sits under, in order, ending in the page itself.',
+                ['default', 'directly under the start'],
+            ),
+            new Component(
+                'c-pagination',
+                'The way through a listing too long for one page: the pages either side of this one, the first '
+                . 'and the last, and the steps between them.',
+                ['default', 'on the first page', 'on the last page', 'with few pages'],
+            ),
+            new Component(
                 'c-site-footer',
                 'The closing band, with a slot for whatever a page has to say last.',
                 ['default'],
@@ -91,9 +102,20 @@ final class ComponentRegistry
                 ['primary', 'quiet', 'danger', 'small', 'without a destination', 'with an icon', 'with only an icon'],
             ),
             new Component(
+                'c-button-group',
+                'Buttons that belong together, drawn as one piece: a named group of actions, or a set of choices '
+                . 'of which one is on, made of real radio buttons.',
+                ['default', 'as a set of choices'],
+            ),
+            new Component(
                 'c-icon',
                 'A small drawing beside a word, or standing in for one, in the ink of the text around it.',
-                ['sign-out', 'chevron-down'],
+                ['sign-out', 'chevron-down', 'close'],
+            ),
+            new Component(
+                'c-close',
+                'A button that puts away whatever it sits in, drawn as a cross and named for what it does.',
+                ['default'],
             ),
             new Component(
                 'c-badge',
@@ -120,8 +142,9 @@ final class ComponentRegistry
             ),
             new Component(
                 'c-notice',
-                'One sentence a page has to say to whoever is reading it.',
-                ['info', 'danger'],
+                'One sentence a page has to say to whoever is reading it, which the reader may be allowed to put '
+                . 'away.',
+                ['info', 'danger', 'dismissible'],
             ),
             new Component(
                 'c-progress',
@@ -142,8 +165,16 @@ final class ComponentRegistry
             ),
             new Component(
                 'c-marker-list',
-                'A handful of short statements, each one marked.',
+                'A handful of short statements inside running content, each one marked and none of them leading '
+                . 'anywhere. Separate entries that lead somewhere, are current or carry a count are c-list-group.',
                 ['default'],
+            ),
+            new Component(
+                'c-list-group',
+                'A boxed column of separate entries - records, sections, the ways into something - each its own '
+                . 'row, one possibly the current one, some carrying a count. Statements inside running text, '
+                . 'each merely marked, are c-marker-list.',
+                ['default', 'with links', 'with counts'],
             ),
             new Component(
                 'c-panel',

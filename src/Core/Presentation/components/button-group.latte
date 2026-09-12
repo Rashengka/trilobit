@@ -1,0 +1,32 @@
+{**
+ * c-button-group - buttons that belong together, drawn as one piece.
+ *
+ * It comes two ways, and the difference is what the buttons do rather than how
+ * they look.
+ *
+ * A group of actions is a named group (role="group") holding c-button, written
+ * into its slot with {embed block buttonGroup}. The name is what a screen reader
+ * announces on the way into it.
+ *
+ * A set of choices of which one is on is handed as Choices, and is drawn as real
+ * radio buttons under one name - each written inside its label, which is what
+ * the words are a click on and what a screen reader names it by - in a named
+ * radiogroup. The arrow keys, the form it sits in and assistive technology
+ * then all know what it is without a line of script. Buttons told by ARIA that
+ * they are radios would be a copy of all of that, kept in step by hand. The
+ * radio is drawn invisible over its label, which is drawn as c-button; what is
+ * on and what has the focus are drawn on the label.
+ *
+ * What makes a set of choices work - a name, and an answer that is on being one
+ * of the answers - is held by Trilobit\Core\Presentation\Component\Choices,
+ * which refuses a set without them.
+ *}
+
+{define buttonGroup, string $label, ?Trilobit\Core\Presentation\Component\Choices $choices = null, ?string $testId = null}
+    <div class="c-button-group" role="{$choices === null ? 'group' : 'radiogroup'}" aria-label="{$label}" data-testid="{$testId}">
+        <label n:foreach="$choices?->options ?? [] as $value => $text" class="c-button c-button--quiet c-button-group__choice">
+            <input class="c-button-group__input" type="radio" name="{$choices->name}" value="{$value}" n:attr="checked: $choices->isChecked($value)">{$text}
+        </label>
+        {block buttonGroupBody}{/block}
+    </div>
+{/define}

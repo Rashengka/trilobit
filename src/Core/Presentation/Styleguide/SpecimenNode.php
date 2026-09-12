@@ -20,7 +20,9 @@ use Latte\Compiler\TokenStream;
  * as the Latte it was written in.
  *
  * **Nothing is written twice.** The HTML is the output of the very render the
- * specimen is drawn by, caught on its way to the page. The Latte is the text of
+ * specimen is drawn by, caught on its way to the page; the specimen is drawn
+ * from it as it came, and the copy shown as code is laid out afresh by
+ * HtmlSource, which moves whitespace and nothing a browser draws. The Latte is the text of
  * the template between the two tags, taken at compile time out of the tokens
  * the parser has already read - so it is exactly what the file says, comments
  * and all, rather than what a second copy or a reconstruction from the parsed
@@ -74,14 +76,14 @@ final class SpecimenNode extends StatementNode
                 } finally {
                     $ʟ_specimen = (string) ob_get_clean();
                 }
-                $this->renderBlock(%dump, %node + ['html' => new LR\Html($ʟ_specimen), 'markup' => %raw::dedent($ʟ_specimen), 'latte' => %dump], %dump) %line;
+                $this->renderBlock(%dump, %node + ['html' => new LR\Html($ʟ_specimen), 'markup' => %raw::format($ʟ_specimen), 'latte' => %dump], %dump) %line;
 
                 XX,
             $this->position,
             $this->content,
             self::FRAME,
             $this->args,
-            '\\' . SourceText::class,
+            '\\' . HtmlSource::class,
             $this->source,
             $context->getEscaper()->export(),
             $this->position,

@@ -1,0 +1,18 @@
+{**
+ * c-close - a button that puts away whatever it sits in.
+ *
+ * All there is to see is a cross, so its name is said to assistive technology
+ * outright, in aria-label: "Close" unless the caller has something more exact
+ * to say ("Dismiss", "Close the basket"). The cross is c-icon without a label,
+ * so it is silent, and there is no × in the markup for a screen reader to read
+ * out as "times".
+ *
+ * What putting away means is the caller's: c-notice hides itself when it is
+ * pressed (assets/notice.ts), and whatever else carries one says what it does.
+ *}
+
+{import 'icon.latte'}
+
+{define close, string $label = 'Close', ?string $testId = null}
+    <button type="button" class="c-close" aria-label="{$label}" data-testid="{$testId}">{include icon, name: 'close'}</button>
+{/define}

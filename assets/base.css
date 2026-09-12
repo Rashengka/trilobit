@@ -1740,6 +1740,233 @@
         inline-size: var(--space-xs);
     }
 
+    /*
+     * A dismissible notice puts its sentence and its c-close side by side. The
+     * rule for [hidden] is spelled out because display: flex above would
+     * otherwise win over the browser's own and keep a dismissed notice drawn.
+     */
+    .c-notice--dismissible {
+        align-items: flex-start;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+    }
+
+    .c-notice--dismissible[hidden] {
+        display: none;
+    }
+
+    /*
+     * A cross in the ink of whatever it sits in, so it reads on a notice of
+     * either kind. Pointed at, it gains a frame in that same ink rather than
+     * a ground of its own, which could not be right on every ground at once.
+     */
+    .c-close {
+        align-items: center;
+        background-color: transparent;
+        border: var(--border-hairline) solid transparent;
+        border-radius: var(--radius-sm);
+        color: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        flex: none;
+        justify-content: center;
+        padding: var(--space-3xs);
+    }
+
+    .c-close:hover {
+        border-color: currentColor;
+    }
+
+    /*
+     * The separator is drawn here and given an empty alternative after the
+     * slash, so it is seen and not read: in the markup it would be text a
+     * screen reader reads between every two steps.
+     */
+    .c-breadcrumb__list {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: var(--text-sm);
+        gap: var(--space-2xs);
+    }
+
+    .c-breadcrumb__item {
+        align-items: baseline;
+        display: inline-flex;
+        gap: var(--space-2xs);
+    }
+
+    .c-breadcrumb__item + .c-breadcrumb__item::before {
+        color: var(--color-ink-muted);
+        content: '/' / '';
+    }
+
+    .c-breadcrumb__link {
+        color: var(--color-ink-muted);
+    }
+
+    .c-breadcrumb__link:hover {
+        color: var(--color-ink);
+    }
+
+    .c-breadcrumb__current {
+        color: var(--color-ink);
+        font-weight: var(--font-weight-display);
+    }
+
+    /*
+     * Every step and every number is a tile of the same size, so the row does
+     * not jump as somebody pages through it. The current page is drawn in the
+     * accent; a step that cannot be taken is drawn quieter and takes no
+     * pointer.
+     */
+    .c-pagination__list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2xs);
+    }
+
+    .c-pagination__item {
+        display: flex;
+    }
+
+    .c-pagination__gap {
+        align-items: center;
+        color: var(--color-ink-muted);
+        padding-inline: var(--space-2xs);
+    }
+
+    .c-pagination__link {
+        align-items: center;
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        color: var(--color-ink);
+        display: inline-flex;
+        justify-content: center;
+        min-inline-size: var(--space-xl);
+        padding-block: var(--space-3xs);
+        padding-inline: var(--space-xs);
+        text-decoration: none;
+    }
+
+    .c-pagination__link[href]:not([aria-current]):hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-pagination__link[aria-current='page'] {
+        background-color: var(--color-accent);
+        border-color: transparent;
+        color: var(--color-accent-ink);
+    }
+
+    .c-pagination__link[aria-disabled='true'] {
+        color: var(--color-ink-muted);
+        cursor: not-allowed;
+    }
+
+    /*
+     * c-button side by side as one piece: square where two meet, the theme's
+     * own corner at either end, and the hairline between them drawn once.
+     */
+    .c-button-group {
+        display: inline-flex;
+        flex-wrap: wrap;
+    }
+
+    .c-button-group > .c-button {
+        border-radius: 0;
+    }
+
+    .c-button-group > .c-button:first-child {
+        border-end-start-radius: var(--radius-pill);
+        border-start-start-radius: var(--radius-pill);
+    }
+
+    .c-button-group > .c-button:last-child {
+        border-end-end-radius: var(--radius-pill);
+        border-start-end-radius: var(--radius-pill);
+    }
+
+    .c-button-group > .c-button + .c-button {
+        margin-inline-start: calc(-1 * var(--border-hairline));
+    }
+
+    /*
+     * A choice is a label drawn as c-button with its radio laid invisible over
+     * the whole of it, so that the radio is still what is clicked, focused and
+     * announced. What is on and what has the focus are therefore drawn on the
+     * label: the radio's own outline would be invisible with it.
+     */
+    .c-button-group__choice {
+        position: relative;
+    }
+
+    .c-button-group__input {
+        appearance: none;
+        block-size: 100%;
+        cursor: inherit;
+        inline-size: 100%;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        position: absolute;
+    }
+
+    .c-button-group__choice:has(> :checked) {
+        background-color: var(--color-accent);
+        border-color: transparent;
+        color: var(--color-accent-ink);
+    }
+
+    .c-button-group__choice:has(> :focus-visible) {
+        outline: var(--border-marker) solid var(--color-focus);
+        outline-offset: var(--space-3xs);
+        z-index: 1;
+    }
+
+    /*
+     * Separate entries in one frame, a rule between every two. The frame cuts
+     * off whatever reaches past it, so the focus ring of an entry is drawn
+     * inside the entry rather than outside, where it would be cut off too.
+     */
+    .c-list-group {
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .c-list-group__item + .c-list-group__item {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+    }
+
+    .c-list-group__entry {
+        align-items: center;
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-md);
+        text-decoration: none;
+    }
+
+    .c-list-group__entry:focus-visible {
+        outline-offset: calc(-1 * var(--border-marker));
+    }
+
+    .c-list-group__entry[href]:not([aria-current]):hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-list-group__entry[aria-current] {
+        background-color: var(--color-accent);
+        color: var(--color-accent-ink);
+    }
+
     .c-panel {
         background-color: var(--color-surface);
         border: var(--border-hairline) solid var(--color-line);
