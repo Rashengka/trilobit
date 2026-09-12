@@ -122,18 +122,34 @@ final class PermissionsInATenantTest extends TestCase
     }
 
     /**
-     * A rule written about the administration answers for a section of it,
-     * because src/Core/Security/permissions.neon says the section falls under
-     * it and Trilobit\Core\Security\AccessComposition works that out into a rule
-     * of the section's own. One rule rather than one per section is the whole
-     * reason the structure has parents.
+     * A rule written about the administration does not answer for a section
+     * of it: a pair means that pair, and opening the administration is not
+     * reading what is in it. The role opens the administration and edits the
+     * content, so the no below is about reading the content and nothing else.
      */
-    public function testARuleOnTheAdministrationAnswersForASectionOfIt(): void
+    public function testARuleOnTheAdministrationDoesNotAnswerForASectionOfIt(): void
     {
         $this->installation();
         $this->signIn();
 
-        self::assertTrue($this->permissions()->isAllowed(Resource::Content, Privilege::View));
+        self::assertTrue($this->permissions()->isAllowed(Resource::Administration, Privilege::View));
+        self::assertTrue($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::View));
+    }
+
+    /**
+     * The other direction, and the one the structure's parents are for now:
+     * any right in a section opens the administration it is a section of,
+     * because Trilobit\Core\Security\AccessComposition works out `view` on
+     * everything above it into a rule of its own.
+     */
+    public function testAPieceOnASectionOpensTheAdministration(): void
+    {
+        $this->installation(['content:edit']);
+        $this->signIn();
+
+        self::assertTrue($this->permissions()->isAllowed(Resource::Administration, Privilege::View));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::View));
     }
 
     public function testNobodySignedInIsAllowedNothing(): void

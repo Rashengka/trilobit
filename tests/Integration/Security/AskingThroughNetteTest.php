@@ -232,18 +232,23 @@ final class AskingThroughNetteTest extends TestCase
     }
 
     /**
-     * A rule written about the administration answers for a section of it,
-     * through this route as much as through Trilobit\Core\Security\Permissions:
-     * the access list an authorizator is built on is put together by the same
+     * A rule written about the administration does not answer for a section
+     * of it, through this route as much as through
+     * Trilobit\Core\Security\Permissions: the access list an authorizator is
+     * built on is put together by the same
      * Trilobit\Core\Security\AccessComposition, out of the same
-     * src/Core/Security/permissions.neon.
+     * src/Core/Security/permissions.neon. The role opens the administration
+     * and edits the content, so the no is about reading the content and not
+     * about the role answering nothing.
      */
-    public function testARuleOnTheAdministrationAnswersForASectionOfIt(): void
+    public function testARuleOnTheAdministrationDoesNotAnswerForASectionOfIt(): void
     {
         $this->installation();
         $this->signInAs('alice@example.com');
 
-        self::assertTrue($this->signedIn()->isAllowed(Resource::Content, Privilege::View));
+        self::assertTrue($this->signedIn()->isAllowed(Resource::Administration, Privilege::View));
+        self::assertTrue($this->signedIn()->isAllowed(Resource::Content, Privilege::Edit));
+        self::assertFalse($this->signedIn()->isAllowed(Resource::Content, Privilege::View));
     }
 
     /**
