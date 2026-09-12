@@ -92,6 +92,8 @@ final class OverviewPresenter extends FrontPresenter
             . 'scrolls under it',
         '--layout-z-menu' => 'the layer the entries a navigation opens as a block over the page are drawn '
             . 'in, above what stays in view - and the list a combobox opens',
+        '--layout-z-toast' => 'the layer the toasts held in a corner of the window are drawn in, above '
+            . 'everything else named here',
         '--layout-nav-overflow' => 'whether the band the navigation is held in scrolls a menu longer than the '
             . 'window (auto) or lets a block it opens hang out of it (visible)',
         '--layout-chrome-offset' => 'how much of the top of the window the held bands cover, and half a pixel '
@@ -139,6 +141,30 @@ final class OverviewPresenter extends FrontPresenter
     public function handleRedrawSpecimen(): void
     {
         $this->redrawControl('redrawnSpecimen');
+    }
+
+    /**
+     * Something said as a flash message, the way a page says what came of a
+     * form it was sent: asked for by the specimen of c-toast, once as an
+     * ordinary link and once through Naja, which is how the guide shows - and
+     * tests/e2e/toast.spec.ts measures - the message arriving as a toast
+     * either way.
+     *
+     * An ordinary request is answered the way a form is, with a redirect, and
+     * the message arrives with the page the redirect leads to. An answer to
+     * Naja draws only the toasts: the base presenter redraws them whenever
+     * there is something in them (FrontPresenter::afterRender()).
+     */
+    public function handleSayItInAToast(): void
+    {
+        if ($this->isAjax()) {
+            $this->flashMessage('The specimen was catalogued, and only the toasts were drawn again.');
+
+            return;
+        }
+
+        $this->flashMessage('The specimen was catalogued, and the page was drawn again.');
+        $this->redirect('this');
     }
 
     public function renderDefault(): void

@@ -90,6 +90,27 @@ abstract class FrontPresenter extends Presenter
     }
 
     /**
+     * The flash messages are drawn by the layout as toasts, in a snippet of
+     * their own (src/Core/Presentation/components/toast.latte). A page reached
+     * by a redirect draws them as part of itself; an answer to Naja draws only
+     * the snippets that changed, so this one is said to have changed whenever
+     * there is something in it.
+     *
+     * After the render method rather than before it, because a message may be
+     * said there too. And only when there is something to say: an answer to
+     * Naja with nothing to say leaves the toasts already on the page alone.
+     */
+    protected function afterRender(): void
+    {
+        parent::afterRender();
+
+        $template = $this->getTemplate();
+        if ($this->isAjax() && $template instanceof FrontTemplate && $template->flashes !== []) {
+            $this->redrawControl('flashes');
+        }
+    }
+
+    /**
      * Draw this page at a width of its own, whatever the person reading it
      * usually prefers.
      *

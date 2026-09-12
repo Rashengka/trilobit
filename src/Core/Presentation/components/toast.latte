@@ -1,0 +1,46 @@
+{**
+ * c-toast - short news drawn over the page in a corner of the window: what
+ * came of something just done.
+ *
+ * It takes the messages the way Nette hands its flash messages over - objects
+ * with a message and a type - so that both layouts draw $flashes with it as
+ * they are, in the corner of the window (corner: true), inside the snippet the
+ * base presenters redraw when an answer to Naja has something to say. A
+ * message said before a redirect arrives with the page the redirect leads to;
+ * one said in answer to Naja arrives in that snippet, and replaces what was
+ * there rather than piling up on it. The type names what kind of news it is,
+ * as it does for c-notice: info, or danger for a refusal. A type it does not
+ * know stops the page (Argument) rather than being drawn as information: a
+ * refusal said with a typing mistake in its type would otherwise be read out
+ * as a quiet status and look like good news.
+ *
+ * **What a screen reader hears** is the sentence and not the toast, for the
+ * reason c-notice gives: a live region holding the button would announce
+ * "Saved. Dismiss" every time. A refusal is an alert, which interrupts; the
+ * rest is a status, which waits its turn. A toast arrives already holding its
+ * sentence, and a live region is read when it changes after the reader has
+ * seen it, so assets/toast.ts puts the sentence in again once the toast is on
+ * the page.
+ *
+ * **It stays until it is put away.** A toast that went by itself would have to
+ * give whoever reads it the time they need, and a pause while the pointer or
+ * the focus is on it does not reach somebody who is reading it from elsewhere
+ * - zoomed in on another part of the page, or listening to the next thing
+ * already - so it would still be gone before some of them had read it (WCAG
+ * 2.2.1). What a toast here says is what came of what somebody did, and that
+ * is not something to take away on a timer. Its c-close puts it away the way
+ * a dismissible c-notice is put away (assets/notice.ts), and the next page, or
+ * the next message, replaces it anyway.
+ *}
+
+{import 'close.latte'}
+
+{define toast, array $messages, bool $corner = false, ?string $testId = null}
+    <div n:if="$messages !== []" n:class="'c-toast', $corner ? 'c-toast--corner'" data-testid="{$testId}">
+        {foreach $messages as $toast}{do Trilobit\Core\Presentation\Component\Argument::oneOf('c-toast', 'type', $toast->type, ['info', 'danger'])}{/foreach}
+        <div n:foreach="$messages as $toast" n:class="'c-toast__item', $toast->type === 'danger' ? 'c-toast__item--danger'">
+            <p class="c-toast__message" role="{$toast->type === 'danger' ? 'alert' : 'status'}">{$toast->message}</p>
+            {include close, label: 'Dismiss'}
+        </div>
+    </div>
+{/define}

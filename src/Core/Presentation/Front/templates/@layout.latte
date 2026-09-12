@@ -22,6 +22,7 @@
 {import '../../components/site-header.latte'}
 {import '../../components/nav.latte'}
 {import '../../components/site-footer.latte'}
+{import '../../components/toast.latte'}
 
 <!DOCTYPE html>
 <html lang="en" n:attr="$preferences->attributes()">
@@ -61,6 +62,13 @@
     <div class="l-container l-stack l-stack--loose">
         {include content}
     </div>
+
+    {* The flash messages, as toasts held in a corner of the window. Inside the
+       content rather than beside it: the body is the grid of the shell, and an
+       element of its own there would be given a cell. The snippet is here even
+       when there is nothing to say, because it is what an answer to Naja puts
+       a message into (FrontPresenter::afterRender()). *}
+    <div n:snippet="flashes">{include toast, messages: $flashes, corner: true, testId: 'toasts'}</div>
 </main>
 
 <div class="l-shell__footer" data-testid="layout-footer">
