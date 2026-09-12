@@ -12,11 +12,25 @@
  * the whole notice, because a region holding the button would announce
  * "Saved. Dismiss" every time it appeared. A notice that is not dismissible is
  * drawn exactly as it always was.
+ *
+ * A notice with a title says what happened over the sentence that says what to
+ * do about it - a page that was not published, and why. The title and the
+ * sentence are one live region, announced together, because a title read out
+ * on its own says that something happened and not what. The title is not a
+ * heading: the notice cannot know where in the outline of the page it is drawn,
+ * and a heading at the wrong level is worse than none. A dismissible notice
+ * with a title is refused until a page needs one: its live region is the
+ * sentence alone, and the title would have to join it.
  *}
 
 {import 'close.latte'}
 
-{define notice, string $message, string $variant = 'info', ?string $testId = null, bool $dismissible = false}
+{define notice, string $message, string $variant = 'info', ?string $testId = null, bool $dismissible = false, ?string $title = null}
+    {do Trilobit\Core\Presentation\Component\Argument::holds(
+        !$dismissible || $title === null,
+        sprintf("c-notice '%s' is dismissible and has a title; it can be one or the other.", $message),
+    )}
+
     <div
         n:if="$dismissible"
         n:class="'c-notice', 'c-notice--dismissible', $variant === 'danger' ? 'c-notice--danger'"
@@ -24,6 +38,15 @@
     >
         <p class="c-notice__message" role="{$variant === 'danger' ? 'alert' : 'status'}">{$message}</p>
         {include close, label: 'Dismiss'}
+    </div>
+    <div
+        n:elseif="$title !== null"
+        n:class="'c-notice', 'c-notice--titled', $variant === 'danger' ? 'c-notice--danger'"
+        role="{$variant === 'danger' ? 'alert' : 'status'}"
+        data-testid="{$testId}"
+    >
+        <p class="c-notice__title">{$title}</p>
+        <p class="c-notice__message">{$message}</p>
     </div>
     <p
         n:else

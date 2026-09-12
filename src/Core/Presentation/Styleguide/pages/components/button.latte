@@ -1,8 +1,9 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
 {*
- * The one thing a page wants you to do, the quieter things beside it, and a
- * button that goes nowhere because it does something where it is.
+ * The one thing a page wants you to do, the quieter things beside it, the one
+ * that deletes, the smaller ones in a row of a table, a button that goes nowhere
+ * because it does something where it is, and a button that is only an icon.
  *}
 
 {import '../../templates/furniture.latte'}
@@ -19,12 +20,28 @@
                 {include button, label: 'Keep looking', href: '#', variant: 'quiet'}
             {/specimen}
 
+            {specimen 'danger'}
+                {include button, label: 'Delete this page', variant: 'danger'}
+            {/specimen}
+
+            {specimen 'small'}
+                <div class="l-cluster">
+                    {include button, label: 'Open', href: '#', variant: 'quiet', size: 'small'}
+                    {include button, label: 'Add to basket', href: '#', size: 'small'}
+                    {include button, label: 'Remove', variant: 'danger', size: 'small'}
+                </div>
+            {/specimen}
+
             {specimen 'without a destination'}
                 {include button, label: 'Recalculate'}
             {/specimen}
 
             {specimen 'with an icon'}
                 {include button, label: 'Sign out', href: '#', variant: 'quiet', icon: 'sign-out'}
+            {/specimen}
+
+            {specimen 'with only an icon'}
+                {include button, label: 'Sign out', href: '#', variant: 'quiet', icon: 'sign-out', iconOnly: true}
             {/specimen}
         {/block}
     {/embed}

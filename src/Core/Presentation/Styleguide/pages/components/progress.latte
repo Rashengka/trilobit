@@ -1,0 +1,56 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * How far something has got, when it is known and when it is not, and how much
+ * of something there is, inside its bounds and past one.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/progress.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-progress']}
+        {block sgSectionBody}
+            <p class="l-measure">
+                A <code>&lt;progress&gt;</code> for something that will end - an import, an upload - and a
+                <code>&lt;meter&gt;</code> for a reading that stays, such as storage used or a drawer's places
+                filled. A screen reader announces the first as busy and the second as a measurement, so the one to
+                use is the one that answers the question being asked, not the one that looks right.
+            </p>
+
+            {specimen 'under way'}
+                {include progress, label: 'Importing the price list', value: 132, max: 480, text: '132 of 480 rows'}
+            {/specimen}
+
+            {specimen 'not known how far'}
+                {include progress, label: 'Waiting for the carrier to answer'}
+            {/specimen}
+
+            {specimen 'a measure'}
+                {include progress,
+                    label: 'Storage used',
+                    value: 3.2,
+                    max: 10,
+                    text: '3.2 of 10 GB',
+                    measure: true,
+                    low: 7,
+                    high: 9,
+                    optimum: 0}
+            {/specimen}
+
+            {specimen 'a measure past its high bound'}
+                {include progress,
+                    label: 'Drawer B2 filled',
+                    value: 46,
+                    max: 50,
+                    text: '46 of 50 places',
+                    measure: true,
+                    low: 35,
+                    high: 45,
+                    optimum: 0}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

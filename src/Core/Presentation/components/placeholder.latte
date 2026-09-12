@@ -1,0 +1,39 @@
+{**
+ * c-placeholder - the shape of content still on its way, announced once for the
+ * whole block.
+ *
+ * A skeleton is a handful of empty bars. Every one of them in the accessibility
+ * tree would be something to step through that says nothing, and every one a
+ * status of its own would be the same wait announced over and over. So the bars
+ * are hidden, and one status carries one sentence saying what is being loaded.
+ *
+ * Two shapes, both of something the application already draws:
+ *
+ * - 'text': lines of running text, the last one shorter - a panel's content,
+ *   a note, the rows of a record while they arrive.
+ * - 'card': the parts of a c-card - something to look at, a title and lines -
+ *   in the card's frame and at its proportions, so that a grid of tiles does
+ *   not jump when the real ones take its place.
+ *
+ * The bars pulse for whoever has not asked for less motion, and stand still for
+ * whoever has; a row of grey bars reads as "on its way" either way.
+ *}
+
+{define placeholder, string $label, string $shape = 'text', int $lines = 3, ?string $testId = null}
+    {do Trilobit\Core\Presentation\Component\Argument::oneOf('c-placeholder', 'shape', $shape, ['text', 'card'])}
+
+    <div n:class="'c-placeholder', $shape === 'card' ? 'c-placeholder--card'" role="status" data-testid="{$testId}">
+        <span class="u-visually-hidden">{$label}</span>
+
+        <div class="c-placeholder__shapes" aria-hidden="true">
+            <span class="c-placeholder__media" n:if="$shape === 'card'"></span>
+
+            <span class="c-placeholder__body">
+                <span class="c-placeholder__heading" n:if="$shape === 'card'"></span>
+                {for $line = 0; $line < $lines; $line++}
+                    <span class="c-placeholder__line"></span>
+                {/for}
+            </span>
+        </div>
+    </div>
+{/define}

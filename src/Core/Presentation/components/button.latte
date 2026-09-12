@@ -4,9 +4,13 @@
  *
  * A destination makes it a link and no destination makes it a button, because
  * the difference is what happens when it is used rather than how it looks. The
- * variant names a role - the quiet one is the alternative to the main action -
- * rather than an appearance, so a theme is free to draw either of them any way
- * it likes.
+ * variant names a role - the quiet one is the alternative to the main action,
+ * the danger one deletes or cancels something - rather than an appearance, so a
+ * theme is free to draw any of them any way it likes.
+ *
+ * The small size is for a row of a table or a toolbar, where a button of the
+ * page's size would make every row as tall as a heading. It is a size and not a
+ * variant: a small button is still primary, quiet or danger.
  *
  * @param array<string, string|null> $attributes anything the caller has to hang
  *     on the control itself: a data- hook, an aria- relationship. The component
@@ -15,14 +19,32 @@
  * @param string|null $icon the name of a c-icon drawn after the label. The
  *     label still says what the control does, so the icon is decoration and is
  *     hidden from assistive technology.
+ * @param bool $iconOnly draw the icon and nothing else. The label is still in
+ *     the control, as text a screen reader reads and a translation reaches, and
+ *     only hidden from the page; a control drawn this way without an icon would
+ *     be a control with nothing on it, so it is refused.
  *}
 
 {import 'icon.latte'}
 
-{define button, string $label, string $href = '', string $variant = 'primary', ?string $testId = null, array $attributes = [], ?string $icon = null}
+{define button, string $label, string $href = '', string $variant = 'primary', ?string $testId = null, array $attributes = [], ?string $icon = null, string $size = 'default', bool $iconOnly = false}
+    {do Trilobit\Core\Presentation\Component\Argument::oneOf('c-button', 'variant', $variant, ['primary', 'quiet', 'danger'])}
+    {do Trilobit\Core\Presentation\Component\Argument::oneOf('c-button', 'size', $size, ['default', 'small'])}
+    {do Trilobit\Core\Presentation\Component\Argument::holds(
+        !$iconOnly || $icon !== null,
+        sprintf("c-button '%s' is to be drawn as only an icon and names no icon.", $label),
+    )}
+
+    {* One variant at a time, by construction: the class is made of the one
+       variable, so no element can carry two variants deciding the same colours. *}
     <a
         n:tag="$href === '' ? 'button' : 'a'"
-        n:class="'c-button', $variant === 'quiet' ? 'c-button--quiet'"
+        n:class="
+            'c-button',
+            $variant !== 'primary' ? 'c-button--' . $variant,
+            $size === 'small' ? 'c-button--small',
+            $iconOnly ? 'c-button--icon-only'
+        "
         n:attr="$attributes + ['href' => $href ?: null, 'type' => $href === '' ? 'button' : null, 'data-testid' => $testId]"
-    >{$label}{if $icon !== null}{include icon, name: $icon}{/if}</a>
+    >{if $iconOnly}<span class="u-visually-hidden">{$label}</span>{else}{$label}{/if}{if $icon !== null}{include icon, name: $icon}{/if}</a>
 {/define}
