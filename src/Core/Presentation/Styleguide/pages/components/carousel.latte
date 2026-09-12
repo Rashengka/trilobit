@@ -1,0 +1,33 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A strip of three slides, each the style guide's own drawing with a line
+ * under it. It turns by hand and by key on its own, and by the buttons under
+ * it where there is a script (tests/e2e/carousel.spec.ts).
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/carousel.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-carousel']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {embed block carousel,
+                    label: 'Specimens',
+                    slides: ['The head shield', 'The segments', 'The tail shield'],
+                    id: 'sg-carousel',
+                    testId: 'sample-carousel',
+                }
+                    {block carouselSlide}
+                        {include sgSpecimenDrawing}
+
+                        <p>{$slide}</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

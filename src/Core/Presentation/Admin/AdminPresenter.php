@@ -277,6 +277,22 @@ abstract class AdminPresenter extends Presenter
     }
 
     /**
+     * The flash messages are drawn by the layout as toasts, in a snippet of
+     * their own, which an answer to Naja redraws whenever there is something
+     * in it - the same rule as on the public side, see
+     * Trilobit\Core\Presentation\Front\FrontPresenter::afterRender().
+     */
+    protected function afterRender(): void
+    {
+        parent::afterRender();
+
+        $template = $this->getTemplate();
+        if ($this->isAjax() && $template instanceof AdminTemplate && $template->flashes !== []) {
+            $this->redrawControl('flashes');
+        }
+    }
+
+    /**
      * Where the administration begins for this person, for a page that has to
      * send them there.
      *

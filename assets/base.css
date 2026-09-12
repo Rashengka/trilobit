@@ -1974,6 +1974,181 @@
     }
 
     /*
+     * c-toast: a column of toasts, each a sentence and its c-close side by
+     * side like a dismissible notice, raised off whatever it is drawn over.
+     * The column is as wide as a card, so a sentence wraps where it would on
+     * a tile rather than running the width of the window.
+     *
+     * Held in the corner of the window at the end of the lines of text - the
+     * logical sides, so the other corner where writing runs the other way -
+     * over the page in a layer of its own, above what stays in view and above
+     * the blocks a navigation opens (--layout-z-toast). A toast that was put
+     * away is spelled out as hidden for the reason the notice's is.
+     */
+    .c-toast {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        max-inline-size: var(--layout-card-min);
+    }
+
+    .c-toast--corner {
+        inline-size: min(var(--layout-card-min), 100% - 2 * var(--space-md));
+        inset-block-end: var(--space-md);
+        inset-inline-end: var(--space-md);
+        position: fixed;
+        z-index: var(--layout-z-toast);
+    }
+
+    .c-toast__item {
+        align-items: flex-start;
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-inline-start: var(--border-marker) solid var(--color-accent);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-raised);
+        color: var(--color-ink);
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
+    .c-toast__item--danger {
+        background-color: var(--color-danger-surface);
+        border-color: var(--color-danger);
+        color: var(--color-danger-ink);
+    }
+
+    .c-toast__item[hidden] {
+        display: none;
+    }
+
+    /*
+     * A toast arrives over a moment, rising into place as it appears - for
+     * nobody who asked for reduced motion, who gets it in place at once. The
+     * state it rises from is the one it is drawn in before its first frame
+     * (@starting-style), so there is no script and nothing to undo.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-toast__item {
+            transition:
+                opacity var(--motion-unfold),
+                translate var(--motion-unfold);
+        }
+
+        @starting-style {
+            .c-toast__item {
+                opacity: 0;
+                translate: 0 var(--space-sm);
+            }
+        }
+    }
+
+    /*
+     * c-carousel: the strip is a row of slides as wide as itself, scrolled
+     * sideways and snapped a slide at a time, and stopped at every slide
+     * however fast it is swiped. That is all it takes to turn it, by hand
+     * and by the arrow keys, with no script. Its scrollbar stays, thin: with
+     * no script it is the one sign that there is more than one slide.
+     *
+     * The buttons under it only work with the script, so a browser with none
+     * is not shown them. The indicators are drawn as dots inside a target
+     * large enough to press (WCAG 2.5.8), and the one of the slide in view is
+     * filled.
+     */
+    .c-carousel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .c-carousel__track {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        display: flex;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: inline mandatory;
+        scrollbar-width: thin;
+    }
+
+    .c-carousel__track:focus-visible {
+        outline: var(--border-marker) solid var(--color-focus);
+        outline-offset: var(--space-3xs);
+    }
+
+    .c-carousel__slide {
+        align-items: center;
+        display: flex;
+        flex: 0 0 100%;
+        flex-direction: column;
+        gap: var(--space-xs);
+        padding: var(--space-md);
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .c-carousel__controls {
+        align-items: center;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+    }
+
+    .c-carousel__indicators {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2xs);
+        justify-content: center;
+    }
+
+    .c-carousel__indicator {
+        align-items: center;
+        background-color: transparent;
+        block-size: var(--space-xl);
+        border: var(--border-hairline) solid transparent;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        display: inline-flex;
+        inline-size: var(--space-xl);
+        justify-content: center;
+        padding: 0;
+    }
+
+    .c-carousel__indicator::before {
+        background-color: transparent;
+        block-size: var(--space-sm);
+        border: var(--border-hairline) solid var(--color-ink-muted);
+        border-radius: var(--radius-pill);
+        content: '';
+        inline-size: var(--space-sm);
+    }
+
+    .c-carousel__indicator:hover::before {
+        border-color: var(--color-ink);
+    }
+
+    .c-carousel__indicator[aria-current='true']::before {
+        background-color: var(--color-accent);
+        border-color: var(--color-accent);
+    }
+
+    @media (scripting: none) {
+        .c-carousel__controls {
+            display: none;
+        }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .c-carousel__track {
+            scroll-behavior: smooth;
+        }
+    }
+
+    /*
      * The separator is drawn here and given an empty alternative after the
      * slash, so it is seen and not read: in the markup it would be text a
      * screen reader reads between every two steps.
