@@ -48,7 +48,13 @@ final class ComponentRegistry
             new Component(
                 'c-site-header',
                 'The band across the top of every page: who this is, and the way back to the start.',
-                ['default', 'with a tagline'],
+                ['default', 'with a tagline', 'with something at the end'],
+            ),
+            new Component(
+                'c-user-menu',
+                'Whoever is signed in: a button carrying their name, and the panel it opens with who they are, '
+                . 'whatever the page offers them, and the ways out.',
+                ['default'],
             ),
             new Component(
                 'c-nav',
@@ -78,7 +84,7 @@ final class ComponentRegistry
             new Component(
                 'c-button',
                 'The one thing a page wants you to do, and the quieter things beside it.',
-                ['primary', 'quiet', 'without a destination'],
+                ['primary', 'quiet', 'without a destination', 'with an icon'],
             ),
             new Component(
                 'c-icon',

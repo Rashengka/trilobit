@@ -29,6 +29,7 @@
 
 {import '../../../components/preference-switcher.latte'}
 {import '../../../components/site-header.latte'}
+{import '../../../components/user-menu.latte'}
 {import '../../../components/nav.latte'}
 {import '../../../components/site-footer.latte'}
 {import '../../../components/page-heading.latte'}
@@ -442,6 +443,42 @@
                         tagline: 'Modular commerce, contacts and content.'}
                 {/block}
             {/embed}
+
+            {embed block sgSpecimen, variant: 'with something at the end'}
+                {block sgSpecimenStage}
+                    {embed block siteHeader, brand: 'Trilobit', href: '#', tagline: 'Administration'}
+                        {block siteHeaderEnd}
+                            {include button, label: 'Somebody', variant: 'quiet', icon: 'chevron-down'}
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {*
+     * The menu is drawn closed, as it is in the banner; the button opens it.
+     * What the administration puts between who they are and the ways out is the
+     * preference switch, which is not repeated here - the one at the top of
+     * this page is that switch's specimen, and a second would put two controls
+     * for every answer on one page.
+     *}
+    {embed block sgSection, component: $components['c-user-menu']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block userMenu,
+                        id: 'sg-user-menu-panel',
+                        name: 'Pia Paradoxides',
+                        email: 'pia@example.com',
+                        signOutUrl: '#',
+                        publicSiteUrl: '#'}
+                        {block userMenuBody}
+                            <p class="text-sm text-ink-muted">Whatever the page offers the person it belongs to.</p>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
         {/block}
     {/embed}
 
@@ -554,6 +591,12 @@
             {embed block sgSpecimen, variant: 'without a destination'}
                 {block sgSpecimenStage}
                     {include button, label: 'Recalculate'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with an icon'}
+                {block sgSpecimenStage}
+                    {include button, label: 'Sign out', href: '#', variant: 'quiet', icon: 'sign-out'}
                 {/block}
             {/embed}
         {/block}

@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 
 import { expect, test } from '@playwright/test';
 
+import { openAccountMenu } from './account-menu';
+
 /**
  * Signing in, in a real browser.
  *
@@ -165,6 +167,9 @@ test('signing in opens the administration, and signing out closes it again', asy
 
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByTestId('admin-headline')).toHaveText('Overview');
+
+    // Who is signed in is in their menu, which is closed until somebody opens it.
+    await openAccountMenu(page);
     await expect(page.getByTestId('admin-identity')).toHaveText(displayName);
     await expect(page.getByTestId('admin-identity-email')).toHaveText(email);
 
@@ -217,6 +222,7 @@ test('signing in opens the administration, and signing out closes it again', asy
     // Signing out is the application's own act and not the administration's:
     // the address carries no admin/ and it leaves nobody inside a section they
     // are no longer signed in to.
+    await openAccountMenu(page);
     await page.getByTestId('admin-sign-out').click();
     await expect(page).toHaveURL(/\/$/);
 
@@ -242,6 +248,7 @@ test('the administrator of the installation signs in to their own section', asyn
 
     await expect(page).toHaveURL(/\/admin\/installation$/);
     await expect(page.getByTestId('installation-headline')).toHaveText('Installation');
+    await openAccountMenu(page);
     await expect(page.getByTestId('admin-identity')).toHaveText(installationName);
 
     // The way into the section is the signpost, and it is built from the same

@@ -478,6 +478,82 @@
         font-size: var(--text-sm);
     }
 
+    /* Whatever a page puts at the far end of the band. The auto margin takes
+       the free space in front of it, so the brand and the tagline stay
+       together at the start. */
+    .c-site-header__end {
+        margin-inline-start: auto;
+    }
+
+    /*
+     * The panel c-user-menu opens: a native popover, in the top layer, hung
+     * under the button that opens it.
+     *
+     * The browser's own rule for a popover centres it in the window (inset 0,
+     * margin auto) and hides it while it is closed. The first half is taken
+     * back, so that position-area can place it against the button; the second
+     * is kept, which is why the panel's own layout is given only while it is
+     * open - a display on the closed panel would draw it open for good.
+     */
+    .c-user-menu__panel {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-raised);
+        color: var(--color-ink);
+        inset: auto;
+        margin: 0;
+        margin-block-start: var(--space-2xs);
+        max-inline-size: 100%;
+        min-inline-size: var(--layout-card-min);
+        padding: var(--space-md);
+        position-area: block-end span-inline-start;
+        position-try-fallbacks: flip-block;
+    }
+
+    .c-user-menu__panel:popover-open {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    /* A browser that cannot anchor gets the panel at a fixed place instead: at
+       the end of the window, about a banner's height down. */
+    @supports not (position-area: block-end) {
+        .c-user-menu__panel {
+            inset-block-start: var(--space-2xl);
+            inset-inline-end: var(--layout-gutter);
+        }
+    }
+
+    .c-user-menu__who {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .c-user-menu__name {
+        font-weight: var(--font-weight-display);
+    }
+
+    .c-user-menu__email {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        overflow-wrap: anywhere;
+    }
+
+    .c-user-menu__body,
+    .c-user-menu__actions {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        padding-block-start: var(--space-md);
+    }
+
+    .c-user-menu__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+        justify-content: space-between;
+    }
+
     .c-nav {
         background-color: var(--color-nav);
         block-size: 100%;
