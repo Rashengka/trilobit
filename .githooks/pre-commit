@@ -11,4 +11,16 @@ set -e
 
 root=$(git rev-parse --show-toplevel)
 
+# Nothing staged is not the same failure as it is for a manual run: it is
+# exactly the shape of `git commit --allow-empty`, a legitimate commit that
+# stages nothing on purpose. There is also nothing here a leak could hide in,
+# so letting it through costs nothing - git itself still decides afterwards
+# whether a commit with an empty diff is allowed at all. `bin/check-leaks
+# --staged` reports this same condition as exit code 3 for a manual run
+# (see its own comment), and this hook would otherwise turn that into a
+# blocked --allow-empty commit, which is not what code 3 is for.
+if git diff --cached --quiet; then
+    exit 0
+fi
+
 exec "$root/bin/check-leaks" --staged
