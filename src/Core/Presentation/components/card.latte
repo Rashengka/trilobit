@@ -6,9 +6,15 @@
  * reader still reads one link with the title as its name. The media slot takes a
  * short label rather than a picture while the application has no media library;
  * the box it sits in keeps its shape either way, and the shape is a token.
+ *
+ * The footer is the line at the foot of the tile - what a product costs and
+ * whether there is any, when a page was last changed. It is part of the tile and
+ * not of its link, so the link is still named by the title alone; and it sits at
+ * the foot of the tile however long the sentence above it is, so the footers
+ * of a row of tiles line up.
  *}
 
-{define card, string $title, string $href, string $text = '', string $media = '', ?string $testId = null}
+{define card, string $title, string $href, string $text = '', string $media = '', ?string $testId = null, string $footer = ''}
     <article class="c-card">
         <div class="c-card__media" n:if="$media !== ''" aria-hidden="true">{$media}</div>
 
@@ -17,5 +23,7 @@
 
             <p class="c-card__text" n:if="$text !== ''">{$text}</p>
         </div>
+
+        <p class="c-card__footer" n:if="$footer !== ''">{$footer}</p>
     </article>
 {/define}

@@ -1,0 +1,36 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A wait said in words: on its own for a region that is loading, small beside
+ * the button that started it, and with its words on the page.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/spinner.latte'}
+{import '../../../components/button.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-spinner']}
+        {block sgSectionBody}
+            <p class="l-measure">
+                The words are read out as soon as the spinner appears. Whoever has asked for less motion sees the
+                shape stand still and the words beside it.
+            </p>
+
+            {specimen 'default'}
+                {include spinner, label: 'Loading the orders…'}
+            {/specimen}
+
+            {specimen 'small'}
+                <div class="l-cluster">
+                    {include button, label: 'Save the draft', variant: 'quiet'}
+                    {include spinner, label: 'Saving the draft…', size: 'small'}
+                </div>
+            {/specimen}
+
+            {specimen 'with its words shown'}
+                {include spinner, label: 'Checking the address…', labelShown: true}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}
