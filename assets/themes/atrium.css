@@ -150,6 +150,10 @@
        moves for somebody who asked for reduced motion (assets/base.css). */
     --motion-layer: 200ms ease-out;
 
+    /* What a disclosure takes to open or close: long enough to be seen to
+       unfold, the way this theme takes its time. */
+    --motion-unfold: 240ms ease;
+
     /* ---- Layout -------------------------------------------------------- */
 
     /*

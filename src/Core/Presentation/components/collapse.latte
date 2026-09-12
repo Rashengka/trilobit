@@ -1,0 +1,46 @@
+{**
+ * c-collapse - one thing folded away under its title, opened and closed by
+ * whoever is reading.
+ *
+ * It is the browser's own disclosure, <details> and <summary>, and so none of
+ * its behaviour is written here: the browser names the summary after its text,
+ * reports it expanded or not, opens and closes it by Enter and Space, keeps
+ * what is folded away out of the reach of the Tab key and of anything but its
+ * own search - which opens it on finding something inside. A script-driven
+ * disclosure would have to write every one of those itself, and would lose
+ * them all the first time the script did not arrive.
+ *
+ * $level makes the title a heading of that level (2 to 6, see
+ * Trilobit\Core\Presentation\Component\HeadingLevel), inside the summary, so
+ * that the outline of the page and a screen reader's list of headings reach
+ * it. Without a level the title is only the name of the control.
+ *
+ * $name is what makes several of them open one at a time: the browser closes
+ * every other disclosure with the same name as one opens. That is the whole of
+ * c-accordion's "one open at a time", and a collapse standing on its own must
+ * not carry one.
+ *
+ * $id gives it an address. An address naming a collapse that is folded opens
+ * it (assets/disclosure.ts) - the browser only does that by itself for an
+ * address naming something inside one.
+ *
+ * What it folds away is the collapseBody block; use it with {embed block collapse}.
+ *}
+
+{import 'icon.latte'}
+
+{define collapse, string $title, ?int $level = null, ?string $name = null, ?string $id = null, bool $open = false, ?string $testId = null}
+    <details class="c-collapse" n:attr="name: $name, id: $id, open: $open" data-testid="{$testId}">
+        <summary class="c-collapse__toggle">
+            {if $level === null}
+                <span class="c-collapse__title">{$title}</span>
+            {else}
+                <h2 n:tag="Trilobit\Core\Presentation\Component\HeadingLevel::from($level)->tag()" class="c-collapse__title">{$title}</h2>
+            {/if}
+
+            {include icon, name: 'chevron-down'}
+        </summary>
+
+        <div class="c-collapse__body">{block collapseBody}{/block}</div>
+    </details>
+{/define}

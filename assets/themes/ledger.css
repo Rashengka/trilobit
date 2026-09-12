@@ -138,6 +138,10 @@
     /* Quicker than atrium, the way this theme is quicker at everything else. */
     --motion-layer: 140ms ease-out;
 
+    /* What a disclosure takes to open or close: brisk, the way this theme
+       is quick at everything else. */
+    --motion-unfold: 160ms ease;
+
     /* ---- Layout -------------------------------------------------------- */
 
     /*
