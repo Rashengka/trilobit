@@ -27,6 +27,15 @@ const themes = ['atrium', 'ledger'] as const;
 
 const modes = ['light', 'dark'] as const;
 
+/**
+ * Playwright starts a headless Chrome with --hide-scrollbars, and under it no
+ * scrollbar takes room whatever the page asks for - so the cases below about
+ * a scrollbar that takes room (see withScrollbar) could not have one. Left
+ * out for this file only: the other suites are measured the way they always
+ * were.
+ */
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
+
 async function drawIn(page: Page, theme: string, mode: string): Promise<void> {
     await page.evaluate(
         ([chosenTheme, chosenMode]) => {
@@ -99,6 +108,46 @@ async function withoutInvokerCommands(page: Page): Promise<void> {
     });
 }
 
+/**
+ * The two kinds of scrollbar a page is looked at with. Chrome on a Mac draws
+ * one over the page that takes no room; on Windows and Linux - and so in CI -
+ * it takes room at the edge of the window, and so does anything left keeping
+ * that room once the scrollbar has gone. That difference passed a laptop and
+ * failed CI, so the second kind is forced here rather than left to whichever
+ * machine runs the suite: a style for ::-webkit-scrollbar makes Chrome draw a
+ * scrollbar that takes room on any system, once it has not been told to hide
+ * every scrollbar (the test.use at the top of this file).
+ */
+const scrollbars = ['as the browser draws it', 'taking room'] as const;
+
+type Scrollbar = (typeof scrollbars)[number];
+
+async function withScrollbar(page: Page, scrollbar: Scrollbar): Promise<void> {
+    if (scrollbar !== 'taking room') {
+        return;
+    }
+
+    await page.addInitScript(() => {
+        document.addEventListener('DOMContentLoaded', () => {
+            const style = document.createElement('style');
+            style.textContent = '::-webkit-scrollbar { width: 15px; height: 15px; } ::-webkit-scrollbar-thumb { background: grey; }';
+            document.head.append(style);
+        });
+    });
+}
+
+/**
+ * How much of the width of the window the page's scrollbar takes. Asked
+ * before anything is opened, so that a case about a scrollbar taking room is
+ * known to have had one - a style that stopped working would otherwise pass
+ * it as the kind that takes none.
+ */
+async function expectTheScrollbar(page: Page, scrollbar: Scrollbar): Promise<void> {
+    if (scrollbar === 'taking room') {
+        expect(await page.evaluate(() => window.innerWidth - document.documentElement.clientWidth), 'the scrollbar takes no room').toBe(15);
+    }
+}
+
 test.describe('c-modal', () => {
     test('opens from the keyboard as a dialog named by its heading, and takes the focus in', async ({ page }) => {
         const problems = problemsOn(page);
@@ -132,26 +181,65 @@ test.describe('c-modal', () => {
      * in the top corner of the window, and a click meant for the page beside
      * it landed on the dialog.
      */
-    test('is drawn in the middle of the window', async ({ page }) => {
-        await page.emulateMedia({ reducedMotion: 'reduce' });
-        await page.goto(modalPage);
-        const dialog = page.getByTestId('sg-modal');
+    for (const scrollbar of scrollbars) {
+        test(`is drawn in the middle of the window, with a scrollbar ${scrollbar}`, async ({ page }) => {
+            await withScrollbar(page, scrollbar);
+            await page.emulateMedia({ reducedMotion: 'reduce' });
+            await page.goto(modalPage);
+            await expectTheScrollbar(page, scrollbar);
+            const dialog = page.getByTestId('sg-modal');
 
-        await page.getByTestId('sg-modal-open').click();
-        await expect(dialog).toBeVisible();
+            await page.getByTestId('sg-modal-open').click();
+            await expect(dialog).toBeVisible();
 
-        const off = await dialog.evaluate((element) => {
-            const rect = element.getBoundingClientRect();
+            const off = await dialog.evaluate((element) => {
+                const rect = element.getBoundingClientRect();
 
-            return {
-                inline: Math.abs(rect.left + rect.width / 2 - document.documentElement.clientWidth / 2),
-                block: Math.abs(rect.top + rect.height / 2 - document.documentElement.clientHeight / 2),
-            };
+                return {
+                    inline: Math.abs(rect.left + rect.width / 2 - window.innerWidth / 2),
+                    block: Math.abs(rect.top + rect.height / 2 - window.innerHeight / 2),
+                };
+            });
+
+            expect(off.inline, 'it is not in the middle across the window').toBeLessThanOrEqual(1);
+            expect(off.block, 'it is not in the middle down the window').toBeLessThanOrEqual(1);
         });
 
-        expect(off.inline, 'it is not in the middle across the window').toBeLessThanOrEqual(1);
-        expect(off.block, 'it is not in the middle down the window').toBeLessThanOrEqual(1);
-    });
+        /**
+         * The whole window is dimmed, the place the scrollbar had included:
+         * a gutter kept for it once it has gone is room nothing fixed is
+         * given, and it stayed a strip of the page drawn undimmed beside the
+         * backdrop. What is under a point on the backdrop is the dialog.
+         */
+        test(`lays its backdrop over the whole window, with a scrollbar ${scrollbar}`, async ({ page }) => {
+            await withScrollbar(page, scrollbar);
+            await page.emulateMedia({ reducedMotion: 'reduce' });
+            await page.goto(modalPage);
+            await expectTheScrollbar(page, scrollbar);
+            const dialog = page.getByTestId('sg-modal');
+
+            await page.getByTestId('sg-modal-open').click();
+            await expect(dialog).toBeVisible();
+
+            const under = await page.evaluate(() =>
+                [
+                    [1, 1],
+                    [window.innerWidth - 2, window.innerHeight / 2],
+                    [window.innerWidth - 2, window.innerHeight - 2],
+                ].map(([x, y]) => {
+                    const found = document.elementFromPoint(x ?? 0, y ?? 0);
+
+                    return found?.getAttribute('data-testid') ?? found?.tagName ?? 'nothing';
+                }),
+            );
+
+            expect(under, 'a corner or the right edge of the window is not under the backdrop').toEqual([
+                'sg-modal',
+                'sg-modal',
+                'sg-modal',
+            ]);
+        });
+    }
 
     test('Escape closes it and gives the focus back to the button that opened it', async ({ page }) => {
         await page.goto(modalPage);
@@ -274,6 +362,26 @@ test.describe('c-modal', () => {
         await page.keyboard.press('Escape');
         await expect(dialog).toBeHidden();
         expect(await rootOverflow(page)).not.toBe('hidden');
+    });
+
+    /**
+     * Nothing keeps a gutter for the scrollbar the lock takes away. Where the
+     * scrollbar takes room, a gutter is room the window lends nothing fixed:
+     * in Chrome on Linux the backdrop, the modal and the panels were drawn
+     * short of it, which the cases with a scrollbar taking room measure there.
+     * A scrollbar Chrome is made to draw by a style keeps no gutter even when
+     * asked to, so a machine drawing scrollbars over the page can only ask
+     * about the declaration - and this does, on every machine.
+     */
+    test('keeps no gutter for the scrollbar it takes away', async ({ page }) => {
+        await page.goto(modalPage);
+        const dialog = page.getByTestId('sg-modal');
+
+        await page.getByTestId('sg-modal-open').click();
+        await expect(dialog).toBeVisible();
+        expect(await rootOverflow(page)).toBe('hidden');
+
+        expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarGutter)).toBe('auto');
     });
 
     test('as a form, the button pressed closes it and is left as its answer', async ({ page }) => {
@@ -427,42 +535,50 @@ test.describe('c-offcanvas', () => {
 
     for (const { edge, title } of edges) {
         for (const direction of ['ltr', 'rtl'] as const) {
-            test(`at the ${edge} is drawn against the ${sides[edge][direction]} of the window, ${direction}`, async ({ page }) => {
-                // Measured where it comes to rest, not somewhere along the way in.
-                await page.emulateMedia({ reducedMotion: 'reduce' });
-                await page.goto(offcanvasPage);
-                await page.evaluate((dir) => document.documentElement.setAttribute('dir', dir), direction);
+            for (const scrollbar of scrollbars) {
+                const name = `at the ${edge} is drawn against the ${sides[edge][direction]} of the window, ${direction}, with a scrollbar ${scrollbar}`;
 
-                const dialog = page.getByRole('dialog', { name: title });
-                await page.getByTestId(`sg-offcanvas-${edge}-open`).click();
-                await expect(dialog).toBeVisible();
-                expect(await isModal(dialog)).toBe(true);
+                test(name, async ({ page }) => {
+                    await withScrollbar(page, scrollbar);
+                    // Measured where it comes to rest, not somewhere along the way in.
+                    await page.emulateMedia({ reducedMotion: 'reduce' });
+                    await page.goto(offcanvasPage);
+                    await expectTheScrollbar(page, scrollbar);
+                    await page.evaluate((dir) => document.documentElement.setAttribute('dir', dir), direction);
 
-                const box = await dialog.evaluate((element) => {
-                    const rect = element.getBoundingClientRect();
-                    const width = document.documentElement.clientWidth;
-                    const height = document.documentElement.clientHeight;
+                    const dialog = page.getByRole('dialog', { name: title });
+                    await page.getByTestId(`sg-offcanvas-${edge}-open`).click();
+                    await expect(dialog).toBeVisible();
+                    expect(await isModal(dialog)).toBe(true);
 
-                    return {
-                        left: Math.round(rect.left),
-                        right: Math.round(width - rect.right),
-                        top: Math.round(rect.top),
-                        bottom: Math.round(height - rect.bottom),
-                        wide: Math.round(rect.width) >= width,
-                        tall: Math.round(rect.height) >= height,
-                    };
+                    // Against the window somebody sees, not against whatever
+                    // is left of it once room has been kept for a scrollbar.
+                    const box = await dialog.evaluate((element) => {
+                        const rect = element.getBoundingClientRect();
+                        const width = window.innerWidth;
+                        const height = window.innerHeight;
+
+                        return {
+                            left: Math.round(rect.left),
+                            right: Math.round(width - rect.right),
+                            top: Math.round(rect.top),
+                            bottom: Math.round(height - rect.bottom),
+                            wide: Math.round(rect.width) >= width,
+                            tall: Math.round(rect.height) >= height,
+                        };
+                    });
+
+                    const side = sides[edge][direction] as 'left' | 'right' | 'top' | 'bottom';
+                    expect(box[side], `it is not against the ${side}`).toBe(0);
+                    const opposite = { left: 'right', right: 'left', top: 'bottom', bottom: 'top' }[side] as keyof typeof box;
+                    expect(box[opposite], `it reaches the ${opposite} as well`).toBeGreaterThan(0);
+                    if (side === 'left' || side === 'right') {
+                        expect(box.tall, 'a panel at the side is not as tall as the window').toBe(true);
+                    } else {
+                        expect(box.wide, 'a panel at the top or bottom is not as wide as the window').toBe(true);
+                    }
                 });
-
-                const side = sides[edge][direction] as 'left' | 'right' | 'top' | 'bottom';
-                expect(box[side], `it is not against the ${side}`).toBe(0);
-                const opposite = { left: 'right', right: 'left', top: 'bottom', bottom: 'top' }[side] as keyof typeof box;
-                expect(box[opposite], `it reaches the ${opposite} as well`).toBeGreaterThan(0);
-                if (side === 'left' || side === 'right') {
-                    expect(box.tall, 'a panel at the side is not as tall as the window').toBe(true);
-                } else {
-                    expect(box.wide, 'a panel at the top or bottom is not as wide as the window').toBe(true);
-                }
-            });
+            }
         }
     }
 

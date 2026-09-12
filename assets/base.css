@@ -2014,16 +2014,27 @@
      * The page under a modal dialog stays where it is, and it is the
      * stylesheet that holds it, with no script: nothing counts the dialogs
      * that are open, so there is no count to be left wrong by one Naja takes
-     * away while it is open. The gutter keeps the room the scrollbar had, so
-     * the page does not move sideways as the scrollbar goes; a page too short
-     * to have had one gains the room for it instead.
+     * away while it is open.
+     *
+     * **No gutter kept for the scrollbar that goes.** Where a scrollbar takes
+     * room - Windows, Linux, a Mac set to show them always - holding the page
+     * takes the scrollbar away, and a gutter kept in its place
+     * (scrollbar-gutter: stable) is room the window stops lending to anything
+     * fixed: the backdrop stopped short of it and left a strip of the page
+     * undimmed, the panel at the end stopped beside it, and the modal sat half
+     * its width off the middle. So the dialog and its backdrop get the whole
+     * window, and the page under the backdrop moves by the scrollbar's width
+     * while the dialog is open. Holding that still as well would take a script
+     * measuring the scrollbar and padding the page - and everything held in
+     * view on it - by as much, for a page nobody can use while it is dimmed.
+     * tests/e2e/layers.spec.ts measures the dialogs with a scrollbar that
+     * takes room and with the one the browser draws.
      *
      * Any modal dialog holds it, not only these two, because the page scrolled
      * behind any of them is the same fault.
      */
     :root:has(dialog:modal) {
         overflow: hidden;
-        scrollbar-gutter: stable;
     }
 
     /*
