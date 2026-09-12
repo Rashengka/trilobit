@@ -36,23 +36,41 @@ function specimen(page: Page, variant: string): Locator {
 }
 
 test.describe('the code under a specimen', () => {
+    /** The two are c-tabs: a tab list named after the specimen, the HTML shown first. */
     test('shows the HTML and the Latte of the specimen, each highlighted, one at a time', async ({ page }) => {
         await page.goto(BADGE);
 
-        const plain = specimen(page, 'plain');
-        const html = plain.locator('details', { has: page.locator('code.language-markup') });
-        const latte = plain.locator('details', { has: page.locator('code.language-latte') });
+        const source = specimen(page, 'plain').locator('.sg-source');
+        const tabs = source.getByRole('tablist', { name: 'The code of plain' });
+        const html = source.locator('.c-tabs__panel', { has: page.locator('code.language-markup') });
+        const latte = source.locator('.c-tabs__panel', { has: page.locator('code.language-latte') });
 
-        await expect(html).toHaveAttribute('open', '');
+        await expect(tabs.getByRole('tab', { name: 'HTML' })).toHaveAttribute('aria-selected', 'true');
+        await expect(html).toHaveAttribute('role', 'tabpanel');
         await expect(html.locator('code .token.tag').first()).toBeVisible();
         await expect(html.locator('code')).toContainText('c-badge');
+        await expect(latte).toBeHidden();
 
-        await latte.locator('summary').click();
+        await tabs.getByRole('tab', { name: 'Latte' }).click();
 
-        await expect(latte).toHaveAttribute('open', '');
-        await expect(html).not.toHaveAttribute('open');
+        await expect(latte).toBeVisible();
+        await expect(html).toBeHidden();
         await expect(latte.locator('code .token.latte-tag').first()).toHaveText('include');
         await expect(latte.locator('code')).toHaveText("{include badge, label: 'Draft'}");
+    });
+
+    test('shows both, one under the other and each under its name, where the script does not run', async ({ browser }) => {
+        const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, javaScriptEnabled: false });
+        const page = await context.newPage();
+        await page.goto(BADGE);
+
+        const source = specimen(page, 'plain').locator('.sg-source');
+        await expect(source.getByRole('tab')).toHaveCount(0);
+        await expect(source.locator('.c-tabs__title')).toHaveText(['HTML', 'Latte']);
+        await expect(source.locator('code.language-markup')).toBeVisible();
+        await expect(source.locator('code.language-latte')).toBeVisible();
+
+        await context.close();
     });
 
     test('copies the code it sits on, says so, and is reached by keyboard', async ({ page, context }) => {

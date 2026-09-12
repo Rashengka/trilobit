@@ -1,0 +1,34 @@
+{**
+ * c-scrollspy - the contents of a long page, which marks the part of the page
+ * being read.
+ *
+ * It is a navigation, named, holding a c-list-group of links to places on the
+ * same page (#id), and without the script that is all it is: a list of
+ * contents that works. assets/scrollspy.ts watches the places the links lead
+ * to and marks the entry of the one being read with aria-current="location" -
+ * the value for "where you are within the page", as against "page", the page
+ * itself. c-list-group already draws an entry that carries aria-current as
+ * the one that is on, so nothing about how it looks is new.
+ *
+ * A place counts as being read once its top has come up into the upper quarter
+ * of the part of the window the theme's chrome leaves free - measured from the
+ * lower edge of whatever is held over the content (--layout-chrome-offset),
+ * where a jump to it stops. The server marks no entry: it cannot know how far
+ * the page is scrolled.
+ *
+ * It stays in view beside the content it lists while that content scrolls,
+ * under the held chrome. That is only for a contents placed beside the
+ * content, in a column of its own: put above the content in one column, it
+ * would ride over the text it lists.
+ *
+ * @param list<Trilobit\Core\Presentation\Component\ListGroupItem> $items one entry for each
+ *     place, each with an address of the form #id
+ *}
+
+{import 'list-group.latte'}
+
+{define scrollspy, string $label, array $items, ?string $testId = null}
+    <nav class="c-scrollspy" aria-label="{$label}" data-testid="{$testId}">
+        {include listGroup, items: $items}
+    </nav>
+{/define}

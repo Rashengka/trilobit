@@ -2360,6 +2360,81 @@
         }
     }
 
+    /*
+     * c-tabs: every panel one under another, each under its title, as the
+     * server draws it - and, once assets/tabs.ts has laid the tabs over it,
+     * the row of tabs in front of the one panel that is shown. The row and
+     * the tabs are the script's markup; the script hides the other panels and
+     * the titles the tabs are named after, with the hidden attribute, which
+     * is why nothing here sets a panel's or a title's display.
+     *
+     * The chosen tab is marked the way the entry of the page is in c-nav: a
+     * rule under it in the accent. The row's own rule runs under every tab,
+     * and the marker is drawn over it.
+     */
+    .c-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .c-tabs__list {
+        border-block-end: var(--border-hairline) solid var(--color-line);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2xs);
+    }
+
+    .c-tabs__tab {
+        background-color: transparent;
+        border: 0;
+        border-block-end: var(--border-marker) solid transparent;
+        border-start-end-radius: var(--radius-sm);
+        border-start-start-radius: var(--radius-sm);
+        color: var(--color-ink-muted);
+        cursor: pointer;
+        font: inherit;
+        margin-block-end: calc(-1 * var(--border-hairline));
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    .c-tabs__tab:hover {
+        background-color: var(--color-surface-hover);
+        color: var(--color-ink);
+    }
+
+    .c-tabs__tab[aria-selected='true'] {
+        border-block-end-color: var(--color-accent);
+        color: var(--color-ink);
+        font-weight: var(--font-weight-strong);
+    }
+
+    /* Drawn inside the tab, where the row's rule and the tab beside it cannot cover it. */
+    .c-tabs__tab:focus-visible {
+        outline-offset: calc(-1 * var(--border-marker));
+    }
+
+    .c-tabs__title {
+        font-size: var(--text-base);
+        font-weight: var(--font-weight-strong);
+    }
+
+    /*
+     * c-scrollspy: a contents that stays in view beside what it lists while
+     * that scrolls, stopping under whatever the theme holds over the content
+     * (--layout-chrome-offset, measured by assets/chrome.ts). It sticks within
+     * the element it sits in, so beside the content means in the same
+     * container as the content, in a column of its own - a contents stacked
+     * above the content would ride over it. What marks the section being read
+     * is c-list-group's: the entry carrying aria-current.
+     */
+    .c-scrollspy {
+        align-self: flex-start;
+        inset-block-start: var(--layout-chrome-offset);
+        position: sticky;
+    }
+
     .c-swatch {
         align-items: center;
         display: flex;
@@ -2880,6 +2955,19 @@
         min-inline-size: min(var(--layout-measure), 100%);
     }
 
+    /*
+     * Something narrow beside something long, at any width, in a specimen:
+     * c-scrollspy beside the sections it lists. Unlike .sg-frame it never
+     * wraps, because a contents held in view over a column it had wrapped
+     * above would ride over the text it lists.
+     */
+    .sg-beside {
+        align-items: start;
+        display: grid;
+        gap: var(--space-lg);
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
     .sg-menu {
         display: flex;
         flex-direction: column;
@@ -2914,28 +3002,20 @@
     }
 
     /*
-     * The code under a specimen: one disclosure for the HTML it came out as
-     * and one for the Latte it was written in, one open at a time (sgExample
-     * in src/Core/Presentation/Styleguide/templates/furniture.latte). After
-     * the label, so that what a specimen is called stays next to what it
-     * looks like.
+     * The code under a specimen: c-tabs with a panel for the HTML it came out
+     * as and one for the Latte it was written in (sgExample in
+     * src/Core/Presentation/Styleguide/templates/furniture.latte). After the
+     * label, so that what a specimen is called stays next to what it looks
+     * like. The names of the two are set in the face the code is.
      */
     .sg-source {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-xs);
         order: 2;
     }
 
-    .sg-source__name {
-        color: var(--color-ink-muted);
-        cursor: pointer;
+    .sg-source .c-tabs__tab,
+    .sg-source .c-tabs__title {
         font-family: var(--font-mono);
         font-size: var(--text-sm);
-    }
-
-    .sg-source__view[open] > .sg-source__name {
-        color: var(--color-ink);
     }
 
     .sg-code {
