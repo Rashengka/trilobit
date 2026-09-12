@@ -117,12 +117,21 @@ function passwordOf(output: string): string {
     return match[1];
 }
 
-/** Signs in through the form, the way somebody arriving at the address does. */
+/**
+ * Signs in through the form, the way somebody arriving at the address does,
+ * and waits until the page it leads to has loaded.
+ *
+ * The wait is what every caller relies on. What follows reads the page with
+ * evaluateAll, which answers at once rather than waiting for anything - so read
+ * before the redirect has landed, it reads the sign-in page, finds no menu on
+ * it, and fails a claim about the administration with a count of nothing.
+ */
 async function signIn(page: import('@playwright/test').Page, address: string, entered: string): Promise<void> {
     await page.goto('/admin/sign-in');
     await page.getByTestId('sign-in-email').fill(address);
     await page.getByTestId('sign-in-password').fill(entered);
     await page.getByTestId('sign-in-submit').click();
+    await page.waitForURL((url) => !url.pathname.endsWith('/sign-in'));
 }
 
 /** Every address the administration bar leads to, in the order it draws them. */
