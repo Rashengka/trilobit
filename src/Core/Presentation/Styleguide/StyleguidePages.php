@@ -31,9 +31,11 @@ use Trilobit\Core\Presentation\Form\FormElementRegistry;
  * registered, and the only thing left to write is the file that shows it -
  * which the gates insist on.
  *
- * Layout is not here yet, on purpose: a group with nothing to show would be a
- * heading in the menu leading nowhere, and it waits for
- * .ai/plans/09-chrome-a-sirka-obsahu.md.
+ * Layout mirrors no register and is written out, like Foundations. Its
+ * primitives are read out of assets/base.css instead:
+ * tests/Template/StyleguideShowsEveryLayoutPrimitiveTest asks every page of the
+ * guide for a specimen of every l-* class that file declares, so a primitive
+ * added there has to be shown on one of these pages before the build passes.
  *
  * tests/Template/StyleguidePagesTest holds this list and the files under
  * directory() together in both directions.
@@ -93,6 +95,45 @@ final class StyleguidePages
                         'A page that insists',
                         'Drawn at the full width of its region, whichever width is chosen for everything else.',
                         width: 'full',
+                    ),
+                ],
+            ),
+            new StyleguideGroup(
+                'layout',
+                'Layout',
+                'The primitives a page is laid out with: the shell its regions sit in, the column its content '
+                    . 'runs in, and the ways of putting things under and beside each other.',
+                [
+                    new StyleguidePage(
+                        'layout',
+                        'shell',
+                        'Shell',
+                        'The four regions every page is drawn in, and the theme deciding where each of them goes.',
+                    ),
+                    new StyleguidePage(
+                        'layout',
+                        'containers',
+                        'Containers',
+                        'The column the content runs in, the gutter inside its edges, and the narrower measure '
+                            . 'text is read at.',
+                    ),
+                    new StyleguidePage(
+                        'layout',
+                        'grid',
+                        'Grid',
+                        'Tiles in as many columns as fit, with no breakpoint written down anywhere.',
+                    ),
+                    new StyleguidePage(
+                        'layout',
+                        'stack',
+                        'Stack',
+                        'Things one under another, and the rhythm between them.',
+                    ),
+                    new StyleguidePage(
+                        'layout',
+                        'cluster',
+                        'Cluster',
+                        'Short things side by side, wrapping onto the next line where the row runs out.',
                     ),
                 ],
             ),

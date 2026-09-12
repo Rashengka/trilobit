@@ -9,9 +9,9 @@
  * These are not components (the .sg-* classes in assets/base.css): they frame
  * the specimens and are used nowhere else. They are what makes a page
  * measurable - every section carries data-styleguide-component,
- * data-styleguide-content or data-styleguide-form and every specimen carries
- * data-styleguide-variant, which is what
- * tests/Template/StyleguideShowsEveryComponentTest and its two twins read off
+ * data-styleguide-content, data-styleguide-form or data-styleguide-layout and
+ * every specimen carries data-styleguide-variant, which is what
+ * tests/Template/StyleguideShowsEveryComponentTest and its three twins read off
  * every page the router sends to the guide.
  *}
 
@@ -37,6 +37,24 @@
 {define sgFormSection, Trilobit\Core\Presentation\Form\FormElementGroup $group}
     <section class="sg-section l-stack" data-styleguide-form="{$group->name}">
         {block sgFormSectionBody}{/block}
+    </section>
+{/define}
+
+{*
+ * One layout primitive of assets/base.css, marked for its own gate.
+ *
+ * Unlike the sections above it draws its own heading: a page of the Layout
+ * group may be about more than one primitive, so the page's title is not the
+ * primitive's name. The heading is the class, because the class is all a
+ * primitive has to be asked for by.
+ *}
+{define sgLayoutSection, string $primitive, string $summary}
+    <section class="sg-section l-stack" data-styleguide-layout="{$primitive}" id="{$primitive}">
+        <h2><code>.{$primitive}</code></h2>
+
+        <p class="l-measure">{$summary}</p>
+
+        {block sgLayoutSectionBody}{/block}
     </section>
 {/define}
 

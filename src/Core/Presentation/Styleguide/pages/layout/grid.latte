@@ -1,0 +1,43 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Tiles in as many columns as fit.
+ *
+ * The second specimen is the case the comment on .l-grid in assets/base.css is
+ * about: fewer tiles than there are columns, where a tile has to stay the size
+ * of a tile rather than grow to fill the row.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/card.latte'}
+
+{block sgPage}
+    {embed block sgLayoutSection,
+        primitive: 'l-grid',
+        summary: 'Tiles in as many columns as fit. The narrowest a tile may be is a token of the theme, so the '
+            . 'number of columns follows from the theme and the window, and no breakpoint is written down.'}
+        {block sgLayoutSectionBody}
+            {embed block sgSpecimen, variant: 'as many columns as fit'}
+                {block sgSpecimenStage}
+                    <div class="l-grid">
+                        {include card, title: 'Trilobite cast', href: '#', text: 'Resin, three lobes, as long as a thumb.', media: 'T'}
+                        {include card, title: 'Ammonite plate', href: '#', text: 'Stoneware, a spiral pressed into the rim.', media: 'A'}
+                        {include card, title: 'Crinoid print', href: '#', text: 'Ink on cotton paper, unframed.', media: 'C'}
+                        {include card, title: 'Brachiopod pair', href: '#', text: 'Two plaster halves that close.', media: 'B'}
+                        {include card, title: 'Graptolite slate', href: '#', text: 'A dark stone with pale saw-teeth.', media: 'G'}
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'fewer tiles than fit in a row'}
+                {block sgSpecimenStage}
+                    <div class="l-grid">
+                        {include card, title: 'Eurypterid model', href: '#', text: 'A tile on its own keeps the size of a tile.', media: 'E'}
+                    </div>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}
