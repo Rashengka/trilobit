@@ -86,10 +86,8 @@ final class AccountCommand extends Command
     /** Long enough that it is not worth attacking, short enough to be typed once. */
     private const int GENERATED_LENGTH = 24;
 
-    /** The role an account administering one business holds; see permissionsNow() for what it is made of. */
-    private const string ROLE_CODE = 'administrator';
-
-    private const string ROLE_NAME = 'Administrator';
+    /** What a person reads for the owner's role; the code is Trilobit\Core\Domain\User\Role::OWNER. */
+    private const string ROLE_NAME = 'Owner';
 
     public function __construct(
         private readonly Accounts $accounts,
@@ -237,19 +235,26 @@ final class AccountCommand extends Command
     }
 
     /**
-     * Gives $account the administrator's role in $tenant, and brings the role
-     * itself up to what this build offers.
+     * Makes $account the owner of $tenant: the owner's role, held there.
      *
-     * The role is redefined rather than only created, because an installation
-     * upgraded from an earlier build already holds a row under this code
-     * carrying whatever that build wrote in it - and an account holding an
-     * outdated one can sign in and reach nothing, which looks like a
-     * permission problem rather than like an old row.
+     * The role is the whole of the application - `app:*` - and not a list of
+     * what this build offers. A list would go on saying what the application
+     * used to offer, and the account holding it would silently stop being able
+     * to reach whatever was added afterwards; the whole of it takes in every
+     * section by itself, including the ones nobody has written yet, which is
+     * what owning a business means. It is honoured on this role and on no
+     * other - see Trilobit\Core\Security\AccessComposition.
+     *
+     * The role is redefined rather than only created, so that a row under this
+     * code saying anything else - edited by hand, or left by an earlier build -
+     * says the whole of the application again after the command has run. The
+     * row an earlier build called `administrator` is carried over by
+     * Trilobit\Core\Migrations\Version20260912114800, not here.
      */
     private function administer(Tenant $tenant, User $account): void
     {
-        $role = $this->accounts->roleWithCode(self::ROLE_CODE) ?? new Role(self::ROLE_CODE, self::ROLE_NAME);
-        $role->redefine($this->permissionsNow());
+        $role = $this->accounts->roleWithCode(Role::OWNER) ?? new Role(Role::OWNER, self::ROLE_NAME);
+        $role->redefine([new Grant($this->structure->root(), null)->code()]);
 
         $this->entityManager->persist($role);
         $this->entityManager->flush();
@@ -261,26 +266,6 @@ final class AccountCommand extends Command
             $this->entityManager->persist(new Membership($tenant, $account, $role));
             $this->entityManager->flush();
         }
-    }
-
-    /**
-     * Every piece this build offers, which is what administering a business
-     * means here.
-     *
-     * Derived from the structure rather than listed beside it. A list written
-     * down would go on saying what the application used to offer, and the
-     * account holding it would silently stop being able to reach whatever was
-     * added afterwards - which is exactly the kind of missing right nobody
-     * reports, because the page it guards simply is not there.
-     *
-     * @return list<string>
-     */
-    private function permissionsNow(): array
-    {
-        return array_map(
-            static fn(Grant $piece): string => $piece->code(),
-            $this->structure->everyPair(),
-        );
     }
 
     /** Something to put on the page before anybody has said what to call them. */

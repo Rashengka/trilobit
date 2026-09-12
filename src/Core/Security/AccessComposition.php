@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Security;
 
 use Nette\Security\Permission;
+use Trilobit\Core\Domain\User\Role;
 
 /**
  * The one place an access list is put together, for both services that answer
@@ -15,7 +16,10 @@ use Nette\Security\Permission;
  * same list, and two copies of the loop that builds it are two loops, one of
  * which is the one that gets changed.
  *
- * **What a role's pieces mean is decided here, and it is four sentences.**
+ * **What a role's pieces mean is decided here, and it is four sentences** -
+ * and one about who may hold a piece at all: the whole of the application,
+ * `app:*`, is honoured on the owner's role and dropped on every other; see
+ * withoutTheWholeApplication().
  *
  * - A pair means that pair. Nothing concrete is inherited downwards: opening
  *   the administration is not reading every section of it, which is what
@@ -92,8 +96,10 @@ final readonly class AccessComposition
 
             $access->addRole($code);
 
+            $granted = $code === Role::OWNER ? $role['permissions'] : $this->withoutTheWholeApplication($role['permissions']);
+
             $denied = $this->pairsOf($role['denials'] ?? [], $reach, wholeNeedsABundle: false);
-            $held = array_diff_key($this->pairsOf($role['permissions'], $reach, wholeNeedsABundle: true), $denied);
+            $held = array_diff_key($this->pairsOf($granted, $reach, wholeNeedsABundle: true), $denied);
 
             foreach ($held as [$resource]) {
                 foreach ($above[$resource->value] as $ancestor) {
@@ -107,6 +113,33 @@ final readonly class AccessComposition
         }
 
         return $access;
+    }
+
+    /**
+     * The pieces of a role that is not the owner's, less the whole of the
+     * application.
+     *
+     * Holding everything there is, including every section added later, is
+     * what owning a business means, and a business has one role for it - see
+     * Trilobit\Core\Domain\User\Role::OWNER. The same piece on any other role
+     * would be a second owner nobody appointed, so it is dropped the way an
+     * outdated piece is: a doubt takes the right away. It is decided here,
+     * where every role is read, rather than wherever a role is written, so
+     * that no screen, import or hand-edited row can go round it.
+     *
+     * @param list<string> $written
+     *
+     * @return list<string>
+     */
+    private function withoutTheWholeApplication(array $written): array
+    {
+        $application = $this->structure->root();
+
+        return array_values(array_filter($written, static function (string $piece) use ($application): bool {
+            $grant = Grant::parse($piece);
+
+            return !$grant instanceof Grant || !$grant->isWhole() || $grant->resource !== $application;
+        }));
     }
 
     /**
