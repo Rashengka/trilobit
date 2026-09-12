@@ -195,7 +195,7 @@ final class AdministrationTest extends TestCase
             $page->querySelector('[data-testid="admin-identity-email"]')?->textContent,
         );
         self::assertNotNull(
-            $page->querySelector('[data-testid="admin-role-administrator"]'),
+            $page->querySelector('[data-testid="admin-role-owner"]'),
             'the role held in this business is drawn, and it was read for this request rather than at sign-in',
         );
     }
@@ -926,13 +926,13 @@ final class AdministrationTest extends TestCase
         $container->getByType(Accounts::class)->save($holdingOneSection);
 
         $entityManager = $container->getByType(EntityManagerInterface::class);
-        $administrator = new Role(
-            'administrator',
-            'Administrator',
+        $owner = new Role(
+            'owner',
+            'Owner',
             ['app.administration:view', 'app.administration.content:view'],
         );
-        $entityManager->persist($administrator);
-        $entityManager->persist(new Membership($tenant, $account, $administrator));
+        $entityManager->persist($owner);
+        $entityManager->persist(new Membership($tenant, $account, $owner));
 
         // The narrow role, and it is narrow the way src/Core/Security/
         // permissions.neon means it rather than by leaving something out.

@@ -48,6 +48,24 @@ final class PermissionStructureTest extends TestCase
         }
     }
 
+    /**
+     * What everything falls under is the application, found in the names
+     * rather than named: the whole of it is the owner's, so it is the one
+     * resource whose answer decides who that piece is reserved for.
+     */
+    public function testWhatEverythingFallsUnderIsTheApplication(): void
+    {
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+
+        self::assertSame(Resource::App, $structure->root());
+
+        foreach (Resource::cases() as $resource) {
+            if ($resource !== Resource::App) {
+                self::assertContains(Resource::App, $structure->ancestorsOf($resource), $resource->value);
+            }
+        }
+    }
+
     public function testWhatAResourceOffersIsWhatTheFileSays(): void
     {
         $structure = PermissionStructure::of(Bootstrap::rootDirectory());

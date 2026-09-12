@@ -585,8 +585,12 @@ bin/trilobit app:account someone@example.com --tenant localhost --name 'Their Na
 
 They are **different scopes rather than different levels**. An account
 administering the installation creates and looks after the businesses and holds
-nothing inside any of them; an account administering a business holds every
-permission this build offers, in that business and nowhere else. The two cannot
+nothing inside any of them; an account administering a business is its owner
+and holds the whole of the application - `app:*`, every permission this build
+offers and every one a later build adds - in that business and nowhere else.
+The owner is the one role the application defines rather than a business, and
+the command writes it again on every run, so a row under its code saying
+anything else says the whole of the application once more. The two cannot
 be combined: an account that is one is refused the other, and
 `Trilobit\Core\Domain\Tenancy\Membership` will not be constructed for an account
 administering the installation at all, so no screen and no command can arrange
@@ -765,6 +769,10 @@ reading its content. The whole of a resource is written
 under it, including privileges added later; granted, it is honoured only on a
 resource marked `bundle: true` and dropped elsewhere, because a right that
 grows by itself has to be one somebody decided should.
+The whole of the application, `app:*`, is honoured on one role only: the owner
+of the business, whose code is `Trilobit\Core\Domain\User\Role::OWNER`. On any
+other role it is dropped as the list is composed, the way an outdated piece is,
+so no screen, import or hand-edited row can make a second owner.
 Taking a right away wins over everything, the doors included, and the whole of
 any resource may be taken away. All of it is worked out in
 `Trilobit\Core\Security\AccessComposition` as sets, so the order pieces are
@@ -924,10 +932,12 @@ as happily.
 ### What is not there yet
 
 Nobody composes a role in the administration. `bin/trilobit app:account
---tenant` makes one and derives what it holds from every pair the build offers,
-rather than from a list written down beside it - a list would go on saying what
-the application used to offer, and the account holding it would quietly stop
-being able to reach whatever was added afterwards.
+--tenant` makes the owner's role, which holds the whole of the application
+rather than a list of pairs - a list would go on saying what the application
+used to offer, and the account holding it would quietly stop being able to
+reach whatever was added afterwards. The two rules that belong beside it -
+nobody hands out more than they hold, and the last owner of a business cannot
+be removed - arrive with the first screen that edits roles or memberships.
 
 There is no way to write down a permission being taken away. A role carries the
 pieces it was assembled from and nothing else, so somebody holding two roles is

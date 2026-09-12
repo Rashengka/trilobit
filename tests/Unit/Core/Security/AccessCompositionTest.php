@@ -8,6 +8,7 @@ use Nette\Security\Permission;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Security\AccessComposition;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
@@ -157,14 +158,66 @@ final class AccessCompositionTest extends TestCase
     }
 
     /**
-     * The whole application is every pair this build offers, the redirection
-     * included, because everything is under it.
+     * The whole application, held by the owner, is every pair this build
+     * offers, the redirection included, because everything is under it.
      */
-    public function testTheWholeApplicationIsEveryPairThisBuildOffers(): void
+    public function testTheWholeApplicationIsEveryPairThisBuildOffersToTheOwner(): void
     {
-        $answers = $this->everyAnswerOf($this->composed(['app:*']));
+        $answers = $this->everyAnswerOf($this->composed(['app:*'], as: Role::OWNER), as: Role::OWNER);
 
-        self::assertNotContains(false, $answers, 'somebody holding the whole application was refused something');
+        self::assertNotContains(false, $answers, 'the owner holding the whole application was refused something');
+    }
+
+    /**
+     * The whole application is the owner's and nobody else's. On any other
+     * role it is dropped the way an outdated piece is - a role a business
+     * composed for itself holding everything, including whatever is added
+     * next, would be a second owner nobody appointed - and it opens no door,
+     * because nothing is left of it to open one.
+     */
+    public function testTheWholeApplicationOnAnyOtherRoleGivesNothing(): void
+    {
+        self::assertNotContains(true, $this->everyAnswerOf($this->composed(['app:*'])));
+    }
+
+    /** Dropping it takes that one piece away and leaves the rest of the role as it was. */
+    public function testTheWholeApplicationDroppedFromAnotherRoleLeavesTheRestOfIt(): void
+    {
+        $access = $this->composed(['app:*', 'app.administration.content:edit']);
+
+        self::assertTrue($this->allows($access, Resource::Content, Privilege::Edit));
+        self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::Content, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::Account, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::Redirection, Privilege::View));
+    }
+
+    /**
+     * Only holding it is reserved. Taking the whole application away is
+     * allowed on any role, because a denial that grows fails in the safe
+     * direction.
+     */
+    public function testTheWholeApplicationMayBeTakenAwayFromAnyRole(): void
+    {
+        $access = $this->composed(['app.administration.content:edit'], ['app:*']);
+
+        self::assertNotContains(true, $this->everyAnswerOf($access));
+    }
+
+    /**
+     * The owner is one role among the roles of a business, and the rule is
+     * about the role and not about the list: somebody else in the same
+     * business writing the same piece still gets nothing from it.
+     */
+    public function testTheOwnerHoldingTheWholeApplicationLendsNothingToAnotherRole(): void
+    {
+        $access = new AccessComposition($this->shipped())->compose([
+            ['code' => Role::OWNER, 'permissions' => ['app:*']],
+            ['code' => 'editor', 'permissions' => ['app:*']],
+        ]);
+
+        self::assertNotContains(false, $this->everyAnswerOf($access, as: Role::OWNER));
+        self::assertNotContains(true, $this->everyAnswerOf($access));
     }
 
     /**
@@ -374,10 +427,10 @@ final class AccessCompositionTest extends TestCase
      * @param list<string> $pieces
      * @param list<string> $denials
      */
-    private function composed(array $pieces, array $denials = []): Permission
+    private function composed(array $pieces, array $denials = [], string $as = 'editor'): Permission
     {
         return new AccessComposition($this->shipped())
-            ->compose([['code' => 'editor', 'permissions' => $pieces, 'denials' => $denials]]);
+            ->compose([['code' => $as, 'permissions' => $pieces, 'denials' => $denials]]);
     }
 
     private function shipped(): PermissionStructure
@@ -385,19 +438,19 @@ final class AccessCompositionTest extends TestCase
         return PermissionStructure::of(Bootstrap::rootDirectory());
     }
 
-    private function allows(Permission $access, Resource $resource, Privilege $privilege): bool
+    private function allows(Permission $access, Resource $resource, Privilege $privilege, string $as = 'editor'): bool
     {
-        return $access->isAllowed('editor', $resource->value, $privilege->value);
+        return $access->isAllowed($as, $resource->value, $privilege->value);
     }
 
     /** @return array<string, bool> by the pair, for every pair the shipped structure offers */
-    private function everyAnswerOf(Permission $access): array
+    private function everyAnswerOf(Permission $access, string $as = 'editor'): array
     {
         $answers = [];
         foreach ($this->shipped()->everyPair() as $pair) {
             $privilege = $pair->privilege;
             self::assertInstanceOf(Privilege::class, $privilege);
-            $answers[$pair->code()] = $this->allows($access, $pair->resource, $privilege);
+            $answers[$pair->code()] = $this->allows($access, $pair->resource, $privilege, $as);
         }
 
         return $answers;

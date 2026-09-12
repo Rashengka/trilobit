@@ -63,7 +63,7 @@ final class CoreEntitiesTest extends TestCase
             'Alice Ammonite',
             new DateTimeImmutable('2026-09-04T08:00:00+00:00'),
         );
-        $account->grant(new Role('administrator', 'Administrator', ['administration']));
+        $account->grant(new Role('owner', 'Owner', ['administration']));
         $account->grant(new Role('editor', 'Editor', ['content.write', 'administration']));
 
         $entityManager->persist($account);
@@ -76,7 +76,7 @@ final class CoreEntitiesTest extends TestCase
         self::assertSame('Alice Ammonite', $read->name());
         self::assertTrue($read->isActive());
         self::assertFalse($read->isLandlord());
-        self::assertSame(['administrator', 'editor'], $read->roleCodes());
+        self::assertSame(['editor', 'owner'], $read->roleCodes());
         self::assertSame(['administration', 'content.write'], $read->permissions());
     }
 
