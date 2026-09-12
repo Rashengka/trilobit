@@ -182,6 +182,18 @@ final class ComponentRegistry
                 ['default'],
             ),
             new Component(
+                'c-modal',
+                'A question the page stops to ask over everything else on it, until it is answered or put '
+                . 'away: the browser\'s own dialog, shown as a modal.',
+                ['default', 'with a form that closes it', 'with a body longer than the window', 'redrawn by Naja'],
+            ),
+            new Component(
+                'c-offcanvas',
+                'The same dialog drawn in from an edge of the window - a basket, a set of filters, a menu - and '
+                . 'put away by a click on the page beside it.',
+                ['at the end', 'at the start', 'at the top', 'at the bottom'],
+            ),
+            new Component(
                 'c-collapse',
                 'One thing folded away under its title, opened and closed by the browser\'s own disclosure.',
                 ['default', 'open from the start', 'with a heading'],

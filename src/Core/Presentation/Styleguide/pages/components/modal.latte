@@ -1,0 +1,142 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A dialog the page stops to ask something in: one answered by its buttons,
+ * one that is a form the browser closes, one with more to say than the window
+ * has room for, and one Naja redraws while it is open.
+ *
+ * Each specimen is the button that opens the dialog and the dialog itself,
+ * which is drawn closed and so takes no room on the stage. The last one is a
+ * snippet, like the redrawn c-combobox: its button asks the server for the
+ * dialog again, through Naja, while the dialog is open. The button that opens
+ * it is outside the snippet, which is where a page keeps it.
+ * tests/e2e/layers.spec.ts drives all four.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/field.latte'}
+{import '../../../components/modal.latte'}
+
+{var $conditions = [
+    'A specimen is lent for four weeks, and the loan can be made longer once.',
+    'It travels in the box it was lent in, padded the way it arrived.',
+    'It is handled with gloves, over a table, and never passed from hand to hand.',
+    'It is not cleaned, glued, cast or cut, however loose a fragment looks.',
+    'It is kept out of direct sunlight and away from a radiator.',
+    'A photograph of it may be published with the name of the collection beside it.',
+    'A crack found on arrival is reported before the specimen is unpacked any further.',
+    'It comes back to the drawer it left, with the label it left with.',
+    'A loan overdue by a week is asked about; one overdue by a month is fetched.',
+    'The collection may call a specimen back early when it is needed for a study of its own.',
+]}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-modal']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {include button,
+                    label: 'Lend this specimen',
+                    attributes: ['commandfor' => 'sg-modal', 'command' => 'show-modal'],
+                    testId: 'sg-modal-open'}
+
+                {embed block modal, id: 'sg-modal', title: 'Lend this specimen', testId: 'sg-modal'}
+                    {block modalBody}
+                        <p>It goes out for four weeks, and comes back to the drawer it left.</p>
+                    {/block}
+
+                    {block modalFooter}
+                        {include button,
+                            label: 'Not now',
+                            variant: 'quiet',
+                            attributes: ['commandfor' => 'sg-modal', 'command' => 'close']}
+                        {include button,
+                            label: 'Lend it',
+                            attributes: ['commandfor' => 'sg-modal', 'command' => 'close']}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'with a form that closes it'}
+                {include button,
+                    label: 'Lend it to somebody',
+                    variant: 'quiet',
+                    attributes: ['commandfor' => 'sg-modal-form', 'command' => 'show-modal'],
+                    testId: 'sg-modal-form-open'}
+
+                {embed block modal, id: 'sg-modal-form', title: 'Who is borrowing it?', dialogForm: true, testId: 'sg-modal-form'}
+                    {block modalBody}
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-modal-form-borrower">Borrower</label>{/block}
+
+                            {block fieldControl}
+                                <input id="sg-modal-form-borrower" name="borrower" type="text" autocomplete="off">
+                            {/block}
+                        {/embed}
+                    {/block}
+
+                    {* Not now is not a submit button, so Enter in the field sends Lend it. *}
+                    {block modalFooter}
+                        {include button,
+                            label: 'Not now',
+                            variant: 'quiet',
+                            attributes: ['commandfor' => 'sg-modal-form', 'command' => 'close', 'value' => 'cancel']}
+                        {include button,
+                            label: 'Lend it',
+                            attributes: ['type' => 'submit', 'value' => 'lend']}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'with a body longer than the window'}
+                {include button,
+                    label: 'Read the conditions of loan',
+                    variant: 'quiet',
+                    attributes: ['commandfor' => 'sg-modal-long', 'command' => 'show-modal'],
+                    testId: 'sg-modal-long-open'}
+
+                {embed block modal, id: 'sg-modal-long', title: 'Conditions of loan', testId: 'sg-modal-long'}
+                    {block modalBody}
+                        <p n:foreach="$conditions as $condition">{$condition}</p>
+                    {/block}
+
+                    {block modalFooter}
+                        {include button,
+                            label: 'Understood',
+                            attributes: ['commandfor' => 'sg-modal-long', 'command' => 'close']}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'redrawn by Naja'}
+                {include button,
+                    label: 'Open the dialog the server draws',
+                    variant: 'quiet',
+                    attributes: ['commandfor' => 'sg-modal-redrawn', 'command' => 'show-modal'],
+                    testId: 'sg-modal-redrawn-open'}
+
+                <div n:snippet="redrawnSpecimen" data-testid="sg-modal-snippet">
+                    {embed block modal, id: 'sg-modal-redrawn', title: 'Drawn by the server', testId: 'sg-modal-redrawn'}
+                        {block modalBody}
+                            <p>The button below asks the server for this dialog again, through Naja, and the page puts the answer in its place while it is open.</p>
+                        {/block}
+
+                        {block modalFooter}
+                            <a
+                                n:href="redrawSpecimen!"
+                                id="sg-modal-redraw"
+                                class="c-button c-button--quiet ajax"
+                                data-testid="sg-modal-redraw"
+                            >Draw it again</a>
+                            {include button,
+                                label: 'Done',
+                                attributes: ['commandfor' => 'sg-modal-redrawn', 'command' => 'close']}
+                        {/block}
+                    {/embed}
+                </div>
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}
