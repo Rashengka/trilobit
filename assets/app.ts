@@ -7,6 +7,7 @@ import naja from 'naja';
 import { placeWhereTheBrowserCannotAnchor } from './anchor';
 import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
 import { comboboxesInSnippets, enhanceWithin } from './combobox';
+import { openWhatTheAddressNames } from './disclosure';
 import { keepTheDropdownsToTheKeyboard } from './dropdown';
 import { unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
@@ -126,6 +127,7 @@ function remember(preference: string, value: string): Promise<void> {
 keepJumpsClearOfTheChrome();
 markTheChromeScrolledPast();
 unfoldTheNavigation();
+openWhatTheAddressNames();
 
 // The order of these three is the whole of getting comboboxes through Naja,
 // and tests/e2e/combobox.spec.ts measures it: the extension has to be there

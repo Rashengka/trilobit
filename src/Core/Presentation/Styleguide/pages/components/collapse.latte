@@ -1,0 +1,48 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * One thing folded away under its title: closed, open from the start, and with
+ * a title that is a heading of the page. tests/e2e/disclosure.spec.ts drives
+ * the first and the last with the keyboard and reads what the browser tells a
+ * screen reader about them.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/collapse.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-collapse']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {embed block collapse, title: 'Where the specimen is kept'}
+                    {block collapseBody}
+                        <p>In the drawer with the window, wrapped in tissue. The <a href="https://example.com/">care sheet</a> says how often to look at it.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'open from the start'}
+                {embed block collapse, title: 'What to do before lifting it', open: true}
+                    {block collapseBody}
+                        <p>Take off the ring, and lift it by the tray rather than by the stone.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {*
+             * The title is a heading of the page, so it is on the outline and
+             * in a screen reader's list of headings; it looks no different,
+             * because the class decides its size and not the level.
+             *}
+            {specimen 'with a heading'}
+                {embed block collapse, title: 'Where the moults are kept', level: 2}
+                    {block collapseBody}
+                        <p>In the drawer below, one shed skin to a box, each labelled with the size it grew to.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}
