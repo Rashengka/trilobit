@@ -8,6 +8,7 @@ use Dom\Element;
 use Dom\HTMLDocument;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
+use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Form\FormElementRegistry;
@@ -56,7 +57,7 @@ final class StyleguideListsEveryComponentTest extends TestCase
         $registry = new ComponentRegistry();
         self::assertSame(
             $registry->names(),
-            array_values(array_filter(array_keys($listed), static fn(string $name): bool => $registry->find($name) !== null)),
+            array_values(array_filter(array_keys($listed), static fn(string $name): bool => $registry->find($name) instanceof Component)),
             'the list and the register name different components',
         );
 
@@ -71,7 +72,7 @@ final class StyleguideListsEveryComponentTest extends TestCase
         }
         self::assertSame(
             $together,
-            array_values(array_filter(array_keys($listed), static fn(string $name): bool => $registry->find($name) === null)),
+            array_values(array_filter(array_keys($listed), static fn(string $name): bool => !$registry->find($name) instanceof Component)),
             'the list names something that is neither a component nor a page of the group',
         );
 
