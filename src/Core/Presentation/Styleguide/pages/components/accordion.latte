@@ -1,0 +1,76 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A column of c-collapse as one block, opened one item at a time and with any
+ * number open. The two differ in one attribute: the items of the first share a
+ * name, and the items of the second carry none (tests/Template/AccordionTest
+ * holds the specimens to that).
+ *
+ * The items of the first have addresses, and the link under them is one: an
+ * address naming a folded item opens it, which tests/e2e/disclosure.spec.ts
+ * measures on this page.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/accordion.latte'}
+{import '../../../components/collapse.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-accordion']}
+        {block sgSectionBody}
+            {specimen 'one open at a time'}
+                <div class="l-stack">
+                    {embed block accordion}
+                        {block accordionItems}
+                            {embed block collapse, title: 'What the head shield is made of', level: 2, name: 'sg-accordion-questions', id: 'sg-accordion-shield'}
+                                {block collapseBody}
+                                    <p>Calcite, laid down in a thin crust over the soft body. The <a href="https://example.com/">drawing of a shield</a> shows the layers.</p>
+                                {/block}
+                            {/embed}
+
+                            {embed block collapse, title: 'How many segments there are', level: 2, name: 'sg-accordion-questions', id: 'sg-accordion-segments'}
+                                {block collapseBody}
+                                    <p>Anything from two to more than sixty, depending on the kind and on how far it had grown.</p>
+                                {/block}
+                            {/embed}
+
+                            {embed block collapse, title: 'How it grew', level: 2, name: 'sg-accordion-questions', id: 'sg-accordion-growth'}
+                                {block collapseBody}
+                                    <p>By shedding its shell and growing a larger one, a segment at a time.</p>
+                                {/block}
+                            {/embed}
+                        {/block}
+                    {/embed}
+
+                    <p><a href="#sg-accordion-growth">Straight to how it grew</a></p>
+                </div>
+            {/specimen}
+
+            {specimen 'any number open'}
+                {embed block accordion}
+                    {block accordionItems}
+                        {embed block collapse, title: 'Head', level: 2}
+                            {block collapseBody}
+                                <p>The shield, the eyes and the cheeks that shed with the moult.</p>
+                            {/block}
+                        {/embed}
+
+                        {embed block collapse, title: 'Body', level: 2}
+                            {block collapseBody}
+                                <p>The segments, each hinged to the next, which let it roll up.</p>
+                            {/block}
+                        {/embed}
+
+                        {embed block collapse, title: 'Tail', level: 2}
+                            {block collapseBody}
+                                <p>The tail shield, made of segments grown together.</p>
+                            {/block}
+                        {/embed}
+                    {/block}
+                {/embed}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

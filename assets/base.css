@@ -1431,6 +1431,157 @@
         margin-block-end: var(--space-sm);
     }
 
+    /*
+     * c-collapse: the browser's own disclosure, <details> and <summary>. What
+     * is here is only how it looks - the name, the keys, the state and keeping
+     * what is folded away out of reach are the browser's.
+     *
+     * The summary is drawn with the mark of this design system (c-icon,
+     * turned over when open) rather than the browser's triangle: display other
+     * than list-item takes the triangle away wherever summary is a list item,
+     * and the prefixed pseudo-element takes it away in the Safari that still
+     * draws it its own way.
+     *
+     * The title carries the component's class and reads the same at every
+     * heading level, because the level is the outline of the page and the look
+     * is the component's (01d, 2026-09-12).
+     */
+    .c-collapse__toggle {
+        align-items: center;
+        color: var(--color-ink);
+        cursor: pointer;
+        display: flex;
+        gap: var(--space-2xs);
+        inline-size: fit-content;
+        list-style: none;
+    }
+
+    .c-collapse__toggle::-webkit-details-marker {
+        display: none;
+    }
+
+    .c-collapse__toggle:hover .c-collapse__title {
+        text-decoration: underline;
+    }
+
+    .c-collapse[open] > .c-collapse__toggle {
+        color: var(--color-accent);
+    }
+
+    .c-collapse__title {
+        color: inherit;
+        font: inherit;
+        font-weight: var(--font-weight-strong);
+    }
+
+    .c-collapse[open] > .c-collapse__toggle .c-icon {
+        rotate: 0.5turn;
+    }
+
+    .c-collapse__body {
+        padding-block-start: var(--space-xs);
+    }
+
+    /*
+     * c-accordion: a column of c-collapse as one block. The frame is the
+     * group's and the rule between two items is the lower one's; each item's
+     * summary runs the whole width, so the whole row is the control and the
+     * mark sits at its end.
+     *
+     * Only the items directly in the group are drawn this way - a collapse
+     * somebody put inside an item stays a collapse.
+     */
+    .c-accordion {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+    }
+
+    .c-accordion > .c-collapse + .c-collapse {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+    }
+
+    .c-accordion > .c-collapse > .c-collapse__toggle {
+        inline-size: auto;
+        justify-content: space-between;
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
+    .c-accordion > .c-collapse > .c-collapse__toggle:hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-accordion > .c-collapse > .c-collapse__toggle:hover .c-collapse__title {
+        text-decoration: none;
+    }
+
+    /* Drawn inside the row, where the item above and below cannot cover it. */
+    .c-accordion > .c-collapse > .c-collapse__toggle:focus-visible {
+        outline-offset: calc(-1 * var(--border-marker));
+    }
+
+    .c-accordion > .c-collapse:first-child > .c-collapse__toggle {
+        border-start-end-radius: var(--radius-md);
+        border-start-start-radius: var(--radius-md);
+    }
+
+    .c-accordion > .c-collapse:last-child:not([open]) > .c-collapse__toggle {
+        border-end-end-radius: var(--radius-md);
+        border-end-start-radius: var(--radius-md);
+    }
+
+    .c-accordion > .c-collapse > .c-collapse__body {
+        padding-block-end: var(--space-md);
+        padding-inline: var(--space-md);
+    }
+
+    /*
+     * Opening and closing over a moment, for nobody who asked for reduced
+     * motion - who gets the same two states with nothing drawn between them.
+     *
+     * **And only where the browser can do it with no script.** The height of
+     * what is folded away goes from nothing to as tall as it is, and "as tall
+     * as it is" (auto) is something a transition can reach only with
+     * interpolate-size (Chrome and Edge from 129); the part of <details> that
+     * folds is ::details-content (Chrome 131, Safari 18.4, Firefox 143).
+     * Everywhere without both, none of this applies and the disclosure opens
+     * at once, exactly as it does for reduced motion - a state reached without
+     * the moment in between, not a broken one. Measuring the height in a
+     * script to animate it in the others would put a script in front of a
+     * control that needs none, and the day those browsers learn
+     * interpolate-size they animate with no change here.
+     *
+     * content-visibility is carried through the moment of closing (allow-
+     * discrete), or the content would vanish at the start of it rather than
+     * fold. The clip is widened by the focus ring (its width and its offset),
+     * so a focused link at the edge of what is folded is not cut.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-collapse__toggle .c-icon {
+            transition: rotate var(--motion-unfold);
+        }
+
+        @supports (interpolate-size: allow-keywords) and selector(::details-content) {
+            .c-collapse {
+                interpolate-size: allow-keywords;
+            }
+
+            .c-collapse::details-content {
+                block-size: 0;
+                overflow: clip;
+                overflow-clip-margin: calc(var(--border-marker) + var(--space-3xs));
+                transition:
+                    block-size var(--motion-unfold),
+                    content-visibility var(--motion-unfold) allow-discrete;
+            }
+
+            .c-collapse[open]::details-content {
+                block-size: auto;
+            }
+        }
+    }
+
     .c-swatch {
         align-items: center;
         display: flex;
