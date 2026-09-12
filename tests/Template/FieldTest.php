@@ -58,7 +58,8 @@ final class FieldTest extends TestCase
         // Under the control, in the order a reader meets them: what went wrong
         // first, what the field is for after it.
         $order = [];
-        foreach ($field->children as $child) {
+        // :scope > * rather than ->children, which Dom\Element has only from PHP 8.5.
+        foreach ($field->querySelectorAll(':scope > *') as $child) {
             $order[] = $child->getAttribute('class');
         }
 
