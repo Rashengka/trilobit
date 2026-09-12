@@ -22,11 +22,9 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-preference-switcher']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {include preferenceSwitcher, preferences: $preferences, testId: 'theme-switcher'}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {include preferenceSwitcher, preferences: $preferences, testId: 'theme-switcher'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

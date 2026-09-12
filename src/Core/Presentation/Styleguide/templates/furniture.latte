@@ -96,3 +96,67 @@
         <p class="sg-specimen__label">{$variant}</p>
     </div>
 {/define}
+
+{*
+ * A specimen shown the way Bootstrap's documentation shows one: drawn, and
+ * under it the code it is made of, ready to copy.
+ *
+ * Nobody includes this by hand. {specimen 'variant'} ... {/specimen} draws what
+ * it wraps and hands this block the three things it shows - the specimen
+ * itself, the HTML it came out as and the Latte it was written in - out of the
+ * one render and the one file, so that there is no second copy of anything to
+ * fall behind. See Trilobit\Core\Presentation\Styleguide\SpecimenNode, and
+ * tests/Template/StyleguideShowsTheSourceOfEverySpecimenTest for the gate that
+ * holds both to where they came from.
+ *
+ * The two kinds of source are two disclosures rather than tabs. They need no
+ * script to open, the browser gives them a keyboard and a name, and sharing a
+ * name makes opening one close the other, which is all a switch between two
+ * views has to do. Real tabs - with a tab list and arrow keys - are a component
+ * of their own, still to come (.ai/plans/29, step 6); the day there is one,
+ * this can be drawn with it.
+ *}
+{define sgExample, string $variant, Latte\Runtime\Html $html, string $markup, string $latte, bool $narrow = false}
+    <div class="sg-specimen" data-styleguide-variant="{$variant}">
+        <div n:class="'sg-specimen__stage', $narrow ? 'sg-specimen__stage--narrow'">{$html}</div>
+
+        <p class="sg-specimen__label">{$variant}</p>
+
+        <div class="sg-source" role="group" aria-label="The code of {$variant}">
+            <details class="sg-source__view" name="the code of {$variant}" open>
+                <summary class="sg-source__name">HTML</summary>
+
+                {include sgCode, code: $markup, language: 'markup', label: 'HTML'}
+            </details>
+
+            <details class="sg-source__view" name="the code of {$variant}">
+                <summary class="sg-source__name">Latte</summary>
+
+                {include sgCode, code: $latte, language: 'latte', label: 'Latte'}
+            </details>
+        </div>
+    </div>
+{/define}
+
+{*
+ * A block of code with a button that copies it.
+ *
+ * The button is drawn hidden and shown by assets/styleguide.ts only where the
+ * browser can write to the clipboard, so that nobody is offered a button that
+ * does nothing. What it did is said in the status beside it, which a screen
+ * reader announces without the focus having to move.
+ *
+ * The class on the code is the highlighter's, not ours: it is how the
+ * highlighter is told which language it is looking at.
+ *}
+{define sgCode, string $code, string $language, string $label}
+    <div class="sg-code" data-sg-code>
+        <div class="sg-code__bar">
+            <p class="sg-code__status" role="status" data-sg-copy-status></p>
+
+            <button type="button" class="sg-code__copy" data-sg-copy hidden>Copy<span class="u-visually-hidden"> {$label}</span></button>
+        </div>
+
+        <pre><code class="language-{$language}">{$code}</code></pre>
+    </div>
+{/define}

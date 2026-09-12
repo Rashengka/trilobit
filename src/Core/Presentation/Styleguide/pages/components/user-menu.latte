@@ -16,20 +16,18 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-user-menu']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {embed block userMenu,
-                        id: 'sg-user-menu-panel',
-                        name: 'Pia Paradoxides',
-                        email: 'pia@example.com',
-                        signOutUrl: '#',
-                        publicSiteUrl: '#'}
-                        {block userMenuBody}
-                            <p class="text-sm text-ink-muted">Whatever the page offers the person it belongs to.</p>
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {embed block userMenu,
+                    id: 'sg-user-menu-panel',
+                    name: 'Pia Paradoxides',
+                    email: 'pia@example.com',
+                    signOutUrl: '#',
+                    publicSiteUrl: '#'}
+                    {block userMenuBody}
+                        <p class="text-sm text-ink-muted">Whatever the page offers the person it belongs to.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

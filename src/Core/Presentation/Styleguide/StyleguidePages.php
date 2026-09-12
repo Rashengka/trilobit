@@ -172,16 +172,27 @@ final class StyleguidePages
                 'components',
                 'Components',
                 'Everything the application is assembled out of, one page for every component.',
-                array_map(
-                    static fn(Component $component): StyleguidePage => new StyleguidePage(
+                [
+                    // The way into the group, the way Bootstrap keeps a list of
+                    // its components down the side: every one of them by name,
+                    // with what it is for. It shows no specimen of its own.
+                    new StyleguidePage(
                         'components',
-                        substr($component->name, strlen(ComponentRegistry::PREFIX)),
-                        $component->name,
-                        $component->summary,
-                        components: [$component->name],
+                        'overview',
+                        'Overview',
+                        'Every component on one list: what it is called, what it is for, and the way to its page.',
                     ),
-                    $this->components->all(),
-                ),
+                    ...array_map(
+                        static fn(Component $component): StyleguidePage => new StyleguidePage(
+                            'components',
+                            substr($component->name, strlen(ComponentRegistry::PREFIX)),
+                            $component->name,
+                            $component->summary,
+                            components: [$component->name],
+                        ),
+                        $this->components->all(),
+                    ),
+                ],
             ),
         ];
     }

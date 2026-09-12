@@ -11,11 +11,9 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-signpost']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {include signpost, items: $sampleSignposts, label: 'Specimen', testId: 'sample-signpost'}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {include signpost, items: $sampleSignposts, label: 'Specimen', testId: 'sample-signpost'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

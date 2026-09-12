@@ -72,4 +72,13 @@ final class OverviewDefaultTemplate extends FrontTemplate
 
     /** The front page of the guide. */
     public string $guideUrl = '';
+
+    /**
+     * The other pages of the group the page being drawn belongs to, with what
+     * each is for - what a page leading into its group lists. Empty on the
+     * guide's front page, which belongs to no group.
+     *
+     * @var list<SignpostLink>
+     */
+    public array $groupPages = [];
 }

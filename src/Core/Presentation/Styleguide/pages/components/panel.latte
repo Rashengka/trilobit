@@ -8,17 +8,15 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-panel']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {embed block panel}
-                        {block panelTitle}What a panel is for{/block}
+            {specimen 'default'}
+                {embed block panel}
+                    {block panelTitle}What a panel is for{/block}
 
-                        {block panelBody}
-                            <p>Anything that belongs together and wants an edge drawn round it.</p>
-                        {/block}
-                    {/embed}
-                {/block}
-            {/embed}
+                    {block panelBody}
+                        <p>Anything that belongs together and wants an edge drawn round it.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
         {/block}
     {/embed}
 {/block}
