@@ -1,0 +1,107 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Several views of one thing, one at a time: plain titles, titles that are
+ * headings of the page, and tabs inside a snippet Naja redraws.
+ * tests/e2e/tabs.spec.ts drives them with the keyboard, with the script and
+ * without it, and through a redraw and the way back.
+ *
+ * The last specimen is a snippet, like the last one of c-combobox, and the
+ * button beside it asks the server for it again through Naja.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/tabs.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        Without the script every panel is drawn one under another, under its title, and nothing is
+        hidden. The script puts a row of tabs in front of them and shows one panel at a time. The arrow
+        keys move between the tabs and show each one at once, Home and End go to the first and the
+        last, and Tab goes on into the panel. An address naming a panel, or anything in one, shows that
+        panel; choosing a tab leaves the address as it was.
+    </p>
+
+    {embed block sgSection, component: $components['c-tabs']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {embed block tabs,
+                    label: 'Care of the specimen',
+                    panels: ['cleaning' => 'Cleaning', 'storing' => 'Storing', 'lending' => 'Lending'],
+                    id: 'sg-tabs-care',
+                    testId: 'sample-tabs'}
+                    {block cleaning}
+                        <p>Once a season, with a soft brush and nothing wet, from the head shield towards the tail.</p>
+                    {/block}
+
+                    {block storing}
+                        <p>In the drawer with the window, on a tray lined with foam. The <a href="https://example.com/">care sheet</a> says how warm the room may get.</p>
+                    {/block}
+
+                    {block lending}
+                        <p>Only in its own box, and only with a note of who has it and until when.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {*
+             * The titles are headings of the page, so without the script the
+             * panels are parts of its outline. With the script the tabs are
+             * named after them and the headings are not drawn.
+             *}
+            {specimen 'with headings'}
+                {embed block tabs,
+                    label: 'What the collection keeps',
+                    panels: ['moults' => 'Moults', 'casts' => 'Casts', 'labels' => 'Labels'],
+                    level: 2,
+                    testId: 'sample-tabs-headings'}
+                    {block moults}
+                        <p>One shed skin to a box, each marked with the size it grew to.</p>
+                    {/block}
+
+                    {block casts}
+                        <p>Plaster copies of the pieces that are out on loan, painted to match.</p>
+                    {/block}
+
+                    {block labels}
+                        <p>The first label of every piece, kept even when a better one has replaced it.</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'redrawn by Naja'}
+                <div class="l-stack">
+                    <div n:snippet="redrawnSpecimen" data-testid="sg-tabs-snippet">
+                        {embed block tabs,
+                            label: 'When the room is open',
+                            panels: ['morning' => 'Morning', 'evening' => 'Evening', 'night' => 'Night'],
+                            id: 'sg-tabs-hours',
+                            testId: 'sample-tabs-redrawn'}
+                            {block morning}
+                                <p>From nine, for anybody with a ticket.</p>
+                            {/block}
+
+                            {block evening}
+                                <p>Until eight, for members and their guests.</p>
+                            {/block}
+
+                            {block night}
+                                <p>Closed, and the lights on the cases turned down.</p>
+                            {/block}
+                        {/embed}
+                    </div>
+
+                    <div class="l-cluster">
+                        <a
+                            n:href="redrawSpecimen!"
+                            class="c-button c-button--quiet ajax"
+                            data-testid="sg-tabs-redraw"
+                        >Draw it again</a>
+                    </div>
+                </div>
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}
