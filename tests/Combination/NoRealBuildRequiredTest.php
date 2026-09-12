@@ -6,11 +6,13 @@ namespace Trilobit\Tests\Combination;
 
 use Dom\HTMLDocument;
 use Nette\DI\Container;
+use Nette\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Tests\Boot;
+use Trilobit\Tests\Template\StyleguideSpecimens;
 
 /**
  * `composer test` runs without Node and without a real `npm run build`, so it
@@ -59,19 +61,25 @@ final class NoRealBuildRequiredTest extends TestCase
     {
         $modules = ModuleList::of(['cms' => true, 'crm' => true, 'shop' => true], Bootstrap::rootDirectory());
 
-        // The style guide is switched on here because it is the page carrying
-        // the most components, and therefore the page most likely to be the one
-        // that grows a dependency on something only a real build produces.
+        // The style guide is switched on here because its pages carry the most
+        // components between them, and are therefore the pages most likely to
+        // be the ones that grow a dependency on something only a real build
+        // produces. Every one of them is rendered, found the way the gates find
+        // them - by asking the router where the guide answers - because since
+        // the guide was split no single page of it carries everything.
         $container = $this->builtAgainstTheStandIn($modules);
 
         $home = $this->rendered($container, 'Core:Front:Home');
         self::assertNotNull($home->querySelector('[data-testid="layout"]'));
 
-        $styleguide = $this->rendered($container, 'Core:Styleguide:Overview');
-        self::assertNotNull(
-            $styleguide->querySelector('[data-styleguide-component]'),
-            'the style guide did not render without a real www/build',
-        );
+        $specimens = 0;
+        foreach (StyleguideSpecimens::pathsIn($container->getByType(Router::class)) as $path) {
+            $specimens += $this->checked($path, Build::renderPath($container, $path))
+                ->querySelectorAll('[data-styleguide-component]')
+                ->length;
+        }
+
+        self::assertGreaterThan(0, $specimens, 'the style guide did not render its specimens without a real www/build');
 
         foreach (Build::SWITCHABLE as $module) {
             $document = $this->rendered($container, ucfirst($module) . ':Front:Status');
@@ -107,6 +115,11 @@ final class NoRealBuildRequiredTest extends TestCase
         ]);
     }
 
+    private function rendered(Container $container, string $presenter): HTMLDocument
+    {
+        return $this->checked($presenter, Build::render($container, $presenter));
+    }
+
     /**
      * The page, once it has been shown to be made of the fixture's assets
      * rather than of a build lying around on this machine.
@@ -114,17 +127,17 @@ final class NoRealBuildRequiredTest extends TestCase
      * Both marks are asserted, because they come from different files: the name
      * is out of the manifest and the version is out of the versions file beside
      * it, and either could fall through to www/build on its own.
+     *
+     * @param string $page what the markup is, for the messages: a presenter or a path
      */
-    private function rendered(Container $container, string $presenter): HTMLDocument
+    private function checked(string $page, string $markup): HTMLDocument
     {
-        $markup = Build::render($container, $presenter);
-
         $document = HTMLDocument::createFromString($markup, LIBXML_NOERROR);
         $assets = [
             ...iterator_to_array($document->querySelectorAll('script[src]')),
             ...iterator_to_array($document->querySelectorAll('link[rel="stylesheet"]')),
         ];
-        self::assertNotSame([], $assets, sprintf('%s referred to no built asset at all', $presenter));
+        self::assertNotSame([], $assets, sprintf('%s referred to no built asset at all', $page));
 
         foreach ($assets as $asset) {
             $address = $asset->getAttribute('src') ?? $asset->getAttribute('href') ?? '';
@@ -132,12 +145,12 @@ final class NoRealBuildRequiredTest extends TestCase
             self::assertStringContainsString(
                 self::FROM_THE_FIXTURE,
                 $address,
-                sprintf('%s named %s, which is not a file any fixture produced', $presenter, $address),
+                sprintf('%s named %s, which is not a file any fixture produced', $page, $address),
             );
             self::assertMatchesRegularExpression(
                 '#\?v=aaaaaaa\d$#',
                 $address,
-                sprintf('%s named %s, whose version did not come from the fixture either', $presenter, $address),
+                sprintf('%s named %s, whose version did not come from the fixture either', $page, $address),
             );
         }
 

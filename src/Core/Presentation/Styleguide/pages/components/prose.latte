@@ -1,0 +1,48 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Running text given back the rhythm and the list markers the reset takes away
+ * everywhere else.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/prose.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-prose']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block prose}
+                        {block proseBody}
+                            <p class="l-measure">
+                                Everywhere else the space between blocks comes from the layout and a
+                                list has no marker. Here both come back, because this is a document
+                                rather than an arrangement of parts.
+                            </p>
+
+                            <h3>What that costs</h3>
+
+                            <p class="l-measure">
+                                Only that a page has to say so. The elements themselves are the ones
+                                the browser already knows.
+                            </p>
+
+                            <ul class="l-measure">
+                                <li>A list item gets its marker back.</li>
+                                <li>A heading takes more room above it than below.</li>
+                                <li>The first and last block sit flush with whatever frames them.</li>
+                            </ul>
+
+                            <hr>
+
+                            <p class="l-measure"><small>Everything written above was invented for this page.</small></p>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

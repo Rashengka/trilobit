@@ -25,8 +25,12 @@ const themes = ['atrium', 'ledger'] as const;
 
 const modes = ['content', 'wide', 'full'] as const;
 
-/** The page the style guide keeps for the case a page has to insist; see StyleguideRoutes. */
-const insistingPage = '/_styleguide/full-width';
+/**
+ * The page the style guide keeps for the case a page has to insist; it is the
+ * page of Trilobit\Core\Presentation\Styleguide\StyleguidePages that names a
+ * width of its own.
+ */
+const insistingPage = ['/_styleguide', 'foundations', 'full-width'].join('/');
 
 async function containerWidth(page: Page): Promise<number> {
     return page.evaluate(() => {

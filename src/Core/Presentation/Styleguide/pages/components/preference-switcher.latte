@@ -1,0 +1,32 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The switch, which is at once the specimen of c-preference-switcher: the one
+ * component of the guide that is used rather than shown, so it is shown by
+ * being used. Every other page of the guide carries it in the frame above the
+ * page; this one empties that block and draws it as its specimen instead,
+ * because a second copy would put two controls for every answer on one page,
+ * and the script moving aria-pressed would have two of everything to keep in
+ * step.
+ *
+ * The state a control is drawn in comes from the server, which is what makes a
+ * reload show what was chosen rather than what the build starts in - decision
+ * D8.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/preference-switcher.latte'}
+
+{block sgSwitch}{/block}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-preference-switcher']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include preferenceSwitcher, preferences: $preferences, testId: 'theme-switcher'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

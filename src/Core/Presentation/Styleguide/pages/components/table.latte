@@ -1,0 +1,73 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Rows and columns inside the frame that catches their overflow. The table
+ * too wide for any frame is on the Tables page of the Content group, beside
+ * the rules it stands for.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/table.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-table']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Where each drawer is kept'}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Drawer</th>
+                                <th scope="col">Room</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Head shields</th>
+                                <td>The one with the window</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shields</th>
+                                <td>The one without</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {*
+             * The caption is there either way - a frame that scrolls has to
+             * have a name for anybody arriving at it by keyboard. What this
+             * variant changes is only whether the name is also drawn.
+             *}
+            {embed block sgSpecimen, variant: 'with a visible caption'}
+                {block sgSpecimenStage}
+                    {embed block table, caption: 'Where each drawer is kept', captionVisible: true}
+                        {block tableHead}
+                            <tr>
+                                <th scope="col">Drawer</th>
+                                <th scope="col">Room</th>
+                            </tr>
+                        {/block}
+
+                        {block tableBody}
+                            <tr>
+                                <th scope="row">Head shields</th>
+                                <td>The one with the window</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Tail shields</th>
+                                <td>The one without</td>
+                            </tr>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

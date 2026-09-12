@@ -5,104 +5,130 @@ declare(strict_types=1);
 namespace Trilobit\Tests\Template;
 
 use Dom\HTMLDocument;
-use Dom\HTMLElement;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
-use Trilobit\Core\Bootstrap;
-use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
-use Trilobit\Tests\Boot;
-use Trilobit\Tests\Combination\Build;
 
 /**
- * Decision D5, second half: a registered component has a specimen on the style
- * guide page, and every variant it claims is one you can actually look at.
+ * Decision D5, second half: a registered component has a specimen on some page
+ * of the style guide, and every variant it claims is one you can actually look
+ * at.
  *
- * The claim is made against the rendered page rather than against the template
- * source, because a section that does not render - a mistyped block name, a
- * component whose parameters changed - is exactly the case a source-level check
- * would pass. It is what turns the style guide from documentation into a gate:
- * a new component fails `composer check` until somebody has shown it.
+ * The claim is made against the rendered pages rather than against the
+ * template source, because a section that does not render - a mistyped block
+ * name, a component whose parameters changed - is exactly the case a
+ * source-level check would pass. It is what turns the style guide from
+ * documentation into a gate: a new component fails `composer check` until
+ * somebody has shown it.
  *
- * The page is rendered through the real container with the style guide switched
- * on explicitly, because its default is %debugMode% and this suite has to say
- * the same thing on a developer's machine and in a fresh checkout.
+ * It asks every page the router sends to the style guide, and not one of them:
+ * see Trilobit\Tests\Template\StyleguideSpecimens for why that is the only
+ * version of the question that survives the guide being split into pages. The
+ * last two cases run the rule over pages built to fail it, because a rule that
+ * reports nothing reads the same whether it works or looks in the wrong place.
  */
 #[CoversNothing]
 final class StyleguideShowsEveryComponentTest extends TestCase
 {
-    private static ?HTMLDocument $page = null;
-
     #[DataProviderExternal(ComponentRegistryTest::class, 'registered')]
     public function testItHasASpecimen(Component $component): void
     {
-        self::assertNotNull(
-            $this->sectionOf($component),
+        self::assertSame(
+            [],
+            StyleguideSpecimens::missing([$component->name], $this->shown()),
             sprintf(
-                '%s is registered and the style guide shows no specimen of it; add one to %s.',
+                '%s is registered and no page of the style guide shows a specimen of it - the pages looked at '
+                . 'were %s. Add one to the page the guide lists it on.',
                 $component->name,
-                'src/Core/Presentation/Styleguide/templates/Overview/default.latte',
+                implode(', ', array_keys(StyleguideSpecimens::everyPage())),
             ),
         );
     }
 
+    /**
+     * Shown once, on one page, with every variant. Twice would be two
+     * specimens to keep alike, and for c-preference-switcher two controls for
+     * every answer on one page.
+     */
     #[DataProviderExternal(ComponentRegistryTest::class, 'registered')]
     public function testEveryVariantIsShown(Component $component): void
     {
-        $section = $this->sectionOf($component);
-        self::assertNotNull($section, $component->name . ' has no specimen at all');
+        $places = $this->shown()[$component->name] ?? [];
+        self::assertCount(
+            1,
+            $places,
+            sprintf('%s is shown in %d sections of the style guide rather than in one', $component->name, count($places)),
+        );
 
         self::assertSame(
             $component->variants,
-            $this->variantsIn($section),
+            $places[0]['variants'],
             sprintf('the specimens of %s and its registered variants do not match', $component->name),
         );
     }
 
-    /** Nothing is on the page that is not in the register, either. */
+    /** Nothing is on any page that is not in the register, either. */
     public function testEverySpecimenBelongsToARegisteredComponent(): void
     {
-        $shown = [];
-        foreach ($this->page()->querySelectorAll('[data-styleguide-component]') as $section) {
-            $shown[] = $section->getAttribute('data-styleguide-component');
-        }
-
-        self::assertSame(new ComponentRegistry()->names(), $shown);
-    }
-
-    private function sectionOf(Component $component): ?HTMLElement
-    {
-        $section = $this->page()->querySelector(
-            sprintf('[data-styleguide-component="%s"]', $component->name),
+        self::assertSame(
+            [],
+            array_values(array_diff(array_keys($this->shown()), new ComponentRegistry()->names())),
         );
-
-        return $section instanceof HTMLElement ? $section : null;
     }
 
-    /** @return list<string> */
-    private function variantsIn(HTMLElement $section): array
+    /**
+     * The rule above, run over a guide in which one of two components has no
+     * specimen anywhere: it has to name that one and only that one.
+     */
+    public function testTheRuleReportsAComponentNoPageShows(): void
     {
-        $variants = [];
-        foreach ($section->querySelectorAll('[data-styleguide-variant]') as $specimen) {
-            $variants[] = $specimen->getAttribute('data-styleguide-variant') ?? '';
-        }
-
-        return $variants;
-    }
-
-    private function page(): HTMLDocument
-    {
-        return self::$page ??= HTMLDocument::createFromString(
-            Build::render(
-                Boot::container(
-                    ModuleList::of(['cms' => true, 'crm' => true, 'shop' => true], Bootstrap::rootDirectory()),
-                    styleguide: true,
-                ),
-                'Core:Styleguide:Overview',
+        $pages = [
+            '/_styleguide' => $this->page('<main><p>The way into every page.</p></main>'),
+            '/_styleguide/components/first' => $this->page(
+                '<section data-styleguide-component="c-first"><div data-styleguide-variant="default"></div></section>',
             ),
-            LIBXML_NOERROR,
+        ];
+
+        self::assertSame(
+            ['c-second'],
+            StyleguideSpecimens::missing(
+                ['c-first', 'c-second'],
+                StyleguideSpecimens::shownIn($pages, StyleguideSpecimens::COMPONENT),
+            ),
         );
+    }
+
+    /**
+     * And over the guide the rule could be "repaired" into: nothing but a
+     * front page of links. Every component is then missing, which is the
+     * failure that repair has to produce rather than a quiet pass.
+     */
+    public function testTheRuleReportsEveryComponentWhenOnlyTheFrontPageIsAskedAbout(): void
+    {
+        $names = new ComponentRegistry()->names();
+
+        self::assertSame(
+            $names,
+            StyleguideSpecimens::missing(
+                $names,
+                StyleguideSpecimens::shownIn(
+                    ['/_styleguide' => $this->page('<main><nav><a href="#">Components</a></nav></main>')],
+                    StyleguideSpecimens::COMPONENT,
+                ),
+            ),
+        );
+    }
+
+    /** @return array<string, list<array{page: string, variants: list<string>}>> */
+    private function shown(): array
+    {
+        return StyleguideSpecimens::shownIn(StyleguideSpecimens::everyPage(), StyleguideSpecimens::COMPONENT);
+    }
+
+    private function page(string $body): HTMLDocument
+    {
+        return HTMLDocument::createFromString('<!DOCTYPE html><html><body>' . $body . '</body></html>', LIBXML_NOERROR);
     }
 }

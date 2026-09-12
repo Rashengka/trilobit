@@ -8,29 +8,28 @@
  * checkout that overrules it - which is also what makes it the fixture
  * tests/e2e/content-width.spec.ts measures the overruling against.
  *
- * Nothing in this file says how wide it is. The width is asked for by
- * OverviewPresenter::renderFullWidth(), because it belongs to the action: the
- * style guide's other page is answered by the same class and is drawn at
- * whatever was chosen.
- *
- * There is deliberately no switch here. A control showing the setting beside a
- * page that is not drawn at it is a question nobody needs to be asked; the way
- * back to the switch is the link at the end.
+ * Nothing in this file says how wide it is. The width is written beside the
+ * page in Trilobit\Core\Presentation\Styleguide\StyleguidePages and asked for
+ * by OverviewPresenter::renderPage(), because it belongs to the page: every
+ * other page of the style guide is answered by the same action of the same
+ * class and is drawn at whatever was chosen.
  *
  * The example content is invented and has to stay invented.
  *}
 
-{import '../../../components/page-heading.latte'}
 {import '../../../components/notice.latte'}
 {import '../../../components/table.latte'}
 {import '../../../components/button.latte'}
 
-{block content}
-    {include pageHeading,
-        title: 'A page that insists',
-        lead: 'Drawn at the full width of its region, whichever width is chosen for everything else.',
-        testId: 'full-width-headline'}
+{*
+ * Deliberately no switch here, although every other page of the guide has one.
+ * A control showing the setting beside a page that is not drawn at it is a
+ * question nobody needs to be asked; the menu beside this page leads back to
+ * pages that carry it.
+ *}
+{block sgSwitch}{/block}
 
+{block sgPage}
     {include notice,
         message: 'The width is asked for by the action that draws this page, and nothing about the '
             . 'setting changes: the style guide is still drawn at whatever was chosen for it.',
@@ -62,7 +61,7 @@
 
     {include button,
         label: 'Back to the style guide',
-        href: $styleguideUrl,
+        href: $guideUrl,
         variant: 'quiet',
         testId: 'full-width-back'}
 {/block}

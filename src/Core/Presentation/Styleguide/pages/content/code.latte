@@ -1,0 +1,41 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Something quoted from a machine rather than said to a person, inline and as a
+ * block wider than the frame it sits in.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    {embed block sgContentSection, group: $contentGroups['code']}
+        {block sgContentSectionBody}
+            {embed block sgSpecimen, variant: 'inline'}
+                {block sgSpecimenStage}
+                    <p>
+                        Switching the theme is one attribute: <code>data-theme="ledger"</code> on the
+                        <code>html</code> element, and nothing is rebuilt.
+                    </p>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'a key and sampled output'}
+                {block sgSpecimenStage}
+                    <p>
+                        Press <kbd>Tab</kbd> until the frame below is reached, then <kbd>Shift</kbd> +
+                        <kbd>Tab</kbd> to leave it again. A build that has nothing to say answers
+                        <samp>no drift</samp> and stops.
+                    </p>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'a block wider than its frame'}
+                {block sgSpecimenStage}
+                    <pre data-testid="styleguide-code-block"><code>docker compose exec php vendor/bin/phpunit --filter 'ContentGroupRegistryTest|StyleguideShowsEveryContentGroupTest' --testdox --colors=never --display-skipped</code></pre>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

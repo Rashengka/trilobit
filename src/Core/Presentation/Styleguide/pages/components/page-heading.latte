@@ -1,0 +1,40 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The title of a page and the sentence under it - the same component the frame
+ * of this guide draws above every page, shown here on its own.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/page-heading.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-page-heading']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {include pageHeading,
+                        title: 'Trilobite field guide',
+                        lead: 'How to tell one segmented fossil from the next without a hand lens.'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'without a lead'}
+                {block sgSpecimenStage}
+                    {include pageHeading, title: 'Trilobite field guide'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'as a section heading'}
+                {block sgSpecimenStage}
+                    {include pageHeading,
+                        title: 'Segments and lobes',
+                        lead: 'Three lobes along one axis, which is where the name comes from.',
+                        level: 'h3'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

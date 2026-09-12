@@ -15,7 +15,9 @@ namespace Trilobit\Core\Presentation\Content;
  * register closes: tests/Template/ContentGroupRegistryTest fails when a group
  * names a selector assets/base.css does not carry, and
  * tests/Template/StyleguideShowsEveryContentGroupTest fails when a group has no
- * specimen on the page.
+ * specimen on any page of the style guide. Every group is a page of the guide's
+ * Content group, derived from this list by
+ * Trilobit\Core\Presentation\Styleguide\StyleguidePages.
  *
  * The groups are Bootstrap's Content menu read against what this project
  * already had - see .ai/plans/01d-design-system.md, N-B. Tables are the one

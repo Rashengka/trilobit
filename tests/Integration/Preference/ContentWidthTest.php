@@ -12,6 +12,9 @@ use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Preference\PreferenceCatalogue;
+use Trilobit\Core\Presentation\Styleguide\StyleguidePage;
+use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
+use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Combination\Build;
 use Trilobit\Tests\Double\StandInHttpRequest;
@@ -28,21 +31,19 @@ use Trilobit\Tests\Double\StandInHttpRequest;
  * before the layout is drawn, and a presenter overruling it in a method the
  * framework calls at the wrong moment.
  *
- * The style guide is used because it is the one page in this checkout that
- * answers at two actions with two different widths - which is also the point
- * being made. A width belongs to the page, and a presenter is not a page: one
- * class answers at several addresses, and the class is the wrong place to say
- * how wide any of them is.
+ * The style guide is used because it is the one place in this checkout where
+ * one presenter answers at pages drawn at two different widths - which is also
+ * the point being made. A width belongs to the page, and a presenter is not a
+ * page: every page of the guide is the same action of the same class, and the
+ * one that insists on a width says so in the list of pages rather than in the
+ * class. The page is found in that list here rather than named, so that moving
+ * it cannot leave this test measuring an ordinary page.
  */
 #[CoversNothing]
 final class ContentWidthTest extends TestCase
 {
-    private const string PRESENTER = 'Core:Styleguide:Overview';
-
-    /** The action that insists, and what it insists on; see OverviewPresenter. */
-    private const string INSISTING_ACTION = 'fullWidth';
-
-    private const string INSISTED_WIDTH = 'full';
+    /** The front page of the guide, which insists on nothing. */
+    private const string ORDINARY = '/' . StyleguideRoutes::PATH;
 
     private ?Container $container = null;
 
@@ -50,34 +51,34 @@ final class ContentWidthTest extends TestCase
     {
         $this->device()->carry($this->cookie(), 'wide');
 
-        self::assertSame('wide', $this->widthOf(self::PRESENTER));
+        self::assertSame('wide', $this->widthOf(self::ORDINARY));
     }
 
     /** Nobody has chosen anything, so the page is drawn at what this build starts in. */
     public function testAVisitorWhoHasChosenNothingIsDrawnAtTheBuildsWidth(): void
     {
-        self::assertSame('content', $this->widthOf(self::PRESENTER));
+        self::assertSame('content', $this->widthOf(self::ORDINARY));
     }
 
     public function testAPageThatInsistsOnAWidthOverrulesTheChoice(): void
     {
         $this->device()->carry($this->cookie(), 'content');
 
-        self::assertSame(self::INSISTED_WIDTH, $this->widthOf(self::PRESENTER, self::INSISTING_ACTION));
+        self::assertSame($this->insisting()->width, $this->widthOf($this->insistingPath()));
     }
 
     /**
      * The claim the shape has to carry: a width is a property of the page and
-     * not of the class behind it. Both actions below are answered by one
+     * not of the class behind it. Both pages below are answered by one
      * presenter, and they are drawn at different widths in the same build and
      * with the same device in front of them.
      */
-    public function testTwoActionsOfOnePresenterAreDrawnAtDifferentWidths(): void
+    public function testTwoPagesOfOnePresenterAreDrawnAtDifferentWidths(): void
     {
         $this->device()->carry($this->cookie(), 'content');
 
-        self::assertSame('content', $this->widthOf(self::PRESENTER));
-        self::assertSame(self::INSISTED_WIDTH, $this->widthOf(self::PRESENTER, self::INSISTING_ACTION));
+        self::assertSame('content', $this->widthOf(self::ORDINARY));
+        self::assertSame($this->insisting()->width, $this->widthOf($this->insistingPath()));
     }
 
     /**
@@ -89,7 +90,7 @@ final class ContentWidthTest extends TestCase
     {
         $this->device()->carry($this->cookie(), 'content');
 
-        $control = $this->documentOf(self::PRESENTER, self::INSISTING_ACTION)
+        $control = $this->documentOf($this->insistingPath())
             ->querySelector('[data-preference="content-width"][data-preference-value="content"]');
 
         // The insisting page carries no switch of its own, which is the simplest
@@ -107,29 +108,50 @@ final class ContentWidthTest extends TestCase
             'ledger',
         );
 
-        self::assertSame('ledger', $this->attributeOf('data-theme', self::PRESENTER, self::INSISTING_ACTION));
+        self::assertSame('ledger', $this->attributeOf('data-theme', $this->insistingPath()));
     }
 
-    private function widthOf(string $presenter, string $action = 'default'): ?string
+    /**
+     * The one page of the guide that insists on a width, found where the guide
+     * says so. Exactly one: a second would be a second specimen of the same
+     * thing, and none would leave every case above comparing a page with
+     * itself.
+     */
+    private function insisting(): StyleguidePage
     {
-        return $this->attributeOf('data-content-width', $presenter, $action);
+        $insisting = array_values(array_filter(
+            $this->container()->getByType(StyleguidePages::class)->pages(),
+            static fn(StyleguidePage $page): bool => $page->width !== null,
+        ));
+
+        self::assertCount(1, $insisting, 'the style guide has to have exactly one page that insists on a width');
+        self::assertNotSame('content', $insisting[0]->width, 'a page insisting on the default width shows nothing');
+
+        return $insisting[0];
+    }
+
+    private function insistingPath(): string
+    {
+        return self::ORDINARY . '/' . $this->insisting()->path();
+    }
+
+    private function widthOf(string $path): ?string
+    {
+        return $this->attributeOf('data-content-width', $path);
     }
 
     /** What the html element of that page carries, which is the whole of how a preference reaches a browser. */
-    private function attributeOf(string $attribute, string $presenter, string $action = 'default'): ?string
+    private function attributeOf(string $attribute, string $path): ?string
     {
-        $root = $this->documentOf($presenter, $action)->documentElement;
+        $root = $this->documentOf($path)->documentElement;
         self::assertInstanceOf(Element::class, $root, 'the page has no html element at all');
 
         return $root->getAttribute($attribute);
     }
 
-    private function documentOf(string $presenter, string $action): HTMLDocument
+    private function documentOf(string $path): HTMLDocument
     {
-        return HTMLDocument::createFromString(
-            Build::render($this->container(), $presenter, $action),
-            LIBXML_NOERROR,
-        );
+        return HTMLDocument::createFromString(Build::renderPath($this->container(), $path), LIBXML_NOERROR);
     }
 
     private function cookie(): string

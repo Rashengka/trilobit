@@ -1,0 +1,45 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * One thing a form asks for, with a line of text and with a control that is
+ * not one.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/field.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-field']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    {embed block field}
+                        {block fieldLabel}<label for="sg-field-town">Town</label>{/block}
+
+                        {block fieldControl}
+                            <input id="sg-field-town" type="text" value="Barrandov">
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'with a control that is not a line of text'}
+                {block sgSpecimenStage}
+                    {embed block field}
+                        {block fieldLabel}<label for="sg-field-period">Period</label>{/block}
+
+                        {block fieldControl}
+                            <select id="sg-field-period">
+                                <option>Cambrian</option>
+                                <option>Ordovician</option>
+                                <option>Silurian</option>
+                            </select>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

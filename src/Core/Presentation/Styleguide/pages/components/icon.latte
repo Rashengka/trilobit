@@ -1,0 +1,27 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Each icon on its own, which is the case where it has to carry a name - beside
+ * a word that already says what it means it would carry none.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/icon.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-icon']}
+        {block sgSectionBody}
+            {embed block sgSpecimen, variant: 'sign-out'}
+                {block sgSpecimenStage}
+                    {include icon, name: 'sign-out', label: 'Sign out'}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'chevron-down'}
+                {block sgSpecimenStage}
+                    {include icon, name: 'chevron-down', label: 'Opens underneath'}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}
