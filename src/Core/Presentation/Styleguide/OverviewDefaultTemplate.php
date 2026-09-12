@@ -33,6 +33,9 @@ final class OverviewDefaultTemplate extends FrontTemplate
     /** @var array<string, string> token name => what it is for */
     public array $colourTokens = [];
 
+    /** @var array<string, string> token name => what it decides */
+    public array $chromeTokens = [];
+
     /** @var list<string> */
     public array $statements = [];
 

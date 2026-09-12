@@ -149,6 +149,18 @@
 
     --layout-card-min: 15rem;
     --layout-card-media-ratio: 3 / 2;
+
+    /*
+     * Ledger holds both bands in view while the page scrolls: the banner over
+     * the content column, and the navigation as the column beside it, each on
+     * its own switch. A ledger is read a long way down and navigated from the
+     * side, and both are worth their room there - see atrium.css for what the
+     * switches mean.
+     */
+    --layout-banner-position: sticky;
+    --layout-nav-position: sticky;
+
+    --layout-z-chrome: 1;
 }
 
 /*
@@ -156,9 +168,15 @@
  * live in, so the shell falls back to the stack Atrium uses. A breakpoint is a
  * measurement, which is why it belongs in a theme file and not in base.css:
  * base.css has no dimension of its own to compare against.
+ *
+ * Nothing is held there either. On a window that small a banner and a row of
+ * links held for good would take the room the content scrolls in, which is
+ * the room holding them was meant to save.
  */
 @media (width < 52rem) {
     [data-theme='ledger'] {
+        --layout-banner-position: static;
+        --layout-nav-position: static;
         --layout-shell-areas: 'banner' 'nav' 'main' 'footer';
         --layout-shell-columns: minmax(0, 1fr);
         --layout-shell-rows: auto auto 1fr auto;

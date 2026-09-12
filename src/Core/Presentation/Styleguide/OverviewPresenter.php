@@ -60,6 +60,26 @@ final class OverviewPresenter extends FrontPresenter
     ];
 
     /**
+     * The tokens that decide what stays in view while the page scrolls, and
+     * what each decides.
+     *
+     * The layers among them are checked against the theme files rather than
+     * trusted: tests/Template/StyleguideFoundationsTest fails when a theme
+     * declares a --layout-z-* token the guide does not name.
+     *
+     * @var array<string, string>
+     */
+    private const array CHROME_TOKENS = [
+        '--layout-banner-position' => 'whether the banner stays in view while the page scrolls (sticky) '
+            . 'or scrolls away with it (static)',
+        '--layout-nav-position' => 'the same switch for the navigation, set apart from the banner',
+        '--layout-z-chrome' => 'the layer whatever stays in view is drawn in, above the content that '
+            . 'scrolls under it',
+        '--layout-chrome-offset' => 'how much of the top of the window the held bands cover, which a jump '
+            . 'to a heading keeps clear; measured by the page, not declared by a theme',
+    ];
+
+    /**
      * The rows of the table specimen that has to overflow, and the months they
      * are labelled with.
      *
@@ -165,6 +185,7 @@ final class OverviewPresenter extends FrontPresenter
         $template->components = $this->byName($this->components);
         $template->contentGroups = $this->groupsByName($this->contentGroups);
         $template->colourTokens = self::COLOUR_TOKENS;
+        $template->chromeTokens = self::CHROME_TOKENS;
         $template->statements = self::SAMPLE_STATEMENTS;
         $template->tableColumns = $this->sampleTableColumns();
         $template->tableRows = $this->sampleTableRows();

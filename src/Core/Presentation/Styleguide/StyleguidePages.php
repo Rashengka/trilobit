@@ -73,6 +73,13 @@ final class StyleguidePages
                         'Content width',
                         'How wide the content runs: the reader chooses, and a page may insist where it has to.',
                     ),
+                    new StyleguidePage(
+                        'foundations',
+                        'chrome',
+                        'What stays in view',
+                        'The banner and the navigation a theme holds in view while the page scrolls, and the '
+                            . 'layer they are drawn in.',
+                    ),
                     // The one page of the guide drawn at a width nobody chose,
                     // and the reason the width is a property of a page rather
                     // than of the class answering it: every page here is the
