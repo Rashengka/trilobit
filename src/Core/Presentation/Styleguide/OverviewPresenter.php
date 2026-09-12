@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Styleguide;
 
+use Nette\Application\BadRequestException;
 use Nette\Application\UI\Template;
 use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
@@ -23,6 +24,10 @@ use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
  * a component that has stopped working here has stopped working everywhere. A
  * catalogue that rendered its own HTML would show whatever it was told to and
  * would drift away from the application without anybody being able to see it.
+ *
+ * It answers at the front page of the guide (default) and at every page
+ * StyleguidePages lists (page). Every listed page is the same action, told which
+ * page it is by its route, and drawn by the file the list names for it.
  *
  * It exists only where trilobit.styleguide is on. Nothing in this class knows
  * that: with the switch off Trilobit\Core\Routing\StyleguideRoutes is never
@@ -75,62 +80,51 @@ final class OverviewPresenter extends FrontPresenter
     public function __construct(
         private readonly ComponentRegistry $components,
         private readonly ContentGroupRegistry $contentGroups,
+        private readonly StyleguidePages $pages,
     ) {
         parent::__construct();
     }
 
     public function renderDefault(): void
     {
-        $template = $this->getTemplate();
-        if (!$template instanceof OverviewDefaultTemplate) {
-            throw new \LogicException(sprintf(
-                'The template of %s has to be a %s.',
-                self::class,
-                OverviewDefaultTemplate::class,
-            ));
-        }
+        $template = $this->styleguideTemplate();
 
         $template->pageTitle = 'Style guide';
-        $template->components = $this->byName($this->components);
-        $template->contentGroups = $this->groupsByName($this->contentGroups);
-        $template->colourTokens = self::COLOUR_TOKENS;
-        $template->statements = self::SAMPLE_STATEMENTS;
-        $template->tableColumns = $this->sampleTableColumns();
-        $template->tableRows = $this->sampleTableRows();
-        $template->sampleNavigation = $this->sampleNavigation();
-        $template->sampleSignposts = $this->sampleSignposts();
-        $template->fullWidthUrl = $this->link('fullWidth');
+        $this->fillIn($template);
+        $template->fullWidthUrl = $this->link('page', ['group' => 'foundations', 'page' => 'full-width']);
     }
 
     /**
-     * The second page of the guide, and the one claim the first cannot make
-     * about itself: a page drawn at a width the person reading it did not
-     * choose.
+     * One page of the guide, the one the route named.
      *
-     * It is an action of this same presenter deliberately. A width belongs to
-     * the page rather than to the class behind it - one class answers at several
-     * addresses, and here two of them are drawn differently in the same build,
-     * for the same visitor, at the same moment. See
-     * .ai/plans/09-chrome-a-sirka-obsahu.md, L4, and
+     * A page the list does not have is refused as not found, although no route
+     * should ever bring one here: a link built inside the application reaches
+     * this action without passing the router, and there it is the only check.
+     *
+     * **The width belongs to the page.** The one page of the list that names a
+     * width of its own is drawn at it whatever the reader chose, and it is the
+     * same action of the same class as every page that is not - one class
+     * answers at several addresses, and they need not be drawn alike. See
      * Trilobit\Core\Presentation\Front\FrontPresenter::overruleContentWidth().
      */
-    public function renderFullWidth(): void
+    public function renderPage(string $group, string $page): void
     {
-        $template = $this->getTemplate();
-        if (!$template instanceof OverviewDefaultTemplate) {
-            throw new \LogicException(sprintf(
-                'The template of %s has to be a %s.',
-                self::class,
-                OverviewDefaultTemplate::class,
-            ));
+        $shown = $this->pages->find($group, $page);
+        if (!$shown instanceof StyleguidePage) {
+            throw new BadRequestException(sprintf('The style guide has no page %s/%s.', $group, $page));
         }
 
-        $template->pageTitle = 'A page that insists';
-        $template->tableColumns = $this->sampleTableColumns();
-        $template->tableRows = $this->sampleTableRows();
+        $template = $this->styleguideTemplate();
+        $template->setFile(StyleguidePages::directory() . '/' . $shown->file());
+
+        $template->pageTitle = $shown->title;
+        $template->page = $shown;
+        $this->fillIn($template);
         $template->styleguideUrl = $this->link('default');
 
-        $this->overruleContentWidth('full');
+        if ($shown->width !== null) {
+            $this->overruleContentWidth($shown->width);
+        }
     }
 
     /**
@@ -141,6 +135,39 @@ final class OverviewPresenter extends FrontPresenter
     protected function createTemplate(?string $class = null): Template
     {
         return parent::createTemplate($class ?? OverviewDefaultTemplate::class);
+    }
+
+    private function styleguideTemplate(): OverviewDefaultTemplate
+    {
+        $template = $this->getTemplate();
+        if (!$template instanceof OverviewDefaultTemplate) {
+            throw new \LogicException(sprintf(
+                'The template of %s has to be a %s.',
+                self::class,
+                OverviewDefaultTemplate::class,
+            ));
+        }
+
+        return $template;
+    }
+
+    /**
+     * What any page of the guide may draw its specimens with.
+     *
+     * Filled in for every page rather than for the one that uses each piece:
+     * all of it is invented and cheap, and a page moving from one group to
+     * another then cannot lose the data it was drawn with on the way.
+     */
+    private function fillIn(OverviewDefaultTemplate $template): void
+    {
+        $template->components = $this->byName($this->components);
+        $template->contentGroups = $this->groupsByName($this->contentGroups);
+        $template->colourTokens = self::COLOUR_TOKENS;
+        $template->statements = self::SAMPLE_STATEMENTS;
+        $template->tableColumns = $this->sampleTableColumns();
+        $template->tableRows = $this->sampleTableRows();
+        $template->sampleNavigation = $this->sampleNavigation();
+        $template->sampleSignposts = $this->sampleSignposts();
     }
 
     /**

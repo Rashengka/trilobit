@@ -54,6 +54,7 @@ use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Presentation\Link\Destinations;
+use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
 use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\ContentRouter;
 use Trilobit\Core\Routing\PreferenceRoutes;
@@ -395,6 +396,14 @@ final class CoreExtension extends CompilerExtension
         // checked against.
         $builder->addDefinition($this->prefix('contentGroups'))
             ->setFactory(ContentGroupRegistry::class);
+
+        // The pages the style guide is split into. In every build, like the
+        // two registers it is made of: it is a description, and a description
+        // routes nothing. What makes the guide disappear with the switch off is
+        // the route provider below, which is the only thing that reads it into
+        // addresses.
+        $builder->addDefinition($this->prefix('styleguidePages'))
+            ->setFactory(StyleguidePages::class);
 
         // Whether this build has the page a stored destination names. It is
         // Core's because the question is about the build rather than about any

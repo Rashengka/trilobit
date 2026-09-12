@@ -449,8 +449,10 @@ somebody to remember to switch.
 A page says so by calling `overruleContentWidth()` from its render method, which
 is what makes the width belong to the page rather than to the class behind it -
 one presenter answers at several addresses and they need not be drawn alike.
-`/_styleguide` and `/_styleguide/full-width` are two actions of one presenter and
-show exactly that.
+Every page of the style guide is the same action of one presenter, and
+`/_styleguide/foundations/full-width` is the one that insists on a width - the
+list of the guide's pages says so, and the class behind it does not know which
+page it is drawing until the route tells it.
 
 Nothing is written down when a page overrules. The reader's setting is untouched,
 the switch goes on showing it, and the next page is drawn at it again -
