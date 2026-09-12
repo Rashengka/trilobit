@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Tests\Integration\Console;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Nette\DI\Container;
 use Nette\Security\Authenticator;
@@ -61,6 +62,14 @@ final class AccountCommandTest extends TestCase
 {
     /** The host the business in this fixture answers at, and therefore what --tenant is given. */
     private const string HOST = 'bikes.example.com';
+
+    /**
+     * How long a command in a process of its own gets to reach the insert of
+     * the owner's role. It boots the application first, which is seconds and
+     * not minutes, and the lock it then waits on gives up by itself after
+     * innodb_lock_wait_timeout - fifty seconds unless the server says less.
+     */
+    private const int SECONDS_TO_REACH_THE_INSERT = 30;
 
     private string $schema = '';
 
@@ -444,6 +453,50 @@ final class AccountCommandTest extends TestCase
     }
 
     /**
+     * Two runs at the same moment - two deployments, or two browser suites
+     * preparing their accounts side by side - both find no owner's role and
+     * both go to make it. The code is unique, so the database refuses the
+     * second insert; what the second run has to do then is take the role the
+     * first one made, rather than fail halfway through with an account and no
+     * membership.
+     *
+     * The moment is made rather than hoped for. This test is the first run: it
+     * inserts the role and holds its transaction open, which the command,
+     * running in a process of its own, cannot see. That process finds no role,
+     * goes to insert one and waits on this row; only once it is seen waiting is
+     * the transaction committed, and the refusal the database then gives it is
+     * the one CI met by chance. The row goes in with nothing granted, so that
+     * the end of the test also shows the command made the role it took say the
+     * whole of the application.
+     */
+    public function testARoleAnotherRunMadeMeanwhileIsTakenRatherThanMadeTwice(): void
+    {
+        $container = $this->emptyInstallation();
+        $entityManager = $container->getByType(EntityManagerInterface::class);
+        $connection = $entityManager->getConnection();
+
+        $connection->beginTransaction();
+        $connection->insert('core_role', ['code' => Role::OWNER, 'name' => 'Owner', 'permissions' => '[]']);
+
+        [$met, $status, $output] = $this->committedOnceItWaits($connection, 'alice@example.com', self::HOST);
+
+        self::assertTrue($met, 'the run never got as far as inserting the role, so it never met the other one: ' . $output);
+        self::assertSame(Command::SUCCESS, $status, $output);
+
+        $entityManager->clear();
+        $roles = $entityManager->getRepository(Role::class)->findAll();
+        self::assertCount(1, $roles);
+        self::assertSame(Role::OWNER, $roles[0]->code());
+        self::assertSame(['app:*'], $roles[0]->permissions());
+
+        Tenants::switchTo($container, $this->business($container));
+        $memberships = $entityManager->getRepository(Membership::class)->findAll();
+        self::assertCount(1, $memberships);
+        self::assertSame('alice@example.com', $memberships[0]->user()->email());
+        self::assertSame($roles[0]->id(), $memberships[0]->role()->id());
+    }
+
+    /**
      * A fresh installation with one business in it, and nothing entered yet:
      * the command is what says which business it means, from the host it is
      * given.
@@ -517,6 +570,77 @@ final class AccountCommandTest extends TestCase
         $status = $tester->execute($arguments, ['capture_stderr_separately' => true]);
 
         return [$status, $tester->getDisplay() . $tester->getErrorOutput()];
+    }
+
+    /**
+     * `bin/trilobit app:account` run the way a deployment runs it, in a process
+     * of its own with a connection of its own, while $connection holds an
+     * uncommitted row - which is committed the moment the other process is
+     * seen inserting the same role, and so waiting on it.
+     *
+     * The waiting is asked of the server rather than guessed from the time that
+     * has passed, because the interleaving is what the test is about: without
+     * it the run would simply have found the role, and a pass would say
+     * nothing. Whether it was seen is therefore returned, for the caller to
+     * hold the test to. A process that has already ended never will get there,
+     * so that ends the wait early rather than at the deadline.
+     *
+     * The transaction is committed whatever happened, before anything is
+     * asserted: a failure left holding it would leave the other process
+     * waiting and the schema impossible to drop.
+     *
+     * The schema this test made is in the environment the process inherits;
+     * see Trilobit\Tests\Database::schemaFor().
+     *
+     * @return array{bool, int, string} whether it was seen waiting, its exit code, and what it printed
+     */
+    private function committedOnceItWaits(Connection $connection, string $email, string $tenant): array
+    {
+        $process = proc_open(
+            [PHP_BINARY, Bootstrap::rootDirectory() . '/bin/trilobit', 'app:account', $email, '--tenant', $tenant, '--no-ansi'],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            Bootstrap::rootDirectory(),
+        );
+
+        try {
+            self::assertIsResource($process);
+
+            $met = false;
+            $deadline = microtime(true) + self::SECONDS_TO_REACH_THE_INSERT;
+            while (!$met && microtime(true) < $deadline && proc_get_status($process)['running']) {
+                $waiting = $connection->fetchOne(
+                    'SELECT COUNT(*) FROM information_schema.PROCESSLIST'
+                    . ' WHERE ID <> CONNECTION_ID() AND DB = DATABASE() AND INFO LIKE ?',
+                    ['INSERT INTO core_role%'],
+                );
+                $met = is_numeric($waiting) && (int) $waiting > 0;
+                if (!$met) {
+                    usleep(20_000);
+                }
+            }
+        } finally {
+            $connection->commit();
+        }
+
+        $output = '';
+        foreach ($pipes as $pipe) {
+            $output .= (string) stream_get_contents($pipe);
+            fclose($pipe);
+        }
+
+        // The exit code is read off the status, because proc_close() has
+        // nothing left to report for a process a status call has already seen
+        // end.
+        $status = proc_get_status($process);
+        while ($status['running']) {
+            usleep(10_000);
+            $status = proc_get_status($process);
+        }
+
+        proc_close($process);
+
+        return [$met, $status['exitcode'], $output];
     }
 
     private function passwordIn(string $output): string
