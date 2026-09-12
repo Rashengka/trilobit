@@ -4,15 +4,18 @@
  */
 import naja from 'naja';
 
+import { placeWhereTheBrowserCannotAnchor } from './anchor';
 import { turnTheCarousels } from './carousel';
 import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
 import { comboboxesInSnippets, enhanceWithin } from './combobox';
 import { answerTheDialogButtons, dialogsInSnippets } from './dialog';
 import { openWhatTheAddressNames } from './disclosure';
+import { keepTheDropdownsToTheKeyboard } from './dropdown';
 import { unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
 import { followTheChrome, scrollspiesInSnippets, spyWithin } from './scrollspy';
 import { layTabsWithin, switchTheTabs, tabsInSnippets } from './tabs';
+import { showTheTooltips } from './tooltip';
 import './segment-suggestion';
 import { announceTheToasts } from './toast';
 import './app.css';
@@ -171,3 +174,10 @@ answerTheDialogButtons();
 // assets/carousel.ts and assets/toast.ts.
 turnTheCarousels();
 announceTheToasts();
+
+// The same holds for the three popovers: each listens on the document and
+// prepares nothing. See assets/dropdown.ts, assets/tooltip.ts and
+// assets/anchor.ts.
+keepTheDropdownsToTheKeyboard();
+showTheTooltips();
+placeWhereTheBrowserCannotAnchor();
