@@ -85,12 +85,12 @@ final readonly class ReachableMenu
      * where Trilobit\Core\Presentation\Admin\Landing says this person's
      * administration begins, which is a different question and deliberately
      * answered elsewhere. **Where somebody belongs is not the same claim as
-     * what they may open**, and the two come apart at exactly one shape of
-     * account: a role assembled out of a section - `content:view` and nothing
-     * else - opens every page of that section and is refused the overview,
-     * because the pairs in src/Core/Security/permissions.neon inherit from
-     * parent to child. Such a person was drawn a way back to a page that
-     * refused them, on every page of the section they were allowed to be in.
+     * what they may open.** A right in a section opens the administration it
+     * is a section of, so for anybody who reaches a page of the
+     * administration the two agree today - but they agreed once before, until
+     * a role assembled out of one section was drawn a way back to an overview
+     * that refused it, on every page of the section it was allowed to be in.
+     * That is what an agreement nobody checks looks like when it stops.
      *
      * So the answer to "where" stays in one place and this stays the only
      * thing that decides what is offered - which is what the sentence at the

@@ -38,15 +38,23 @@ final readonly class PermissionStructure
 
     private const string PRIVILEGES = 'privileges';
 
+    private const string BUNDLE = 'bundle';
+
+    /** Every key a resource may be described by; see fromNeon(). */
+    private const array KEYS = [self::PARENT, self::PRIVILEGES, self::BUNDLE];
+
     /**
      * @param array<string, Resource|null> $parents what each resource falls
      *     under, by the resource's own value
      * @param array<string, non-empty-list<Privilege>> $privileges what may be
      *     asked of each resource, by the resource's own value
+     * @param array<string, bool> $bundles whether the whole of each resource
+     *     may be granted, by the resource's own value
      */
     private function __construct(
         private array $parents,
         private array $privileges,
+        private array $bundles,
     ) {}
 
     public static function of(string $rootDirectory): self
@@ -70,6 +78,7 @@ final readonly class PermissionStructure
 
         $parents = [];
         $privileges = [];
+        $bundles = [];
 
         foreach ($declared as $name => $description) {
             $resource = is_string($name) ? Resource::tryFrom($name) : null;
@@ -91,8 +100,22 @@ final readonly class PermissionStructure
                 ));
             }
 
+            $unknown = array_diff(array_map(strval(...), array_keys($description)), self::KEYS);
+            if ($unknown !== []) {
+                throw new \RuntimeException(sprintf(
+                    "%s describes '%s' by %s, and a resource is described by %s and nothing else. A key nobody "
+                        . 'reads is a sentence that looks like a rule - a misspelt bundle reads as no bundle, and '
+                        . 'its only symptom is a right somebody never gets.',
+                    $file,
+                    $resource->value,
+                    implode(', ', $unknown),
+                    implode(', ', self::KEYS),
+                ));
+            }
+
             $parents[$resource->value] = self::parentIn($description, $resource, $file);
             $privileges[$resource->value] = self::privilegesIn($description, $resource, $file);
+            $bundles[$resource->value] = self::bundleIn($description, $resource, $file);
         }
 
         foreach (Resource::cases() as $resource) {
@@ -107,7 +130,22 @@ final readonly class PermissionStructure
             }
         }
 
-        return new self($parents, $privileges);
+        foreach ($parents as $child => $parent) {
+            if ($parent instanceof Resource && !in_array(Privilege::View, $privileges[$parent->value] ?? [], true)) {
+                throw new \RuntimeException(sprintf(
+                    "%s says '%s' falls under '%s', which does not offer view. Any right on '%s' opens what it "
+                        . "falls under, and opening is view - so every piece of '%s' would be a way into a "
+                        . 'resource that could not be opened.',
+                    $file,
+                    $child,
+                    $parent->value,
+                    $child,
+                    $child,
+                ));
+            }
+        }
+
+        return new self($parents, $privileges, $bundles);
     }
 
     public function parentOf(Resource $resource): ?Resource
@@ -125,6 +163,23 @@ final readonly class PermissionStructure
     public function offers(Resource $resource, Privilege $privilege): bool
     {
         return in_array($privilege, $this->privileges[$resource->value], true);
+    }
+
+    /**
+     * Whether the whole of this resource may be granted - every privilege of
+     * it and of everything under it, including the ones added after the role
+     * was written.
+     *
+     * That last part is the reason it has to be said rather than assumed. A
+     * whole piece keeps growing, so it is honoured only where somebody decided
+     * that growing is what the resource should do; see
+     * src/Core/Security/permissions.neon. Taking the whole of a resource away
+     * needs no such decision - a denial that grows fails in the safe
+     * direction - so this is asked of grants and never of denials.
+     */
+    public function offersBundle(Resource $resource): bool
+    {
+        return $this->bundles[$resource->value] ?? false;
     }
 
     /**
@@ -153,11 +208,11 @@ final readonly class PermissionStructure
     /**
      * Everything that falls under this resource, however deep.
      *
-     * It is what a rule written on the resource answers for as well - the
-     * meaning `parent` has in Nette, and the one this file is written in. It
-     * is asked for here rather than left to Nette because a parent inside an
-     * access list is the route a right taken away further down would come
-     * back by; see Trilobit\Core\Security\AccessComposition.
+     * It is how far the whole of the resource reaches, granted or denied, and
+     * nothing narrower: a concrete privilege on the resource says nothing about
+     * what is under it. It is asked for here rather than left to Nette because
+     * a parent inside an access list is the route a right taken away further
+     * down would come back by; see Trilobit\Core\Security\AccessComposition.
      *
      * @return list<Resource>
      */
@@ -172,6 +227,36 @@ final readonly class PermissionStructure
         }
 
         return array_values($under);
+    }
+
+    /**
+     * Everything this resource falls under, the nearest first and however
+     * high.
+     *
+     * It is what any right on the resource opens: somebody who may work in a
+     * section may get to it, so they may view each thing it is inside. A
+     * circle is refused here as it is on the way down, because a walk up a
+     * circle never reaches the top.
+     *
+     * @return list<Resource>
+     */
+    public function ancestorsOf(Resource $resource): array
+    {
+        $above = [];
+        $current = $this->parentOf($resource);
+        while ($current instanceof Resource) {
+            if ($current === $resource || in_array($current, $above, true)) {
+                throw new \RuntimeException(sprintf(
+                    'These resources fall under each other in a circle, so none of them is at the top: %s.',
+                    implode(', ', array_map(static fn(Resource $r): string => $r->value, [$resource, ...$above])),
+                ));
+            }
+
+            $above[] = $current;
+            $current = $this->parentOf($current);
+        }
+
+        return $above;
     }
 
     /**
@@ -256,6 +341,29 @@ final readonly class PermissionStructure
         }
 
         return $under;
+    }
+
+    /**
+     * Yes, no, or not said - which is no. Anything else is refused rather than
+     * read as one of them, because the one it would be read as by accident is
+     * the widest thing the file can say.
+     *
+     * @param array<array-key, mixed> $description
+     */
+    private static function bundleIn(array $description, Resource $resource, string $file): bool
+    {
+        $bundle = $description[self::BUNDLE] ?? false;
+        if (!is_bool($bundle)) {
+            throw new \RuntimeException(sprintf(
+                "%s gives '%s' a %s of %s; whether the whole of a resource may be granted is yes or no.",
+                $file,
+                $resource->value,
+                self::BUNDLE,
+                var_export($bundle, true),
+            ));
+        }
+
+        return $bundle;
     }
 
     /**

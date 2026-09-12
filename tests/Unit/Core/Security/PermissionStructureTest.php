@@ -113,6 +113,102 @@ final class PermissionStructureTest extends TestCase
         self::assertSame([], $structure->descendantsOf(Resource::Redirection));
     }
 
+    /**
+     * Everything a resource falls under, nearest first and however high, because
+     * a right on it opens every one of them. Two levels are written for the
+     * same reason as above: a walk that stopped at the parent would agree with
+     * the shipped file.
+     */
+    public function testEverythingAResourceFallsUnderIsFoundHoweverHigh(): void
+    {
+        $structure = $this->structureOf(
+            $this->describing(Resource::Administration->value)
+                . $this->describing(Resource::Content->value, Resource::Administration->value)
+                . $this->describing(Resource::Account->value, Resource::Content->value)
+                . $this->describing(Resource::Redirection->value),
+        );
+
+        self::assertSame([Resource::Content, Resource::Administration], $structure->ancestorsOf(Resource::Account));
+        self::assertSame([Resource::Administration], $structure->ancestorsOf(Resource::Content));
+        self::assertSame([], $structure->ancestorsOf(Resource::Administration));
+        self::assertSame([], $structure->ancestorsOf(Resource::Redirection));
+    }
+
+    /**
+     * Which resources may be granted whole. The administration and its
+     * content may; the accounts may not, because a new privilege on them is
+     * one nobody should come to hold without having been given it by name.
+     */
+    public function testTheShippedStructureOffersTheWholeOfOnlyWhatItSaysSo(): void
+    {
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+
+        self::assertTrue($structure->offersBundle(Resource::Administration));
+        self::assertTrue($structure->offersBundle(Resource::Content));
+        self::assertFalse($structure->offersBundle(Resource::Account));
+        self::assertFalse($structure->offersBundle(Resource::Redirection));
+    }
+
+    /** Not saying is saying no - the direction a new privilege should fall. */
+    public function testAResourceThatSaysNothingAboutABundleOffersNone(): void
+    {
+        $structure = $this->structureOf($this->everyResourceExcept());
+
+        self::assertFalse($structure->offersBundle(Resource::Administration));
+    }
+
+    /**
+     * Anything but yes or no is refused rather than read as one of them. A
+     * bundle is the widest thing the file can say, and a value that is read
+     * as yes by accident gives away every privilege the resource will ever
+     * have.
+     */
+    public function testABundleThatIsNeitherYesNorNoIsRefused(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches("#'administration'#");
+
+        $this->structureOf(
+            $this->everyResourceExcept(Resource::Administration)
+                . "\nadministration:\n    bundle: everything\n    privileges: [view]\n",
+        );
+    }
+
+    /**
+     * A key the file does not know is refused, because the one it would most
+     * likely be is a misspelt bundle - and that is read as no bundle, a
+     * mistake whose only symptom is a right somebody quietly never gets.
+     */
+    public function testAKeyTheFileDoesNotKnowIsRefused(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('#bundel#');
+
+        $this->structureOf(
+            $this->everyResourceExcept(Resource::Administration)
+                . "\nadministration:\n    bundel: true\n    privileges: [view]\n",
+        );
+    }
+
+    /**
+     * Something falls under a resource, so a right on it opens that resource -
+     * and opening is `view`. A resource that does not offer it would be a
+     * door nobody could be given, and everybody holding a piece under it would
+     * be let into nothing without a word.
+     */
+    public function testAResourceSomethingFallsUnderHasToOfferView(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches("#'administration'.*view#");
+
+        $this->structureOf(
+            "administration:\n    privileges: [edit]\n\n"
+                . $this->describing(Resource::Content->value, Resource::Administration->value)
+                . $this->describing(Resource::Account->value)
+                . $this->describing(Resource::Redirection->value),
+        );
+    }
+
     public function testAResourceThisBuildDoesNotHaveIsRefused(): void
     {
         $this->expectException(\RuntimeException::class);

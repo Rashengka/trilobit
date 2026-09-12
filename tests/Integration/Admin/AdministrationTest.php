@@ -376,11 +376,9 @@ final class AdministrationTest extends TestCase
      * this is the pair that says so: the same person opens the list and is
      * refused the form beside it.
      *
-     * The person holds `administration:view` and nothing else, so the list is
-     * reached through the resource inheritance in
-     * src/Core/Security/permissions.neon - a rule written on the parent
-     * answers for the child - while writing a new page asks for a piece
-     * nobody gave them. A gate read from the class alone would open both.
+     * The person may open the administration and read its content and nothing
+     * more, so the list opens while writing a new page asks for a piece nobody
+     * gave them. A gate read from the class alone would open both.
      */
     public function testAnActionAsksForMoreThanThePresenterItIsOn(): void
     {
@@ -617,9 +615,9 @@ final class AdministrationTest extends TestCase
      * because there is no page to be refused, and somebody who may open nothing
      * never reaches a page that draws a bar at all - so a suite made of those
      * two would agree with a bar that offered a refusal to everybody in
-     * between. The way back was such an entry: it was drawn from where this
-     * person belongs, and where somebody belongs turned out not to be the same
-     * question as what they may open.
+     * between. The way back was such an entry once, when a section did not
+     * open the administration it is a section of; it opens it now, so the way
+     * back is drawn for this person and has to open like every other entry.
      */
     public function testEveryAddressTheBarDrawsOpensForThePersonReadingIt(): void
     {
@@ -639,12 +637,35 @@ final class AdministrationTest extends TestCase
         }
 
         // The other half, and the half that keeps the first from being met by a
-        // bar with nothing in it: the page they may open is in there, and the
-        // overview - which they may not - is not, while still refusing anybody
-        // who asks for it by name rather than quietly sending them elsewhere.
+        // bar with nothing in it: the page they may open is in there, and so is
+        // the way back to the overview, which their section opens for them.
         self::assertContains('/admin/cms/pages', $addresses);
-        self::assertNotContains('/admin', $addresses);
-        $this->refusedPage(self::DASHBOARD, 'default');
+        self::assertContains('/admin', $addresses);
+    }
+
+    /**
+     * Somebody holding one section and nothing else signs in onto the
+     * overview, and the mark in the banner leads there.
+     *
+     * Any right in a section opens the administration it is a section of, so
+     * the overview - gated on opening the administration - is theirs to open
+     * and not a refusal. It is asserted through the whole way in: where the
+     * form sends them, that the page at the end of it draws the overview, and
+     * that the two ways back lead to it. A role like this is the ordinary
+     * shape of one rather than an odd one, and it met a refusal on the first
+     * page it was shown.
+     */
+    public function testSomebodyHoldingOneSectionSignsInOntoTheOverview(): void
+    {
+        $sent = $this->submitSignIn('dana@example.com', $this->password());
+        self::assertInstanceOf(RedirectResponse::class, $sent);
+        self::assertStringEndsWith('/admin', $sent->getUrl());
+
+        $page = $this->pageOf($this->request(self::DASHBOARD, 'default'));
+
+        self::assertSame('Overview', $page->querySelector('[data-testid="admin-headline"]')?->textContent);
+        self::assertSame('/admin', $page->querySelector('[data-testid="admin-home-link"]')?->getAttribute('href'));
+        self::assertSame('/admin', $this->menuAddressesOn($page)[0] ?? null);
     }
 
     /**
@@ -832,14 +853,18 @@ final class AdministrationTest extends TestCase
      * All three share one generated password, because what differs between
      * them is what they hold and nothing else.
      *
-     * **The fourth holds one section and not the administration**, which is the
-     * ordinary shape of a role rather than an odd one: the pairs in
-     * src/Core/Security/permissions.neon inherit from parent to child, so
-     * `content:view` opens that section and says nothing about the
-     * administration as a whole. It is the account that shows what the bar may
-     * offer somebody: every other account here either may open everything in
-     * this business or may open nothing in it, and both hide an entry that
-     * leads to a refusal.
+     * **The fourth holds one section and was not given the administration**,
+     * which is the ordinary shape of a role rather than an odd one:
+     * `content:view` opens that section, and the section opens the
+     * administration it is a section of - a door worked out from the tree in
+     * src/Core/Security/permissions.neon - and nothing else in it. It is the
+     * account that shows what the bar may offer somebody: every other account
+     * here either may open everything in this business or may open nothing in
+     * it, and both hide an entry that leads to a refusal.
+     *
+     * The first is given the administration and its content by name, because
+     * a pair means that pair and nothing under it: opening the administration
+     * alone would be let in and shown no section.
      *
      * **One menu entry in this build comes from the suite and not from a
      * module**, and it is the one leading to a page no gate stands over - see
@@ -901,18 +926,17 @@ final class AdministrationTest extends TestCase
         $container->getByType(Accounts::class)->save($holdingOneSection);
 
         $entityManager = $container->getByType(EntityManagerInterface::class);
-        $administrator = new Role('administrator', 'Administrator', ['administration:view']);
+        $administrator = new Role('administrator', 'Administrator', ['administration:view', 'content:view']);
         $entityManager->persist($administrator);
         $entityManager->persist(new Membership($tenant, $account, $administrator));
 
         // The narrow role, and it is narrow the way src/Core/Security/
         // permissions.neon means it rather than by leaving something out.
-        // Resource inheritance runs from parent to child: `administration` is
-        // the parent of `content`, so a rule on the parent answers for the
-        // section and a rule on the section says nothing about the
-        // administration as a whole. Somebody assembled out of `content:view`
-        // therefore opens every page of that section and is refused the
-        // overview - an ordinary role rather than a broken one.
+        // Nothing is inherited downwards, and any right on a section opens
+        // what it falls under: `administration` is the parent of `content`,
+        // so somebody assembled out of `content:view` opens every page of that
+        // section that asks for no more, and the overview as well - and
+        // nothing else in the administration.
         $editor = new Role('editor', 'Editor', ['content:view']);
         $entityManager->persist($editor);
         $entityManager->persist(new Membership($tenant, $holdingOneSection, $editor));

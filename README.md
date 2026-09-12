@@ -637,12 +637,12 @@ entry leads where that person's administration begins - the same address the
 mark in the banner uses and the same answer behind both, because a way back
 nobody finds is not a way back, and it was the mark alone that nobody found.
 It is filtered like every other entry rather than trusted: where somebody
-belongs is not the same claim as what they may open, and the two come apart at
-an ordinary role. `content:view` and nothing else opens every page of that
-section and is refused the overview, because the pairs in
-`src/Core/Security/permissions.neon` inherit from parent to child - so such a
-person is drawn no way back and their bar begins with the section they may
-open. Nothing the bar offers answers 403.
+belongs is not the same claim as what they may open. Today the two agree for
+anybody who reaches a page of the administration, because any right in a
+section opens the administration it is a section of - `content:view` and
+nothing else opens that section and the overview, and nothing more - but where
+they ever come apart, the person is drawn no way back and their bar begins
+with the section they may open. Nothing the bar offers answers 403.
 The entries after it are the sections: a module contributes one when it has an
 administration page to contribute one for, and Core contributes the way into
 the section belonging to the installation by tagging a service,
@@ -712,8 +712,24 @@ privilege at all - there is no `checkPrivilege()` in the class. So a typo in a
 privilege writes a rule nobody ever asks about, or asks a question no rule ever
 answers, and either way the answer is a quiet "no" that reads exactly like
 somebody having decided it. Which pairs mean anything is said in
-`src/Core/Security/permissions.neon`: what each resource falls under, and which
-privileges make sense on it. Anything that is not one of the two enums is a
+`src/Core/Security/permissions.neon`: what each resource falls under, which
+privileges make sense on it, and whether the whole of it may be granted.
+
+The resources form a tree, and it means two things. Upwards it is a door: any
+right on a resource lets its holder view everything above it, so somebody who
+may edit content may open the administration. Downwards nothing is inherited -
+a pair means that pair, so opening the administration is not reading its
+content. The whole of a resource is written `content:*` and is every privilege
+of it and of everything under it, including privileges added later; granted, it
+is honoured only on a resource marked `bundle: true` and dropped elsewhere,
+because a right that grows by itself has to be one somebody decided should.
+Taking a right away wins over everything, the doors included, and the whole of
+any resource may be taken away. All of it is worked out in
+`Trilobit\Core\Security\AccessComposition` as sets, so the order pieces are
+written in cannot change an answer, and Nette is handed plain allows and
+nothing else.
+
+Anything that is not one of the two enums is a
 `LogicException` and never a quiet `false`, and a role name the access list does
 not know is `false` and never an exception - Nette hands over `guest` and
 `authenticated` for a visitor, and passing those through would turn every page

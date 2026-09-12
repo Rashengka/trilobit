@@ -336,12 +336,12 @@ abstract class AdminPresenter extends Presenter
      * **Being drawn here does not exempt it from the filter, and assuming it
      * did was wrong.** Landing answers where somebody belongs, and that reads
      * like the same question as what they may open - it is not, and the two
-     * come apart at an ordinary role. Somebody holding `content:view` and
-     * nothing else opens every page of that section and is refused the
-     * overview, because the pairs in src/Core/Security/permissions.neon inherit
-     * from parent to child; the way back was drawn for them all the same, on
-     * every page they were allowed to be in, and it led to a refusal. So the
-     * destination goes through
+     * came apart once at an ordinary role. Somebody holding `content:view` and
+     * nothing else was refused the overview while a section did not open the
+     * administration it is a section of; the way back was drawn for them all
+     * the same, on every page they were allowed to be in, and it led to a
+     * refusal. A section opens it now, and that is an agreement between two
+     * rules rather than one rule. So the destination goes through
      * Trilobit\Core\Admin\Menu\ReachableMenu::wouldOpen() like everything else
      * the bar offers, and where there is no way back that opens, the bar begins
      * with the first section instead. Nothing is offered that answers 403 -

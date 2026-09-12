@@ -37,10 +37,11 @@ use Trilobit\Tests\Tenants;
  * privilege at once, a deny - and every one of them makes an answer depend on
  * something the row that granted it does not say: which rule was written last,
  * which parent was added last, and whether inheritance brings back a right
- * that was taken away further down. So what the structure says a resource
- * falls under is worked out while the list is composed, and Nette is given the
- * result. That keeps the one thing a later deny needs: a right that is not in
- * the list is not there by any route.
+ * that was taken away further down. So what the structure's tree means - a
+ * right on a section opens what the section falls under - is worked out while
+ * the list is composed, and Nette is given the result. That keeps the one
+ * thing a deny needs: a right that is not in the list is not there by any
+ * route.
  *
  * **It is asserted of what the services hold, not of the composition.** The
  * claim is about what reaches Nette, and a service that put its list together
@@ -51,8 +52,8 @@ use Trilobit\Tests\Tenants;
  *
  * **It cannot pass for want of a list.** An empty access list is as flat as
  * one can be, so each case asks first that the service found one to look at,
- * and that a right the structure extends from the administration to a section
- * is in it as a rule of its own.
+ * and that the door a section opens onto the administration - a right nobody
+ * wrote, worked out from the tree - is in it as a rule of its own.
  */
 #[CoversNothing]
 final class AccessListsAreFlatTest extends TestCase
@@ -86,7 +87,7 @@ final class AccessListsAreFlatTest extends TestCase
         $this->container()->getByType(SignedIn::class)->login('alice@example.com', $this->password);
 
         $permissions = $this->container()->getByType(Permissions::class);
-        self::assertTrue($permissions->isAllowed(Resource::Content, Privilege::View));
+        self::assertTrue($permissions->isAllowed(Resource::Administration, Privilege::View));
 
         $this->assertEveryListIsFlat($this->accessListsHeldBy($permissions));
     }
@@ -97,7 +98,7 @@ final class AccessListsAreFlatTest extends TestCase
 
         $authorizator = $this->container()->getByType(NetteAuthorizator::class);
         self::assertInstanceOf(Authorizator::class, $authorizator);
-        self::assertTrue($authorizator->isAllowed(self::EDITOR, Resource::Content, Privilege::View));
+        self::assertTrue($authorizator->isAllowed(self::EDITOR, Resource::Administration, Privilege::View));
 
         $this->assertEveryListIsFlat($this->accessListsHeldBy($authorizator));
     }
@@ -115,8 +116,8 @@ final class AccessListsAreFlatTest extends TestCase
                 'every resource is registered, so that no question is an exception',
             );
             self::assertTrue(
-                $this->isAllowedByARuleOfItsOwn($access, self::EDITOR, Resource::Content, Privilege::View),
-                'what the administration extends to a section is a rule on the section itself',
+                $this->isAllowedByARuleOfItsOwn($access, self::EDITOR, Resource::Administration, Privilege::View),
+                'the door a section opens onto the administration is a rule on the administration itself',
             );
         }
     }
@@ -247,10 +248,10 @@ final class AccessListsAreFlatTest extends TestCase
     }
 
     /**
-     * A tenant and one account holding two roles in it: one that opens the
-     * administration and edits content - so the structure has something to
-     * extend from the administration to a section - and one about a resource
-     * that falls under nothing, so that more than one role is in the list.
+     * A tenant and one account holding two roles in it: one that edits content
+     * and is not given the administration - so the structure has a door to
+     * work out from the section onto it - and one about a resource that falls
+     * under nothing, so that more than one role is in the list.
      */
     private function installation(): void
     {
@@ -271,7 +272,7 @@ final class AccessListsAreFlatTest extends TestCase
         $accounts->save($alice);
 
         $entityManager = $this->container->getByType(EntityManagerInterface::class);
-        $editor = new Role(self::EDITOR, 'Content editor', ['administration:view', 'content:edit']);
+        $editor = new Role(self::EDITOR, 'Content editor', ['content:edit']);
         $keeper = new Role(self::KEEPER, 'Redirection keeper', ['redirection:force_redirect']);
         $entityManager->persist($editor);
         $entityManager->persist($keeper);
