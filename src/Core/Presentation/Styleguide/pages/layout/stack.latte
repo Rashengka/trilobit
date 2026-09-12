@@ -1,0 +1,43 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Things one under another, and the rhythm between them.
+ *
+ * Every element loses its browser margin in @layer base, so the space between
+ * blocks is never an accident of which element happened to be used: it is the
+ * gap of the stack they are in.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/notice.latte'}
+
+{block sgPage}
+    {embed block sgLayoutSection,
+        primitive: 'l-stack',
+        summary: 'Things one under another with the same space between each of them, whatever they are. No '
+            . 'element brings a margin of its own, so the stack is where the rhythm of a page comes from.'}
+        {block sgLayoutSectionBody}
+            {embed block sgSpecimen, variant: 'default'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        {include notice, message: 'The first thing in the stack.'}
+                        {include notice, message: 'The second, as far from the first as the third is from it.'}
+                        {include notice, message: 'The third.'}
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'loose'}
+                {block sgSpecimenStage}
+                    <div class="l-stack l-stack--loose">
+                        {include notice, message: 'A looser rhythm, for things that are sections rather than lines.'}
+                        {include notice, message: 'Every page of this guide is two loose stacks: the frame, and the page in it.'}
+                        {include notice, message: 'The third.'}
+                    </div>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}
