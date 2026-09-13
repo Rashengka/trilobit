@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Config;
 
 use Nette\Utils\FileSystem;
+use SensitiveParameterValue;
 
 /**
  * The values a deployment differs by, read from the environment file next to
@@ -18,20 +19,33 @@ use Nette\Utils\FileSystem;
  * Values live here rather than in a committed NEON file because the committed
  * file would end up carrying a host, a user name and a password, and git keeps
  * those forever.
+ *
+ * Every value is kept sealed in a SensitiveParameterValue, so a dump of this
+ * object - by Tracy, var_dump(), print_r() or var_export() - lists the names
+ * and none of the values. It holds everything a deployment has, the machine's
+ * whole process environment among it, and it is an object that gets dumped:
+ * the debug bar shows every service a request created and an error page shows
+ * the arguments of every frame. Deciding value by value which of them is secret
+ * would be a guess made on the one object where a wrong guess shows a password;
+ * sealing all of them leaves nothing to decide.
  */
 final readonly class Environment
 {
-    /** The prefix that marks a process variable as meant for this application. */
-    public const string PREFIX = 'TRILOBIT_';
+    /** @var array<string, SensitiveParameterValue> */
+    private array $file;
+
+    /** @var array<string, SensitiveParameterValue> */
+    private array $process;
 
     /**
      * @param array<string, string> $file
      * @param array<string, string> $process
      */
-    private function __construct(
-        private array $file,
-        private array $process,
-    ) {}
+    private function __construct(array $file, array $process)
+    {
+        $this->file = $this->seal($file);
+        $this->process = $this->seal($process);
+    }
 
     /**
      * Reads $path if it is there, and lets the process environment win over it,
@@ -66,7 +80,7 @@ final readonly class Environment
 
     public function get(string $name): ?string
     {
-        return $this->process[$name] ?? $this->file[$name] ?? null;
+        return self::open($this->process[$name] ?? $this->file[$name] ?? null);
     }
 
     /**
@@ -104,30 +118,23 @@ final readonly class Environment
     /** @return array<string, string> the values read from the file, as they are written there */
     public function all(): array
     {
-        return $this->file;
+        return array_map(static fn(SensitiveParameterValue $value): string => self::open($value) ?? '', $this->file);
     }
 
     /**
-     * What the application should actually see: the file, overlaid with the
-     * process environment.
-     *
-     * Only names the file declares and names carrying the application's own
-     * prefix are taken from the process, so that the rest of the machine's
-     * environment - which on a shared host is a good deal - never reaches the
-     * container and never turns up in an error page.
-     *
-     * @return array<string, string>
+     * @param array<string, string> $values
+     * @return array<string, SensitiveParameterValue>
      */
-    public function resolved(): array
+    private function seal(array $values): array
     {
-        $resolved = $this->file;
-        foreach ($this->process as $name => $value) {
-            if (isset($resolved[$name]) || str_starts_with($name, self::PREFIX)) {
-                $resolved[$name] = $value;
-            }
-        }
+        return array_map(static fn(string $value): SensitiveParameterValue => new SensitiveParameterValue($value), $values);
+    }
 
-        return $resolved;
+    private static function open(?SensitiveParameterValue $sealed): ?string
+    {
+        $value = $sealed?->getValue();
+
+        return is_string($value) ? $value : null;
     }
 
     private static function read(string $path): string
