@@ -786,8 +786,44 @@ and the same form on the Layout page of the Forms group, where
 `tests/e2e/form-layout.spec.ts` measures in both themes that every label is
 where its arrangement says and every control is still named.
 
-Every control is a field of its own, in the order of the form: controls laid
-out together on one row, and the groups `addGroup()` makes, are not drawn yet.
+Every control is a field of its own, in the order of the form, with one
+exception, the way Bootstrap has it too: controls laid out beside each other as
+one field, under the label of the first - a row. It is written with the
+framework's own `nextTo` option, which `DefaultFormRenderer` draws the same
+way, so a row is written alike whichever renderer draws the form:
+
+```php
+$form->addInteger('bodyLength', 'Length in millimetres')
+    ->setOption('nextTo', 'bodyWidth');
+$form->addInteger('bodyWidth', 'Width in millimetres');
+```
+
+A chain of `nextTo` makes a row of more than two, drawn where its first control
+is. A row is not `addGroup()`, which is a `fieldset` with a legend of its own;
+the groups `addGroup()` makes are not drawn as groups, and every control of one
+is a field in the order of the form.
+
+The renderer hands a row to the template as one
+`Trilobit\Core\Presentation\Form\FormRow`, and every arrangement draws it as one
+`c-field` with the controls side by side where the control of a field goes
+(`l-form__row`): under the label, beside it, or - in `inline`, where every field
+is already in a line - as one field among the others, its controls kept
+together. Each control in the row is still a field of its own. The label of
+every one but the first is `u-visually-hidden`, so it still names its control;
+why an answer was refused and what a field is for are drawn under their own
+control and joined to it through `aria-describedby`, never gathered under the
+whole row, where they would not say which control they are about; and each
+control keeps its own `required`. The one label that is seen carries the mark
+where any control in the row is required, being the only label the eye has for
+it. Where there is no room for one more control at `--layout-field-min`, the
+next goes under the one before it rather than past the edge of the form, which
+`tests/e2e/form-layout.spec.ts` measures on a wide window and a narrow one.
+
+A row that cannot be drawn as one is refused with a `LogicException` naming the
+control: `nextTo` naming something that is not a control of the form, a hidden
+input or a button in a row, a control two others are to be next to, and
+controls next to one another in a circle - where the framework's renderer would
+draw a control twice, or never finish.
 
 It exists only where `trilobit.styleguide` is on - by default in the `dev` and
 `staging` modes and not in `prod` (see `TRILOBIT_ENV` below), and

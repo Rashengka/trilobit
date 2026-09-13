@@ -852,6 +852,38 @@
         grid-column: 2;
     }
 
+    /*
+     * A row: controls laid out beside each other as one field, under the label
+     * of the first (Trilobit\Core\Presentation\Form\FormRow). It is what that
+     * field has in the place of its control, so every arrangement puts it
+     * where it puts a control - under the label, beside it, or in the line of
+     * fields - and nothing here has to know which arrangement it is in.
+     *
+     * Every control in it is a field of its own, and they share the width
+     * alike. Where there is no room for one more at --layout-field-min, it
+     * goes under the one before it rather than past the edge of the form.
+     * Lined up along the top and with the sentences wrapping at the width of
+     * their control, for the reason the inline arrangement is: a reason under
+     * one control must not lift it, or widen it, out of the line. The labels
+     * inside are out of sight and take no room, so every control starts at
+     * the top of the row.
+     */
+    .l-form__row {
+        align-items: start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+    }
+
+    .l-form__row > .c-field {
+        flex: 1 1 var(--layout-field-min);
+        min-inline-size: 0;
+    }
+
+    .l-form__row > .c-field > :is(.c-field__error, .c-field__hint) {
+        contain: inline-size;
+    }
+
     .l-form__errors {
         display: flex;
         flex-basis: 100%;

@@ -43,18 +43,58 @@
     <p class="c-field-required-note" n:if="$shown">Fields marked with * are required.</p>
 {/define}
 
+{* One field: a control of its own, or a row of them. What an arrangement draws for every entry of $fields. *}
+{define formField, Trilobit\Core\Presentation\Form\FormField|Trilobit\Core\Presentation\Form\FormRow $field, bool $labelHidden = false}
+    {if $field instanceof Trilobit\Core\Presentation\Form\FormRow}
+        {include formRow, row: $field, labelHidden: $labelHidden}
+    {else}
+        {include formSingleField, field: $field, labelHidden: $labelHidden}
+    {/if}
+{/define}
+
 {*
- * One field. A set of choices is a group named by its label, with each choice
- * inside its own label, the way the Checks page of the style guide draws one
- * by hand.
+ * A row: one field whose label is its first control's, and whose control is
+ * every control of the row side by side (l-form__row) - each a field of its
+ * own, so that what is said about one is drawn under it and joined to it
+ * rather than gathered under the whole row, where it would not say which
+ * control it is about. The label is marked where any control in the row is
+ * required (FormRow::isRequired()), and hidden with the others where the
+ * arrangement hides every label.
  *}
-{define formField, Trilobit\Core\Presentation\Form\FormField $field, bool $labelHidden = false}
+{define formRow, Trilobit\Core\Presentation\Form\FormRow $row, bool $labelHidden = false}
+    {embed block field,
+        labelHidden: $labelHidden,
+        required: $row->label() !== null && $row->isRequired()}
+        {block fieldLabel}{$row->label()}{/block}
+
+        {block fieldControl}
+            <div class="l-form__row">
+                {foreach $row->fields as $member}
+                    {include formSingleField, field: $member, firstInRow: $iterator->first}
+                {/foreach}
+            </div>
+        {/block}
+    {/embed}
+{/define}
+
+{*
+ * One control as a field. A set of choices is a group named by its label,
+ * with each choice inside its own label, the way the Checks page of the style
+ * guide draws one by hand.
+ *
+ * In a row ($firstInRow is not null) the first control's label is the row's
+ * and formRow draws it, so the first draws no label here; every other one
+ * draws its own out of sight - still naming its control - and without a mark,
+ * which nobody would see. The empty slot is out of sight as well, so that no
+ * control of the row starts lower than another.
+ *}
+{define formSingleField, Trilobit\Core\Presentation\Form\FormField $field, bool $labelHidden = false, ?bool $firstInRow = null}
     {embed block field,
         errorId: $field->errorId(),
         hintId: $field->hintId(),
-        labelHidden: $labelHidden,
-        required: $field->label() !== null && $field->isRequired()}
-        {block fieldLabel}{$field->label()}{/block}
+        labelHidden: $labelHidden || $firstInRow !== null,
+        required: $firstInRow === null && $field->label() !== null && $field->isRequired()}
+        {block fieldLabel}{if $firstInRow !== true}{$field->label()}{/if}{/block}
 
         {block fieldControl}
             {if $field->kind === 'radios' || $field->kind === 'checks'}

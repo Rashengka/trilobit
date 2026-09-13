@@ -9,6 +9,7 @@ use Dom\HTMLDocument;
 use Latte\Engine;
 use Nette\Application\UI\Form;
 use Nette\Bridges\ApplicationLatte\LatteFactory;
+use Nette\Forms\Controls\BaseControl;
 use Nette\Forms\Rendering\DefaultFormRenderer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -63,6 +64,8 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
         'controls' => [
             'input[text] name',
             'input[email] curator',
+            'input[number] bodyLength',
+            'input[number] bodyWidth',
             'select period',
             'textarea notes',
             'input[checkbox] displayed',
@@ -75,6 +78,9 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
         'names' => [
             'name' => 'Name of the specimen',
             'curator' => "Curator's address",
+            // In a row, the second one's label out of sight - and still its name.
+            'bodyLength' => 'Length in millimetres',
+            'bodyWidth' => 'Width in millimetres',
             'period' => 'Period',
             'notes' => 'Notes',
             'displayed' => 'On public display',
@@ -89,10 +95,12 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
         // somebody who cannot see that it is under the control.
         'descriptions' => [
             'curator' => ['Where questions about the specimen are sent.'],
+            'bodyLength' => ['Measured along the axis of the body.'],
+            'bodyWidth' => ['A width has to be at least one millimetre.'],
             'period' => ['No drawer in the collection holds that period.'],
         ],
-        'invalid' => ['period'],
-        'required' => ['name', 'state=complete', 'state=fragment'],
+        'invalid' => ['bodyWidth', 'period'],
+        'required' => ['name', 'bodyWidth', 'state=complete', 'state=fragment'],
         // Said about the whole form, above every arrangement.
         'reasons' => ['The catalogue could not be saved just now.'],
         // Where the hidden inputs went: every one of them after the
@@ -156,9 +164,12 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
     {
         $page = $this->draw($this->sample($create($this->forms())));
 
+        // Inside a row every label is out of sight in every arrangement, which
+        // testARowIsNamedByTheLabelOfItsFirstControl() holds; here it is the
+        // labels the arrangement decides about.
         $unseen = [];
         foreach ($page->querySelectorAll('.c-field__label') as $label) {
-            if (trim($label->textContent ?? '') === '') {
+            if (trim($label->textContent ?? '') === '' || $label->closest('.l-form__row') instanceof Element) {
                 continue;
             }
 
@@ -173,11 +184,11 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
     }
 
     /**
-     * The two required fields of the sample - a line of text and a set of
-     * choices, both with a label of their own - carry a mark, whether or not
-     * the arrangement draws it where it can be seen: the mark lives inside
-     * the same element as the label, so it is only ever hidden along with it,
-     * never on its own.
+     * The three required fields of the sample - a line of text, a row whose
+     * second control is required, and a set of choices, each with a label
+     * that can be seen - carry a mark, whether or not the arrangement draws it
+     * where it can be seen: the mark lives inside the same element as the
+     * label, so it is only ever hidden along with it, never on its own.
      *
      * The sentence explaining what the mark means is drawn once, above the
      * fields, and only where at least one mark can be seen - a form whose
@@ -194,7 +205,7 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
         $labelsShown = $this->dataName() !== 'inline, with the labels unseen';
 
         $marks = $page->querySelectorAll('.c-field__required');
-        self::assertCount(2, $marks, 'the two required, labelled fields do not both carry a mark');
+        self::assertCount(3, $marks, 'the three required, labelled fields do not each carry one mark');
         foreach ($marks as $mark) {
             self::assertInstanceOf(Element::class, $mark);
             self::assertSame('true', $mark->getAttribute('aria-hidden'), 'the mark says its own word to a screen reader');
@@ -205,6 +216,115 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
         }
 
         self::assertCount($labelsShown ? 1 : 0, $page->querySelectorAll('.c-field-required-note'));
+    }
+
+    /**
+     * A row: controls laid out beside each other as one field, under the
+     * label of the first (.ai/plans/19, step 5), written with the framework's
+     * own nextTo option - the one DefaultFormRenderer draws the same way.
+     *
+     * Every control in it keeps a name of its own: the label of every other
+     * one is taken out of sight and not out of the page. What is said about a
+     * control stays with that control - under it, inside the row, and named in
+     * its aria-describedby, which the reading above already holds - rather
+     * than being gathered under the whole row, where it would say nothing
+     * about which control it is about to somebody looking at it. And the
+     * label that can be seen carries the mark where any control in the row
+     * is required, because it is the only label the eye has for the row.
+     *
+     * @param \Closure(FormFactory): Form $create
+     */
+    #[DataProvider('arrangements')]
+    public function testARowIsNamedByTheLabelOfItsFirstControl(string $arrangement, \Closure $create): void
+    {
+        $page = $this->draw($this->sample($create($this->forms())));
+        $labelsShown = $this->dataName() !== 'inline, with the labels unseen';
+
+        $rows = $page->querySelectorAll('form > .l-form > .c-field > .c-field__control > .l-form__row');
+        self::assertCount(1, $rows, 'the row is not drawn as one field among the others');
+        $row = $rows->item(0);
+        self::assertInstanceOf(Element::class, $row);
+
+        // Both controls, in the order of the form, and nothing else.
+        $inRow = [];
+        foreach ($row->querySelectorAll('input, select, textarea') as $control) {
+            $inRow[] = $control->getAttribute('name');
+        }
+        self::assertSame(['bodyLength', 'bodyWidth'], $inRow);
+
+        // The field of the row is labelled by the first control's label,
+        // marked because the second one is required, and seen where the
+        // arrangement shows labels at all.
+        $field = $row->parentElement?->parentElement;
+        self::assertInstanceOf(Element::class, $field);
+        $label = $this->childOf($field, 'c-field__label');
+        self::assertSame('Length in millimetres*', $this->text($label));
+        self::assertSame($labelsShown, !$label->classList->contains('u-visually-hidden'));
+        self::assertCount(1, $label->querySelectorAll('.c-field__required'));
+
+        $length = $row->querySelector('[name="bodyLength"]');
+        self::assertInstanceOf(Element::class, $length);
+        $pointing = $page->querySelectorAll(sprintf('label[for="%s"]', $length->getAttribute('id')));
+        self::assertCount(1, $pointing, 'the first control is not named by one label');
+        self::assertSame($label, $pointing->item(0)?->parentElement, 'the first control is named by a label other than the row\'s');
+
+        // Every label inside the row is out of sight, and none of them is
+        // marked - a mark in a label nobody sees is a mark nobody sees.
+        foreach ($row->querySelectorAll('.c-field__label') as $inside) {
+            self::assertTrue($inside->classList->contains('u-visually-hidden'), 'a label inside the row can be seen');
+        }
+        self::assertCount(0, $row->querySelectorAll('.c-field__required'));
+
+        // The reason and the hint are each under their own control, in the
+        // same field of the row, and not under the row as a whole.
+        foreach (['bodyLength' => 'c-field__hint', 'bodyWidth' => 'c-field__error'] as $name => $sentence) {
+            $control = $row->querySelector(sprintf('[name="%s"]', $name));
+            self::assertInstanceOf(Element::class, $control);
+            $own = $control->closest('.c-field');
+            self::assertInstanceOf(Element::class, $own);
+            self::assertSame($row, $own->parentElement, sprintf('%s is not a field of the row', $name));
+            $this->childOf($own, $sentence);
+        }
+        foreach (['c-field__error', 'c-field__hint'] as $sentence) {
+            foreach ($this->childrenOf($field) as $child) {
+                self::assertFalse($child->classList->contains($sentence), 'something is said under the row as a whole');
+            }
+        }
+    }
+
+    /**
+     * A row that cannot be drawn as one is refused where it is drawn, and by
+     * the name of what is wrong with it. Each of these would otherwise be
+     * drawn as something - a control twice, a control nowhere, a button among
+     * the fields - with nothing on the page saying why.
+     *
+     * @return iterable<string, array{array<string, string>, string}>
+     */
+    public static function rowsThatCannotBeDrawn(): iterable
+    {
+        yield 'next to nothing' => [['name' => 'nobody'], 'nobody'];
+        yield 'next to a button' => [['name' => 'save'], 'save'];
+        yield 'a button next to a control' => [['save' => 'name'], 'save'];
+        yield 'next to a hidden input' => [['name' => 'drawer'], 'drawer'];
+        yield 'two controls next to one' => [['name' => 'notes', 'curator' => 'notes'], 'notes'];
+        yield 'next to each other in a circle' => [['name' => 'curator', 'curator' => 'name'], 'curator'];
+    }
+
+    /** @param array<string, string> $nextTo which control is to be next to which */
+    #[DataProvider('rowsThatCannotBeDrawn')]
+    public function testARowThatCannotBeDrawnIsRefused(array $nextTo, string $named): void
+    {
+        $form = $this->sample($this->forms()->createVertical());
+        foreach ($nextTo as $name => $next) {
+            $control = $form->getComponent($name);
+            self::assertInstanceOf(BaseControl::class, $control);
+            $control->setOption('nextTo', $next);
+        }
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches(sprintf('/\b%s\b/', preg_quote($named, '/')));
+
+        $this->draw($form);
     }
 
     /** Two forms made by the factory are two forms, not one handed out twice. */
@@ -233,10 +353,11 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
     {
         $read = $this->read($this->draw($this->sample($this->broken('forgets-the-reason.latte'))));
 
-        // The control still says it was refused, and the sentence saying why
-        // is nowhere its aria-describedby leads.
+        // The controls still say they were refused, and the sentences saying
+        // why are nowhere their aria-describedby leads.
         self::assertNotSame(self::EXPECTED, $read);
-        self::assertSame(['period'], $read['invalid']);
+        self::assertSame(['bodyWidth', 'period'], $read['invalid']);
+        self::assertArrayNotHasKey('bodyWidth', $read['descriptions']);
         self::assertArrayNotHasKey('period', $read['descriptions']);
     }
 
@@ -258,8 +379,9 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
 
     /**
      * The form every arrangement is asked to draw: one control of every kind
-     * the design system has an opinion about, one refused, one with a hint,
-     * two required, one hidden - and a reason about the form as a whole.
+     * the design system has an opinion about, two refused, two with a hint,
+     * three required, one hidden, two in a row - the first with a hint, the
+     * second required and refused - and a reason about the form as a whole.
      *
      * The content is invented and has to stay invented.
      */
@@ -269,6 +391,11 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
             ->setRequired('A specimen has to be called something.');
         $form->addEmail('curator', "Curator's address")
             ->setOption('description', 'Where questions about the specimen are sent.');
+        $form->addInteger('bodyLength', 'Length in millimetres')
+            ->setOption('description', 'Measured along the axis of the body.')
+            ->setOption('nextTo', 'bodyWidth');
+        $width = $form->addInteger('bodyWidth', 'Width in millimetres')
+            ->setRequired('Say how wide the specimen is.');
         $period = $form->addSelect('period', 'Period', ['cambrian' => 'Cambrian', 'ordovician' => 'Ordovician']);
         $form->addTextArea('notes', 'Notes');
         $form->addCheckbox('displayed', 'On public display');
@@ -277,10 +404,37 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
         $form->addHidden('drawer', 'B-12');
         $form->addSubmit('save', 'Save');
 
+        $width->addError('A width has to be at least one millimetre.');
         $period->addError('No drawer in the collection holds that period.');
         $form->addError('The catalogue could not be saved just now.');
 
         return $form;
+    }
+
+    /** The one child of $element carrying $class. */
+    private function childOf(Element $element, string $class): Element
+    {
+        $found = array_values(array_filter(
+            $this->childrenOf($element),
+            static fn(Element $child): bool => $child->classList->contains($class),
+        ));
+
+        self::assertCount(1, $found, sprintf('the field has no %s of its own', $class));
+
+        return $found[0];
+    }
+
+    /** @return list<Element> the elements directly inside $element */
+    private function childrenOf(Element $element): array
+    {
+        $children = [];
+        foreach ($element->childNodes as $child) {
+            if ($child instanceof Element) {
+                $children[] = $child;
+            }
+        }
+
+        return $children;
     }
 
     /**
