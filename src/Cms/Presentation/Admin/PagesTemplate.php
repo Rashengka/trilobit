@@ -21,9 +21,6 @@ final class PagesTemplate extends AdminTemplate
 
     public string $lead = '';
 
-    /** @var list<PageSummary> */
-    public array $pages = [];
-
     public string $addUrl = '';
 
     public string $listUrl = '';

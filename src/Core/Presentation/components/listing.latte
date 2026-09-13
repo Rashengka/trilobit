@@ -1,0 +1,62 @@
+{**
+ * c-listing - what a filtered, paged list shows under its filter: its rows and
+ * the way through them, or that nothing is there yet, or that nothing matches
+ * the filters.
+ *
+ * The three are told apart on purpose (.ai/plans/15). A filter that found
+ * nothing, drawn like a list that has nothing, looks like a site with no
+ * pages, and the one thing that would help - clearing the filters - is not
+ * offered; so "no match" has a sentence of its own and the way out of the
+ * filters beside it. An error is not one of the three: it is not drawn by this
+ * component at all, so an empty result cannot be mistaken for one either.
+ *
+ * What the address asked for that the list could not use comes first, a notice
+ * for each sentence (see Trilobit\Core\Presentation\Listing\Filters::read()):
+ * the list under it is shown without that part, and says why.
+ *
+ * The rows are a slot, listingTable, because what a row holds is the page's -
+ * a Nette control fills it with c-table. $redrawn marks the links it draws for
+ * Naja, which redraws the listing rather than loading the page; a specimen in
+ * the style guide leaves it off, because a link to a place on the same page
+ * has no snippet to answer with.
+ *}
+
+{import 'notice.latte'}
+{import 'pagination.latte'}
+
+{define listing, string $state, array $setAside = [], ?Trilobit\Core\Presentation\Component\Pagination $pagination = null, string $clearUrl = '', string $nothingYet = 'There is nothing here yet.', string $nothingMatches = 'Nothing matches the filters.', bool $redrawn = false, ?string $testId = null}
+    {do Trilobit\Core\Presentation\Component\Argument::oneOf('c-listing', 'state', $state, ['rows', 'empty', 'no match'])}
+
+    <div class="c-listing" data-testid="{$testId}">
+        <div n:if="$setAside !== []" class="c-listing__set-aside" data-testid="{$testId === null ? null : $testId . '-set-aside'}">
+            {foreach $setAside as $sentence}
+                {include notice, message: $sentence}
+            {/foreach}
+        </div>
+
+        {if $state === 'empty'}
+            {include notice, message: $nothingYet, testId: $testId === null ? null : $testId . '-empty'}
+        {else}
+            <p n:if="$clearUrl !== ''" class="c-listing__clear">
+                <a
+                    n:class="$redrawn ? 'ajax'"
+                    href="{$clearUrl}"
+                    data-testid="{$testId === null ? null : $testId . '-clear'}"
+                >Clear the filters</a>
+            </p>
+
+            {if $state === 'no match'}
+                {include notice, message: $nothingMatches, testId: $testId === null ? null : $testId . '-no-match'}
+            {else}
+                {block listingTable}{/block}
+
+                {if $pagination !== null}
+                    {include pagination,
+                        pagination: $pagination,
+                        redrawn: $redrawn,
+                        testId: $testId === null ? null : $testId . '-pagination'}
+                {/if}
+            {/if}
+        {/if}
+    </div>
+{/define}

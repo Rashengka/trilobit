@@ -11,6 +11,7 @@ import { comboboxesInSnippets, enhanceWithin } from './combobox';
 import { answerTheDialogButtons, dialogsInSnippets } from './dialog';
 import { openWhatTheAddressNames } from './disclosure';
 import { keepTheDropdownsToTheKeyboard } from './dropdown';
+import { focusThroughRedraws } from './listing';
 import { currentBranchesInSnippets, unfoldTheCurrentBranchWithin, unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
 import { followTheChrome, scrollspiesInSnippets, spyWithin } from './scrollspy';
@@ -151,6 +152,11 @@ naja.registerExtension(scrollspiesInSnippets);
 // brought back by history.back(); the page's own is unfolded below, once Naja
 // has kept the server's markup. See assets/nav.ts.
 naja.registerExtension(currentBranchesInSnippets);
+// Keeps the focus where it was in a snippet marked data-keep-focus - a
+// listing's filter and rows - when Naja redraws it. It prepares nothing, so
+// its place in the order is only that no redraw can happen before it is
+// there. See assets/listing.ts.
+naja.registerExtension(focusThroughRedraws);
 naja.initialize({ history: true });
 enhanceWithin(document);
 

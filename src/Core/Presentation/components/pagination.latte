@@ -15,23 +15,28 @@
  * current one is marked aria-current="page". A gap is text: it leads nowhere.
  *
  * One page is nothing to move between, and nothing is drawn for it.
+ *
+ * $redrawn marks every link for Naja, for a listing that redraws itself
+ * rather than loading the page - Naja follows only a link carrying its class.
+ * It is off by default, because a row of pages leading to places on the page
+ * it is on has no snippet to answer with.
  *}
 
-{define pagination, Trilobit\Core\Presentation\Component\Pagination $pagination, string $label = 'Pages', ?string $testId = null}
+{define pagination, Trilobit\Core\Presentation\Component\Pagination $pagination, string $label = 'Pages', ?string $testId = null, bool $redrawn = false}
     {var $before = ['First' => [$pagination->first(), null], 'Previous' => [$pagination->previous(), 'prev']]}
     {var $after = ['Next' => [$pagination->next(), 'next'], 'Last' => [$pagination->last(), null]]}
 
     <nav n:if="$pagination->hasMoreThanOnePage()" class="c-pagination" aria-label="{$label}" data-testid="{$testId}">
         <ul class="c-pagination__list">
             <li class="c-pagination__item" n:foreach="$before as $step => [$page, $rel]">
-                <a n:if="$page !== null" class="c-pagination__link" href="{$pagination->href($page)}" rel="{$rel}">{$step}</a>
+                <a n:if="$page !== null" n:class="'c-pagination__link', $redrawn ? 'ajax'" href="{$pagination->href($page)}" rel="{$rel}">{$step}</a>
                 <a n:else class="c-pagination__link" role="link" aria-disabled="true">{$step}</a>
             </li>
 
             <li n:foreach="$pagination->pages() as $page" n:class="'c-pagination__item', $page === null ? 'c-pagination__gap'">
                 {if $page === null}…{else}
                     <a
-                        class="c-pagination__link"
+                        n:class="'c-pagination__link', $redrawn ? 'ajax'"
                         href="{$pagination->href($page)}"
                         aria-label="Page {$page}"
                         aria-current="{$page === $pagination->current ? 'page' : null}"
@@ -40,7 +45,7 @@
             </li>
 
             <li class="c-pagination__item" n:foreach="$after as $step => [$page, $rel]">
-                <a n:if="$page !== null" class="c-pagination__link" href="{$pagination->href($page)}" rel="{$rel}">{$step}</a>
+                <a n:if="$page !== null" n:class="'c-pagination__link', $redrawn ? 'ajax'" href="{$pagination->href($page)}" rel="{$rel}">{$step}</a>
                 <a n:else class="c-pagination__link" role="link" aria-disabled="true">{$step}</a>
             </li>
         </ul>

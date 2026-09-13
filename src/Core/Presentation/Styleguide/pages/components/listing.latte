@@ -1,0 +1,87 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * What a filtered, paged list shows under its filter, in each of the states
+ * it can be in - the empty result of a filter first among them, because that
+ * is the state that breaks in use and is forgotten in a specimen
+ * (.ai/plans/15).
+ *
+ * A listing in the administration is a Nette control over a query
+ * (Trilobit\Core\Presentation\Listing\Listing); what is shown here is the
+ * part of it that is markup, with the rows written out by hand. Its links lead
+ * to places on this page and are not marked for Naja.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/listing.latte'}
+{import '../../../components/table.latte'}
+
+{define drawers}
+    {embed block table, caption: 'Where each drawer is kept'}
+        {block tableHead}
+            <tr>
+                <th scope="col">Drawer</th>
+                <th scope="col">Room</th>
+            </tr>
+        {/block}
+
+        {block tableBody}
+            <tr>
+                <th scope="row">Head shields</th>
+                <td>The one with the window</td>
+            </tr>
+
+            <tr>
+                <th scope="row">Tail shields</th>
+                <td>The one without</td>
+            </tr>
+        {/block}
+    {/embed}
+{/define}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-listing']}
+        {block sgSectionBody}
+            {var $link = fn(int $page): string => '#listing-page-' . $page}
+            {var $second = new Trilobit\Core\Presentation\Component\Pagination(2, 3, $link)}
+
+            {specimen 'default'}
+                {embed block listing, state: 'rows', pagination: $second, testId: 'sample-listing'}
+                    {block listingTable}{include drawers}{/block}
+                {/embed}
+            {/specimen}
+
+            {*
+             * The state that breaks in use: a filter that found nothing. It is
+             * not the list having nothing, and it offers the way back out of
+             * the filters.
+             *}
+            {specimen 'with nothing matching the filters'}
+                {embed block listing,
+                    state: 'no match',
+                    clearUrl: '#listing-cleared',
+                    nothingMatches: 'No drawer matches the filters.',
+                    testId: 'sample-listing-no-match'}
+                    {block listingTable}{include drawers}{/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'with nothing yet'}
+                {embed block listing, state: 'empty', nothingYet: 'No drawer has been catalogued yet.'}
+                    {block listingTable}{include drawers}{/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'with part of the address set aside'}
+                {embed block listing,
+                    state: 'rows',
+                    setAside: ['This list cannot be filtered by "colour", so that part of the address was set aside.'],
+                    clearUrl: '#listing-cleared'}
+                    {block listingTable}{include drawers}{/block}
+                {/embed}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}
