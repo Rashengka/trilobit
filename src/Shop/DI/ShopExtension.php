@@ -8,6 +8,7 @@ use Nette\DI\CompilerExtension;
 use Trilobit\Core\DI\CoreExtension;
 use Trilobit\Shop\Presentation\Front\ShopSignpost;
 use Trilobit\Shop\Routing\ShopRoutes;
+use Trilobit\Shop\Security\ShopResources;
 
 /**
  * Everything the Shop module puts into the container.
@@ -54,5 +55,13 @@ final class ShopExtension extends CompilerExtension
             ->setFactory(ShopSignpost::class)
             ->setAutowired(false)
             ->addTag(CoreExtension::TAG_SIGNPOST_PROVIDER);
+
+        // What a permission question about the shop may be about. Core cannot
+        // hold the shop's resources - it may not name a module - so they are
+        // brought here, and a build without the shop has none of them.
+        $builder->addDefinition($this->prefix('resources'))
+            ->setFactory(ShopResources::class)
+            ->setAutowired(false)
+            ->addTag(CoreExtension::TAG_RESOURCE_PROVIDER);
     }
 }

@@ -1,0 +1,7 @@
+#
+# What may be asked of the fixture's resource, once something brings it; see
+# Trilobit\Tests\Architecture\EveryResourceEnumIsContributedTest.
+#
+
+app.administration.fixture:
+    privileges: [view]

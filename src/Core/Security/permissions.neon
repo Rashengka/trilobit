@@ -17,7 +17,12 @@
 # privileges are the values of Trilobit\Core\Security\Privilege. Neither list
 # is repeated here - a name this file invents is refused when it is read, and
 # a case missing from this file is refused too, because registration walks the
-# enum and would otherwise register a resource nobody has said anything about.
+# resources and would otherwise register one nobody has said anything about.
+#
+# This file is Core's and speaks for Core's resources only. A module brings
+# resources of its own - an enum and a file like this one, through
+# Trilobit\Core\Security\ResourceProvider - and they fall under the ones here
+# by their names, the way these fall under each other.
 #
 # The resources are a tree, and the tree is in the names: a resource falls
 # under its name up to the last dot, and every resource a name passes through

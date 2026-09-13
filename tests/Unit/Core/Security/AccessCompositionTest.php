@@ -13,6 +13,8 @@ use Trilobit\Core\Security\AccessComposition;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
+use Trilobit\Core\Security\ResourceName;
+use Trilobit\Tests\Double\Security\ResourcesOf;
 
 /**
  * What a role's pieces become in the list Nette is asked, over the structure
@@ -424,6 +426,63 @@ final class AccessCompositionTest extends TestCase
     }
 
     /**
+     * A resource a module brings is a resource like any other: a piece on it
+     * means that pair, and opens everything it falls under - the module's own
+     * section and, above that, Core's administration.
+     */
+    public function testAPieceOnAModulesResourceIsHonouredWhereTheModuleIs(): void
+    {
+        $access = $this->composedWithTheModule(['app.administration.demo.ledger:edit']);
+
+        self::assertTrue($access->isAllowed('editor', 'app.administration.demo.ledger', 'edit'));
+        self::assertTrue($access->isAllowed('editor', 'app.administration.demo', 'view'));
+        self::assertTrue($access->isAllowed('editor', 'app.administration', 'view'));
+        self::assertFalse($access->isAllowed('editor', 'app.administration.demo.ledger', 'view'));
+    }
+
+    /**
+     * The same role in a build without the module: the piece is left out
+     * rather than handed to Nette, which would raise on a resource it was not
+     * given and stop this person using the application at all - and the rest
+     * of the role still holds.
+     */
+    public function testAPieceOnAModulesResourceWaitsInABuildWithoutTheModule(): void
+    {
+        $access = $this->composed(['app.administration.demo.ledger:edit', 'app.administration.content:edit']);
+
+        self::assertFalse($access->hasResource('app.administration.demo.ledger'));
+        self::assertTrue($this->allows($access, Resource::Content, Privilege::Edit));
+    }
+
+    /**
+     * The whole of the administration is everything in it, a module's
+     * section included - which is what administering a business means, and
+     * why a section a module adds later reaches its administrators without
+     * anybody going back to their role.
+     */
+    public function testTheWholeOfTheAdministrationReachesAModulesSection(): void
+    {
+        $access = $this->composedWithTheModule(['app.administration:*']);
+
+        self::assertTrue($access->isAllowed('editor', 'app.administration.demo.ledger', 'edit'));
+        self::assertTrue($access->isAllowed('editor', 'app.administration.demo', 'view'));
+    }
+
+    public function testTheOwnerHoldsWhatAModuleBrings(): void
+    {
+        $access = $this->composedWithTheModule(['app:*'], Role::OWNER);
+
+        self::assertTrue($access->isAllowed(Role::OWNER, 'app.administration.demo.ledger', 'edit'));
+    }
+
+    /** @param list<string> $pieces */
+    private function composedWithTheModule(array $pieces, string $as = 'editor'): Permission
+    {
+        return new AccessComposition(PermissionStructure::of(Bootstrap::rootDirectory(), [ResourcesOf::demo()]))
+            ->compose([['code' => $as, 'permissions' => $pieces]]);
+    }
+
+    /**
      * @param list<string> $pieces
      * @param list<string> $denials
      */
@@ -435,12 +494,12 @@ final class AccessCompositionTest extends TestCase
 
     private function shipped(): PermissionStructure
     {
-        return PermissionStructure::of(Bootstrap::rootDirectory());
+        return PermissionStructure::of(Bootstrap::rootDirectory(), []);
     }
 
-    private function allows(Permission $access, Resource $resource, Privilege $privilege, string $as = 'editor'): bool
+    private function allows(Permission $access, ResourceName $resource, Privilege $privilege, string $as = 'editor'): bool
     {
-        return $access->isAllowed($as, $resource->value, $privilege->value);
+        return $access->isAllowed($as, PermissionStructure::nameOf($resource), $privilege->value);
     }
 
     /** @return array<string, bool> by the pair, for every pair the shipped structure offers */

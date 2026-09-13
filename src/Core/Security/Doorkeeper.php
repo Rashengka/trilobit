@@ -56,7 +56,7 @@ final readonly class Doorkeeper
      * enums go through it untouched, which is what makes a question asked from
      * an attribute and a question asked from a line of code the same question.
      */
-    public function mayDo(Resource $resource, Privilege $privilege): bool
+    public function mayDo(ResourceName $resource, Privilege $privilege): bool
     {
         return $this->signedIn->isAllowed($resource, $privilege);
     }

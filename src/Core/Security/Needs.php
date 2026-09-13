@@ -39,7 +39,8 @@ namespace Trilobit\Core\Security;
 final readonly class Needs implements Gate
 {
     public function __construct(
-        public Resource $resource,
+        /** Core's own - Trilobit\Core\Security\Resource - or one of the resources a module brings. */
+        public ResourceName $resource,
         public Privilege $privilege,
     ) {}
 

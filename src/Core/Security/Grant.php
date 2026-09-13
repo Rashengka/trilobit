@@ -47,20 +47,29 @@ final readonly class Grant
      *     widest piece there is, and the widest one must be written on purpose.
      */
     public function __construct(
-        public Resource $resource,
+        public ResourceName $resource,
         public ?Privilege $privilege,
     ) {}
 
-    /** Null when this build has no such resource or no such privilege; see the class. */
-    public static function parse(string $written): ?self
+    /**
+     * Null when $structure has no such resource or this build no such
+     * privilege; see the class.
+     *
+     * The resource is looked up in the structure of this build rather than in
+     * an enum, because which resources there are depends on which modules the
+     * build is made of. A piece naming a resource of a module that is switched
+     * off is therefore dropped like an outdated one - and, since nothing is
+     * written back, it holds again the day the module comes back.
+     */
+    public static function parse(string $written, PermissionStructure $structure): ?self
     {
         $separator = strrpos($written, self::SEPARATOR);
         if ($separator === false) {
             return null;
         }
 
-        $resource = Resource::tryFrom(substr($written, 0, $separator));
-        if (!$resource instanceof Resource) {
+        $resource = $structure->resourceNamed(substr($written, 0, $separator));
+        if (!$resource instanceof ResourceName) {
             return null;
         }
 

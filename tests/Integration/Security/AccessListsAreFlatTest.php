@@ -21,6 +21,7 @@ use Trilobit\Core\Domain\User\User;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authorizator;
 use Trilobit\Core\Security\Permissions;
+use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
 use Trilobit\Tests\Boot;
@@ -111,7 +112,10 @@ final class AccessListsAreFlatTest extends TestCase
         foreach ($lists as $access) {
             self::assertSame([], $this->anythingButPlainAllowsIn($access));
             self::assertEqualsCanonicalizing(
-                array_map(static fn(Resource $resource): string => $resource->value, Resource::cases()),
+                array_map(
+                    PermissionStructure::nameOf(...),
+                    $this->container()->getByType(PermissionStructure::class)->resources(),
+                ),
                 $access->getResources(),
                 'every resource is registered, so that no question is an exception',
             );

@@ -1,0 +1,35 @@
+#
+# What may be asked of the shop's resources.
+#
+# Written the way src/Core/Security/permissions.neon is, and read together with
+# it: the keys are the values of Trilobit\Shop\Security\ShopResource, the
+# privileges those of Trilobit\Core\Security\Privilege. This file speaks for the
+# shop's resources and for nobody else's - one naming a resource of Core's or of
+# another module is refused when the build starts, and so is a case of the enum
+# missing from here.
+#
+# The resources fall under Core's administration by their names. Why the tree
+# has this shape is on the enum.
+#
+
+# The shop's section. A bundle, because the whole of the shop is how a role
+# running a shop is meant: whatever the shop learns to hold next, whoever runs
+# it runs that too - the price included, which falls under it.
+app.administration.shop:
+    bundle: true
+    privileges: [view]
+
+# The products and their pictures. A bundle, for the same reason the content
+# of the site is one: whoever keeps the catalogue keeps what it grows.
+# Ordering is its own privilege because arranging what is there is not
+# changing what it says.
+app.administration.shop.catalogue:
+    bundle: true
+    privileges: [view, add, edit, delete, purge, export, change_priority]
+
+# What a product costs before tax, and the rate of tax on it. No bundle: it is
+# the one part of the shop a privilege added later must never reach somebody
+# who was not given it by name. There is no view - the price is on the public
+# site for anybody to read - so what is decided here is only who changes it.
+app.administration.shop.price:
+    privileges: [edit]

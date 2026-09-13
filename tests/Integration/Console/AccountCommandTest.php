@@ -158,7 +158,7 @@ final class AccountCommandTest extends TestCase
 
         $permissions = $container->getByType(Permissions::class);
 
-        $pairs = PermissionStructure::of(Bootstrap::rootDirectory())->everyPair();
+        $pairs = $container->getByType(PermissionStructure::class)->everyPair();
         self::assertNotSame([], $pairs);
 
         foreach ($pairs as $pair) {

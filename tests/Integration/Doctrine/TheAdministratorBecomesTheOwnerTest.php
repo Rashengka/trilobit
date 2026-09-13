@@ -148,7 +148,7 @@ final class TheAdministratorBecomesTheOwnerTest extends TestCase
         self::assertSame(
             array_map(
                 static fn(Grant $pair): string => $pair->code(),
-                PermissionStructure::of(Bootstrap::rootDirectory())->everyPair(),
+                PermissionStructure::of(Bootstrap::rootDirectory(), [])->everyPair(),
             ),
             $written,
         );
