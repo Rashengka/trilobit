@@ -8,10 +8,12 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Tenancy\PartlyShared;
 use Trilobit\Core\Tenancy\Shared;
 use Trilobit\Core\Tenancy\TenancyRefused;
 use Trilobit\Core\Tenancy\TenantFilter;
 use Trilobit\Tests\Architecture\Fixtures\Tenancy\ForgottenThing;
+use Trilobit\Tests\Architecture\Fixtures\Tenancy\PartlySharedWithoutTenant;
 
 /**
  * Every entity either carries its tenant or says out loud that it is one table
@@ -48,10 +50,15 @@ final class EveryTenantedEntityIsScopedTest extends TestCase
     /**
      * The application contains no such entity, so the assertion above would
      * hold just as well if this rule looked in the wrong place. Here the same
-     * rule is run over the application's own entities plus three fixtures, one
-     * of which is the mistake - and it has to report that one and only that
-     * one, so that neither the tenanted fixture nor the declared-shared one is
-     * swept up with it.
+     * rule is run over the application's own entities plus five fixtures, two
+     * of which are mistakes - and it has to report those and only those, so
+     * that neither the tenanted fixture, nor the declared-shared one, nor the
+     * partly shared one carrying its tenant is swept up with them.
+     *
+     * The second mistake is the partly shared declaration used as a way past
+     * the rule: it says some rows belong to a business, and without a column
+     * saying which, the filter cannot keep them apart any more than it can for
+     * the entity nobody thought about.
      */
     public function testTheRuleReportsAnEntityThatIsNeither(): void
     {
@@ -61,7 +68,7 @@ final class EveryTenantedEntityIsScopedTest extends TestCase
         );
 
         self::assertSame(
-            [ForgottenThing::class],
+            [ForgottenThing::class, PartlySharedWithoutTenant::class],
             $this->unscopedIn($mapping),
         );
     }
@@ -81,7 +88,8 @@ final class EveryTenantedEntityIsScopedTest extends TestCase
     {
         $silent = [];
         foreach (Mapping::ofTheApplication() as $metadata) {
-            foreach (new \ReflectionClass($metadata->getName())->getAttributes(Shared::class) as $attribute) {
+            $class = new \ReflectionClass($metadata->getName());
+            foreach ([...$class->getAttributes(Shared::class), ...$class->getAttributes(PartlyShared::class)] as $attribute) {
                 if (trim($attribute->newInstance()->because) === '') {
                     $silent[] = $metadata->getName();
                 }
@@ -114,6 +122,7 @@ final class EveryTenantedEntityIsScopedTest extends TestCase
                 'core_content_path',
                 'core_domain',
                 'core_media_file',
+                'core_role',
                 'core_tenant_membership',
             ],
             $scoped,

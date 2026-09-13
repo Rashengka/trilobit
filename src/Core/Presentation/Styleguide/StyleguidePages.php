@@ -156,16 +156,30 @@ final class StyleguidePages
                 'Forms',
                 'The controls of a form as the browser hands them over, drawn out of the theme, one page for '
                 . 'every group of them.',
-                array_map(
-                    static fn(FormElementGroup $group): StyleguidePage => new StyleguidePage(
-                        'forms',
-                        $group->name,
-                        ucfirst($group->name),
-                        $group->summary,
-                        formElements: [$group->name],
+                [
+                    ...array_map(
+                        static fn(FormElementGroup $group): StyleguidePage => new StyleguidePage(
+                            'forms',
+                            $group->name,
+                            ucfirst($group->name),
+                            $group->summary,
+                            formElements: [$group->name],
+                        ),
+                        $this->formElements->all(),
                     ),
-                    $this->formElements->all(),
-                ),
+                    // The one page of the group that is not a group of controls:
+                    // the arrangements a whole form is laid out in, which are a
+                    // layout primitive (l-form) and are held to the guide by the
+                    // gate every primitive is. Shown over a form rather than
+                    // over controls, because a form is what they arrange.
+                    new StyleguidePage(
+                        'forms',
+                        'layout',
+                        'Layout',
+                        'The three arrangements a generated form comes in - side by side, every label over its '
+                            . 'control, every label beside it - drawn over one and the same form.',
+                    ),
+                ],
             ),
             new StyleguideGroup(
                 'components',

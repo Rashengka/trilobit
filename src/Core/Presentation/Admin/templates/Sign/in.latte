@@ -37,7 +37,11 @@
                         {include notice, message: $error, variant: 'danger', testId: 'sign-in-error'}
                     {/foreach}
 
-                    {embed block field, testId: 'sign-in-address-field'}
+                    {* Both fields below are required (SignPresenter::createComponentSignIn()); c-field does
+                       not own the element, so this page says so instead of it being read off the control. *}
+                    <p class="c-field-required-note">Fields marked with * are required.</p>
+
+                    {embed block field, testId: 'sign-in-address-field', required: true}
                         {block fieldLabel}<label n:name="email">Address</label>{/block}
 
                         {block fieldControl}
@@ -45,7 +49,7 @@
                         {/block}
                     {/embed}
 
-                    {embed block field, testId: 'sign-in-secret-field'}
+                    {embed block field, testId: 'sign-in-secret-field', required: true}
                         {block fieldLabel}<label n:name="password">Password</label>{/block}
 
                         {block fieldControl}

@@ -8,7 +8,6 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\Migrations\Tools\Console\Command\MigrateCommand;
-use Doctrine\ORM\EntityManagerInterface;
 use Nette\DI\Container;
 use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
@@ -19,7 +18,6 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Trilobit\Core\Bootstrap;
-use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
@@ -176,18 +174,28 @@ final class TheAdministratorBecomesTheOwnerTest extends TestCase
             new DateTimeImmutable('2026-09-12T08:00:00+00:00'),
         );
         $this->container->getByType(Accounts::class)->save($account);
+        $person = $account->id();
+        self::assertIsInt($person);
 
-        $entityManager = $this->container->getByType(EntityManagerInterface::class);
-        $administrator = new Role('administrator', 'Administrator', json_decode(
-            self::EVERY_PAIR_BEFORE,
-            true,
-            flags: JSON_THROW_ON_ERROR,
-        ));
-        $entityManager->persist($administrator);
-        $entityManager->persist(new Membership($business, $account, $administrator));
-        $entityManager->flush();
+        // What the earlier build left behind is written the way it left it,
+        // past the entities: they describe the schema this build migrates to,
+        // and core_role has changed since - a role has a business now. Signing
+        // in is the same: the identity is the one that build put into the
+        // session, rather than one this build would work out from tables it
+        // reads in their later shape.
+        $connection = $this->container->getByType(Connection::class);
+        $connection->insert('core_role', [
+            'code' => 'administrator',
+            'name' => 'Administrator',
+            'permissions' => self::EVERY_PAIR_BEFORE,
+        ]);
+        $connection->insert('core_tenant_membership', [
+            'tenant_id' => $business->id(),
+            'user_id' => $person,
+            'role_id' => $connection->lastInsertId(),
+        ]);
 
-        $this->container->getByType(SignedIn::class)->login('alice@example.com', $password);
+        $this->container->getByType(SignedIn::class)->login(new Identity($person, ['administrator'], []));
         self::assertSame(['administrator'], $this->container->getByType(SignedIn::class)->getRoles());
 
         $this->migrate(self::LATEST);
@@ -202,8 +210,6 @@ final class TheAdministratorBecomesTheOwnerTest extends TestCase
         // An identity carrying the old code itself - one an earlier build put
         // into a session with its roles still on - is answered the same way:
         // the set on it is replaced rather than merged.
-        $person = $account->id();
-        self::assertIsInt($person);
         $woken = $this->container()->getByType(Authenticator::class)
             ->wakeupIdentity(new Identity($person, ['administrator'], []));
 

@@ -44,9 +44,9 @@ final class EnvironmentTest extends TestCase
 
     public function testKeepsAnEmptyValueAsAnEmptyString(): void
     {
-        $environment = Environment::fromString("TRILOBIT_DEBUG=\n");
+        $environment = Environment::fromString("TRILOBIT_ENV=\n");
 
-        self::assertSame('', $environment->get('TRILOBIT_DEBUG'));
+        self::assertSame('', $environment->get('TRILOBIT_ENV'));
     }
 
     public function testReportsAnAbsentNameAsNull(): void
@@ -86,9 +86,9 @@ final class EnvironmentTest extends TestCase
 
     public function testTheResolvedValuesAcceptAPrefixedNameTheFileNeverMentioned(): void
     {
-        $environment = Environment::fromValues([], ['TRILOBIT_DEBUG' => '1']);
+        $environment = Environment::fromValues([], ['TRILOBIT_ENV' => 'dev']);
 
-        self::assertSame(['TRILOBIT_DEBUG' => '1'], $environment->resolved());
+        self::assertSame(['TRILOBIT_ENV' => 'dev'], $environment->resolved());
     }
 
     public function testTheResolvedValuesLeaveTheRestOfTheMachineOut(): void

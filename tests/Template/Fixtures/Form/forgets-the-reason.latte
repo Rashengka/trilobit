@@ -1,0 +1,35 @@
+{templateType Trilobit\Core\Presentation\Form\ArrangementTemplate}
+
+{*
+ * An arrangement written to make one mistake: it draws every control and never
+ * says why one of them was refused - the control still points at the reason,
+ * and the reason is nowhere. Trilobit\Tests\Template\FormArrangementsDifferOnlyInTheirWrappingTest
+ * has to report it.
+ *}
+
+{import '../../../../src/Core/Presentation/Form/templates/parts.latte'}
+{import '../../../../src/Core/Presentation/components/field.latte'}
+
+<div class="l-form l-form--vertical">
+    {include formErrors, errors: $errors}
+
+    {foreach $fields as $field}
+        {embed block field, hintId: $field->hintId()}
+            {block fieldLabel}{$field->label()}{/block}
+
+            {block fieldControl}
+                {if $field->kind === 'radios' || $field->kind === 'checks'}
+                    <div role="{$field->kind === 'radios' ? 'radiogroup' : 'group'}" aria-labelledby="{$field->labelId()}">
+                        {foreach $field->choices() as $choice}{$choice}{/foreach}
+                    </div>
+                {else}
+                    {$field->control()}
+                {/if}
+            {/block}
+
+            {block fieldHint}{$field->hint()}{/block}
+        {/embed}
+    {/foreach}
+
+    {include formButtons, buttons: $buttons}
+</div>

@@ -46,6 +46,15 @@ use Trilobit\Core\Domain\User\User;
  * one place, and a check in one of them is a check the others do not have.
  * What it prevents is quiet: an account with a foot in both scopes works, it
  * just works with rights nobody meant it to have.
+ *
+ * **A role is held only where it may be.** A role of the application may be
+ * held in any business; a role a business composed, in that business alone -
+ * see Trilobit\Core\Domain\User\Role::mayBeHeldIn(). Both ways of making a
+ * membership refuse anything else, for the same reason as above: held in
+ * another business, the role would hand somebody there whatever the first one
+ * put into it. A row written past this class is not trusted either - reading a
+ * role in a business never reads another business's, so the membership would
+ * join to nothing and grant nothing.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'core_tenant_membership')]
@@ -79,6 +88,8 @@ class Membership
                 self::class,
             ));
         }
+
+        self::refuseARoleOfAnotherBusiness($tenant, $role);
     }
 
     /**
@@ -107,12 +118,30 @@ class Membership
             ));
         }
 
+        self::refuseARoleOfAnotherBusiness($tenant, $role);
+
         $membership = new \ReflectionClass(self::class)->newInstanceWithoutConstructor();
         $membership->tenant = $tenant;
         $membership->user = $landlord;
         $membership->role = $role;
 
         return $membership;
+    }
+
+    private static function refuseARoleOfAnotherBusiness(Tenant $tenant, Role $role): void
+    {
+        if ($role->mayBeHeldIn($tenant)) {
+            return;
+        }
+
+        throw new \LogicException(sprintf(
+            '%s is a role of %s, so it cannot be held in %s: a role a business composed means what that business '
+                . 'put into it, and nowhere else. Hold a role of %s, or one of the application.',
+            $role->code(),
+            $role->business()?->name() ?? 'another business',
+            $tenant->name(),
+            $tenant->name(),
+        ));
     }
 
     public function id(): ?int

@@ -23,6 +23,7 @@ use Trilobit\Core\Admin\Menu\ReachableMenu;
 use Trilobit\Core\Asset\VersionedViteMapper;
 use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
+use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Console\AccountCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\PasswordCommand;
@@ -53,6 +54,7 @@ use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Form\FormElementRegistry;
+use Trilobit\Core\Presentation\Form\FormFactory;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Presentation\Link\Destinations;
@@ -182,6 +184,15 @@ final class CoreExtension extends CompilerExtension
         // the key it stands in for; see Environment::value().
         $builder->addDefinition($this->prefix('environment'))
             ->setFactory(Environment::class . '::load', [$this->parameterString('rootDir') . '/.env']);
+
+        // Which of the three deployments this build was made for, handed out
+        // so that a command about to seed or delete data asks
+        // Mode::mayAlterData() of the build it runs in rather than reading the
+        // environment a second time. It is the boot's own reading, taken from
+        // the parameter the boot left, so the two cannot disagree.
+        $builder->addDefinition($this->prefix('mode'))
+            ->setType(Mode::class)
+            ->setFactory(Mode::class . '::from', [$this->mode()->value]);
 
         // Which tables the schema tools of this build are allowed to see. It
         // is derived from the module list rather than written down, so that
@@ -410,6 +421,12 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('formElements'))
             ->setFactory(FormElementRegistry::class);
 
+        // Where a form comes from, already laid out in an arrangement or not;
+        // in every build, because every build has forms. See
+        // Trilobit\Core\Presentation\Form\FormFactory.
+        $builder->addDefinition($this->prefix('formFactory'))
+            ->setFactory(FormFactory::class);
+
         // The pages the style guide is split into. In every build, like the
         // two registers it is made of: it is a description, and a description
         // routes nothing. What makes the guide disappear with the switch off is
@@ -451,7 +468,7 @@ final class CoreExtension extends CompilerExtension
         // by whether its services are registered at all. Nothing downstream
         // asks whether it is on - with these two absent there is no route to
         // it and no link to it, so a request ends as 404 (decision D4).
-        if ($this->designParameterBool('styleguide')) {
+        if ($this->hasStyleguide()) {
             $builder->addDefinition($this->prefix('styleguideRoutes'))
                 ->setFactory(StyleguideRoutes::class)
                 ->setAutowired(false)
@@ -858,6 +875,33 @@ final class CoreExtension extends CompilerExtension
         }
 
         return $value;
+    }
+
+    /**
+     * Whether this build has the style guide: what trilobit.styleguide says,
+     * or, where it is left null, what the mode says.
+     *
+     * The rule itself is Mode::hasStyleguide()'s; all that is decided here is
+     * that a deployment which stated an answer keeps it.
+     */
+    private function hasStyleguide(): bool
+    {
+        if ($this->designParameter('styleguide') === null) {
+            return $this->mode()->hasStyleguide();
+        }
+
+        return $this->designParameterBool('styleguide');
+    }
+
+    /** The mode the boot read, out of the parameter it left for this. */
+    private function mode(): Mode
+    {
+        $value = $this->parameterString('mode');
+
+        return Mode::tryFrom($value) ?? throw new InvalidStateException(sprintf(
+            "Parameter 'mode' has to be one of dev, staging or prod; got '%s'. It is set by the boot.",
+            $value,
+        ));
     }
 
     private function parameterString(string $name): string
