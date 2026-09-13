@@ -73,6 +73,23 @@ function enabledModules(): string[] {
 }
 
 /**
+ * Every module the application has, switched on or off, read from
+ * config/modules.neon - the one place that names them.
+ *
+ * It is what tells a module's section from one of Core's own. Core has sections
+ * of the administration too - the installation's, and arranging the site's
+ * navigation (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3) - and their first
+ * segment names no module, so they are in every build and nothing is asked of
+ * them here; a segment that does name a module has to name one this build was
+ * made with, which is the claim the bar is checked for.
+ */
+function everyModule(): string[] {
+    const source = readFileSync('config/modules.neon', 'utf8');
+
+    return [...source.matchAll(/^\s+([a-z][a-z0-9]*):\s*(?:true|false)\s*$/gm)].map((match) => match[1] ?? '');
+}
+
+/**
  * Which module a menu entry leads into, read off its address.
  *
  * One shape now: a section of a module's administration, `/admin/cms/pages`,
@@ -223,10 +240,21 @@ test('signing in opens the administration, and signing out closes it again', asy
     const sections = drawn.slice(1);
     expect(sections.length, 'the bar held the way back and nothing else').toBeGreaterThan(0);
 
-    const represented = [...new Set(sections.map((entry) => moduleOfHref(entry.href)))].sort();
+    const modules = everyModule();
+    expect(modules.length, 'no module was read from config/modules.neon, so nothing below would be checked').toBeGreaterThan(0);
+
+    const represented = [...new Set(sections.map((entry) => moduleOfHref(entry.href)))]
+        .filter((segment) => modules.includes(segment))
+        .sort();
     for (const module of represented) {
         expect(enabledModules(), 'the bar leads into a module this build was not made with').toContain(module);
     }
+
+    // Core's own section of a business, for whoever may arrange its site's
+    // navigation - its owner among them.
+    expect(sections.map((entry) => entry.href), 'the bar offers no way to arrange the site\'s navigation').toContain(
+        '/admin/navigation',
+    );
 
     // The session survives a navigation of its own, which is the half a single
     // redirect after signing in would not have shown.

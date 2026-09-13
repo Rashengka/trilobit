@@ -17,8 +17,10 @@ use Trilobit\Cms\Domain\Menu\MenuRepository;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Config\Mode;
+use Trilobit\Core\Domain\Navigation\Menu;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Core\Navigation\Menus;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
@@ -122,8 +124,13 @@ final class SeededContentTest extends TestCase
         $container = $this->seeded();
         $this->enter($container, 'Belemnite Books');
         $menus = $container->getByType(MenuRepository::class);
+        $main = $container->getByType(Menus::class)->named(Menu::MAIN);
+        self::assertInstanceOf(Menu::class, $main, 'the seed arranged no main menu');
 
-        $top = $menus->topOf(MenuItem::MAIN);
+        $top = array_values(array_filter(
+            $menus->visibleIn($main),
+            static fn(MenuItem $entry): bool => !$entry->parent() instanceof MenuItem,
+        ));
         self::assertSame(
             ['About us', 'Customer care', 'Elsewhere'],
             array_map(static fn(MenuItem $entry): string => $entry->label(), $top),

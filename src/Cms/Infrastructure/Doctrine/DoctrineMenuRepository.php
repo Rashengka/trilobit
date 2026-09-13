@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Trilobit\Cms\Domain\Menu\MenuItem;
 use Trilobit\Cms\Domain\Menu\MenuRepository;
+use Trilobit\Core\Domain\Navigation\Menu;
 
 /**
  * The arranged menus, kept in the database the rest of the application is kept
@@ -38,12 +39,9 @@ final readonly class DoctrineMenuRepository implements MenuRepository
     }
 
     /** @return list<MenuItem> */
-    public function topOf(string $menu): array
+    public function visibleIn(Menu $menu): array
     {
-        return $this->rows()->findBy(
-            ['menu' => $menu, 'parent' => null, 'visible' => true],
-            self::ARRANGED,
-        );
+        return $this->rows()->findBy(['menu' => $menu, 'visible' => true], self::ARRANGED);
     }
 
     public function save(MenuItem $item): void

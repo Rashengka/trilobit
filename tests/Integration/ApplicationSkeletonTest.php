@@ -77,21 +77,25 @@ final class ApplicationSkeletonTest extends TestCase
     }
 
     /**
-     * Core contributes one entry of its own whichever modules are enabled -
+     * Core contributes two entries of its own whichever modules are enabled -
      * the way into the section belonging to the installation rather than to a
-     * business in it - so "no modules" leaves exactly that one rather than an
-     * empty menu. It is the same shape as the listener below.
+     * business in it, and the arrangement of a business's site navigation
+     * (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3) - so "no modules" leaves
+     * exactly those two rather than an empty menu. It is the same shape as the
+     * listener below.
      *
      * What is asked here is the register, which holds what the build has.
-     * Whether a particular person is shown that entry is a different question
+     * Whether a particular person is shown an entry is a different question
      * and is asked of Trilobit\Core\Admin\Menu\ReachableMenu.
      */
-    public function testOnlyCoresOwnEntryIsInTheAdminMenuWithoutModules(): void
+    public function testOnlyCoresOwnEntriesAreInTheAdminMenuWithoutModules(): void
     {
         $items = $this->container()->getByType(Menu::class)->items();
 
-        self::assertCount(1, $items);
-        self::assertSame('Core:Installation:Businesses:default', $items[0]->destination);
+        self::assertSame(
+            ['Core:Installation:Businesses:default', 'Core:Admin:Navigation:default'],
+            array_column($items, 'destination'),
+        );
     }
 
     public function testTheSignpostsAreEmptyWithoutModules(): void

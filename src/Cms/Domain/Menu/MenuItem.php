@@ -6,6 +6,7 @@ namespace Trilobit\Cms\Domain\Menu;
 
 use Doctrine\ORM\Mapping as ORM;
 use Trilobit\Cms\Domain\Page\Page;
+use Trilobit\Core\Domain\Navigation\Menu;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 
 /**
@@ -33,17 +34,15 @@ use Trilobit\Core\Domain\Tenancy\Tenant;
  * and the value cannot disagree. An entry whose kind says Route and whose
  * target is empty is a shape this class simply has no way to make.
  *
- * A menu belongs to a tenant, like everything else somebody arranges.
+ * An entry is arranged into one of the business's menus, which is a row of
+ * Core's (Trilobit\Core\Domain\Navigation\Menu) - Core's tables are the ones a
+ * module may point a foreign key at - and it belongs to the business the menu
+ * belongs to, like everything else somebody arranges.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'cms_menu_item')]
 class MenuItem
 {
-    /** The menu the site's own navigation is drawn from; an installation may arrange others beside it. */
-    public const string MAIN = 'main';
-
-    public const int MAX_MENU_LENGTH = 32;
-
     public const int MAX_LABEL_LENGTH = 191;
 
     /** Long enough for an absolute address, which is the longest of the three kinds. */
@@ -59,9 +58,10 @@ class MenuItem
         #[ORM\ManyToOne(targetEntity: Tenant::class)]
         #[ORM\JoinColumn(nullable: false)]
         private Tenant $tenant,
-        /** Which menu of that tenant, so that one installation may arrange more than one. */
-        #[ORM\Column(length: self::MAX_MENU_LENGTH)]
-        private string $menu,
+        /** The menu this entry is arranged into. */
+        #[ORM\ManyToOne(targetEntity: Menu::class)]
+        #[ORM\JoinColumn(nullable: false)]
+        private Menu $menu,
         #[ORM\Column(length: self::MAX_LABEL_LENGTH)]
         private string $label,
         #[ORM\Column(length: 16, enumType: MenuTarget::class)]
@@ -88,20 +88,20 @@ class MenuItem
         private bool $visible = true,
     ) {}
 
-    public static function toPage(Tenant $tenant, string $menu, string $label, Page $page, int $position = 0): self
+    public static function toPage(Menu $menu, string $label, Page $page, int $position = 0): self
     {
-        return new self($tenant, $menu, $label, MenuTarget::Page, '', $page, null, $position);
+        return new self($menu->tenant(), $menu, $label, MenuTarget::Page, '', $page, null, $position);
     }
 
-    public static function toUrl(Tenant $tenant, string $menu, string $label, string $url, int $position = 0): self
+    public static function toUrl(Menu $menu, string $label, string $url, int $position = 0): self
     {
-        return new self($tenant, $menu, $label, MenuTarget::Url, $url, null, null, $position);
+        return new self($menu->tenant(), $menu, $label, MenuTarget::Url, $url, null, null, $position);
     }
 
     /** @param string $destination a presenter and an action, as a link names them: `Shop:Front:Catalog:default`. */
-    public static function toRoute(Tenant $tenant, string $menu, string $label, string $destination, int $position = 0): self
+    public static function toRoute(Menu $menu, string $label, string $destination, int $position = 0): self
     {
-        return new self($tenant, $menu, $label, MenuTarget::Route, $destination, null, null, $position);
+        return new self($menu->tenant(), $menu, $label, MenuTarget::Route, $destination, null, null, $position);
     }
 
     public function id(): ?int
@@ -114,7 +114,7 @@ class MenuItem
         return $this->tenant;
     }
 
-    public function menu(): string
+    public function menu(): Menu
     {
         return $this->menu;
     }

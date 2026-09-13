@@ -19,6 +19,7 @@ use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
 use Trilobit\Core\Admin\Menu\InstallationMenu;
 use Trilobit\Core\Admin\Menu\Menu;
+use Trilobit\Core\Admin\Menu\NavigationMenu;
 use Trilobit\Core\Admin\Menu\ReachableMenu;
 use Trilobit\Core\Asset\VersionedViteMapper;
 use Trilobit\Core\Build\BuildManifest;
@@ -47,6 +48,10 @@ use Trilobit\Core\Event\Dispatcher;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Core\Navigation\HomeEntry;
+use Trilobit\Core\Navigation\Menus;
+use Trilobit\Core\Navigation\ModuleSections;
+use Trilobit\Core\Navigation\Navigation;
 use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Core\Preference\PreferenceCatalogue;
 use Trilobit\Core\Preference\RememberedPreferences;
@@ -115,6 +120,9 @@ final class CoreExtension extends CompilerExtension
 
     /** Services tagged with this add what their module shows to `app:seed`; see Trilobit\Core\Seed\SeedProvider. */
     public const string TAG_SEED_PROVIDER = 'trilobit.seed_provider';
+
+    /** Services tagged with this put entries into the site's menus; see Trilobit\Core\Navigation\NavigationContributor. */
+    public const string TAG_NAVIGATION_CONTRIBUTOR = 'trilobit.navigation_contributor';
 
     /** The console's own tag; the value is the name the command answers to. */
     private const string TAG_CONSOLE_COMMAND = 'console.command';
@@ -396,6 +404,15 @@ final class CoreExtension extends CompilerExtension
             ->setAutowired(false)
             ->addTag(self::TAG_ADMIN_MENU_PROVIDER);
 
+        // And the way into arranging the site's navigation, which is a
+        // business's own section rather than the installation's - see
+        // Trilobit\Core\Presentation\Installation\SignpostPresenter, which
+        // draws the installation's entries and not every entry of Core's.
+        $builder->addDefinition($this->prefix('navigationMenu'))
+            ->setFactory(NavigationMenu::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ADMIN_MENU_PROVIDER);
+
         // The menu as the person reading it may use it. Both the bar and a
         // section's signpost are drawn through this one service, because they
         // are one data structure drawn twice and a filter written into each
@@ -413,6 +430,29 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('signposts'))
             ->setFactory(SignpostList::class, [[]]);
+
+        // The site's navigation: what contributes to its menus, and what each
+        // business saved about how they stand (.ai/plans/10-menu-submenu-a-
+        // rozcestniky.md, M3). Core's own two contributors - the way to the
+        // front page and the sections of the modules - are tagged the way a
+        // module's are, so that nothing has to know whose entry is whose, and
+        // a business may move or hide them like anything else.
+        $builder->addDefinition($this->prefix('menus'))
+            ->setFactory(Menus::class);
+
+        $builder->addDefinition($this->prefix('navigation'))
+            ->setFactory(Navigation::class)
+            ->setArguments(['contributors' => []]);
+
+        $builder->addDefinition($this->prefix('homeEntry'))
+            ->setFactory(HomeEntry::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_NAVIGATION_CONTRIBUTOR);
+
+        $builder->addDefinition($this->prefix('moduleSections'))
+            ->setFactory(ModuleSections::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_NAVIGATION_CONTRIBUTOR);
 
         // The design system. The register is a list somebody maintains; which
         // themes exist is read off the filesystem, because a theme is a file
@@ -566,6 +606,7 @@ final class CoreExtension extends CompilerExtension
         ]);
         $this->service('adminMenu')->setArguments([$this->taggedServices(self::TAG_ADMIN_MENU_PROVIDER)]);
         $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);
+        $this->service('navigation')->setArgument('contributors', $this->taggedServices(self::TAG_NAVIGATION_CONTRIBUTOR));
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
         $this->service('seedCommand')->setArgument('providers', $this->taggedServices(self::TAG_SEED_PROVIDER));
         $this->service('ports')->setArguments([$this->taggedPorts()]);

@@ -414,8 +414,38 @@ abstract class AdminPresenter extends Presenter
      */
     protected function signpostOf(string $module): array
     {
+        return $this->signpostFrom($this->menu->itemsOf($module));
+    }
+
+    /**
+     * The signpost for a section inside a module: the bar's entries whose
+     * destination begins with $prefix.
+     *
+     * For the installation's section, which is `Core:Installation:` and not
+     * the whole of Core: Core also contributes the arrangement of a business's
+     * navigation, a business's own section, and a tile for it on the
+     * installation's signpost would lead somewhere that is not about the
+     * installation. Filtered by the same service as the bar and signpostOf().
+     *
+     * @return list<SignpostLink>
+     */
+    protected function signpostUnder(string $prefix): array
+    {
+        return $this->signpostFrom(array_values(array_filter(
+            $this->menu->items(),
+            static fn(MenuItem $item): bool => str_starts_with($item->destination, $prefix),
+        )));
+    }
+
+    /**
+     * @param list<MenuItem> $items
+     *
+     * @return list<SignpostLink>
+     */
+    private function signpostFrom(array $items): array
+    {
         $links = [];
-        foreach ($this->menu->itemsOf($module) as $item) {
+        foreach ($items as $item) {
             $links[] = new SignpostLink(
                 $item->label,
                 // The leading colon makes the destination absolute; without it

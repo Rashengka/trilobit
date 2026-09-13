@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Front;
 
 use Nette\Application\UI\Presenter;
+use Trilobit\Core\Domain\Navigation\Menu;
+use Trilobit\Core\Navigation\Navigation;
+use Trilobit\Core\Navigation\NavigationEntry;
 use Trilobit\Core\Preference\PreferenceCatalogue;
 use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
-use Trilobit\Core\Presentation\Front\Signpost\Signpost;
-use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
+use Trilobit\Core\Presentation\Link\Destinations;
 
 /**
  * The base every public-facing page is built on, whichever module it belongs
@@ -26,20 +28,23 @@ use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
  * The layout stays last in the list, so a module that does want its own layout
  * simply has one and it wins.
  *
- * The two dependencies arrive through inject methods rather than through the
+ * The dependencies arrive through inject methods rather than through the
  * constructor. A constructor argument here would have to be repeated by every
  * presenter in every module, which is how a base class turns into something
  * people work around.
  */
 abstract class FrontPresenter extends Presenter
 {
-    private SignpostList $signposts;
+    private Navigation $navigation;
+
+    private Destinations $destinations;
 
     private RememberedPreferences $remembered;
 
-    public function injectSignposts(SignpostList $signposts): void
+    public function injectNavigation(Navigation $navigation, Destinations $destinations): void
     {
-        $this->signposts = $signposts;
+        $this->navigation = $navigation;
+        $this->destinations = $destinations;
     }
 
     public function injectAppearance(RememberedPreferences $remembered): void
@@ -159,41 +164,107 @@ abstract class FrontPresenter extends Presenter
     }
 
     /**
-     * The homepage, then whatever the enabled modules contributed, in the order
-     * Trilobit\Core\Presentation\Front\Signpost\SignpostList settled on.
+     * The site's navigation, as links: what the build contributes to the main
+     * menu, in the order and with the contributors the business saved - see
+     * Trilobit\Core\Navigation\Navigation (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3).
      *
-     * The addresses are produced by the router, so a signpost pointing at a
-     * page this build does not have fails here rather than rendering a link
-     * that leads nowhere.
+     * **Which entries this build can draw is decided here, once, for every
+     * contributor alike.** An entry naming a page of a module this build does
+     * not have is left out, with whatever is under it: asking the framework for
+     * the link instead would draw a broken href and a menu that looks as if it
+     * works (Trilobit\Core\Presentation\Link\Destinations).
      *
-     * @return non-empty-list<NavigationItem>
+     * **Which entry is current is decided here too**, because a contributor does
+     * not know which page is being drawn. An entry naming a presenter is current
+     * on any page of that presenter, the way the navigation has always marked
+     * a section; an entry naming an address of the register is current at that
+     * address; an address written out never is.
+     *
+     * Every entry's name in the markup is the navigation's own prefix and the
+     * key its contributor gave it. Two contributors may give the same key, and
+     * a name used twice would make two entries open each other's lists, so the
+     * second is numbered.
+     *
+     * @return list<NavigationItem>
      */
     private function navigation(): array
     {
-        $items = [new NavigationItem(
-            'Home',
-            $this->link(':Core:Front:Home:default'),
-            $this->getName() === 'Core:Front:Home',
-            'nav-home',
-        )];
+        $taken = [];
 
-        foreach ($this->signposts->items() as $signpost) {
+        return $this->itemsOf($this->navigation->arrangementOf(Menu::MAIN)->entries(), $taken);
+    }
+
+    /**
+     * @param list<NavigationEntry> $entries
+     * @param array<string, true> $taken the names already given on this page
+     *
+     * @return list<NavigationItem>
+     */
+    private function itemsOf(array $entries, array &$taken): array
+    {
+        $items = [];
+        foreach ($entries as $entry) {
+            $href = $this->hrefOf($entry);
+            if ($href === null) {
+                continue;
+            }
+
+            $name = 'nav-' . $entry->key;
+            for ($count = 2; isset($taken[$name]); $count++) {
+                $name = 'nav-' . $entry->key . '-' . $count;
+            }
+
+            $taken[$name] = true;
+
             $items[] = new NavigationItem(
-                $signpost->label,
-                $this->link(':' . $signpost->destination),
-                $this->getName() === $this->presenterOf($signpost),
-                'nav-' . strtolower($signpost->label),
+                $entry->label,
+                $href,
+                $this->isCurrent($entry),
+                $name,
+                $this->itemsOf($entry->children, $taken),
             );
         }
 
         return $items;
     }
 
-    /** A signpost points at an action; the presenter is everything before it. */
-    private function presenterOf(Signpost $signpost): string
+    /** Where $entry leads on this build, or null where this build has nothing there. */
+    private function hrefOf(NavigationEntry $entry): ?string
     {
-        $separator = strrpos($signpost->destination, ':');
+        if ($entry->destination !== null) {
+            return $this->destinations->drawnByThisBuild($entry->destination)
+                // The leading colon makes the destination absolute; without it
+                // Nette would resolve it inside the module of the page being drawn.
+                ? $this->link(':' . ltrim($entry->destination, ':'))
+                : null;
+        }
 
-        return $separator === false ? $signpost->destination : substr($signpost->destination, 0, $separator);
+        if ($entry->path !== null) {
+            return $this->getHttpRequest()->getUrl()->getBasePath() . ltrim($entry->path, '/');
+        }
+
+        return $entry->url;
+    }
+
+    private function isCurrent(NavigationEntry $entry): bool
+    {
+        if ($entry->destination !== null) {
+            return $this->getName() === $this->presenterOf($entry->destination);
+        }
+
+        if ($entry->path !== null) {
+            return trim($entry->path, '/') === trim($this->getHttpRequest()->getUrl()->getPathInfo(), '/');
+        }
+
+        return false;
+    }
+
+    /** A destination points at an action; the presenter is everything before it. */
+    private function presenterOf(string $destination): string
+    {
+        $destination = ltrim($destination, ':');
+        $separator = strrpos($destination, ':');
+
+        return $separator === false ? $destination : substr($destination, 0, $separator);
     }
 }

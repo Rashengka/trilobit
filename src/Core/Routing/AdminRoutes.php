@@ -41,9 +41,13 @@ final class AdminRoutes implements RouteProvider
     /** Where the section of the installation's own administrator begins. */
     public const string INSTALLATION_PATH = 'admin/installation';
 
+    /** Where a business arranges its site's navigation (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3). */
+    public const string NAVIGATION_PATH = 'admin/navigation';
+
     public function provide(RouteList $routes): void
     {
         $routes->addRoute(self::SIGN_IN_PATH, 'Core:Admin:Sign:in');
+        $routes->addRoute(self::NAVIGATION_PATH, 'Core:Admin:Navigation:default');
         $routes->addRoute(self::INSTALLATION_PATH, 'Core:Installation:Signpost:default');
         $routes->addRoute(self::INSTALLATION_PATH . '/businesses', 'Core:Installation:Businesses:default');
         $routes->addRoute(self::PATH, 'Core:Admin:Dashboard:default');

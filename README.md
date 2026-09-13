@@ -94,9 +94,9 @@ path is claimed by nobody and the router says so. There is no catch-all route
 for it to be caught by.
 
 A module hands things to Core by tagging a service, never by Core naming the
-module. Today that is routes, homepage signposts and administration menu
-entries; event listeners and ports use the same mechanism and are waiting for
-something to carry.
+module. Today that is routes, homepage signposts, administration menu entries
+and the entries of the site's navigation; event listeners and ports use the
+same mechanism and are waiting for something to carry.
 
 After changing the file, run `bin/trilobit app:warmup`. It rewrites
 `var/build/modules.json` and `var/build/sources.css`, which is how the parts
@@ -343,6 +343,56 @@ entry is therefore dropped while the page is being prepared, by
 has the page at all. The administration does the opposite and shows the entry
 with a word about why the site leaves it out, because whoever arranged it is
 the only person who can decide what should happen to it.
+
+### The site's navigation
+
+The navigation drawn on every public page belongs to the application, not to
+`Cms`. Core puts it together out of contributors - services tagged
+`Trilobit\Core\DI\CoreExtension::TAG_NAVIGATION_CONTRIBUTOR`, each handing over
+its own entries, in its own order, with whatever is under each of them. Core
+contributes two, the way to the front page and the way into each enabled
+module's section; `Cms` contributes the entries arranged at `/admin/cms/menus`;
+a module's categories will be one more. Core names none of them.
+
+Where they stand is decided in two layers. With nothing saved, the
+contributors follow the weight each one declares, and that changes with a
+deployment. A business may overrule it at `/admin/navigation`: move an entry
+past a neighbour of another contributor, hide a contributor altogether, and go
+back to the default. What it saves is a row of `core_menu`: the order as a
+sequence of places, each naming a contributor, and the contributors that are
+hidden. A place is filled by the next entry of the contributor it names, so
+the order inside one contributor is never saved there and cannot come to
+disagree with it - the entries arranged in `Cms` keep the position they were
+given, which is also why an entry does not move past one of its own
+contributor. A contributor with more entries than places goes on after its
+last place, and one the order does not name comes last, so nothing a module
+adds later disappears for not having been arranged. A place naming a
+contributor this build does not have is kept, and filled again when the
+module comes back.
+
+Seeing that page takes `app.administration.content:view`; changing anything on
+it takes `app.administration.content:change_priority`, the privilege kept for
+ordering. The buttons are drawn only for somebody who may press them, and a
+press sent anyway is refused.
+
+Which entries this build can draw is decided once, for every contributor,
+while the page is being prepared: an entry naming a page of a module that is
+not in the build is left out with everything under it. Which entry is current
+is decided there too, and every entry the current page is under is marked
+`aria-current="true"` - ledger unfolds those, atrium only marks them, see the
+design system below. A page of `Cms` does not draw a copy of the menu in its
+own content; a menu placed inside what an editor wrote is a control that has
+not been built yet.
+
+An entry of `Cms` points at its menu with a foreign key, `core_menu` being one
+of the Core tables a module may point at. The migration that moved it there
+from a name in a column of text is three steps, and the middle one - making a
+menu for every name and pointing each entry at it - is data rather than
+structure, so it is the one step written by hand.
+
+A menu is not published or drafted yet: what a business saves is live the
+moment it is saved. It gets that when categories do, which need it for the
+same reason - a large structure has to be prepared before it is shown.
 
 ## Front-end assets
 

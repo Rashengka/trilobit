@@ -781,6 +781,32 @@ final class AdministrationTest extends TestCase
     }
 
     /**
+     * The installation's signpost holds the installation's sections and
+     * nothing else Core put on the bar - in particular not the arrangement of
+     * a business's navigation, which Core contributes too, which somebody who
+     * also owns a business may open, and which is not about the installation
+     * (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3). Asked of somebody in
+     * both, because for anybody else the menu filter would take the entry out
+     * and the signpost would look right for the wrong reason.
+     */
+    public function testTheInstallationSignpostHoldsOnlyTheInstallationsSectionsForSomebodyInBoth(): void
+    {
+        $this->signInAsSomebodyInBoth();
+
+        $page = $this->pageOf($this->request(self::INSTALLATION, 'default'));
+
+        $signpost = $page->querySelector('[data-testid="installation-signpost"]');
+        self::assertNotNull($signpost, 'the section drew no signpost');
+
+        $labels = [];
+        foreach ($signpost->querySelectorAll('.c-card__link') as $link) {
+            $labels[] = trim($link->textContent ?? '');
+        }
+
+        self::assertSame(['Businesses'], $labels);
+    }
+
+    /**
      * Every address the administration bar of a drawn page leads to, in the
      * order the bar draws them - the first of which is the way back.
      *

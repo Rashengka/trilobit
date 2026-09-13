@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Trilobit\Cms\Domain\Menu;
 
+use Trilobit\Core\Domain\Navigation\Menu;
+
 /**
  * Where the arranged menus are kept, as the rest of the module has to know it.
  *
- * The reading method the site itself uses asks for the top of one menu rather
- * than for everything in it: what a menu looks like when it is drawn is a
- * question about one level, and an entry that is hidden is not a level at all.
- * The administration asks for everything, because arranging is the one place
- * the hidden entries have to be visible.
+ * The reading method the site itself uses asks for the visible entries of one
+ * menu, every level of it: the site draws the tree, and an entry that is
+ * hidden is not part of it. The administration asks for everything, because
+ * arranging is the one place the hidden entries have to be visible.
  */
 interface MenuRepository
 {
@@ -21,12 +22,12 @@ interface MenuRepository
     public function all(): array;
 
     /**
-     * The visible entries at the top of $menu, in the order they were
-     * arranged.
+     * The visible entries of $menu at every level, in the order they were
+     * arranged among their siblings.
      *
      * @return list<MenuItem>
      */
-    public function topOf(string $menu): array;
+    public function visibleIn(Menu $menu): array;
 
     public function save(MenuItem $item): void;
 

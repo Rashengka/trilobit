@@ -12,6 +12,7 @@ use Trilobit\Cms\Domain\Menu\MenuRepository;
 use Trilobit\Cms\Domain\Page\PageRepository;
 use Trilobit\Cms\Infrastructure\Doctrine\DoctrineMenuRepository;
 use Trilobit\Cms\Infrastructure\Doctrine\DoctrinePageRepository;
+use Trilobit\Cms\Navigation\ArrangedEntries;
 use Trilobit\Cms\Presentation\Front\CmsSignpost;
 use Trilobit\Cms\Routing\CmsRoutes;
 use Trilobit\Cms\Seed\CmsSeed;
@@ -58,6 +59,15 @@ final class CmsExtension extends CompilerExtension
             ->setFactory(CmsSignpost::class)
             ->setAutowired(false)
             ->addTag(CoreExtension::TAG_SIGNPOST_PROVIDER);
+
+        // The entries somebody arranged into a menu, handed to the site's
+        // navigation - which Core puts together and draws, and which this
+        // module is one of the contributors to
+        // (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3).
+        $builder->addDefinition($this->prefix('navigation'))
+            ->setFactory(ArrangedEntries::class)
+            ->setAutowired(false)
+            ->addTag(CoreExtension::TAG_NAVIGATION_CONTRIBUTOR);
 
         // Which kind of content this module publishes, and therefore which
         // addresses in the register lead to one of its pages. A build without

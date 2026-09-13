@@ -335,10 +335,14 @@ final class AllModuleCombinationsTest extends TestCase
      * and still has a top to return to. It used to be absent there, which was
      * right while every entry came from a module.
      *
-     * **Core's section entry is not drawn here, and its absence is the menu
-     * filter working rather than Core contributing nothing.** The entry leads
-     * into the section belonging to the installation itself, and nobody in this
-     * suite administers the installation - see
+     * **Core is drawn here once, for the site's navigation, and not for the
+     * installation.** Core contributes two entries: the arrangement of the
+     * site's navigation, which is a business's own and therefore drawn for its
+     * owner in every build (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3),
+     * and the way into the section belonging to the installation itself.
+     * The second is not drawn, and its absence is the menu filter working
+     * rather than Core contributing nothing: nobody in this suite administers
+     * the installation - see
      * Trilobit\Tests\Double\Security\NobodySignedIn, which is what keeps that
      * question from being answered out of a table this suite has no schema
      * for. The way back is a different thing and is drawn: it is not a section,
@@ -390,10 +394,18 @@ final class AllModuleCombinationsTest extends TestCase
                 'the bar does not begin with the way back to where the administration starts',
             );
 
+            $expected = [...array_intersect($enabled, Build::WITH_AN_ADMINISTRATION), 'core'];
+            sort($expected);
+
             self::assertSame(
-                array_values(array_intersect($enabled, Build::WITH_AN_ADMINISTRATION)),
+                $expected,
                 $this->modulesOf($destinations),
-                'the drawn menu does not hold entries from exactly the modules that have an administration',
+                'the drawn menu does not hold entries from exactly Core and the modules that have an administration',
+            );
+            self::assertContains(
+                'Core:Admin:Navigation',
+                $destinations,
+                'the arrangement of the site\'s navigation is missing from the bar of the business\'s owner',
             );
         } finally {
             $container->getByType(SignedIn::class)->logout(clearIdentity: true);
