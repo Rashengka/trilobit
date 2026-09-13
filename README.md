@@ -753,6 +753,91 @@ where it is used would be a lazy `import()`, and a chunk loaded that way gets no
 chunk against a new `app.js`. Versioning those chunks comes first, splitting the
 bundle after it. A `multiple` select stays native.
 
+#### A list filtered and paged
+
+A long list in the administration is
+`Trilobit\Core\Presentation\Listing\Listing`, a Nette control a module
+extends once for each list it has. The descendant says which filters there
+are, what is listed - a Doctrine `QueryBuilder` - how one row is drawn, and
+what the table is called. The list of pages,
+`Trilobit\Cms\Presentation\Admin\PageListing`, is the first:
+
+```php
+protected function configure(Filters $filters): void
+{
+    $filters
+        ->text('title', 'Title', Comparison::Contains)
+        ->choice('status', 'State', ['draft' => 'Draft', 'published' => 'Published'], Comparison::Equals);
+}
+```
+
+Filtering and paging are two concerns that meet in one query. The filters add
+`WHERE` to the builder and the page adds `LIMIT` and `OFFSET`. The count the
+pages are numbered by is taken by Doctrine's paginator over the same builder,
+so it counts the rows the filters let through and nothing else. The order is
+made total by the entity's identifier, added after whatever the list sorts by:
+rows that tie could otherwise come back in a different order for each page,
+and one would be shown twice while another was never shown.
+
+How a filter compares is written on the filter, never worked out from the
+control it is entered with. A line of text may mean equal to, containing or
+starting with, and which one is a decision about the column. `LIKE` is escaped
+by `!` and says so, so a `%` typed into the field is looked for as it is, in any
+SQL mode.
+
+The filters are an allow-list. A name the address carries that is not one of
+them never becomes a column. The field each filter narrows is written in the
+source and checked against the entity's mapping when the list is drawn, whether
+anybody filters by it or not. What was typed is bound as a parameter and never
+written into the query. The alias is read from the builder the list is handed,
+rather than agreed on by every list.
+
+The state is the address: `?pages-title=ride&pages-page=2` for a list called
+`pages`. A filtered list can be sent, bookmarked and gone back to. The filter
+is a form in the inline arrangement (`FormFactory::createInline()`), sent by
+GET to the list's address without the list's own state. A new filter therefore
+starts at the first page, because nothing it sends names another. Kept on the
+fifth page, a filter that found five rows would look as if it had found none.
+Without a script the form is answered with a redirect to the new address.
+
+What an address asks for that the list cannot use is set aside, and the list
+says so above its rows, one sentence each: a filter the list does not have, a
+choice it does not offer, several values where one goes, more than a field
+takes, a page that is not a number. A page past the last shows the last. None
+of these is an error page, which would take the list from somebody who only
+followed a link. None of them is dropped without a word either, which would
+leave a list that looks filtered and is not.
+
+A list is in one of three states, and `c-listing` draws each differently.
+It has rows. It has nothing and nothing filters it ("Nothing has been written
+yet."). Or it has something and nothing matches the filters: that one has a
+sentence of its own and a link to clear the filters. Drawn alike, a filter that
+found nothing would look like a site with no pages. The style guide shows all
+three, and the empty result of a filter first among them.
+
+A filter narrows what the list could already read and nothing more. The
+business is Doctrine's tenant filter, which scopes the count as it scopes the
+rows, and the rights are the presenter's gate. Both stand in front of the list
+whatever the address says, and the form is a signal of the same presenter, so
+the gate covers it too.
+
+With the script, Naja sends the form and the links and redraws three snippets.
+The first is the filter. The second is the sentence saying how much was found,
+whose element is the live region: Naja keeps a snippet's element and replaces
+what is in it, so the region is in the page before its text changes, which is
+when a screen reader announces it. The third is the rows. The filter and the
+rows are marked `data-keep-focus` (`assets/listing.ts`): after a redraw the
+focus is back on the button that was pressed or the page that was chosen,
+rather than at the top of the document. The address Naja puts into the history
+after a filter is the list's own (`postGet`), so going back returns to the list
+as it was. The presenter makes the list before its template is drawn, because
+Naja's answer holds the snippets of controls that already exist.
+
+Something goes into `Listing` only once two lists need it; what one list
+needs is an override in that list. Filtering by POST, and a filter saved in the
+database that an address only names, are not there. An address has a length
+limit, and a filter with many values would reach it.
+
 ### The style guide
 
 `/_styleguide` is part of the application, not a separate tool: same base
@@ -1694,7 +1779,7 @@ bin/trilobit app:seed
 | `ammonite-editor@example.com` | holds Ammonite Bikes' own `editor` role - the role in between: viewing, adding, editing, deleting and reordering the content, and nothing beside it - not purging or exporting it, not the accounts |
 | `ammonite-onlooker@example.com` | holds a role of Ammonite Bikes that grants nothing: signed in, and refused every page of the administration |
 | `belemnite-editor@example.com` | holds Belemnite Books' own `editor` role, which under the same code means something narrower: reading and correcting the content |
-| content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, and a main menu with an entry holding two others |
+| content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, a main menu with an entry holding two others, and enough further pages that the list of pages runs past its first page |
 
 Every password is generated and printed once, beside its address. What is
 stored is a hash, and none is written in the code.

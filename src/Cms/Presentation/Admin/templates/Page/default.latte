@@ -1,20 +1,14 @@
 {templateType Trilobit\Cms\Presentation\Admin\PagesTemplate}
 
 {*
- * Every page this site has, whether or not a visitor may see it.
- *
- * The address is shown beside each one because it is not part of the page:
- * it is a row in Core's register, and the register is where two modules'
- * content is kept from colliding. A page with no address yet says so rather
- * than showing nothing, which would read as a page at the root.
+ * Every page this site has, whether or not a visitor may see it - filtered and
+ * paged from the address by Trilobit\Cms\Presentation\Admin\PageListing,
+ * whose rows are drawn by ../PageListing.latte.
  *}
 
 {import '../../../../../Core/Presentation/components/page-heading.latte'}
 {import '../../../../../Core/Presentation/components/panel.latte'}
 {import '../../../../../Core/Presentation/components/button.latte'}
-{import '../../../../../Core/Presentation/components/badge.latte'}
-{import '../../../../../Core/Presentation/components/notice.latte'}
-{import '../../../../../Core/Presentation/components/table.latte'}
 
 {block content}
     {include pageHeading,
@@ -31,70 +25,7 @@
         {block panelTitle}Pages{/block}
 
         {block panelBody}
-            {if $pages === []}
-                {include notice,
-                    message: 'Nothing has been written yet.',
-                    testId: 'cms-pages-empty'}
-            {else}
-                {embed block table, caption: 'Every page and where it answers', testId: 'cms-page-list'}
-                    {block tableHead}
-                        <tr>
-                            <th scope="col">Title</th>
-                            <th scope="col">Status</th>
-                            <th scope="col">Address</th>
-                            <th scope="col" class="c-table__actions">
-                                <span class="u-visually-hidden">Actions</span>
-                            </th>
-                        </tr>
-                    {/block}
-
-                    {block tableBody}
-                        <tr n:foreach="$pages as $page" data-testid="cms-page-{$page->id}">
-                            <th scope="row">
-                                {include button,
-                                    label: $page->title,
-                                    href: $page->editUrl,
-                                    variant: 'quiet',
-                                    testId: 'cms-page-open-' . $page->id}
-                            </th>
-
-                            <td>
-                                {include badge,
-                                    label: $page->status,
-                                    variant: $page->isPublished ? 'accent' : 'plain',
-                                    testId: 'cms-page-status-' . $page->id}
-                            </td>
-
-                            <td>
-                                {include badge,
-                                    label: $page->address,
-                                    testId: 'cms-page-address-' . $page->id}
-                            </td>
-
-                            <td class="c-table__actions">
-                                <a n:if="$page->publicUrl !== ''"
-                                    href="{$page->publicUrl}"
-                                    target="_blank"
-                                    rel="noopener"
-                                    data-testid="cms-page-view-{$page->id}"
-                                >
-                                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                                        <path
-                                            d="M6 3H3v10h10V10M9 3h4v4M13 3 7 9"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.5"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                        />
-                                    </svg>
-                                    <span class="u-visually-hidden">View "{$page->title}" (opens in a new tab)</span>
-                                </a>
-                            </td>
-                        </tr>
-                    {/block}
-                {/embed}
-            {/if}
+            {control pages}
         {/block}
     {/embed}
 {/block}

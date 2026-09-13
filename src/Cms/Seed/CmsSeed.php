@@ -42,6 +42,13 @@ final readonly class CmsSeed implements SeedProvider
         private Menus $menus,
     ) {}
 
+    /**
+     * How many pages beyond the handful above: more than a page of the list of
+     * pages holds (Trilobit\Core\Presentation\Listing\Listing::PER_PAGE), so
+     * that the list is paged.
+     */
+    private const int NOTES = 24;
+
     public function seed(Tenant $business): array
     {
         $name = $business->name();
@@ -73,6 +80,19 @@ final readonly class CmsSeed implements SeedProvider
             '',
         );
 
+        // Enough pages that the list in the administration runs past its first
+        // page, so that the way through it, and a filter taking somebody back
+        // to the first page, can be clicked through. Published, so that the one
+        // draft above stays the one a filter by state finds.
+        for ($part = 1; $part <= self::NOTES; $part++) {
+            $this->published(
+                sprintf('Workshop notes, part %02d', $part),
+                sprintf('workshop-notes-%02d', $part),
+                'One of a series written so that the list of pages is long.',
+                'Nothing in it is true either.',
+            );
+        }
+
         $main = $this->menus->namedOrNew(Menu::MAIN);
 
         $this->entries->save(MenuItem::toPage($main, 'About us', $about, 0));
@@ -96,6 +116,11 @@ final readonly class CmsSeed implements SeedProvider
                 $this->where($returns),
             ),
             sprintf('a draft, %s, which a visitor is told is not there', $this->where($draft)),
+            sprintf(
+                '%d more published pages, Workshop notes, part 01 to part %02d, so that the list of pages runs past its first page',
+                self::NOTES,
+                self::NOTES,
+            ),
             'the category Help, which Delivery and Returns are filed under',
             'the main menu: About us, Customer care with Delivery and Returns under it, and Elsewhere, leading out of the site',
         ];

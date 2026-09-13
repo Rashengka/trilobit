@@ -88,6 +88,12 @@ final class ComponentRegistry
                 ['default', 'on the first page', 'on the last page', 'with few pages'],
             ),
             new Component(
+                'c-listing',
+                'What a filtered, paged list shows under its filter: its rows and the way through them, that '
+                . 'nothing is there yet, or that nothing matches the filters - each told apart from the others.',
+                ['default', 'with nothing matching the filters', 'with nothing yet', 'with part of the address set aside'],
+            ),
+            new Component(
                 'c-site-footer',
                 'The closing band, with a slot for whatever a page has to say last.',
                 ['default'],

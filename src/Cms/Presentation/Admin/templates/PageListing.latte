@@ -1,0 +1,72 @@
+{templateType Trilobit\Core\Presentation\Listing\ListingTemplate}
+
+{*
+ * The columns of the list of pages and one row of it, drawn by
+ * Trilobit\Core\Presentation\Listing\Listing inside c-table - see
+ * Trilobit\Cms\Presentation\Admin\PageListing.
+ *
+ * The address is shown beside each page because it is not part of the page:
+ * it is a row in Core's register, and the register is where two modules'
+ * content is kept from colliding. A page with no address yet says so rather
+ * than showing nothing, which would read as a page at the root.
+ *}
+
+{import '../../../../Core/Presentation/components/button.latte'}
+{import '../../../../Core/Presentation/components/badge.latte'}
+
+{define listingHead}
+    <tr>
+        <th scope="col">Title</th>
+        <th scope="col">Status</th>
+        <th scope="col">Address</th>
+        <th scope="col" class="c-table__actions">
+            <span class="u-visually-hidden">Actions</span>
+        </th>
+    </tr>
+{/define}
+
+{define listingRow, Trilobit\Cms\Presentation\Admin\PageSummary $row}
+    <tr data-testid="cms-page-{$row->id}">
+        <th scope="row">
+            {include button,
+                label: $row->title,
+                href: $row->editUrl,
+                variant: 'quiet',
+                testId: 'cms-page-open-' . $row->id}
+        </th>
+
+        <td>
+            {include badge,
+                label: $row->status,
+                variant: $row->isPublished ? 'accent' : 'plain',
+                testId: 'cms-page-status-' . $row->id}
+        </td>
+
+        <td>
+            {include badge,
+                label: $row->address,
+                testId: 'cms-page-address-' . $row->id}
+        </td>
+
+        <td class="c-table__actions">
+            <a n:if="$row->publicUrl !== ''"
+                href="{$row->publicUrl}"
+                target="_blank"
+                rel="noopener"
+                data-testid="cms-page-view-{$row->id}"
+            >
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                        d="M6 3H3v10h10V10M9 3h4v4M13 3 7 9"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+                <span class="u-visually-hidden">View "{$row->title}" (opens in a new tab)</span>
+            </a>
+        </td>
+    </tr>
+{/define}

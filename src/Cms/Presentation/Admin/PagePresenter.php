@@ -72,9 +72,13 @@ final class PagePresenter extends AdminPresenter
 
     private ?Page $edited = null;
 
+    /** The list of pages, by the name its parameters carry in the address: `?pages-title=...`. */
+    private const string LIST = 'pages';
+
     public function __construct(
         private readonly Pages $pages,
         private readonly Categories $categories,
+        private readonly PageListingFactory $listings,
     ) {
         parent::__construct();
     }
@@ -137,8 +141,12 @@ final class PagePresenter extends AdminPresenter
         $template->pageTitle = 'Pages';
         $template->headline = 'Pages';
         $template->lead = 'Everything this site says in its own words, and where each of it answers.';
-        $template->pages = $this->summaries();
         $template->addUrl = $this->link('add');
+
+        // Made before the template is drawn, not by it: an answer to Naja
+        // holds the snippets of the controls that exist by then, and a list
+        // first made while drawing would be missing from it.
+        $this->getComponent(self::LIST);
     }
 
     public function renderEdit(): void
@@ -172,6 +180,12 @@ final class PagePresenter extends AdminPresenter
     protected function createTemplate(?string $class = null): Template
     {
         return parent::createTemplate($class ?? PagesTemplate::class);
+    }
+
+    /** Every page, filtered and paged from the address; see PageListing. */
+    protected function createComponentPages(): PageListing
+    {
+        return $this->listings->create();
     }
 
     protected function createComponentPage(): Form
@@ -316,37 +330,6 @@ final class PagePresenter extends AdminPresenter
         }
 
         return $choices;
-    }
-
-    /** @return list<PageSummary> */
-    private function summaries(): array
-    {
-        $summaries = [];
-        foreach ($this->pages->all() as $page) {
-            $id = $page->id();
-            if ($id === null) {
-                continue;
-            }
-
-            $address = $this->pages->addressOf($page);
-
-            $summaries[] = new PageSummary(
-                $id,
-                $page->title(),
-                // Drawn with the leading slash a visitor would type, and said
-                // in words where there is none: an empty cell beside a page
-                // reads as a page at the root of the site.
-                $address === null ? 'no address yet' : '/' . $address,
-                $page->isPublished() ? 'Published' : 'Draft',
-                $page->isPublished(),
-                $this->link('edit', ['id' => $id]),
-                $address === null
-                    ? ''
-                    : $this->getHttpRequest()->getUrl()->getBasePath() . $address,
-            );
-        }
-
-        return $summaries;
     }
 
     /**

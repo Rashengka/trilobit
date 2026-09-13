@@ -1,0 +1,59 @@
+{templateType Trilobit\Core\Presentation\Listing\ListingTemplate}
+
+{*
+ * A listing: its filter, the sentence saying how much it found, and its rows
+ * - three snippets, each redrawn by Naja when the list changes.
+ *
+ * The sentence is a snippet of its own, and the live region is the snippet's
+ * element. Naja replaces what is inside a snippet and keeps the element, so
+ * the region is there before its text changes, which is the one arrangement a
+ * screen reader reliably announces; a region redrawn along with the rows
+ * would be a new region each time, and new regions are not announced. Where
+ * the list has nothing, the sentence is the same as the notice under it and
+ * is kept out of sight, so it is said and not shown twice.
+ *
+ * The filter and the rows keep the focus where it was when they are redrawn
+ * (data-keep-focus, assets/listing.ts): the button that was pressed, the page
+ * that was chosen.
+ *
+ * The rows are the descendant's, drawn by the blocks of its rowsTemplate()
+ * inside c-table, inside c-listing.
+ *}
+
+{import '../../components/listing.latte'}
+{import '../../components/table.latte'}
+{import $rowsTemplate}
+
+<div class="l-stack">
+    <div n:snippet="filter" role="search" aria-label="Filters" data-keep-focus data-testid="{$testId}-filter">
+        {control filter}
+    </div>
+
+    <p n:snippet="status" class="c-listing__status" role="status" data-testid="{$testId}-status">
+        <span n:class="$state !== Trilobit\Core\Presentation\Listing\Listing::ROWS ? 'u-visually-hidden'">{$status}</span>
+    </p>
+
+    <div n:snippet="results" data-keep-focus>
+        {embed block listing,
+            state: $state,
+            setAside: $setAside,
+            pagination: $pagination,
+            clearUrl: $clearUrl,
+            nothingYet: $nothingYet,
+            nothingMatches: $nothingMatches,
+            redrawn: true,
+            testId: $testId}
+            {block listingTable}
+                {embed block table, caption: $caption, testId: $testId . '-table'}
+                    {block tableHead}{include listingHead}{/block}
+
+                    {block tableBody}
+                        {foreach $rows as $row}
+                            {include listingRow, row: $row}
+                        {/foreach}
+                    {/block}
+                {/embed}
+            {/block}
+        {/embed}
+    </div>
+</div>
