@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Admin;
 
+use Nette\Security\User as SignedIn;
 use Trilobit\Core\Security\Landlords;
+use Trilobit\Core\Security\Memberships;
+use Trilobit\Core\Tenancy\Tenancy;
 
 /**
  * Where the administration begins for the person making this request.
@@ -30,8 +33,9 @@ use Trilobit\Core\Security\Landlords;
  * as what they may open.** For every role holding a right in a section of the
  * administration the two coincide, because such a right opens the
  * administration it is a section of (see src/Core/Security/permissions.neon).
- * They come apart for a role made only of pieces outside it - `redirection`
- * falls under nothing - which is sent to an overview it may not open. Anything
+ * They come apart for a role made only of pieces outside it -
+ * `app.redirection` is under the application and not under the
+ * administration - which is sent to an overview it may not open. Anything
  * that turns this answer into a link therefore still has to ask the second
  * question as well - the bar does, through
  * Trilobit\Core\Admin\Menu\ReachableMenu::wouldOpen(), and draws no way back
@@ -46,6 +50,22 @@ use Trilobit\Core\Security\Landlords;
  * according to who is signed in is exactly the kind of silent difference we
  * avoid").
  *
+ * **Somebody who is both begins in the business** - an account that
+ * administers the installation and holds a role in the business this request
+ * is in (decision O2 in .ai/plans/23-instalace-na-zelene-louce.md). The
+ * business is where the everyday work is and the installation is looked after
+ * now and then, and the installation is one entry away in the bar, which
+ * offers it to them because its pages admit them. Nothing about either section
+ * changes for such a person; this only chooses which of the two they are sent
+ * to first.
+ *
+ * Holding a role is read from the memberships of this business and only for
+ * somebody who administers the installation, because for everybody else the
+ * answer does not depend on it. It is the same reading
+ * Trilobit\Core\Security\Authenticator makes for the identity, and like that
+ * one it is not made where no business has been entered: there is none to
+ * belong to, and the installation is where such a person begins.
+ *
  * The destinations are absolute - a leading colon - because they are followed
  * from presenters in more than one module, and a relative one would be
  * resolved inside whichever module was asking.
@@ -55,11 +75,14 @@ final readonly class Landing
     /** Where somebody who administers one business begins: the overview of it. */
     public const string OVERVIEW = ':Core:Admin:Dashboard:default';
 
-    /** Where somebody who administers the installation begins: the signpost of their own section. */
+    /** Where somebody who administers only the installation begins: the signpost of their own section. */
     public const string INSTALLATION = ':Core:Installation:Signpost:default';
 
     public function __construct(
         private Landlords $landlords,
+        private Memberships $memberships,
+        private Tenancy $tenancy,
+        private SignedIn $signedIn,
     ) {}
 
     /**
@@ -69,6 +92,19 @@ final readonly class Landing
      */
     public function forThisPerson(): string
     {
-        return $this->landlords->isLandlord() ? self::INSTALLATION : self::OVERVIEW;
+        if (!$this->landlords->isLandlord()) {
+            return self::OVERVIEW;
+        }
+
+        return $this->holdsARoleInThisBusiness() ? self::OVERVIEW : self::INSTALLATION;
+    }
+
+    private function holdsARoleInThisBusiness(): bool
+    {
+        $person = $this->signedIn->getId();
+
+        return $this->tenancy->isEntered()
+            && is_int($person)
+            && $this->memberships->rolesHeldBy($person) !== [];
     }
 }

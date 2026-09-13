@@ -29,6 +29,7 @@ use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\PasswordCommand;
 use Trilobit\Core\Console\TenantCommand;
 use Trilobit\Core\Console\WarmupCommand;
+use Trilobit\Core\Content\Categories;
 use Trilobit\Core\Content\ContentTypes;
 use Trilobit\Core\Content\PathRegistry;
 use Trilobit\Core\Content\ReservedSegments;
@@ -52,6 +53,7 @@ use Trilobit\Core\Presentation\Admin\Landing;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
+use Trilobit\Core\Presentation\Form\FormElementRegistry;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Presentation\Link\Destinations;
@@ -324,6 +326,12 @@ final class CoreExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('pathRegistry'))
             ->setFactory(PathRegistry::class);
 
+        // Categories are rows of that register with other rows filed under
+        // them, so they are Core's too and shared by every module that files
+        // content into them (.ai/plans/11-cms-po-prvnim-proklikani.md, C4).
+        $builder->addDefinition($this->prefix('categories'))
+            ->setFactory(Categories::class);
+
         // Which kinds of content this build can draw, and the catch-all that
         // reads the register in front of them. Both are always registered:
         // with no module enabled the collection is empty, the catch-all finds
@@ -406,6 +414,11 @@ final class CoreExtension extends CompilerExtension
         // checked against.
         $builder->addDefinition($this->prefix('contentGroups'))
             ->setFactory(ContentGroupRegistry::class);
+
+        // And the controls of a form, which are native elements too and are
+        // checked the same way, by a register and gates of their own.
+        $builder->addDefinition($this->prefix('formElements'))
+            ->setFactory(FormElementRegistry::class);
 
         // The pages the style guide is split into. In every build, like the
         // two registers it is made of: it is a description, and a description

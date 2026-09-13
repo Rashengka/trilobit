@@ -24,6 +24,8 @@ final readonly class StyleguidePage
      *     this page carries; each has to be shown on it, and on no other page
      * @param list<string> $contentGroups the registered groups of native
      *     elements it carries, on the same terms
+     * @param list<string> $formElements the registered groups of form controls
+     *     it carries, on the same terms
      * @param ?string $width the content width this page insists on, or null
      *     where it is drawn at whatever the reader chose - see
      *     Trilobit\Core\Presentation\Front\FrontPresenter::overruleContentWidth()
@@ -36,6 +38,7 @@ final readonly class StyleguidePage
         public array $components = [],
         public array $contentGroups = [],
         public ?string $width = null,
+        public array $formElements = [],
     ) {}
 
     /** Where it answers, under the style guide's own segment: `components/card`. */

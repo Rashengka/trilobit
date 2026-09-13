@@ -109,13 +109,13 @@ final class NoPermissionQuestionInTheInstallationSectionTest extends TestCase
     {
         self::assertSame(
             [
-                'AskingWhatSomebodyMayDoPresenter.php:28: content, view',
+                'AskingWhatSomebodyMayDoPresenter.php:28: app.administration.content, view',
                 // The declaration above the other fixture, and it is right
                 // that this reports it: `#[Needs(Resource::…, Privilege::…)]`
                 // *is* a permission question, written above a page instead of
                 // inside one. The rule reads the enums and does not care what
                 // surrounds them, which is what makes it worth having.
-                'GatedTheOtherWayPresenter.php:20: content, view',
+                'GatedTheOtherWayPresenter.php:20: app.administration.content, view',
             ],
             InstallationSection::permissionQuestionsIn($this->fixtures()),
         );

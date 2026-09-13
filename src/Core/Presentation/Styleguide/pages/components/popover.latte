@@ -1,0 +1,36 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A panel under its button, and one over it. Each is drawn closed; the button
+ * opens it.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/popover.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-popover']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {include popover,
+                    id: 'sg-popover-pygidium',
+                    label: 'What is a pygidium?',
+                    title: 'Pygidium',
+                    text: 'The tail shield of a trilobite, made of segments fused together.',
+                    testId: 'sample-popover'}
+            {/specimen}
+
+            {specimen 'above'}
+                {include popover,
+                    id: 'sg-popover-cephalon',
+                    label: 'What is a cephalon?',
+                    title: 'Cephalon',
+                    text: 'The head shield, which carries the eyes.',
+                    side: 'above',
+                    testId: 'sample-popover-above'}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

@@ -1,0 +1,50 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A box to tick and a set of buttons of which one is on, each written inside
+ * its label - the way nette/forms writes them - so that the words are part of
+ * what can be clicked.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/field.latte'}
+
+{block sgPage}
+    {embed block sgFormSection, group: $formElements['checks']}
+        {block sgFormSectionBody}
+            {embed block sgSpecimen, variant: 'checkboxes'}
+                {block sgSpecimenStage}
+                    {embed block field}
+                        {block fieldLabel}<span id="sg-forms-parts-label">Parts that survive</span>{/block}
+
+                        {block fieldControl}
+                            <div class="l-stack" role="group" aria-labelledby="sg-forms-parts-label">
+                                <label><input type="checkbox" name="parts" value="head" checked data-testid="forms-checkbox"> The head shield</label>
+                                <label><input type="checkbox" name="parts" value="thorax" checked> The jointed middle</label>
+                                <label><input type="checkbox" name="parts" value="tail"> The tail shield</label>
+                            </div>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'radio buttons'}
+                {block sgSpecimenStage}
+                    {embed block field}
+                        {block fieldLabel}<span id="sg-forms-state-label">State of the specimen</span>{/block}
+
+                        {block fieldControl}
+                            <div class="l-cluster" role="radiogroup" aria-labelledby="sg-forms-state-label">
+                                <label><input type="radio" name="state" value="complete" data-testid="forms-radio"> Complete</label>
+                                <label><input type="radio" name="state" value="fragment" checked> A fragment</label>
+                                <label><input type="radio" name="state" value="cast"> A cast</label>
+                            </div>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

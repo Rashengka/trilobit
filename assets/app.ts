@@ -4,6 +4,20 @@
  */
 import naja from 'naja';
 
+import { placeWhereTheBrowserCannotAnchor } from './anchor';
+import { turnTheCarousels } from './carousel';
+import { keepJumpsClearOfTheChrome, markTheChromeScrolledPast } from './chrome';
+import { comboboxesInSnippets, enhanceWithin } from './combobox';
+import { answerTheDialogButtons, dialogsInSnippets } from './dialog';
+import { openWhatTheAddressNames } from './disclosure';
+import { keepTheDropdownsToTheKeyboard } from './dropdown';
+import { unfoldTheNavigation } from './nav';
+import { dismissTheNotices } from './notice';
+import { followTheChrome, scrollspiesInSnippets, spyWithin } from './scrollspy';
+import { layTabsWithin, switchTheTabs, tabsInSnippets } from './tabs';
+import { showTheTooltips } from './tooltip';
+import './segment-suggestion';
+import { announceTheToasts } from './toast';
 import './app.css';
 
 /**
@@ -115,4 +129,55 @@ function remember(preference: string, value: string): Promise<void> {
     return pending;
 }
 
+keepJumpsClearOfTheChrome();
+markTheChromeScrolledPast();
+unfoldTheNavigation();
+openWhatTheAddressNames();
+
+// The order of these three is the whole of getting comboboxes through Naja,
+// and tests/e2e/combobox.spec.ts measures it: the extension has to be there
+// before Naja starts, and the page's own comboboxes may be drawn only once it
+// has. Naja keeps the markup of every snippet as it initialises, and a
+// combobox drawn before that would come back from history.back() as a control
+// with nothing behind it. See assets/combobox.ts.
+naja.registerExtension(comboboxesInSnippets);
+// Keeps a dialog Naja redraws while it is open open, and closes one that
+// history.back() brings back; before Naja starts, like the one above, so that
+// no redraw can happen without it. See assets/dialog.ts.
+naja.registerExtension(dialogsInSnippets);
+naja.registerExtension(tabsInSnippets);
+naja.registerExtension(scrollspiesInSnippets);
 naja.initialize({ history: true });
+enhanceWithin(document);
+
+// Tabs and contents follow the comboboxes' order for the same reason: what
+// Naja keeps of a snippet has to be the server's markup, without a tab list
+// laid over it. See assets/tabs.ts and assets/scrollspy.ts. The contents
+// read the chrome measured above, so they come after it.
+switchTheTabs();
+layTabsWithin(document);
+followTheChrome();
+spyWithin(document);
+
+// After Naja has started, like the comboboxes, and with no extension of its
+// own: it listens on the document and prepares no notice, so there is nothing
+// a snippet could bring in unprepared or take away with something left on it.
+// See assets/notice.ts.
+dismissTheNotices();
+
+// The same kind of listener, for the buttons that open and close a dialog in
+// a browser that does not answer them itself. See assets/dialog.ts.
+answerTheDialogButtons();
+
+// The same for the carousels and the toasts: each listens on the document or
+// watches it, and prepares nothing a snippet could bring in or take away. See
+// assets/carousel.ts and assets/toast.ts.
+turnTheCarousels();
+announceTheToasts();
+
+// The same holds for the three popovers: each listens on the document and
+// prepares nothing. See assets/dropdown.ts, assets/tooltip.ts and
+// assets/anchor.ts.
+keepTheDropdownsToTheKeyboard();
+showTheTooltips();
+placeWhereTheBrowserCannotAnchor();

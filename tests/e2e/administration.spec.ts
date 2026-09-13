@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 import { openAccountMenu } from './account-menu';
+import { addressFor } from './accounts';
 
 /**
  * Signing in, in a real browser.
@@ -30,7 +31,6 @@ import { openAccountMenu } from './account-menu';
 /** Trilobit\Core\Console\AccountCommand::PASSWORD_LINE. */
 const passwordLine = /^ {2}(\S+)$/m;
 
-const email = 'e2e@example.com';
 const displayName = 'Alice Ammonite';
 
 /**
@@ -43,7 +43,6 @@ const displayName = 'Alice Ammonite';
  * somewhere they may be, and that nothing they are shown leads anywhere they
  * are not.
  */
-const installationEmail = 'e2e-installation@example.com';
 const installationName = 'Cora Crinoid';
 
 /**
@@ -104,6 +103,9 @@ function trilobit(...arguments_: string[]): string {
  */
 test.describe.configure({ mode: 'serial' });
 
+/** This copy's two addresses; see tests/e2e/accounts.ts. */
+let email = '';
+let installationEmail = '';
 let generated = '';
 let generatedForTheInstallation = '';
 
@@ -143,6 +145,9 @@ async function menuAddresses(page: import('@playwright/test').Page): Promise<str
 }
 
 test.beforeAll(() => {
+    email = addressFor('e2e@example.com');
+    installationEmail = addressFor('e2e-installation@example.com');
+
     trilobit('migrations:migrate', '--no-interaction');
 
     generated = passwordOf(trilobit('app:account', email, '--tenant', host, '--name', displayName));

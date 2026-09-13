@@ -1,5 +1,7 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
+{import '../../components/tabs.latte'}
+
 {*
  * The style guide's own furniture: the frames the specimens are drawn in, on
  * whichever page of the guide they are. Every page imports this file rather
@@ -8,10 +10,11 @@
  *
  * These are not components (the .sg-* classes in assets/base.css): they frame
  * the specimens and are used nowhere else. They are what makes a page
- * measurable - every section carries data-styleguide-component or
- * data-styleguide-content and every specimen carries data-styleguide-variant,
- * which is what tests/Template/StyleguideShowsEveryComponentTest and its twin
- * read off every page the router sends to the guide.
+ * measurable - every section carries data-styleguide-component,
+ * data-styleguide-content, data-styleguide-form or data-styleguide-layout and
+ * every specimen carries data-styleguide-variant, which is what
+ * tests/Template/StyleguideShowsEveryComponentTest and its three twins read off
+ * every page the router sends to the guide.
  *}
 
 {*
@@ -29,6 +32,31 @@
 {define sgContentSection, Trilobit\Core\Presentation\Content\ContentGroup $group}
     <section class="sg-section l-stack" data-styleguide-content="{$group->name}">
         {block sgContentSectionBody}{/block}
+    </section>
+{/define}
+
+{* One registered group of form controls, marked for its own gate. *}
+{define sgFormSection, Trilobit\Core\Presentation\Form\FormElementGroup $group}
+    <section class="sg-section l-stack" data-styleguide-form="{$group->name}">
+        {block sgFormSectionBody}{/block}
+    </section>
+{/define}
+
+{*
+ * One layout primitive of assets/base.css, marked for its own gate.
+ *
+ * Unlike the sections above it draws its own heading: a page of the Layout
+ * group may be about more than one primitive, so the page's title is not the
+ * primitive's name. The heading is the class, because the class is all a
+ * primitive has to be asked for by.
+ *}
+{define sgLayoutSection, string $primitive, string $summary}
+    <section class="sg-section l-stack" data-styleguide-layout="{$primitive}" id="{$primitive}">
+        <h2><code>.{$primitive}</code></h2>
+
+        <p class="l-measure">{$summary}</p>
+
+        {block sgLayoutSectionBody}{/block}
     </section>
 {/define}
 
@@ -68,5 +96,68 @@
         <div n:class="'sg-specimen__stage', $narrow ? 'sg-specimen__stage--narrow'">{block sgSpecimenStage}{/block}</div>
 
         <p class="sg-specimen__label">{$variant}</p>
+    </div>
+{/define}
+
+{*
+ * A specimen shown the way Bootstrap's documentation shows one: drawn, and
+ * under it the code it is made of, ready to copy.
+ *
+ * Nobody includes this by hand. {specimen 'variant'} ... {/specimen} draws what
+ * it wraps and hands this block the three things it shows - the specimen
+ * itself, the HTML it came out as and the Latte it was written in - out of the
+ * one render and the one file, so that there is no second copy of anything to
+ * fall behind. See Trilobit\Core\Presentation\Styleguide\SpecimenNode, and
+ * tests/Template/StyleguideShowsTheSourceOfEverySpecimenTest for the gate that
+ * holds both to where they came from.
+ *
+ * The two kinds of source are c-tabs: two views of one thing, one at a time,
+ * which is the pattern tabs are for. Without the script both are drawn, one
+ * under the other, each under its name; with it they are a tab list named
+ * after the specimen, the HTML shown first. It used to be two disclosures
+ * sharing a name, which switched with no script but read as two things to
+ * open rather than one thing to look at two ways - and every page of the
+ * Components group is now a use of c-tabs, not only its own.
+ *}
+{define sgExample, string $variant, Latte\Runtime\Html $html, string $markup, string $latte, bool $narrow = false}
+    <div class="sg-specimen" data-styleguide-variant="{$variant}">
+        <div n:class="'sg-specimen__stage', $narrow ? 'sg-specimen__stage--narrow'">{$html}</div>
+
+        <p class="sg-specimen__label">{$variant}</p>
+
+        <div class="sg-source">
+            {embed block tabs, label: "The code of {$variant}", panels: ['html' => 'HTML', 'latte' => 'Latte']}
+                {block html}
+                    {include sgCode, code: $markup, language: 'markup', label: 'HTML'}
+                {/block}
+
+                {block latte}
+                    {include sgCode, code: $latte, language: 'latte', label: 'Latte'}
+                {/block}
+            {/embed}
+        </div>
+    </div>
+{/define}
+
+{*
+ * A block of code with a button that copies it.
+ *
+ * The button is drawn hidden and shown by assets/styleguide.ts only where the
+ * browser can write to the clipboard, so that nobody is offered a button that
+ * does nothing. What it did is said in the status beside it, which a screen
+ * reader announces without the focus having to move.
+ *
+ * The class on the code is the highlighter's, not ours: it is how the
+ * highlighter is told which language it is looking at.
+ *}
+{define sgCode, string $code, string $language, string $label}
+    <div class="sg-code" data-sg-code>
+        <div class="sg-code__bar">
+            <p class="sg-code__status" role="status" data-sg-copy-status></p>
+
+            <button type="button" class="sg-code__copy" data-sg-copy hidden>Copy<span class="u-visually-hidden"> {$label}</span></button>
+        </div>
+
+        <pre><code class="language-{$language}">{$code}</code></pre>
     </div>
 {/define}

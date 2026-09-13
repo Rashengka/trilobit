@@ -1,6 +1,6 @@
 {**
  * c-nav - the primary navigation: the homepage plus one entry for every module
- * this build is made of.
+ * this build is made of, and whatever entries an entry holds under it.
  *
  * The markup is a plain list in a fixed order, and it is the same list whatever
  * the theme is. Whether it reads as a row under the banner or as a column beside
@@ -8,20 +8,65 @@
  * drops it into, both of them tokens - see assets/themes/ledger.css, which moves
  * it without this file knowing.
  *
+ * **An entry with entries under it is two controls, not one**
+ * (.ai/plans/10-menu-submenu-a-rozcestniky.md, M1): the link to its own page,
+ * and a button beside it that opens what is under it. A link that also opened
+ * would be one surface doing two things, and on a touch screen, where nothing
+ * hovers, the link would be the one that lost. The button says whether it is
+ * open (aria-expanded, which is the only place the state is kept) and which list
+ * it opens (aria-controls); the list follows it directly, which is what the
+ * stylesheet hides it by.
+ *
+ * Every level of the tree is drawn, however deep it goes. How much of it is
+ * shown, and whether it unfolds in place or opens as a block over the page, is
+ * the theme's - see the entries under an entry in assets/base.css, and
+ * assets/nav.ts for how they open. The list a button opens is named after the
+ * testid of its entry, which every entry has and which is unique on a page the
+ * way a testid has to be.
+ *
+ * The block includes itself to draw what is under an entry, so it is one block
+ * and one component rather than a second one for the entries: $depth is its own
+ * bookkeeping, and a caller leaves it out.
+ *
  * @param iterable<Trilobit\Core\Presentation\Front\Navigation\NavigationItem> $items
+ * @param int $depth 0 for the navigation itself; the level of the entries being
+ *     drawn when the block draws what is under an entry
  *}
 
-{define nav, iterable $items, string $label, ?string $testId = null}
-    <nav class="c-nav" aria-label="{$label}" data-testid="{$testId}">
-        <ul class="c-nav__list">
-            <li n:foreach="$items as $item">
-                <a
-                    class="c-nav__link"
-                    href="{$item->href}"
-                    n:attr="aria-current: $item->current ? 'page' : null"
-                    data-testid="{$item->testId}"
-                >{$item->label}</a>
-            </li>
-        </ul>
-    </nav>
+{import 'icon.latte'}
+
+{define nav, iterable $items, string $label, ?string $testId = null, int $depth = 0}
+    {if $depth === 0}
+        <nav class="c-nav" aria-label="{$label}" data-testid="{$testId}">
+            <ul class="c-nav__list">
+                {include nav, items: $items, label: $label, depth: 1}
+            </ul>
+        </nav>
+    {else}
+        <li n:foreach="$items as $item" class="c-nav__item">
+            <a
+                class="c-nav__link"
+                href="{$item->href}"
+                n:attr="aria-current: $item->current ? 'page' : null"
+                data-testid="{$item->testId}"
+            >{$item->label}</a>
+
+            {if $item->children !== []}
+                <button
+                    type="button"
+                    class="c-nav__toggle"
+                    aria-expanded="false"
+                    aria-controls="{$item->testId}-children"
+                    data-testid="{$item->testId}-toggle"
+                >
+                    <span class="u-visually-hidden">Entries under {$item->label}</span>
+                    {include icon, name: 'chevron-down'}
+                </button>
+
+                <ul class="c-nav__sub" id="{$item->testId}-children">
+                    {include nav, items: $item->children, label: $label, depth: $depth + 1}
+                </ul>
+            {/if}
+        </li>
+    {/if}
 {/define}

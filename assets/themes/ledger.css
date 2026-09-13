@@ -77,12 +77,30 @@
     --color-highlight: light-dark(oklch(0.9 0.11 90), oklch(0.42 0.09 85));
     --color-highlight-ink: light-dark(oklch(0.26 0.04 60), oklch(0.95 0.015 85));
 
+    /* Behind an open dialog: the brown ink of the page, thinned. */
+    --color-backdrop: light-dark(oklch(0.26 0.024 60 / 0.4), oklch(0.08 0.01 75 / 0.7));
+
+    /* The code the style guide highlights, which sits on --color-canvas-sunken:
+       each pair holds 4.5:1 against it in both modes, measured by
+       tests/e2e/styleguide-code.spec.ts. Inks, as a printer would set a
+       listing, rather than bright colours. */
+    --color-code-comment: light-dark(oklch(0.47 0.02 70), oklch(0.74 0.02 80));
+    --color-code-keyword: light-dark(oklch(0.45 0.13 25), oklch(0.78 0.11 30));
+    --color-code-name: light-dark(oklch(0.43 0.09 250), oklch(0.8 0.08 240));
+    --color-code-string: light-dark(oklch(0.43 0.09 145), oklch(0.8 0.1 140));
+    --color-code-literal: light-dark(oklch(0.45 0.11 310), oklch(0.8 0.09 310));
+
     --color-banner: light-dark(oklch(0.99 0.008 85), oklch(0.24 0.013 75));
     --color-banner-ink: var(--color-ink);
     --color-nav: light-dark(oklch(0.3 0.026 60), oklch(0.16 0.012 75));
     --color-nav-ink: light-dark(oklch(0.85 0.018 75), oklch(0.78 0.016 85));
     --color-nav-ink-active: light-dark(oklch(0.99 0.008 85), oklch(0.97 0.01 85));
     --color-nav-marker: light-dark(oklch(0.72 0.14 55), oklch(0.72 0.13 40));
+
+    /* A step lighter than the dark column, so the light ink of the entry under
+       the pointer stays on a dark ground. The page's hover is a light wash,
+       and light ink on it could not be read. */
+    --color-nav-hover: light-dark(oklch(0.38 0.03 60), oklch(0.24 0.014 75));
 
     /* ---- Spacing ------------------------------------------------------ */
 
@@ -111,11 +129,26 @@
        smaller at everything else. */
     --icon-size: 1em;
 
+    /* A thinner bar and a smaller spinner, the way this theme is smaller at
+       everything else. */
+    --progress-size: 0.375rem;
+    --spinner-size: 1.75rem;
+
     /* Rules instead of shadows: the surface is separated by a line, the way a
        printed ledger separates one column from the next. */
     --shadow-raised: 0 0 0 0 transparent;
 
     --motion-fast: 90ms ease;
+
+    /* Quicker than atrium, the way this theme is quicker at everything else. */
+    --motion-layer: 140ms ease-out;
+
+    /* Slower than atrium's: a ledger waits without fuss. */
+    --motion-loop: 1.6s;
+
+    /* What a disclosure takes to open or close: brisk, the way this theme
+       is quick at everything else. */
+    --motion-unfold: 160ms ease;
 
     /* ---- Layout -------------------------------------------------------- */
 
@@ -149,6 +182,63 @@
 
     --layout-card-min: 15rem;
     --layout-card-media-ratio: 3 / 2;
+
+    /* About ten choices at this theme's smaller size, before the list scrolls. */
+    --layout-combobox-list-size: 18rem;
+
+    /* Narrower than atrium, like the content column. */
+    --layout-modal-width: 32rem;
+    --layout-offcanvas-size: 20rem;
+
+    /*
+     * Ledger holds both bands in view while the page scrolls: the banner over
+     * the content column, and the navigation as the column beside it, each on
+     * its own switch. A ledger is read a long way down and navigated from the
+     * side, and both are worth their room there - see atrium.css for what the
+     * switches mean.
+     */
+    --layout-banner-position: sticky;
+    --layout-nav-position: sticky;
+
+    /* The navigation is beside the banner, not under it, so it is held at the
+       top of the window. */
+    --layout-nav-inset: 0px;
+
+    /*
+     * Ledger's bands stay the size they are while the page scrolls: a column
+     * of accounts is not made smaller for being read further down. These are
+     * the sizes the rules drew with before they were tokens, and ledger never
+     * redeclares them - see atrium.css for the theme that does.
+     */
+    --layout-banner-padding-block: var(--space-md);
+    --layout-banner-brand-size: var(--text-xl);
+    --layout-nav-entry-scale: 1;
+    --layout-nav-entry-padding-block: var(--space-xs);
+    --layout-nav-entry-padding-inline: var(--space-sm);
+
+    /* Nothing changes size, and a switch into this theme is not animated either. */
+    --layout-chrome-motion: 0s;
+
+    --layout-z-chrome: 1;
+    --layout-z-menu: 2;
+    --layout-z-toast: 3;
+
+    /*
+     * Ledger unfolds the entries under an entry in place, inside the entry,
+     * each level set in from the one above it and as deep as the tree goes -
+     * the way a ledger's accounts sit under the account they belong to. Nothing
+     * is laid over the page, so the list has no surface or rule of its own, and
+     * a navigation longer than the window scrolls inside its column.
+     */
+    --layout-nav-overflow: auto;
+    --layout-nav-sub-position: static;
+    --layout-nav-sub-column: 100%;
+    --layout-nav-sub-padding: 0 0 0 0.875rem;
+    --layout-nav-sub-indent: 0.875rem;
+    --layout-nav-inner-toggle: inline-flex;
+    --layout-nav-inner-folded: none;
+    --color-nav-panel: transparent;
+    --color-nav-panel-line: transparent;
 }
 
 /*
@@ -156,9 +246,15 @@
  * live in, so the shell falls back to the stack Atrium uses. A breakpoint is a
  * measurement, which is why it belongs in a theme file and not in base.css:
  * base.css has no dimension of its own to compare against.
+ *
+ * Nothing is held there either. On a window that small a banner and a row of
+ * links held for good would take the room the content scrolls in, which is
+ * the room holding them was meant to save.
  */
 @media (width < 52rem) {
     [data-theme='ledger'] {
+        --layout-banner-position: static;
+        --layout-nav-position: static;
         --layout-shell-areas: 'banner' 'nav' 'main' 'footer';
         --layout-shell-columns: minmax(0, 1fr);
         --layout-shell-rows: auto auto 1fr auto;

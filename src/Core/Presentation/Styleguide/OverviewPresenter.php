@@ -11,6 +11,8 @@ use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
+use Trilobit\Core\Presentation\Form\FormElementGroup;
+use Trilobit\Core\Presentation\Form\FormElementRegistry;
 use Trilobit\Core\Presentation\Front\FrontPresenter;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
@@ -57,6 +59,46 @@ final class OverviewPresenter extends FrontPresenter
         '--color-accent' => 'the action a page is about',
         '--color-danger' => 'something the page had to refuse',
         '--color-nav' => 'behind the navigation',
+        '--color-backdrop' => 'laid over the page behind an open dialog, thin enough to show it through',
+    ];
+
+    /**
+     * The tokens that decide what stays in view while the page scrolls, and
+     * what each decides.
+     *
+     * The layers among them are checked against the theme files rather than
+     * trusted: tests/Template/StyleguideFoundationsTest fails when a theme
+     * declares a --layout-z-* token the guide does not name.
+     *
+     * @var array<string, string>
+     */
+    private const array CHROME_TOKENS = [
+        '--layout-banner-position' => 'whether the banner stays in view while the page scrolls (sticky) '
+            . 'or scrolls away with it (static)',
+        '--layout-nav-position' => 'the same switch for the navigation, set apart from the banner',
+        '--layout-nav-inset' => 'how far down the window a held navigation stays: at the top beside the banner, '
+            . 'or where the held banner ends when it is under it',
+        '--layout-banner-reach' => 'how far down the window the held banner reaches, which a navigation held '
+            . 'under it is held at; measured by the page, not declared by a theme',
+        '--layout-banner-padding-block' => 'how much room there is above and below what is in the banner',
+        '--layout-banner-brand-size' => 'the size the name of the site is set at in the banner',
+        '--layout-nav-entry-scale' => 'the size of the navigation\'s own entries, as a share of the size they '
+            . 'would otherwise have',
+        '--layout-nav-entry-padding-block' => 'the room above and below each of the navigation\'s own entries',
+        '--layout-nav-entry-padding-inline' => 'the room either side of each of the navigation\'s own entries',
+        '--layout-chrome-motion' => 'how long the bands take to change size; nothing is animated for '
+            . 'somebody who asked for reduced motion',
+        '--layout-z-chrome' => 'the layer whatever stays in view is drawn in, above the content that '
+            . 'scrolls under it',
+        '--layout-z-menu' => 'the layer the entries a navigation opens as a block over the page are drawn '
+            . 'in, above what stays in view - and the list a combobox opens',
+        '--layout-z-toast' => 'the layer the toasts held in a corner of the window are drawn in, above '
+            . 'everything else named here',
+        '--layout-nav-overflow' => 'whether the band the navigation is held in scrolls a menu longer than the '
+            . 'window (auto) or lets a block it opens hang out of it (visible)',
+        '--layout-chrome-offset' => 'how much of the top of the window the held bands cover, and half a pixel '
+            . 'for the browser rounding a jump to a whole one, which a jump to a heading keeps clear; measured '
+            . 'by the page, not declared by a theme',
     ];
 
     /**
@@ -80,9 +122,51 @@ final class OverviewPresenter extends FrontPresenter
     public function __construct(
         private readonly ComponentRegistry $components,
         private readonly ContentGroupRegistry $contentGroups,
+        private readonly FormElementRegistry $formElements,
         private readonly StyleguidePages $pages,
     ) {
         parent::__construct();
+    }
+
+    /**
+     * The snippet of a page of the guide, drawn again: the specimen of
+     * c-combobox whose select Naja replaces, the one of c-modal Naja replaces
+     * while it is open, and the ones of c-tabs and c-scrollspy whose markup
+     * Naja replaces under the script laid over it. That is how the guide
+     * shows - and tests/e2e/combobox.spec.ts, layers.spec.ts, tabs.spec.ts and
+     * scrollspy.spec.ts measure - a component surviving Naja. Every page that
+     * has such a specimen calls its snippet redrawnSpecimen, and a page draws
+     * only its own snippets, so the one signal serves them all. Asked for by a
+     * button in the specimen, through Naja; a request that is not Naja's draws
+     * the whole page as usual.
+     */
+    public function handleRedrawSpecimen(): void
+    {
+        $this->redrawControl('redrawnSpecimen');
+    }
+
+    /**
+     * Something said as a flash message, the way a page says what came of a
+     * form it was sent: asked for by the specimen of c-toast, once as an
+     * ordinary link and once through Naja, which is how the guide shows - and
+     * tests/e2e/toast.spec.ts measures - the message arriving as a toast
+     * either way.
+     *
+     * An ordinary request is answered the way a form is, with a redirect, and
+     * the message arrives with the page the redirect leads to. An answer to
+     * Naja draws only the toasts: the base presenter redraws them whenever
+     * there is something in them (FrontPresenter::afterRender()).
+     */
+    public function handleSayItInAToast(): void
+    {
+        if ($this->isAjax()) {
+            $this->flashMessage('The specimen was catalogued, and only the toasts were drawn again.');
+
+            return;
+        }
+
+        $this->flashMessage('The specimen was catalogued, and the page was drawn again.');
+        $this->redirect('this');
     }
 
     public function renderDefault(): void
@@ -162,14 +246,44 @@ final class OverviewPresenter extends FrontPresenter
     {
         $template->guideUrl = $this->link('default');
         $template->guide = $this->guide($current);
+        $template->groupPages = $this->othersInItsGroup($template->guide, $current);
         $template->components = $this->byName($this->components);
         $template->contentGroups = $this->groupsByName($this->contentGroups);
+        $template->formElements = $this->formElementsByName($this->formElements);
         $template->colourTokens = self::COLOUR_TOKENS;
+        $template->chromeTokens = self::CHROME_TOKENS;
         $template->statements = self::SAMPLE_STATEMENTS;
         $template->tableColumns = $this->sampleTableColumns();
         $template->tableRows = $this->sampleTableRows();
         $template->sampleNavigation = $this->sampleNavigation();
+        $template->sampleNestedNavigation = $this->sampleNestedNavigation();
         $template->sampleSignposts = $this->sampleSignposts();
+    }
+
+    /**
+     * Invented entries with entries under an entry: the case a submenu breaks,
+     * which is an entry leading somewhere of its own that also holds a level
+     * and a level under that. One branch goes a level deeper still, which is
+     * where the themes part - one draws it, the other stops at two.
+     *
+     * Every entry leads somewhere of its own, and somewhere a click can be seen
+     * to have reached: a bare "#" would be a parent with no click to lose.
+     *
+     * @return list<NavigationItem>
+     */
+    private function sampleNestedNavigation(): array
+    {
+        return [
+            new NavigationItem('Overview', '#overview', true, 'sample-subnav-overview'),
+            $this->sampleEntry('Collections', 'collections', $this->sampleEntry('Fossils', 'fossils', $this->sampleEntry('Trilobites', 'trilobites', $this->sampleEntry('Cambrian', 'cambrian'), $this->sampleEntry('Ordovician', 'ordovician')), $this->sampleEntry('Ammonites', 'ammonites')), $this->sampleEntry('Minerals', 'minerals', $this->sampleEntry('Quartz', 'quartz'), $this->sampleEntry('Feldspar', 'feldspar')), $this->sampleEntry('Field notes', 'field-notes')),
+            $this->sampleEntry('Loans', 'loans'),
+        ];
+    }
+
+    /** One invented entry of the nested specimen, leading to a place on this page named after it. */
+    private function sampleEntry(string $label, string $slug, NavigationItem ...$children): NavigationItem
+    {
+        return new NavigationItem($label, '#' . $slug, false, 'sample-subnav-' . $slug, array_values($children));
     }
 
     /**
@@ -205,6 +319,34 @@ final class OverviewPresenter extends FrontPresenter
         }
 
         return $guide;
+    }
+
+    /**
+     * The pages of the group the current page is listed under, other than the
+     * current page, as the guide already drew them - so that a page leading
+     * into its group lists exactly what the menu beside it offers.
+     *
+     * @param list<StyleguideMenuGroup> $guide
+     *
+     * @return list<SignpostLink>
+     */
+    private function othersInItsGroup(array $guide, ?StyleguidePage $current): array
+    {
+        if (!$current instanceof StyleguidePage) {
+            return [];
+        }
+
+        $here = $this->link('page', ['group' => $current->group, 'page' => $current->slug]);
+        foreach ($guide as $group) {
+            if ($group->name === $current->group) {
+                return array_values(array_filter(
+                    $group->signposts,
+                    static fn(SignpostLink $page): bool => $page->href !== $here,
+                ));
+            }
+        }
+
+        return [];
     }
 
     /**
@@ -268,6 +410,21 @@ final class OverviewPresenter extends FrontPresenter
      * @return array<string, ContentGroup>
      */
     private function groupsByName(ContentGroupRegistry $registry): array
+    {
+        $groups = [];
+        foreach ($registry->all() as $group) {
+            $groups[$group->name] = $group;
+        }
+
+        return $groups;
+    }
+
+    /**
+     * The groups of form controls, keyed the same way and for the same reason.
+     *
+     * @return array<string, FormElementGroup>
+     */
+    private function formElementsByName(FormElementRegistry $registry): array
     {
         $groups = [];
         foreach ($registry->all() as $group) {

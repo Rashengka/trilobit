@@ -1,0 +1,63 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Toasts drawn where they stand, as information, as a refusal and several at
+ * once, and the real thing: a flash message said by the server, which arrives
+ * in the corner of the window the way it would after any form - once after a
+ * redirect and once in answer to Naja (tests/e2e/toast.spec.ts).
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/toast.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-toast']}
+        {block sgSectionBody}
+            {specimen 'info'}
+                {include toast,
+                    messages: [(object) ['message' => 'The specimen was catalogued.', 'type' => 'info']],
+                    testId: 'sample-toast-info',
+                }
+            {/specimen}
+
+            {specimen 'danger'}
+                {include toast,
+                    messages: [(object) ['message' => 'The drawer is full, so nothing was moved.', 'type' => 'danger']],
+                    testId: 'sample-toast-danger',
+                }
+            {/specimen}
+
+            {specimen 'several at once'}
+                {include toast,
+                    messages: [
+                        (object) ['message' => 'Three specimens were labelled.', 'type' => 'info'],
+                        (object) ['message' => 'One label could not be printed.', 'type' => 'danger'],
+                    ],
+                    testId: 'sample-toast-several',
+                }
+            {/specimen}
+
+            {specimen 'from a flash message'}
+                <div class="l-stack">
+                    <p>Both ask the server to say something as a flash message, and it arrives in the corner of the window.</p>
+
+                    <div class="l-cluster">
+                        <a
+                            n:href="sayItInAToast!"
+                            class="c-button c-button--quiet"
+                            data-testid="sg-toast-redirect"
+                        >Say it after a redirect</a>
+
+                        <a
+                            n:href="sayItInAToast!"
+                            class="c-button c-button--quiet ajax"
+                            data-testid="sg-toast-naja"
+                        >Say it through Naja</a>
+                    </div>
+                </div>
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

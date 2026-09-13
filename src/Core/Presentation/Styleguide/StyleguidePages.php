@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Styleguide;
 
-use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
+use Trilobit\Core\Presentation\Form\FormElementGroup;
+use Trilobit\Core\Presentation\Form\FormElementRegistry;
 
 /**
  * Every page of the style guide, in the groups the menu lists them under.
@@ -29,9 +30,11 @@ use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
  * registered, and the only thing left to write is the file that shows it -
  * which the gates insist on.
  *
- * Layout and Forms are not here yet, on purpose: a group with nothing to show
- * would be a heading in the menu leading nowhere. Layout waits for
- * .ai/plans/09-chrome-a-sirka-obsahu.md, Forms for the plan that brings them.
+ * Layout mirrors no register and is written out, like Foundations. Its
+ * primitives are read out of assets/base.css instead:
+ * tests/Template/StyleguideShowsEveryLayoutPrimitiveTest asks every page of the
+ * guide for a specimen of every l-* class that file declares, so a primitive
+ * added there has to be shown on one of these pages before the build passes.
  *
  * tests/Template/StyleguidePagesTest holds this list and the files under
  * directory() together in both directions.
@@ -43,6 +46,7 @@ final class StyleguidePages
 
     public function __construct(
         private readonly ContentGroupRegistry $contentGroups,
+        private readonly FormElementRegistry $formElements,
         private readonly ComponentRegistry $components,
     ) {}
 
@@ -73,6 +77,13 @@ final class StyleguidePages
                         'Content width',
                         'How wide the content runs: the reader chooses, and a page may insist where it has to.',
                     ),
+                    new StyleguidePage(
+                        'foundations',
+                        'chrome',
+                        'What stays in view',
+                        'The banner and the navigation a theme holds in view while the page scrolls, and the '
+                            . 'layer they are drawn in.',
+                    ),
                     // The one page of the guide drawn at a width nobody chose,
                     // and the reason the width is a property of a page rather
                     // than of the class answering it: every page here is the
@@ -83,6 +94,45 @@ final class StyleguidePages
                         'A page that insists',
                         'Drawn at the full width of its region, whichever width is chosen for everything else.',
                         width: 'full',
+                    ),
+                ],
+            ),
+            new StyleguideGroup(
+                'layout',
+                'Layout',
+                'The primitives a page is laid out with: the shell its regions sit in, the column its content '
+                    . 'runs in, and the ways of putting things under and beside each other.',
+                [
+                    new StyleguidePage(
+                        'layout',
+                        'shell',
+                        'Shell',
+                        'The four regions every page is drawn in, and the theme deciding where each of them goes.',
+                    ),
+                    new StyleguidePage(
+                        'layout',
+                        'containers',
+                        'Containers',
+                        'The column the content runs in, the gutter inside its edges, and the narrower measure '
+                            . 'text is read at.',
+                    ),
+                    new StyleguidePage(
+                        'layout',
+                        'grid',
+                        'Grid',
+                        'Tiles in as many columns as fit, with no breakpoint written down anywhere.',
+                    ),
+                    new StyleguidePage(
+                        'layout',
+                        'stack',
+                        'Stack',
+                        'Things one under another, and the rhythm between them.',
+                    ),
+                    new StyleguidePage(
+                        'layout',
+                        'cluster',
+                        'Cluster',
+                        'Short things side by side, wrapping onto the next line where the row runs out.',
                     ),
                 ],
             ),
@@ -102,21 +152,78 @@ final class StyleguidePages
                 ),
             ),
             new StyleguideGroup(
+                'forms',
+                'Forms',
+                'The controls of a form as the browser hands them over, drawn out of the theme, one page for '
+                . 'every group of them.',
+                array_map(
+                    static fn(FormElementGroup $group): StyleguidePage => new StyleguidePage(
+                        'forms',
+                        $group->name,
+                        ucfirst($group->name),
+                        $group->summary,
+                        formElements: [$group->name],
+                    ),
+                    $this->formElements->all(),
+                ),
+            ),
+            new StyleguideGroup(
                 'components',
                 'Components',
                 'Everything the application is assembled out of, one page for every component.',
-                array_map(
-                    static fn(Component $component): StyleguidePage => new StyleguidePage(
+                [
+                    // The way into the group, the way Bootstrap keeps a list of
+                    // its components down the side: every one of them by name,
+                    // with what it is for. It shows no specimen of its own.
+                    new StyleguidePage(
                         'components',
-                        substr($component->name, strlen(ComponentRegistry::PREFIX)),
-                        $component->name,
-                        $component->summary,
-                        components: [$component->name],
+                        'overview',
+                        'Overview',
+                        'Every component on one list: what it is called, what it is for, and the way to its page.',
                     ),
-                    $this->components->all(),
-                ),
+                    ...$this->componentPages(),
+                ],
             ),
         ];
+    }
+
+    /**
+     * One page for every registered component, in the order of the register,
+     * with the one page about how two of them go together after the second of
+     * them.
+     *
+     * That page is Navbar: what Bootstrap has as a component of its own is
+     * c-site-header and c-nav here, in the two regions of the shell, and the
+     * page shows the two together without registering anything. It follows
+     * c-nav, so that the menu offers it where somebody looking for the
+     * navigation already is.
+     *
+     * @return list<StyleguidePage>
+     */
+    private function componentPages(): array
+    {
+        $pages = [];
+        foreach ($this->components->all() as $component) {
+            $pages[] = new StyleguidePage(
+                'components',
+                substr($component->name, strlen(ComponentRegistry::PREFIX)),
+                $component->name,
+                $component->summary,
+                components: [$component->name],
+            );
+
+            if ($component->name === 'c-nav') {
+                $pages[] = new StyleguidePage(
+                    'components',
+                    'navbar',
+                    'Navbar',
+                    'The banner over the navigation - c-site-header and c-nav, in the regions of the shell a '
+                        . 'page draws them in.',
+                );
+            }
+        }
+
+        return $pages;
     }
 
     /** @return non-empty-list<StyleguidePage> */

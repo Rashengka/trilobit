@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import nette from '@nette/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
+// With its extension, because Vite is moving to loading this file natively,
+// and Node resolves no import that leaves it out.
+import { bundledLicenses } from './vite-plugins/bundled-licenses.ts';
 
 /**
  * The shape src/Core/Build/BuildManifest.php writes to var/build/modules.json:
@@ -61,19 +64,25 @@ const modules = readModules();
  */
 const entryNames = new Map<string, string>([
     [resolve('assets/app.ts'), 'app'],
+    // The style guide's own bundle: the highlighter and the button that copies
+    // code. An entry point of its own so that no page outside the guide
+    // carries it, and an entry point rather than an import() inside app.js
+    // because only what the server writes a tag for is given its ?v= - see
+    // src/Core/Presentation/Styleguide/templates/@layout.latte.
+    [resolve('assets/styleguide.ts'), 'styleguide'],
     ...modules.modules.map(
         (module): [string, string] => [resolve(module.directory, 'assets/entry.ts'), module.name],
     ),
 ]);
 
-// A module called "app" would silently take the shared bundle's name and one
-// of the two would be lost. It cannot happen today - "app" is not a directory
-// under src/ - but the collision would show up as a missing script rather than
-// as an error, so it is refused here instead.
+// A module called "app" or "styleguide" would silently take a Core bundle's
+// name and one of the two would be lost. It cannot happen today - neither is a
+// directory under src/ - but the collision would show up as a missing script
+// rather than as an error, so it is refused here instead.
 if (new Set(entryNames.values()).size !== entryNames.size) {
     throw new Error(
         `Two entry points want the same output name: ${[...entryNames.values()].join(', ')}. `
-        + 'A module may not be called "app".',
+        + 'A module may not be called "app" or "styleguide".',
     );
 }
 
@@ -125,5 +134,10 @@ export default defineConfig({
     plugins: [
         nette({ entry: [...entryNames.keys()] }),
         tailwindcss(),
+        // The bundles are committed and public, and they carry other people's
+        // code; this writes those people's copyright and licence next to it.
+        // A package that publishes no licence file has its text supplied
+        // under vite-plugins/licenses, for the version the build bundles.
+        bundledLicenses({ supplied: 'vite-plugins/licenses' }),
     ],
 });

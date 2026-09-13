@@ -1,0 +1,139 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The controls somebody types into or picks from. Like every page of the Forms
+ * group it names the rules it stands for in
+ * Trilobit\Core\Presentation\Form\FormElementRegistry, and
+ * tests/Template/FormElementRegistryTest checks them against assets/base.css:
+ * an input renders whether or not anything ever styled it.
+ *
+ * Every control but one sits in c-field, the way a form draws it. The one that
+ * does not is the proof that the field is not what styles it, and
+ * tests/e2e/forms.spec.ts measures the two against each other.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/field.latte'}
+
+{block sgPage}
+    {embed block sgFormSection, group: $formElements['controls']}
+        {block sgFormSectionBody}
+            {embed block sgSpecimen, variant: 'a line of text'}
+                {block sgSpecimenStage}
+                    {embed block field}
+                        {block fieldLabel}<label for="sg-forms-text">Name of the specimen</label>{/block}
+
+                        {block fieldControl}
+                            <input id="sg-forms-text" type="text" value="Segmented disc" data-testid="forms-control-text">
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'lines of other kinds'}
+                {block sgSpecimenStage}
+                    <div class="l-stack">
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-email">Curator's address</label>{/block}
+
+                            {block fieldControl}
+                                <input id="sg-forms-email" type="email" value="curator@example.com" data-testid="forms-control-email">
+                            {/block}
+                        {/embed}
+
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-password">Passphrase to the store room</label>{/block}
+
+                            {block fieldControl}
+                                <input id="sg-forms-password" type="password" value="three lobes along one axis" data-testid="forms-control-password">
+                            {/block}
+                        {/embed}
+
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-number">Segments in the thorax</label>{/block}
+
+                            {block fieldControl}
+                                <input id="sg-forms-number" type="number" value="11" min="2" max="61" data-testid="forms-control-number">
+                            {/block}
+                        {/embed}
+
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-search">Search the collection</label>{/block}
+
+                            {block fieldControl}
+                                <input id="sg-forms-search" type="search" placeholder="A name, a period or a drawer" data-testid="forms-control-search">
+                            {/block}
+                        {/embed}
+
+                        {embed block field}
+                            {block fieldLabel}<label for="sg-forms-date">Catalogued on</label>{/block}
+
+                            {block fieldControl}
+                                <input id="sg-forms-date" type="date" value="2026-03-14" data-testid="forms-control-date">
+                            {/block}
+                        {/embed}
+                    </div>
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'several lines'}
+                {block sgSpecimenStage}
+                    {embed block field}
+                        {block fieldLabel}<label for="sg-forms-notes">Notes</label>{/block}
+
+                        {block fieldControl}
+                            <textarea id="sg-forms-notes" rows="3" data-testid="forms-control-textarea">Rolled up, the way the jointed middle let it. The tail shield is missing its last two segments.</textarea>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'one of a list'}
+                {block sgSpecimenStage}
+                    {embed block field}
+                        {block fieldLabel}<label for="sg-forms-period">Period</label>{/block}
+
+                        {block fieldControl}
+                            <select id="sg-forms-period" data-testid="forms-control-select">
+                                <option>Cambrian</option>
+                                <option selected>Ordovician</option>
+                                <option>Silurian</option>
+                                <option>Devonian</option>
+                            </select>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'several of a list'}
+                {block sgSpecimenStage}
+                    {embed block field}
+                        {block fieldLabel}<label for="sg-forms-cabinets">Cabinets it has been kept in</label>{/block}
+
+                        {block fieldControl}
+                            <select id="sg-forms-cabinets" multiple size="4" data-testid="forms-control-select-multiple">
+                                <option selected>East gallery, cabinet 3</option>
+                                <option>East gallery, cabinet 7</option>
+                                <option selected>Store room, rack B</option>
+                                <option>On loan</option>
+                            </select>
+                        {/block}
+                    {/embed}
+                {/block}
+            {/embed}
+
+            {embed block sgSpecimen, variant: 'on its own, outside a field'}
+                {block sgSpecimenStage}
+                    <input
+                        type="text"
+                        aria-label="Name of the specimen"
+                        placeholder="Name of the specimen"
+                        data-testid="forms-control-alone"
+                    >
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+{/block}

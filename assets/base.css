@@ -18,12 +18,15 @@
  * ratio such as 100% or 1fr describes a relationship between parts rather than a
  * size - "as wide as its container" stays true in every theme.
  *
- * One token is declared here rather than by a theme: --layout-content-width,
- * which the block below derives from the theme's three widths and the attribute
+ * Three tokens are declared here rather than by a theme. --layout-content-width
+ * is derived by the block below from the theme's three widths and the attribute
  * on <html>. Deriving is not deciding - the three values it picks between are
  * still the theme's - and the test above knows the difference: a token this file
  * declares is exempt from "every theme has to declare it", and every token that
- * declaration reads is checked as usual.
+ * declaration reads is checked as usual. --layout-chrome-offset and
+ * --layout-banner-reach are not values anybody chooses at all but ones the page
+ * measures (assets/chrome.ts); what this file gives them is the zero they start
+ * from.
  *
  * Class names say what a thing is, never what it looks like (decision D3):
  *
@@ -40,7 +43,8 @@
  * by name in @layer base and are catalogued too: every one of them belongs to a
  * group in Trilobit\Core\Presentation\Content\ContentGroupRegistry, and
  * tests/Template/ContentGroupRegistryTest fails when a group claims a selector
- * this file does not carry.
+ * this file does not carry. The controls of a form are the same kind of thing,
+ * catalogued the same way in Trilobit\Core\Presentation\Form\FormElementRegistry.
  *
  * Inside a component no Tailwind utility is used, on purpose and only there: a
  * utility written into the markup is a decision about appearance that a theme
@@ -124,6 +128,38 @@
         -webkit-text-size-adjust: 100%;
     }
 
+    /*
+     * A jump to an anchor, and focus moved from the keyboard, stop under
+     * whatever the theme holds in view at the top of the window rather than
+     * behind it. Both are the browser scrolling something into view, and both
+     * keep clear the scroll margin of what they scroll to.
+     *
+     * **The margin of what is scrolled to, and not the padding of what
+     * scrolls.** Padding the scroller would be one line, and it is what was
+     * tried first: it keeps the clearance for everything scrolled into view,
+     * the held banner and the held navigation included. Those are in view
+     * already, but under a padding they count as hidden behind themselves, so
+     * tabbing onto the first link of the menu scrolled the page back by most of
+     * a window. So the clearance is given to what can be covered - the content
+     * and the footer, which share the column the banner is held over - and to
+     * nothing else. It also leaves nothing here to move should the page ever
+     * stop scrolling as a document: a margin on the target works for whatever
+     * scrolls.
+     *
+     * One number, and it is measured: assets/chrome.ts writes how much of the
+     * window the held bands cover, added up, whenever that changes. Zero until
+     * it has, which is also the right answer wherever nothing is held.
+     */
+    :root {
+        --layout-chrome-offset: 0;
+        --layout-banner-reach: 0;
+    }
+
+    .l-shell__main *,
+    .l-shell__footer * {
+        scroll-margin-block-start: var(--layout-chrome-offset);
+    }
+
     body {
         background-color: var(--color-canvas);
         color: var(--color-ink);
@@ -146,12 +182,16 @@
     }
 
     /*
-     * The six levels read off the six steps of the type scale the themes
-     * declare, in the one order they come in. A component that wants a size of
-     * its own says so on its own class and wins by specificity, which is what
-     * every heading in this application does today - so this is what a heading
-     * nobody wrote a component for falls back to, rather than the body size it
-     * used to inherit.
+     * The six levels read off the type scale the themes declare. A component
+     * that wants a size of its own says so on its own class and wins by
+     * specificity, which is what every heading in this application does
+     * today - so this is what a heading nobody wrote a component for falls
+     * back to, rather than the body size it used to inherit.
+     *
+     * h5 and h6 share the bottom step on purpose (decided 2026-09-12): a
+     * heading smaller than the running text under it reads as a caption
+     * rather than as a heading, so the scale stops narrowing at --text-base
+     * instead of dropping a step further for the sixth level.
      */
     h1 {
         font-size: var(--text-3xl);
@@ -169,18 +209,52 @@
         font-size: var(--text-lg);
     }
 
-    h5 {
+    h5,
+    h6 {
         font-size: var(--text-base);
     }
 
-    h6 {
-        font-size: var(--text-sm);
-    }
-
+    /*
+     * A link inside running text is told apart from the text around it by
+     * nothing but this rule (WCAG 1.4.1): colour alone would not survive
+     * printing in grey, and here colour is not even different, because
+     * color: inherit above is what lets a link sit inside a heading or a
+     * quotation without becoming a shade of its own. The underline is
+     * therefore the one signal doing the whole job, not an addition to it.
+     *
+     * Tailwind's preflight (assets/app.css imports it before this file, into
+     * the same layer) declares `a { text-decoration: inherit }`. Inherited
+     * from a paragraph, which carries none, that is `none` - so every link in
+     * the application drew no underline at all until this rule said
+     * otherwise, in the same layer and later in it, which is what lets a
+     * property neither rule shares - line, thickness, colour, offset - fall
+     * through to whichever of the two set it.
+     *
+     * A component that draws its own kind of link - a card, a button, the
+     * primary navigation - already says `text-decoration: none` on its own
+     * class, and a class beats an element by specificity whether this rule
+     * exists or not; that is what keeps this from touching any of them. Only
+     * .c-breadcrumb__link and the icon-only link in .c-table__actions had
+     * nothing of their own to win with, so those two carry the same
+     * exception explicitly, below and beside their own rule respectively.
+     */
     a {
         color: inherit;
         text-decoration-color: var(--color-accent);
+        text-decoration-line: underline;
+        text-decoration-thickness: var(--border-hairline);
         text-underline-offset: var(--space-3xs);
+    }
+
+    /* Thicker on hover and on the focus outline's own colour while focused -
+       reusing the tokens a border already reads, so no colour or length is
+       invented for the one purpose of a link glancing back at the pointer. */
+    a:hover {
+        text-decoration-thickness: var(--border-marker);
+    }
+
+    a:focus-visible {
+        text-decoration-color: var(--color-focus);
     }
 
     /*
@@ -352,6 +426,112 @@
     th {
         text-align: start;
     }
+
+    /*
+     * ==== The controls of a form ==========================================
+     *
+     * Styled by name, here, and never through whatever is drawn around them.
+     * A form comes in three arrangements (.ai/plans/19) - side by side,
+     * stacked, label beside control - and the arrangement is a layer on top of
+     * these rules rather than a reason for a control to look different: an
+     * input styled as "an input inside this wrapper" would look one way in the
+     * wrapper written first and another, or not at all, in the next.
+     * tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest refuses a
+     * rule that reaches a control through something around it, and every
+     * selector below is claimed by a group in
+     * Trilobit\Core\Presentation\Form\FormElementRegistry.
+     *
+     * A control fills the place it is put in. How wide that place is, is the
+     * arrangement's to decide, so no width of a control is written here.
+     *
+     * Tailwind's preflight, earlier in this same layer, strips every control
+     * of its border, background and radius with rules as heavy as a bare
+     * element. The rules below weigh at least as much and come later, so they
+     * win; the states weigh more than the rule they modify, so which of them
+     * applies never depends on the order they are written in.
+     */
+    input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
+    select,
+    textarea {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-sm);
+        color: var(--color-ink);
+        inline-size: 100%;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    :is(input, textarea)::placeholder {
+        color: var(--color-ink-muted);
+    }
+
+    /*
+     * The browser draws a box to tick and a radio button better than a
+     * stylesheet can imitate one - with the state, the focus and the forced
+     * colours of an operating system all handled - so they are left to it and
+     * handed the theme's accent and the size of the text beside them.
+     */
+    input:is([type='checkbox'], [type='radio']) {
+        accent-color: var(--color-accent);
+        block-size: var(--icon-size);
+        flex: none;
+        inline-size: var(--icon-size);
+    }
+
+    /* The label a choice is written inside keeps the box and its words on one
+       line, the way nette/forms writes a checkbox: the input inside its label. */
+    label:has(> input[type='checkbox'], > input[type='radio']) {
+        align-items: center;
+        display: inline-flex;
+        gap: var(--space-xs);
+    }
+
+    fieldset {
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        min-inline-size: 0;
+        padding: var(--space-md);
+    }
+
+    /* Named the way a single field is named by c-field, because it names what
+       the fields inside are together. */
+    legend {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+        padding-inline: var(--space-2xs);
+    }
+
+    /*
+     * The states. The outline itself is the :focus-visible rule at the top of
+     * this layer, the same for every focusable thing; a control adds the
+     * border.
+     *
+     * Refused beats focused: the two weigh the same and refused is written
+     * after, so a control somebody is correcting stays marked until it is
+     * correct - the outline still says where the focus is. :user-invalid is
+     * the browser's own check and matches only once somebody has had a go at
+     * the control, so an empty required field is not drawn as a mistake before
+     * anyone typed; aria-invalid is the server's verdict and needs no go.
+     */
+    :is(input, select, textarea):focus-visible {
+        border-color: var(--color-accent);
+    }
+
+    :is(input, select, textarea):is([aria-invalid='true'], :user-invalid) {
+        border-color: var(--color-danger);
+    }
+
+    :is(input, select, textarea):disabled {
+        background-color: var(--color-canvas-sunken);
+        color: var(--color-ink-muted);
+        cursor: not-allowed;
+    }
+
+    label:has(> :disabled) {
+        color: var(--color-ink-muted);
+    }
 }
 
 @layer components {
@@ -373,14 +553,127 @@
         min-block-size: var(--layout-shell-min-size);
     }
 
+    /*
+     * What a theme may hold in view while the page scrolls under it: the banner,
+     * and the navigation, each on a switch of its own (--layout-banner-position,
+     * --layout-nav-position - sticky or static), because somebody who wants one
+     * held should not get the other with it. See .ai/plans/09-chrome-a-sirka-
+     * obsahu.md, L1.
+     *
+     * **Sticky, never fixed.** A held band stays a grid item: it keeps its row
+     * and its column, and the content starts under it because the grid puts it
+     * there. A fixed band would leave the grid, and the space it used to take
+     * would have to be written down again as a margin on the content - a second
+     * copy of the banner's height, right until the banner changes.
+     *
+     * **The document scrolls**, so a held band sticks to the window. What a jump
+     * to an anchor keeps clear is the scroll margin further up, given to the
+     * content and not to the bands, and the number it reads is measured by
+     * assets/chrome.ts.
+     *
+     * Held bands are drawn in the chrome's layer. Whatever in the content has a
+     * position of its own - a card, the link stretched over it - is otherwise
+     * painted in the same pass in the order of the document, which is after the
+     * banner, and would be drawn over it as it scrolls under.
+     */
     .l-shell__banner {
         background-color: var(--color-banner);
         border-block-end: var(--border-hairline) solid var(--color-line);
         grid-area: banner;
+        inset-block-start: 0;
+        position: var(--layout-banner-position);
+        z-index: var(--layout-z-chrome);
     }
 
+    /*
+     * The navigation is held one element in, and not by the region itself.
+     *
+     * In ledger the region is the side column: stretched down the whole page so
+     * that its colour runs to the bottom whatever the length of the menu. A box
+     * as tall as the page it sticks in has nowhere to stick to, so the region
+     * stays where it is and paints the column, and what it holds is the part
+     * that stays in view - never taller than the window, so a menu longer than
+     * the window scrolls inside it rather than below the reach of anybody who
+     * has not scrolled to the end of the page. The window's height is read from
+     * --layout-shell-min-size, the one token that already names it: the shell
+     * is never shorter than the window, and what is held in it never taller.
+     *
+     * The bound is not on the switch. A navigation that is not held but has a
+     * menu taller than the window therefore scrolls inside its column too;
+     * making the bound follow the switch would take a second switch, and the two
+     * could then be set to disagree.
+     *
+     * Whether it scrolls at all is the theme's (--layout-nav-overflow). A theme
+     * that opens the entries under an entry as a block over the page needs the
+     * block to hang out of the band, and a band that scrolls clips whatever
+     * hangs out of it at its edge - so such a theme lets it overflow, and its
+     * navigation, a row under the banner, is never the height of a window.
+     *
+     * **The one switch holds both elements, and in each theme only one of them
+     * can move.** Where the navigation is a row under the banner (atrium) the
+     * region is exactly as tall as what it holds, so the hold has nowhere to
+     * stick to inside it, and it is the region that stays - as far down as the
+     * held banner reaches (--layout-nav-inset). Where the region is the side
+     * column stretched down the page (ledger), sticking the region does nothing,
+     * because it is as tall as the page it would move in, and the hold does the
+     * work. A second switch for which of the two is held could be set to
+     * disagree with the first; this one cannot.
+     */
     .l-shell__nav {
+        background-color: var(--color-nav);
         grid-area: nav;
+        inset-block-start: var(--layout-nav-inset);
+        position: var(--layout-nav-position);
+        z-index: var(--layout-z-chrome);
+    }
+
+    .l-shell__nav-hold {
+        inset-block-start: 0;
+        max-block-size: var(--layout-shell-min-size);
+        overflow-y: var(--layout-nav-overflow);
+        position: var(--layout-nav-position);
+        z-index: var(--layout-z-chrome);
+    }
+
+    /*
+     * Where the page's content begins, as assets/chrome.ts watches it to tell
+     * the bands the content has scrolled up under them. The script puts it
+     * into the shell; it takes no room and draws nothing.
+     *
+     * It spans the rows above the content, from the top of the page to the
+     * line the content starts at, whichever rows a theme has put there - one in
+     * ledger, two in atrium. Its lower edge is the threshold, and because it is
+     * a line of the grid rather than a length, it moves with the content when
+     * the bands above change size. That is what keeps the change from undoing
+     * itself; chrome.ts says how.
+     *
+     * Never the element a browser keeps the reader's place by: that has to be
+     * the content, or keeping the place would move the threshold.
+     */
+    .l-shell > [data-chrome-sentinel] {
+        grid-column: main;
+        grid-row: 1 / main-start;
+        overflow-anchor: none;
+        pointer-events: none;
+        visibility: hidden;
+    }
+
+    /*
+     * Nothing is held on paper. A held band would be printed at the top of every
+     * sheet, and a navigation bounded to one window would be printed cut off
+     * where the window ended.
+     */
+    @media print {
+        .l-shell__banner,
+        .l-shell__nav {
+            position: static;
+        }
+
+        .l-shell__nav-hold {
+            max-block-size: none;
+            overflow-y: visible;
+            position: static;
+        }
     }
 
     .l-shell__main {
@@ -455,6 +748,8 @@
 
     /* ==== Components ==================================================== */
 
+    /* Its height and the size of the name are the banner's tokens, which a
+       theme may give smaller values once the page has scrolled (atrium). */
     .c-site-header {
         align-items: baseline;
         color: var(--color-banner-ink);
@@ -462,12 +757,12 @@
         flex-wrap: wrap;
         gap: var(--space-sm) var(--space-md);
         justify-content: space-between;
-        padding-block: var(--space-md);
+        padding-block: var(--layout-banner-padding-block);
     }
 
     .c-site-header__brand {
         font-family: var(--font-display);
-        font-size: var(--text-xl);
+        font-size: var(--layout-banner-brand-size);
         font-weight: var(--font-weight-display);
         letter-spacing: var(--tracking-display);
         text-decoration: none;
@@ -554,18 +849,175 @@
         justify-content: space-between;
     }
 
+    /*
+     * c-dropdown, c-popover and c-tooltip: a holder drawn as exactly the element
+     * it holds, and a native popover hung from it - in the top layer, over the
+     * page and under nothing, without a z-index.
+     *
+     * The holder is the anchor (anchor-name in the markup, named after the
+     * popover's id). The browser's own rule for a popover centres it in the
+     * window and gives it a border, a padding and the system's colours; the
+     * colours and the box are taken back here, and the centring only where the
+     * browser can anchor, so that one that cannot and has no script either
+     * still draws the popover somewhere in view. Where it cannot anchor,
+     * assets/anchor.ts puts it where position-area would have. The popover's
+     * own layout is given only while it is open, as for .c-user-menu__panel:
+     * a display on the closed one would draw it open for good.
+     *
+     * The gap is a margin on both block sides, so it is right whichever side the
+     * popover ends up on, whether the stylesheet turned it there or the script.
+     */
+    .c-dropdown,
+    .c-popover,
+    .c-tooltip {
+        display: inline-flex;
+    }
+
+    .c-dropdown__menu,
+    .c-popover__panel,
+    .c-tooltip__tip {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-raised);
+        color: var(--color-ink);
+        margin: 0;
+        margin-block: var(--space-2xs);
+        padding: 0;
+    }
+
+    @supports (position-area: block-end) {
+        .c-dropdown__menu,
+        .c-popover__panel,
+        .c-tooltip__tip {
+            inset: auto;
+        }
+
+        .c-dropdown__menu {
+            position-area: block-end span-inline-end;
+            position-try-fallbacks:
+                flip-block,
+                flip-inline,
+                flip-block flip-inline;
+        }
+
+        .c-dropdown__menu[data-align='end'] {
+            position-area: block-end span-inline-start;
+        }
+
+        .c-popover__panel,
+        .c-tooltip__tip {
+            position-area: block-end;
+            position-try-fallbacks:
+                flip-block,
+                block-end span-inline-end,
+                block-end span-inline-start;
+        }
+
+        .c-popover__panel[data-side='above'],
+        .c-tooltip__tip[data-side='above'] {
+            position-area: block-start;
+            position-try-fallbacks:
+                flip-block,
+                block-start span-inline-end,
+                block-start span-inline-start;
+        }
+    }
+
+    .c-dropdown__menu {
+        padding-block: var(--space-2xs);
+    }
+
+    .c-dropdown__menu:popover-open {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* A button and a link drawn alike, as one row each: which of the two an
+       entry is depends on what it does, not on how it looks. The entry the
+       focus is on is lit the way the one under the pointer is - in a menu the
+       arrows move a highlight, and the outline alone would be the only sign. */
+    .c-dropdown__item {
+        background-color: transparent;
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        display: block;
+        font: inherit;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-md);
+        text-align: start;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .c-dropdown__item:is(:hover, :focus) {
+        background-color: var(--color-surface-hover);
+    }
+
+    /* Inside the entry, because the menu clips what is drawn outside it. */
+    .c-dropdown__item:focus-visible {
+        outline-offset: calc(var(--border-marker) * -1);
+    }
+
+    .c-dropdown__separator {
+        border: 0;
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        margin-block: var(--space-2xs);
+    }
+
+    .c-popover__panel {
+        max-inline-size: var(--layout-card-min);
+    }
+
+    .c-popover__title {
+        border-block-end: var(--border-hairline) solid var(--color-line);
+        font-weight: var(--font-weight-display);
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-md);
+    }
+
+    .c-popover__text {
+        font-size: var(--text-sm);
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
+    /* The inverse of whatever mode is on, as a key is, so that it reads as a
+       note laid over the page rather than as another panel of it. */
+    .c-tooltip__tip {
+        background-color: var(--color-ink);
+        border-color: transparent;
+        color: var(--color-canvas);
+        font-size: var(--text-sm);
+        max-inline-size: var(--layout-card-min);
+        padding-block: var(--space-3xs);
+        padding-inline: var(--space-xs);
+    }
+
     .c-nav {
         background-color: var(--color-nav);
         block-size: 100%;
         color: var(--color-nav-ink);
     }
 
+    /* Positioned, so that a block a theme opens over the page under an entry
+       hangs from the whole row rather than from the one entry. */
     .c-nav__list {
         display: flex;
         flex-direction: var(--layout-nav-direction);
         flex-wrap: var(--layout-nav-wrap);
         gap: var(--layout-nav-gap);
         padding: var(--layout-nav-padding);
+        position: relative;
+    }
+
+    /* The link, the button beside it when there is one, and the list under
+       them on a line of its own. */
+    .c-nav__item {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
     }
 
     .c-nav__link {
@@ -574,14 +1026,171 @@
         border-radius: var(--radius-sm);
         color: var(--color-nav-ink);
         display: block;
+        flex: 1 1 auto;
         padding-block: var(--space-xs);
         padding-inline: var(--space-sm);
         text-decoration: none;
         transition: background-color var(--motion-fast), color var(--motion-fast);
     }
 
+    /*
+     * The button beside an entry that has entries under it. The chevron turns
+     * over while what it opens is open, read off the one attribute that says
+     * so.
+     */
+    .c-nav__toggle {
+        align-items: center;
+        background-color: transparent;
+        border: 0;
+        border-radius: var(--radius-sm);
+        color: var(--color-nav-ink);
+        cursor: pointer;
+        display: inline-flex;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-2xs);
+        position: relative;
+    }
+
+    .c-nav__toggle:hover {
+        background-color: var(--color-nav-hover);
+        color: var(--color-nav-ink-active);
+    }
+
+    .c-nav__toggle .c-icon {
+        transition: rotate var(--motion-fast);
+    }
+
+    .c-nav__toggle[aria-expanded='true'] .c-icon {
+        rotate: 0.5turn;
+    }
+
+    /*
+     * The entries of the navigation itself - the row or the column - as against
+     * the entries under an entry. Their size and the room around them are the
+     * band's tokens, which a theme may give smaller values once the page has
+     * scrolled (atrium). The scale is of whatever size the entry would have had,
+     * so a theme that never changes it draws exactly what it drew before.
+     *
+     * The entries a block opens under one of these are left at the size of the
+     * page: the block is read when it is opened.
+     */
+    .c-nav__list > .c-nav__item > .c-nav__link,
+    .c-nav__list > .c-nav__item > .c-nav__toggle {
+        font-size: calc(100% * var(--layout-nav-entry-scale));
+        padding-block: var(--layout-nav-entry-padding-block);
+    }
+
+    .c-nav__list > .c-nav__item > .c-nav__link {
+        padding-inline: var(--layout-nav-entry-padding-inline);
+    }
+
+    /*
+     * A band that changes size while the page scrolls changes it over a moment
+     * rather than at once - for nobody who asked for reduced motion, who gets
+     * the same sizes with nothing drawn in between. The length of the moment is
+     * the theme's (--layout-chrome-motion), and a theme whose bands never change
+     * size gives it none, so a switch into that theme is not animated either.
+     *
+     * **Only inside a band assets/chrome.ts has reported on** (it carries
+     * data-scrolled, true or false). A browser styles the top of the page once
+     * before the stylesheet has arrived, with no token defined and so no
+     * padding at all, and a transition declared everywhere animated the
+     * stylesheet's arrival: every page opened with its banner and navigation
+     * growing out of nothing, and anything measured in that moment was measured
+     * moving. By the time the script has reported, the stylesheet is in, so the
+     * only change left to animate is the one the transition is for.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        [data-scrolled] .c-site-header {
+            transition: padding-block var(--layout-chrome-motion);
+        }
+
+        [data-scrolled] .c-site-header__brand {
+            transition: font-size var(--layout-chrome-motion);
+        }
+
+        [data-scrolled] .c-nav__list {
+            transition: padding var(--layout-chrome-motion);
+        }
+
+        [data-scrolled] .c-nav__list > .c-nav__item > .c-nav__link {
+            transition:
+                background-color var(--motion-fast),
+                color var(--motion-fast),
+                font-size var(--layout-chrome-motion),
+                padding var(--layout-chrome-motion);
+        }
+
+        [data-scrolled] .c-nav__list > .c-nav__item > .c-nav__toggle {
+            transition:
+                font-size var(--layout-chrome-motion),
+                padding var(--layout-chrome-motion);
+        }
+    }
+
+    /*
+     * The entries under an entry: one list per level, each directly after the
+     * button that opens it.
+     *
+     * The same markup is drawn two ways, and the theme decides which with
+     * tokens rather than with selectors of its own. The first level either
+     * lies in the page, set in under its entry (ledger), or is taken out of it
+     * and hung under the row as a block over the page (atrium) - that is
+     * --layout-nav-sub-position, and assets/nav.ts reads the position the list
+     * ended up with to know which of the two it is handling. Inside it, a
+     * theme either folds every level by its own button, or lays the second
+     * level open in the block and draws no buttons there
+     * (--layout-nav-inner-toggle, --layout-nav-inner-folded). Below the second
+     * level a folded list is folded in every theme; in one that draws the
+     * buttons there, they unfold it.
+     *
+     * Folded is read off aria-expanded on the button before the list, which is
+     * the only place the state is kept.
+     */
+    .c-nav__sub {
+        display: grid;
+        flex-basis: 100%;
+        gap: var(--layout-nav-gap);
+        grid-template-columns: minmax(0, 1fr);
+        padding-inline-start: var(--layout-nav-sub-indent);
+    }
+
+    .c-nav__list > .c-nav__item > .c-nav__sub {
+        align-items: start;
+        background-color: var(--color-nav-panel);
+        border: var(--border-hairline) solid var(--color-nav-panel-line);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-raised);
+        grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-nav-sub-column), 100%), 1fr));
+        inset-block-start: 100%;
+        inset-inline: 0;
+        padding: var(--layout-nav-sub-padding);
+        position: var(--layout-nav-sub-position);
+        z-index: var(--layout-z-menu);
+    }
+
+    .c-nav__sub .c-nav__sub {
+        font-size: var(--text-sm);
+    }
+
+    .c-nav__sub .c-nav__toggle {
+        display: var(--layout-nav-inner-toggle);
+    }
+
+    .c-nav__toggle[aria-expanded='false'] + .c-nav__sub {
+        display: none;
+    }
+
+    .c-nav__sub .c-nav__toggle[aria-expanded='false'] + .c-nav__sub {
+        display: var(--layout-nav-inner-folded);
+    }
+
+    .c-nav__sub .c-nav__sub .c-nav__toggle[aria-expanded='false'] + .c-nav__sub {
+        display: none;
+    }
+
     .c-nav__link:hover {
-        background-color: var(--color-surface-hover);
+        background-color: var(--color-nav-hover);
         color: var(--color-nav-ink-active);
     }
 
@@ -665,6 +1274,18 @@
         font-size: var(--text-sm);
     }
 
+    /* At the foot of the tile however long the sentence above it is, so the
+       footers of a row of tiles line up: the grid stretches every tile to the
+       tallest, and the footer takes the room left over above it. */
+    .c-card__footer {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        margin-block-start: auto;
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
     /* The signpost is drawn by the grid primitive above, under its own name:
        it has no shape beyond the tiles it arranges, so it has no rule of its
        own here to disagree with the one that arranges them. */
@@ -679,8 +1300,8 @@
         display: inline-flex;
         font-weight: var(--font-weight-display);
         gap: var(--space-2xs);
-        padding-block: var(--space-xs);
-        padding-inline: var(--space-md);
+        padding-block: var(--c-button-padding-block, var(--space-xs));
+        padding-inline: var(--c-button-padding-inline, var(--space-md));
         text-decoration: none;
         transition: background-color var(--motion-fast);
     }
@@ -697,6 +1318,41 @@
 
     .c-button--quiet:hover {
         background-color: var(--color-surface-hover);
+    }
+
+    /*
+     * The one that deletes or cancels something. Drawn in the shape of the
+     * quiet one and in the ink of a refusal: it stands beside the main action
+     * as its alternative, and should be found before it is pressed rather than
+     * be the loudest thing on the form.
+     */
+    .c-button--danger {
+        background-color: transparent;
+        border-color: var(--color-danger);
+        color: var(--color-danger);
+    }
+
+    .c-button--danger:hover {
+        background-color: var(--color-danger-surface);
+    }
+
+    /*
+     * For a row of a table or a toolbar: a size, so it combines with any of
+     * the variants above. It sets the room around the label and nothing reads
+     * it but .c-button, so that the button drawn as only an icon can take the
+     * same room beside the icon as above it, at either size, without the two
+     * modifiers deciding the same property.
+     */
+    .c-button--small {
+        --c-button-padding-block: var(--space-2xs);
+        --c-button-padding-inline: var(--space-sm);
+
+        font-size: var(--text-sm);
+    }
+
+    /* Only the icon on the page, so as much room beside it as above it. */
+    .c-button--icon-only {
+        padding-inline: var(--c-button-padding-block, var(--space-xs));
     }
 
     /*
@@ -768,6 +1424,13 @@
         color: var(--color-accent-ink);
     }
 
+    /* A state that asks for attention, in the pair c-notice uses for a
+       refusal. */
+    .c-badge--danger {
+        background-color: var(--color-danger-surface);
+        color: var(--color-danger-ink);
+    }
+
     .c-field {
         display: flex;
         flex-direction: column;
@@ -780,21 +1443,181 @@
         font-weight: var(--font-weight-display);
     }
 
-    /* The control is styled where it sits rather than through a class of its
-       own. What a form puts into this slot is an element the framework wrote,
-       and it carries no class this file could name. */
-    .c-field__control :is(input, select, textarea) {
+    /* Nothing styles the control here. What a form puts into the slot is an
+       element the framework wrote, and it is drawn by its own name in @layer
+       base - the same in this component as in any other arrangement. */
+
+    /* The two sentences under a control. The reason is in the colour the
+       control's border turns when it is refused, so the two read as one. */
+    .c-field__error {
+        color: var(--color-danger);
+        font-size: var(--text-sm);
+    }
+
+    .c-field__hint {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+    }
+
+    /*
+     * A <select> with a line to search it by: the element Tom Select draws in
+     * front of a select carrying data-combobox (assets/combobox.ts). The select
+     * stays in the page, hidden, and is still what the form sends.
+     *
+     * Drawn here in full, out of the same tokens as a native select, and the
+     * library's own stylesheet is never loaded: the look lives in one place,
+     * and a new version of the library cannot change it without a line here
+     * changing too (.ai/plans/14-vyberovy-prvek.md, decision 2).
+     *
+     * The classes the library lets us name carry this component's name. The
+     * ones it writes itself - the state of the whole (focus, disabled, invalid,
+     * dropdown-active), of an option (active, selected), the highlight of what
+     * was typed and the hidden select - cannot be renamed, and are the only
+     * names here outside l-, c-, sg- and u-: tests/Architecture/
+     * StylesheetClassesAreNamedByKindTest allows them one by one, and holds
+     * that list to the version of the library the build bundles.
+     */
+    .c-combobox {
+        position: relative;
+    }
+
+    .c-combobox__control {
+        align-items: center;
         background-color: var(--color-surface);
         border: var(--border-hairline) solid var(--color-line);
         border-radius: var(--radius-sm);
         color: var(--color-ink);
-        inline-size: 100%;
+        cursor: pointer;
+        display: flex;
+        gap: var(--space-2xs);
         padding-block: var(--space-xs);
         padding-inline: var(--space-sm);
     }
 
-    .c-field__control :is(input, select, textarea):focus-visible {
+    /* The mark that says a list opens here, drawn with two sides of a border so
+       that it takes the colour of the text. It turns over while the list is open. */
+    .c-combobox__control::after {
+        block-size: var(--space-xs);
+        border-block-end: var(--border-hairline) solid currentColor;
+        border-inline-end: var(--border-hairline) solid currentColor;
+        content: '';
+        flex: none;
+        inline-size: var(--space-xs);
+        margin-inline-start: auto;
+        rotate: 0.125turn;
+    }
+
+    .c-combobox.dropdown-active .c-combobox__control::after {
+        rotate: -0.375turn;
+    }
+
+    /* The answer chosen, and the line typed into beside it. Neither is a box
+       of its own: the control is the box. */
+    .c-combobox__item {
+        min-inline-size: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .c-combobox__input {
+        background-color: transparent;
+        border: 0;
+        color: inherit;
+        flex: 1 1 0;
+        min-inline-size: 0;
+        outline: 0;
+        padding: 0;
+    }
+
+    /* While something is typed, the answer chosen before steps out of its way. */
+    .c-combobox--searching .c-combobox__item {
+        display: none;
+    }
+
+    /*
+     * The open list, hung under the control. It is a block over the page, so it
+     * is drawn in the layer the navigation's blocks are: above whatever stays
+     * in view, the way a native select's list is.
+     */
+    .c-combobox__dropdown {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-raised);
+        inset-block-start: 100%;
+        inset-inline: 0;
+        margin-block-start: var(--space-3xs);
+        position: absolute;
+        z-index: var(--layout-z-menu);
+    }
+
+    .c-combobox__list {
+        max-block-size: var(--layout-combobox-list-size);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .c-combobox__option,
+    .c-combobox__message {
+        padding-block: var(--space-2xs);
+        padding-inline: var(--space-sm);
+    }
+
+    .c-combobox__option {
+        cursor: pointer;
+    }
+
+    /* Where the arrows are, and the answer that is chosen: two things, which
+       are one option only until somebody moves. */
+    .c-combobox__option.active {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-combobox__option.selected {
+        font-weight: var(--font-weight-strong);
+    }
+
+    .c-combobox__option[aria-disabled='true'],
+    .c-combobox__message {
+        color: var(--color-ink-muted);
+        cursor: default;
+    }
+
+    .c-combobox__heading {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+        padding-block-start: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    .c-combobox__option .highlight {
+        background-color: var(--color-highlight);
+        color: var(--color-highlight-ink);
+    }
+
+    /*
+     * The states, as a native select has them. The focus is on the line typed
+     * into, or on the control itself where there is no line, and the ring is
+     * drawn round the control either way - the line inside it would be a ring
+     * inside a box. Refused beats focused the way it does for a native control:
+     * the two weigh the same and refused comes after.
+     */
+    .c-combobox__control:is(:focus-visible, :has(:focus-visible)) {
         border-color: var(--color-accent);
+        outline: var(--border-marker) solid var(--color-focus);
+        outline-offset: var(--space-3xs);
+    }
+
+    .c-combobox:is(.invalid, :has([aria-invalid='true'])) .c-combobox__control {
+        border-color: var(--color-danger);
+    }
+
+    .c-combobox.disabled .c-combobox__control {
+        background-color: var(--color-canvas-sunken);
+        color: var(--color-ink-muted);
+        cursor: not-allowed;
     }
 
     .c-notice {
@@ -810,6 +1633,285 @@
         background-color: var(--color-danger-surface);
         border-color: var(--color-danger);
         color: var(--color-danger-ink);
+    }
+
+    /* The title over the sentence, set apart by the weight of emphasis rather
+       than by a size: it is not a heading of the page (see notice.latte). */
+    .c-notice--titled {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3xs);
+    }
+
+    .c-notice__title {
+        font-weight: var(--font-weight-strong);
+    }
+
+    /*
+     * ---- Waiting ------------------------------------------------------------
+     *
+     * c-progress, c-spinner and c-placeholder are the three ways a page says it
+     * is waiting for something. Whatever moves while it waits moves for nobody
+     * who asked for less motion: every animation below is declared inside
+     * `prefers-reduced-motion: no-preference`, and what is left outside it is a
+     * still picture that says the same thing. How long one turn of the loop
+     * takes is the theme's, --motion-loop.
+     */
+
+    /*
+     * c-progress. The label over the bar, and the value beside it. The bar is
+     * the browser's own <progress> or <meter> with its native look taken away,
+     * so that the track and the fill are the theme's; a browser draws the fill
+     * as a part of its own, which every engine names differently, hence one rule
+     * per engine - a selector list with one name a browser does not know is
+     * dropped whole by that browser.
+     */
+    .c-progress {
+        align-items: center;
+        display: grid;
+        gap: var(--space-2xs) var(--space-sm);
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .c-progress__label {
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-display);
+        grid-column: 1 / -1;
+    }
+
+    .c-progress__bar {
+        /* How tall a meter's parts are drawn: see ::-webkit-meter-bar. */
+        --c-progress-inner-size: calc(var(--progress-size) - 2 * var(--border-hairline));
+
+        appearance: none;
+        background-color: var(--color-canvas-sunken);
+        block-size: var(--progress-size);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-pill);
+        inline-size: 100%;
+        overflow: hidden;
+    }
+
+    .c-progress__value {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .c-progress__bar::-webkit-progress-bar {
+        background-color: transparent;
+    }
+
+    .c-progress__bar::-webkit-progress-value {
+        background-color: var(--color-accent);
+    }
+
+    .c-progress__bar::-moz-progress-bar {
+        background-color: var(--color-accent);
+    }
+
+    /*
+     * Chrome draws a meter's fill half as tall as the bar, whatever the bar's
+     * height, and takes no percentage for the height of the parts inside it -
+     * only a length, given to the track and to the fill both. So they are
+     * given the bar's own height less its two hairlines, and the fill of a
+     * meter is as thick as the fill of a progress bar beside it
+     * (tests/e2e/progress.spec.ts measures both on the pixels).
+     */
+    .c-progress__bar::-webkit-meter-bar {
+        background: none;
+        block-size: var(--c-progress-inner-size);
+        border: 0;
+    }
+
+    /* Which of a meter's three ranges the value is in is the browser's to work
+       out from low, high and optimum; the ink for each is the theme's. */
+    .c-progress__bar::-webkit-meter-optimum-value {
+        background: var(--color-accent);
+        block-size: var(--c-progress-inner-size);
+    }
+
+    .c-progress__bar::-webkit-meter-suboptimum-value {
+        background: var(--color-ink-muted);
+        block-size: var(--c-progress-inner-size);
+    }
+
+    .c-progress__bar::-webkit-meter-even-less-good-value {
+        background: var(--color-danger);
+        block-size: var(--c-progress-inner-size);
+    }
+
+    .c-progress__bar:-moz-meter-optimum::-moz-meter-bar {
+        background: var(--color-accent);
+    }
+
+    .c-progress__bar:-moz-meter-sub-optimum::-moz-meter-bar {
+        background: var(--color-ink-muted);
+    }
+
+    .c-progress__bar:-moz-meter-sub-sub-optimum::-moz-meter-bar {
+        background: var(--color-danger);
+    }
+
+    /*
+     * Not known how far: the whole track hatched in the fill's ink, standing
+     * still, which is how a bar has said "busy, no idea how long" since long
+     * before anything on a page could move. The browser draws no fill of its
+     * own for a bar without a value, so the hatching is the track's.
+     */
+    .c-progress__bar:indeterminate {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            var(--color-accent) 0 var(--space-2xs),
+            transparent 0 var(--space-xs)
+        );
+    }
+
+    .c-progress__bar:indeterminate::-moz-progress-bar {
+        background-color: transparent;
+    }
+
+    /* And for whoever has not asked for less motion, a stretch of fill that
+       runs to one end of the track and back. */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-progress__bar:indeterminate {
+            animation: c-progress-sweep var(--motion-loop) ease-in-out infinite alternate;
+            background-image: linear-gradient(var(--color-accent), var(--color-accent));
+            background-repeat: no-repeat;
+            background-size: 40% 100%;
+        }
+    }
+
+    @keyframes c-progress-sweep {
+        from {
+            background-position: 0 0;
+        }
+
+        to {
+            background-position: 100% 0;
+        }
+    }
+
+    /*
+     * c-spinner. A ring in the ink of the lines with one quarter in the accent,
+     * and the words beside it.
+     *
+     * The words are always there. With motion they are read out and not shown,
+     * because the turning ring is what says "loading" to whoever sees it. Without
+     * motion the ring stands still and says nothing, so the words are shown -
+     * which is why hiding them is inside the same media query as the turning.
+     */
+    .c-spinner {
+        align-items: center;
+        color: var(--color-ink-muted);
+        display: inline-flex;
+        font-size: var(--text-sm);
+        gap: var(--space-xs);
+        vertical-align: middle;
+    }
+
+    .c-spinner__shape {
+        block-size: var(--spinner-size);
+        border: var(--border-marker) solid var(--color-line);
+        border-block-start-color: var(--color-accent);
+        border-radius: 50%;
+        flex: none;
+        inline-size: var(--spinner-size);
+    }
+
+    /* As tall as the text beside it, the way an icon is. */
+    .c-spinner--small .c-spinner__shape {
+        block-size: var(--icon-size);
+        inline-size: var(--icon-size);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .c-spinner__shape {
+            animation: c-spinner-turn var(--motion-loop) linear infinite;
+        }
+
+        .c-spinner:not(.c-spinner--labelled) .c-spinner__label {
+            block-size: var(--border-hairline);
+            clip-path: inset(50%);
+            inline-size: var(--border-hairline);
+            overflow: hidden;
+            position: absolute;
+            white-space: nowrap;
+        }
+    }
+
+    @keyframes c-spinner-turn {
+        to {
+            rotate: 1turn;
+        }
+    }
+
+    /*
+     * c-placeholder. Bars as tall as the text they stand in for, in the ink of
+     * the lines, the last one of a paragraph shorter the way a paragraph's last
+     * line is. In place of a card it takes the card's frame and the card's
+     * proportions (the same tokens as .c-card), so the tile that arrives lands
+     * where the placeholder was.
+     */
+    .c-placeholder__shapes {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .c-placeholder__body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .c-placeholder__heading,
+    .c-placeholder__line {
+        background-color: var(--color-line);
+        border-radius: var(--radius-sm);
+        display: block;
+    }
+
+    .c-placeholder__heading {
+        block-size: var(--text-lg);
+        inline-size: 60%;
+    }
+
+    .c-placeholder__line {
+        block-size: var(--text-base);
+    }
+
+    .c-placeholder__line:last-child {
+        inline-size: 70%;
+    }
+
+    .c-placeholder--card {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-raised);
+        overflow: hidden;
+    }
+
+    .c-placeholder__media {
+        aspect-ratio: var(--layout-card-media-ratio);
+        background-color: var(--color-canvas-sunken);
+        display: block;
+    }
+
+    .c-placeholder--card .c-placeholder__body {
+        padding: var(--space-md);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .c-placeholder__shapes {
+            animation: c-placeholder-pulse var(--motion-loop) ease-in-out infinite alternate;
+        }
+    }
+
+    @keyframes c-placeholder-pulse {
+        to {
+            opacity: 0.4;
+        }
     }
 
     .c-marker-list {
@@ -833,6 +1935,414 @@
         inline-size: var(--space-xs);
     }
 
+    /*
+     * A dismissible notice puts its sentence and its c-close side by side. The
+     * rule for [hidden] is spelled out because display: flex above would
+     * otherwise win over the browser's own and keep a dismissed notice drawn.
+     */
+    .c-notice--dismissible {
+        align-items: flex-start;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+    }
+
+    .c-notice--dismissible[hidden] {
+        display: none;
+    }
+
+    /*
+     * A cross in the ink of whatever it sits in, so it reads on a notice of
+     * either kind. Pointed at, it gains a frame in that same ink rather than
+     * a ground of its own, which could not be right on every ground at once.
+     */
+    .c-close {
+        align-items: center;
+        background-color: transparent;
+        border: var(--border-hairline) solid transparent;
+        border-radius: var(--radius-sm);
+        color: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        flex: none;
+        justify-content: center;
+        padding: var(--space-3xs);
+    }
+
+    .c-close:hover {
+        border-color: currentColor;
+    }
+
+    /*
+     * c-toast: a column of toasts, each a sentence and its c-close side by
+     * side like a dismissible notice, raised off whatever it is drawn over.
+     * The column is as wide as a card, so a sentence wraps where it would on
+     * a tile rather than running the width of the window.
+     *
+     * Held in the corner of the window at the end of the lines of text - the
+     * logical sides, so the other corner where writing runs the other way -
+     * over the page in a layer of its own, above what stays in view and above
+     * the blocks a navigation opens (--layout-z-toast). A toast that was put
+     * away is spelled out as hidden for the reason the notice's is.
+     */
+    .c-toast {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        max-inline-size: var(--layout-card-min);
+    }
+
+    .c-toast--corner {
+        inline-size: min(var(--layout-card-min), 100% - 2 * var(--space-md));
+        inset-block-end: var(--space-md);
+        inset-inline-end: var(--space-md);
+        position: fixed;
+        z-index: var(--layout-z-toast);
+    }
+
+    .c-toast__item {
+        align-items: flex-start;
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-inline-start: var(--border-marker) solid var(--color-accent);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-raised);
+        color: var(--color-ink);
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
+    .c-toast__item--danger {
+        background-color: var(--color-danger-surface);
+        border-color: var(--color-danger);
+        color: var(--color-danger-ink);
+    }
+
+    .c-toast__item[hidden] {
+        display: none;
+    }
+
+    /*
+     * A toast arrives over a moment, rising into place as it appears - for
+     * nobody who asked for reduced motion, who gets it in place at once. The
+     * state it rises from is the one it is drawn in before its first frame
+     * (@starting-style), so there is no script and nothing to undo.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-toast__item {
+            transition:
+                opacity var(--motion-unfold),
+                translate var(--motion-unfold);
+        }
+
+        @starting-style {
+            .c-toast__item {
+                opacity: 0;
+                translate: 0 var(--space-sm);
+            }
+        }
+    }
+
+    /*
+     * c-carousel: the strip is a row of slides as wide as itself, scrolled
+     * sideways and snapped a slide at a time, and stopped at every slide
+     * however fast it is swiped. That is all it takes to turn it, by hand
+     * and by the arrow keys, with no script. Its scrollbar stays, thin: with
+     * no script it is the one sign that there is more than one slide.
+     *
+     * The buttons under it only work with the script, so a browser with none
+     * is not shown them. The indicators are drawn as dots inside a target
+     * large enough to press (WCAG 2.5.8), and the one of the slide in view is
+     * filled.
+     */
+    .c-carousel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .c-carousel__track {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        display: flex;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: inline mandatory;
+        scrollbar-width: thin;
+    }
+
+    .c-carousel__track:focus-visible {
+        outline: var(--border-marker) solid var(--color-focus);
+        outline-offset: var(--space-3xs);
+    }
+
+    .c-carousel__slide {
+        align-items: center;
+        display: flex;
+        flex: 0 0 100%;
+        flex-direction: column;
+        gap: var(--space-xs);
+        padding: var(--space-md);
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .c-carousel__controls {
+        align-items: center;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+    }
+
+    .c-carousel__indicators {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2xs);
+        justify-content: center;
+    }
+
+    .c-carousel__indicator {
+        align-items: center;
+        background-color: transparent;
+        block-size: var(--space-xl);
+        border: var(--border-hairline) solid transparent;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        display: inline-flex;
+        inline-size: var(--space-xl);
+        justify-content: center;
+        padding: 0;
+    }
+
+    .c-carousel__indicator::before {
+        background-color: transparent;
+        block-size: var(--space-sm);
+        border: var(--border-hairline) solid var(--color-ink-muted);
+        border-radius: var(--radius-pill);
+        content: '';
+        inline-size: var(--space-sm);
+    }
+
+    .c-carousel__indicator:hover::before {
+        border-color: var(--color-ink);
+    }
+
+    .c-carousel__indicator[aria-current='true']::before {
+        background-color: var(--color-accent);
+        border-color: var(--color-accent);
+    }
+
+    @media (scripting: none) {
+        .c-carousel__controls {
+            display: none;
+        }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .c-carousel__track {
+            scroll-behavior: smooth;
+        }
+    }
+
+    /*
+     * The separator is drawn here and given an empty alternative after the
+     * slash, so it is seen and not read: in the markup it would be text a
+     * screen reader reads between every two steps.
+     */
+    .c-breadcrumb__list {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: var(--text-sm);
+        gap: var(--space-2xs);
+    }
+
+    .c-breadcrumb__item {
+        align-items: baseline;
+        display: inline-flex;
+        gap: var(--space-2xs);
+    }
+
+    .c-breadcrumb__item + .c-breadcrumb__item::before {
+        color: var(--color-ink-muted);
+        content: '/' / '';
+    }
+
+    /* A step up carries no underline: the trail is already told apart from
+       running text by sitting in its own <nav>, in a smaller size, each step
+       comma-separated by the rule above, so the muted colour is affordance
+       enough and an underline on every step would be one line under most of
+       the row rather than a signal picking anything out. */
+    .c-breadcrumb__link {
+        color: var(--color-ink-muted);
+        text-decoration: none;
+    }
+
+    .c-breadcrumb__link:hover {
+        color: var(--color-ink);
+    }
+
+    .c-breadcrumb__current {
+        color: var(--color-ink);
+        font-weight: var(--font-weight-display);
+    }
+
+    /*
+     * Every step and every number is a tile of the same size, so the row does
+     * not jump as somebody pages through it. The current page is drawn in the
+     * accent; a step that cannot be taken is drawn quieter and takes no
+     * pointer.
+     */
+    .c-pagination__list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2xs);
+    }
+
+    .c-pagination__item {
+        display: flex;
+    }
+
+    .c-pagination__gap {
+        align-items: center;
+        color: var(--color-ink-muted);
+        padding-inline: var(--space-2xs);
+    }
+
+    .c-pagination__link {
+        align-items: center;
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        color: var(--color-ink);
+        display: inline-flex;
+        justify-content: center;
+        min-inline-size: var(--space-xl);
+        padding-block: var(--space-3xs);
+        padding-inline: var(--space-xs);
+        text-decoration: none;
+    }
+
+    .c-pagination__link[href]:not([aria-current]):hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-pagination__link[aria-current='page'] {
+        background-color: var(--color-accent);
+        border-color: transparent;
+        color: var(--color-accent-ink);
+    }
+
+    .c-pagination__link[aria-disabled='true'] {
+        color: var(--color-ink-muted);
+        cursor: not-allowed;
+    }
+
+    /*
+     * c-button side by side as one piece: square where two meet, the theme's
+     * own corner at either end, and the hairline between them drawn once.
+     */
+    .c-button-group {
+        display: inline-flex;
+        flex-wrap: wrap;
+    }
+
+    .c-button-group > .c-button {
+        border-radius: 0;
+    }
+
+    .c-button-group > .c-button:first-child {
+        border-end-start-radius: var(--radius-pill);
+        border-start-start-radius: var(--radius-pill);
+    }
+
+    .c-button-group > .c-button:last-child {
+        border-end-end-radius: var(--radius-pill);
+        border-start-end-radius: var(--radius-pill);
+    }
+
+    .c-button-group > .c-button + .c-button {
+        margin-inline-start: calc(-1 * var(--border-hairline));
+    }
+
+    /*
+     * A choice is a label drawn as c-button with its radio laid invisible over
+     * the whole of it, so that the radio is still what is clicked, focused and
+     * announced. What is on and what has the focus are therefore drawn on the
+     * label: the radio's own outline would be invisible with it.
+     */
+    .c-button-group__choice {
+        position: relative;
+    }
+
+    .c-button-group__input {
+        appearance: none;
+        block-size: 100%;
+        cursor: inherit;
+        inline-size: 100%;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        position: absolute;
+    }
+
+    .c-button-group__choice:has(> :checked) {
+        background-color: var(--color-accent);
+        border-color: transparent;
+        color: var(--color-accent-ink);
+    }
+
+    .c-button-group__choice:has(> :focus-visible) {
+        outline: var(--border-marker) solid var(--color-focus);
+        outline-offset: var(--space-3xs);
+        z-index: 1;
+    }
+
+    /*
+     * Separate entries in one frame, a rule between every two. The frame cuts
+     * off whatever reaches past it, so the focus ring of an entry is drawn
+     * inside the entry rather than outside, where it would be cut off too.
+     */
+    .c-list-group {
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .c-list-group__item + .c-list-group__item {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+    }
+
+    .c-list-group__entry {
+        align-items: center;
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-md);
+        text-decoration: none;
+    }
+
+    .c-list-group__entry:focus-visible {
+        outline-offset: calc(-1 * var(--border-marker));
+    }
+
+    .c-list-group__entry[href]:not([aria-current]):hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-list-group__entry[aria-current] {
+        background-color: var(--color-accent);
+        color: var(--color-accent-ink);
+    }
+
     .c-panel {
         background-color: var(--color-surface);
         border: var(--border-hairline) solid var(--color-line);
@@ -843,6 +2353,232 @@
     .c-panel__title {
         font-size: var(--text-xl);
         margin-block-end: var(--space-sm);
+    }
+
+    /*
+     * c-collapse: the browser's own disclosure, <details> and <summary>. What
+     * is here is only how it looks - the name, the keys, the state and keeping
+     * what is folded away out of reach are the browser's.
+     *
+     * The summary is drawn with the mark of this design system (c-icon,
+     * turned over when open) rather than the browser's triangle: display other
+     * than list-item takes the triangle away wherever summary is a list item,
+     * and the prefixed pseudo-element takes it away in the Safari that still
+     * draws it its own way.
+     *
+     * The title carries the component's class and reads the same at every
+     * heading level, because the level is the outline of the page and the look
+     * is the component's (01d, 2026-09-12).
+     */
+    .c-collapse__toggle {
+        align-items: center;
+        color: var(--color-ink);
+        cursor: pointer;
+        display: flex;
+        gap: var(--space-2xs);
+        inline-size: fit-content;
+        list-style: none;
+    }
+
+    .c-collapse__toggle::-webkit-details-marker {
+        display: none;
+    }
+
+    .c-collapse__toggle:hover .c-collapse__title {
+        text-decoration: underline;
+    }
+
+    .c-collapse[open] > .c-collapse__toggle {
+        color: var(--color-accent);
+    }
+
+    .c-collapse__title {
+        color: inherit;
+        font: inherit;
+        font-weight: var(--font-weight-strong);
+    }
+
+    .c-collapse[open] > .c-collapse__toggle .c-icon {
+        rotate: 0.5turn;
+    }
+
+    .c-collapse__body {
+        padding-block-start: var(--space-xs);
+    }
+
+    /*
+     * c-accordion: a column of c-collapse as one block. The frame is the
+     * group's and the rule between two items is the lower one's; each item's
+     * summary runs the whole width, so the whole row is the control and the
+     * mark sits at its end.
+     *
+     * Only the items directly in the group are drawn this way - a collapse
+     * somebody put inside an item stays a collapse.
+     */
+    .c-accordion {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+    }
+
+    .c-accordion > .c-collapse + .c-collapse {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+    }
+
+    .c-accordion > .c-collapse > .c-collapse__toggle {
+        inline-size: auto;
+        justify-content: space-between;
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-md);
+    }
+
+    .c-accordion > .c-collapse > .c-collapse__toggle:hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    .c-accordion > .c-collapse > .c-collapse__toggle:hover .c-collapse__title {
+        text-decoration: none;
+    }
+
+    /* Drawn inside the row, where the item above and below cannot cover it. */
+    .c-accordion > .c-collapse > .c-collapse__toggle:focus-visible {
+        outline-offset: calc(-1 * var(--border-marker));
+    }
+
+    .c-accordion > .c-collapse:first-child > .c-collapse__toggle {
+        border-start-end-radius: var(--radius-md);
+        border-start-start-radius: var(--radius-md);
+    }
+
+    .c-accordion > .c-collapse:last-child:not([open]) > .c-collapse__toggle {
+        border-end-end-radius: var(--radius-md);
+        border-end-start-radius: var(--radius-md);
+    }
+
+    .c-accordion > .c-collapse > .c-collapse__body {
+        padding-block-end: var(--space-md);
+        padding-inline: var(--space-md);
+    }
+
+    /*
+     * Opening and closing over a moment, for nobody who asked for reduced
+     * motion - who gets the same two states with nothing drawn between them.
+     *
+     * **And only where the browser can do it with no script.** The height of
+     * what is folded away goes from nothing to as tall as it is, and "as tall
+     * as it is" (auto) is something a transition can reach only with
+     * interpolate-size (Chrome and Edge from 129); the part of <details> that
+     * folds is ::details-content (Chrome 131, Safari 18.4, Firefox 143).
+     * Everywhere without both, none of this applies and the disclosure opens
+     * at once, exactly as it does for reduced motion - a state reached without
+     * the moment in between, not a broken one. Measuring the height in a
+     * script to animate it in the others would put a script in front of a
+     * control that needs none, and the day those browsers learn
+     * interpolate-size they animate with no change here.
+     *
+     * content-visibility is carried through the moment of closing (allow-
+     * discrete), or the content would vanish at the start of it rather than
+     * fold. The clip is widened by the focus ring (its width and its offset),
+     * so a focused link at the edge of what is folded is not cut.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-collapse__toggle .c-icon {
+            transition: rotate var(--motion-unfold);
+        }
+
+        @supports (interpolate-size: allow-keywords) and selector(::details-content) {
+            .c-collapse {
+                interpolate-size: allow-keywords;
+            }
+
+            .c-collapse::details-content {
+                block-size: 0;
+                overflow: clip;
+                overflow-clip-margin: calc(var(--border-marker) + var(--space-3xs));
+                transition:
+                    block-size var(--motion-unfold),
+                    content-visibility var(--motion-unfold) allow-discrete;
+            }
+
+            .c-collapse[open]::details-content {
+                block-size: auto;
+            }
+        }
+    }
+
+    /*
+     * c-tabs: every panel one under another, each under its title, as the
+     * server draws it - and, once assets/tabs.ts has laid the tabs over it,
+     * the row of tabs in front of the one panel that is shown. The row and
+     * the tabs are the script's markup; the script hides the other panels and
+     * the titles the tabs are named after, with the hidden attribute, which
+     * is why nothing here sets a panel's or a title's display.
+     *
+     * The chosen tab is marked the way the entry of the page is in c-nav: a
+     * rule under it in the accent. The row's own rule runs under every tab,
+     * and the marker is drawn over it.
+     */
+    .c-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .c-tabs__list {
+        border-block-end: var(--border-hairline) solid var(--color-line);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2xs);
+    }
+
+    .c-tabs__tab {
+        background-color: transparent;
+        border: 0;
+        border-block-end: var(--border-marker) solid transparent;
+        border-start-end-radius: var(--radius-sm);
+        border-start-start-radius: var(--radius-sm);
+        color: var(--color-ink-muted);
+        cursor: pointer;
+        font: inherit;
+        margin-block-end: calc(-1 * var(--border-hairline));
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    .c-tabs__tab:hover {
+        background-color: var(--color-surface-hover);
+        color: var(--color-ink);
+    }
+
+    .c-tabs__tab[aria-selected='true'] {
+        border-block-end-color: var(--color-accent);
+        color: var(--color-ink);
+        font-weight: var(--font-weight-strong);
+    }
+
+    /* Drawn inside the tab, where the row's rule and the tab beside it cannot cover it. */
+    .c-tabs__tab:focus-visible {
+        outline-offset: calc(-1 * var(--border-marker));
+    }
+
+    .c-tabs__title {
+        font-size: var(--text-base);
+        font-weight: var(--font-weight-strong);
+    }
+
+    /*
+     * c-scrollspy: a contents that stays in view beside what it lists while
+     * that scrolls, stopping under whatever the theme holds over the content
+     * (--layout-chrome-offset, measured by assets/chrome.ts). It sticks within
+     * the element it sits in, so beside the content means in the same
+     * container as the content, in a column of its own - a contents stacked
+     * above the content would ride over it. What marks the section being read
+     * is c-list-group's: the entry carrying aria-current.
+     */
+    .c-scrollspy {
+        align-self: flex-start;
+        inset-block-start: var(--layout-chrome-offset);
+        position: sticky;
     }
 
     .c-swatch {
@@ -932,6 +2668,18 @@
      */
     .c-table {
         background-color: var(--color-surface);
+    }
+
+    /*
+     * The outer frame is a modifier, not the default (decided 2026-09-12):
+     * the plain table already has a name for what marks one row off from the
+     * next - the hairline .c-table__grid tbody tr + tr draws below - and a
+     * table nobody asked to be framed does not carry a border and a rounded
+     * corner it did not ask for either. overflow: hidden lives here rather
+     * than on .c-table because it exists only to clip the corner this rule
+     * rounds; nothing here needs it otherwise.
+     */
+    .c-table--framed {
         border: var(--border-hairline) solid var(--color-line);
         border-radius: var(--radius-md);
         overflow: hidden;
@@ -940,6 +2688,19 @@
     .c-table__viewport {
         overflow-x: auto;
         overscroll-behavior-inline: contain;
+    }
+
+    /*
+     * The other modifier: a rule between columns rather than between rows.
+     * It is drawn on the cell that follows another, so the outer edges of the
+     * grid never carry one - "inner" is the whole point, and it is what tells
+     * this apart from .c-table--framed, which is the outer edge and nothing
+     * else. The two are written as separate rules for exactly that reason:
+     * asking for one never draws a line the other is meant to own, and asking
+     * for both draws each exactly once.
+     */
+    .c-table--column-rules .c-table__grid :is(th, td) + :is(th, td) {
+        border-inline-start: var(--border-hairline) solid var(--color-line);
     }
 
     .c-table__grid {
@@ -981,10 +2742,295 @@
         white-space: nowrap;
     }
 
+    /* An action drawn as a bare link rather than as c-button - today, an
+       icon with no visible label - carries no underline: there is no text
+       for a line to run under, only an icon it would run through. c-button
+       already excludes itself by its own class; this is the one shape of
+       link in this cell a component does not already cover. */
+    .c-table__actions > a {
+        text-decoration: none;
+    }
+
     /* Figures line up under each other when the digits are all one width. */
     .c-table__number {
         font-variant-numeric: tabular-nums;
         text-align: end;
+    }
+
+    /*
+     * c-modal and c-offcanvas: a native dialog shown with showModal().
+     *
+     * **No layer of their own.** A dialog shown as a modal is in the browser's
+     * top layer, above the whole page and every z-index in it, so neither
+     * reads one of the --layout-z-* layers; a layer written here would be a
+     * number nothing reads.
+     *
+     * A closed dialog is display: none by the browser's own stylesheet, and a
+     * display given to the class would win over it - an author's rule beats
+     * the browser's whatever its specificity - and draw every closed dialog on
+     * the page. So the layout is given to the open one alone.
+     */
+    .c-modal,
+    .c-offcanvas {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        box-shadow: var(--shadow-raised);
+        color: var(--color-ink);
+        padding: 0;
+    }
+
+    .c-modal[open],
+    .c-offcanvas[open] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Laid over the page behind an open dialog, which still shows through it. */
+    .c-modal::backdrop,
+    .c-offcanvas::backdrop {
+        background-color: var(--color-backdrop);
+    }
+
+    /*
+     * The page under a modal dialog stays where it is, and it is the
+     * stylesheet that holds it, with no script: nothing counts the dialogs
+     * that are open, so there is no count to be left wrong by one Naja takes
+     * away while it is open.
+     *
+     * **No gutter kept for the scrollbar that goes.** Where a scrollbar takes
+     * room - Windows, Linux, a Mac set to show them always - holding the page
+     * takes the scrollbar away, and a gutter kept in its place
+     * (scrollbar-gutter: stable) is room the window stops lending to anything
+     * fixed: the backdrop stopped short of it and left a strip of the page
+     * undimmed, the panel at the end stopped beside it, and the modal sat half
+     * its width off the middle. So the dialog and its backdrop get the whole
+     * window, and the page under the backdrop moves by the scrollbar's width
+     * while the dialog is open. Holding that still as well would take a script
+     * measuring the scrollbar and padding the page - and everything held in
+     * view on it - by as much, for a page nobody can use while it is dimmed.
+     * tests/e2e/layers.spec.ts measures the dialogs with a scrollbar that
+     * takes room and with the one the browser draws.
+     *
+     * Any modal dialog holds it, not only these two, because the page scrolled
+     * behind any of them is the same fault.
+     */
+    :root:has(dialog:modal) {
+        overflow: hidden;
+    }
+
+    /*
+     * In the middle of the window. The browser puts a modal dialog there with
+     * automatic margins, and the reset at the top of this file takes every
+     * margin away, that one included - so it is given back here, or the
+     * dialog is drawn in the top corner.
+     */
+    .c-modal {
+        border-radius: var(--radius-lg);
+        inline-size: var(--layout-modal-width);
+        margin: auto;
+        max-block-size: calc(100% - 2 * var(--space-lg));
+        max-inline-size: calc(100% - 2 * var(--space-md));
+    }
+
+    /*
+     * Header, body and footer, one under another, with the body alone taking
+     * whatever is too long for the window - so the heading and the buttons
+     * stay in view. The frame is a div, or the form that closes the dialog.
+     */
+    .c-modal__frame {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-block-size: 0;
+    }
+
+    .c-modal__header,
+    .c-offcanvas__header {
+        align-items: flex-start;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: space-between;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    .c-modal__header {
+        border-block-end: var(--border-hairline) solid var(--color-line);
+    }
+
+    .c-modal__title,
+    .c-offcanvas__title {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: var(--font-weight-display);
+        letter-spacing: var(--tracking-display);
+        line-height: var(--leading-tight);
+    }
+
+    .c-modal__body,
+    .c-offcanvas__body {
+        align-content: start;
+        display: grid;
+        flex: 1 1 auto;
+        gap: var(--space-sm);
+        min-block-size: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    .c-offcanvas__body {
+        padding-block-start: 0;
+    }
+
+    .c-modal__footer {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+        justify-content: flex-end;
+        padding-block: var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    /*
+     * Against an edge of the window. The browser puts a modal dialog between
+     * all four edges with automatic margins; taking the margins away and
+     * giving one back on the side away from the edge is what moves it there.
+     * The margins are logical, so the start and the end change sides with the
+     * direction of the text and nothing here has to know which it is.
+     */
+    .c-offcanvas {
+        border-width: 0;
+        margin: 0;
+        max-block-size: 100%;
+        max-inline-size: 100%;
+    }
+
+    .c-offcanvas--start,
+    .c-offcanvas--end {
+        block-size: 100%;
+        inline-size: min(var(--layout-offcanvas-size), 100%);
+    }
+
+    .c-offcanvas--start {
+        border-inline-end-width: var(--border-hairline);
+        margin-inline-end: auto;
+    }
+
+    .c-offcanvas--end {
+        border-inline-start-width: var(--border-hairline);
+        margin-inline-start: auto;
+    }
+
+    /* As tall as what is in it, which the browser would otherwise stretch between the top and the bottom. */
+    .c-offcanvas--top,
+    .c-offcanvas--bottom {
+        block-size: fit-content;
+        inline-size: 100%;
+        max-block-size: min(var(--layout-offcanvas-size), 100%);
+    }
+
+    .c-offcanvas--top {
+        border-block-end-width: var(--border-hairline);
+        margin-block-end: auto;
+    }
+
+    .c-offcanvas--bottom {
+        border-block-start-width: var(--border-hairline);
+        margin-block-start: auto;
+    }
+
+    /*
+     * Drawn in over a moment - the modal rising a little as it appears, the
+     * offcanvas sliding in from its edge - and out again the same way, for
+     * nobody who asked for reduced motion, who gets the same dialog at once.
+     *
+     * The way in is where the dialog starts from as it opens (@starting-style),
+     * and the way out is the closed dialog's place, reached before the browser
+     * takes it off the page: display and overlay are handed over at the end of
+     * the moment rather than at its start. A browser that cannot do either
+     * shows and hides the dialog at once, which is the same dialog.
+     *
+     * The start and the end slide from the side they are drawn against, which
+     * changes with the direction of the text, so the slide does too. The
+     * direction is read off the dir attribute, where a page says it, and not
+     * with :dir(rtl): the build compiles that into a list of :lang() for older
+     * browsers, so the slide followed the language rather than the direction,
+     * and a page marked right to left in a language not on the list slid its
+     * panel in from the wrong side while it came to rest on the right one.
+     * Where it comes to rest needs neither - the margins above are logical.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .c-modal,
+        .c-modal::backdrop,
+        .c-offcanvas,
+        .c-offcanvas::backdrop {
+            transition:
+                display var(--motion-layer) allow-discrete,
+                opacity var(--motion-layer),
+                overlay var(--motion-layer) allow-discrete,
+                translate var(--motion-layer);
+        }
+
+        .c-modal:not([open]),
+        .c-modal:not([open])::backdrop,
+        .c-offcanvas:not([open])::backdrop {
+            opacity: 0;
+        }
+
+        .c-modal:not([open]) {
+            translate: 0 var(--space-md);
+        }
+
+        .c-offcanvas--start:not([open]),
+        [dir='rtl'] .c-offcanvas--end:not([open]) {
+            translate: -100% 0;
+        }
+
+        .c-offcanvas--end:not([open]),
+        [dir='rtl'] .c-offcanvas--start:not([open]) {
+            translate: 100% 0;
+        }
+
+        .c-offcanvas--top:not([open]) {
+            translate: 0 -100%;
+        }
+
+        .c-offcanvas--bottom:not([open]) {
+            translate: 0 100%;
+        }
+
+        @starting-style {
+            .c-modal[open],
+            .c-modal[open]::backdrop,
+            .c-offcanvas[open]::backdrop {
+                opacity: 0;
+            }
+
+            .c-modal[open] {
+                translate: 0 var(--space-md);
+            }
+
+            .c-offcanvas--start[open],
+            [dir='rtl'] .c-offcanvas--end[open] {
+                translate: -100% 0;
+            }
+
+            .c-offcanvas--end[open],
+            [dir='rtl'] .c-offcanvas--start[open] {
+                translate: 100% 0;
+            }
+
+            .c-offcanvas--top[open] {
+                translate: 0 -100%;
+            }
+
+            .c-offcanvas--bottom[open] {
+                translate: 0 100%;
+            }
+        }
     }
 
     /* ==== The style guide's own furniture ================================ */
@@ -1055,6 +3101,19 @@
         min-inline-size: min(var(--layout-measure), 100%);
     }
 
+    /*
+     * Something narrow beside something long, at any width, in a specimen:
+     * c-scrollspy beside the sections it lists. Unlike .sg-frame it never
+     * wraps, because a contents held in view over a column it had wrapped
+     * above would ride over the text it lists.
+     */
+    .sg-beside {
+        align-items: start;
+        display: grid;
+        gap: var(--space-lg);
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
     .sg-menu {
         display: flex;
         flex-direction: column;
@@ -1087,11 +3146,159 @@
         color: var(--color-accent);
         font-weight: var(--font-weight-strong);
     }
+
+    /*
+     * The code under a specimen: c-tabs with a panel for the HTML it came out
+     * as and one for the Latte it was written in (sgExample in
+     * src/Core/Presentation/Styleguide/templates/furniture.latte). After the
+     * label, so that what a specimen is called stays next to what it looks
+     * like. The names of the two are set in the face the code is.
+     */
+    .sg-source {
+        order: 2;
+    }
+
+    .sg-source .c-tabs__tab,
+    .sg-source .c-tabs__title {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+    }
+
+    .sg-code {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2xs);
+        margin-block-start: var(--space-2xs);
+    }
+
+    /* What the button did, and the button, at the end of the row above the
+       code, where Bootstrap keeps it. */
+    .sg-code__bar {
+        align-items: center;
+        display: flex;
+        gap: var(--space-sm);
+        justify-content: flex-end;
+    }
+
+    .sg-code__status {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+    }
+
+    .sg-code__copy {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-sm);
+        color: var(--color-ink);
+        cursor: pointer;
+        font-size: var(--text-sm);
+        padding-block: var(--space-3xs);
+        padding-inline: var(--space-xs);
+    }
+
+    .sg-code__copy:hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    /* The list of every component, the way into the Components group. */
+    .sg-index {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .sg-index__entry {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3xs);
+    }
+
+    .sg-index__summary {
+        color: var(--color-ink-muted);
+    }
+
+    /*
+     * ==== Highlighted code ================================================
+     *
+     * The classes are Prism's (assets/styleguide/prism.ts): it wraps every
+     * token of the code it highlights in <span class="token TYPE">, TYPE being
+     * what its grammar calls the token. They carry no prefix because the
+     * markup is the highlighter's and cannot be told to, which is why
+     * tests/Architecture/StylesheetClassesAreNamedByKindTest names each of them
+     * as the one library excused from the prefixes.
+     *
+     * No theme of Prism's is loaded. The colours are tokens, so each theme and
+     * each mode chooses its own, and tests/e2e/styleguide-code.spec.ts measures
+     * every token drawn against the ground of the code at 4.5:1.
+     */
+    .token.comment,
+    .token.prolog,
+    .token.doctype,
+    .token.cdata {
+        color: var(--color-code-comment);
+        font-style: italic;
+    }
+
+    .token.punctuation {
+        color: var(--color-ink-muted);
+    }
+
+    .token.tag,
+    .token.keyword,
+    .token.important,
+    .token.selector,
+    .token.atrule,
+    .token.rule {
+        color: var(--color-code-keyword);
+    }
+
+    .token.attr-name,
+    .token.property,
+    .token.function,
+    .token.class-name,
+    .token.builtin {
+        color: var(--color-code-name);
+    }
+
+    .token.string,
+    .token.attr-value,
+    .token.char,
+    .token.regex,
+    .token.url {
+        color: var(--color-code-string);
+    }
+
+    .token.number,
+    .token.boolean,
+    .token.constant,
+    .token.symbol,
+    .token.variable {
+        color: var(--color-code-literal);
+    }
+
+    .token.operator,
+    .token.entity {
+        color: var(--color-ink);
+    }
+
+    .token.important,
+    .token.bold {
+        font-weight: var(--font-weight-strong);
+    }
+
+    .token.italic {
+        font-style: italic;
+    }
 }
 
 @layer utilities {
-    /* Present to a screen reader, absent from the page. */
-    .u-visually-hidden {
+    /*
+     * Present to a screen reader, absent from the page. ts-hidden-accessible is
+     * Tom Select's name for the same thing, written on the select it draws a
+     * c-combobox in front of: the select stays in the form and out of sight.
+     */
+    .u-visually-hidden,
+    .ts-hidden-accessible {
         block-size: var(--border-hairline);
         clip-path: inset(50%);
         inline-size: var(--border-hairline);

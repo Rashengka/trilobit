@@ -1,6 +1,6 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
-{* A short label attached to something else, plain and in the accent. *}
+{* A short label attached to something else: plain, in the accent, and a state that asks for attention. *}
 
 {import '../../templates/furniture.latte'}
 {import '../../../components/badge.latte'}
@@ -8,17 +8,17 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-badge']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'plain'}
-                {block sgSpecimenStage}
-                    {include badge, label: 'Draft'}
-                {/block}
-            {/embed}
+            {specimen 'plain'}
+                {include badge, label: 'Draft'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'accent'}
-                {block sgSpecimenStage}
-                    {include badge, label: 'In this build', variant: 'accent'}
-                {/block}
-            {/embed}
+            {specimen 'accent'}
+                {include badge, label: 'In this build', variant: 'accent'}
+            {/specimen}
+
+            {specimen 'danger'}
+                {include badge, label: 'Overdue', variant: 'danger'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

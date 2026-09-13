@@ -1,0 +1,23 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{* The way up from a page, from two levels down and from one. *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/breadcrumb.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-breadcrumb']}
+        {block sgSectionBody}
+            {var $start = new Trilobit\Core\Presentation\Component\Crumb('Start', '#start', 'sample-crumb-start')}
+            {var $collections = new Trilobit\Core\Presentation\Component\Crumb('Collections', '#collections', 'sample-crumb-collections')}
+
+            {specimen 'default'}
+                {include breadcrumb, trail: [$start, $collections], current: 'Trilobites', testId: 'sample-breadcrumb'}
+            {/specimen}
+
+            {specimen 'directly under the start'}
+                {include breadcrumb, trail: [$start], current: 'Collections'}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

@@ -8,6 +8,7 @@
  *   0  clean (a summary of suppressions, if any, goes to stderr)
  *   1  finding
  *   2  tool error (missing local configuration, missing git, unreadable public configuration)
+ *   3  --staged had nothing staged to scan; stage a change first, or use --all
  *
  * The tool never writes to the working tree. It only reads.
  */
@@ -17,6 +18,7 @@ declare(strict_types=1);
 const EX_OK = 0;
 const EX_FINDING = 1;
 const EX_ERROR = 2;
+const EX_NOTHING_STAGED = 3;
 
 const LOCAL_CONFIG_RELATIVE = 'trilobit/check-leaks.local';
 const PUBLIC_CONFIG_NAME = '.check-leaks.yaml';
@@ -100,6 +102,25 @@ function main(array $args): int
             $localPath,
             'An empty file would let every private pattern through while looking green; fill it in or remove it deliberately.'
         ));
+    }
+
+    // A `--staged` run with nothing staged used to fall straight through to
+    // "no findings" and exit 0 - the same observable result as a run that had
+    // actually scanned something and found it clean. That is a silent
+    // failure: this project commits with an explicit pathspec
+    // (`git commit -- <paths>`), which never touches the ordinary index, so a
+    // manual `bin/check-leaks` run between such commits always had nothing
+    // staged and always looked clean, whether or not it read a single line.
+    // The pre-commit hook itself is unaffected - see .githooks/pre-commit for
+    // why an empty stage there is not this same case.
+    if ($mode === 'staged') {
+        $stagedNames = runGit(['diff', '--cached', '--name-only']);
+        if ($stagedNames === null) {
+            return toolError('git failed: git diff --cached --name-only');
+        }
+        if (trim($stagedNames) === '') {
+            return nothingStaged();
+        }
     }
 
     try {
@@ -253,7 +274,7 @@ function usage(): void
       --history           scan every commit of every branch, including messages
       --files <path>...   scan the given files as if they were entirely new
 
-    Exit codes: 0 clean, 1 finding, 2 tool error.
+    Exit codes: 0 clean, 1 finding, 2 tool error, 3 nothing staged (only for --staged).
     TXT;
     echo "\n";
 }
@@ -263,6 +284,16 @@ function toolError(string $message): int
     fwrite(STDERR, 'check-leaks: ' . $message . "\n");
 
     return EX_ERROR;
+}
+
+function nothingStaged(): int
+{
+    fwrite(STDERR, "check-leaks: nothing is staged, so nothing was scanned.\n");
+    fwrite(STDERR, "Stage the change first (git add <path>, or a pathspec commit stages it "
+        . "for the pre-commit hook on its own), or run bin/check-leaks --all to scan "
+        . "everything that could end up in a commit.\n");
+
+    return EX_NOTHING_STAGED;
 }
 
 function missingLocalConfigMessage(string $path): string
@@ -928,14 +959,32 @@ function ruleDefinitions(array $config, array $localPatterns): array
                 if (in_array(basename($path), $lockFiles, true)) {
                     return [];
                 }
+                // A JSON web token is three base64url parts joined by dots, and
+                // the dots kept it out of the literal below, so a token of that
+                // shape used to pass. Its header and its payload are both JSON
+                // objects, so both begin with the encoding of an opening brace
+                // and a quote; that is looked for directly, before the keyword
+                // skip, so that a word such as "reference" on the line cannot
+                // hide it. Dots are not added to the literal itself: dotted
+                // names such as a sniff code in phpcs.xml would then be long
+                // opaque literals, and they are nothing of the kind.
+                $tokens = allMatches('/\beyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]*/', $text);
+                if ($tokens !== []) {
+                    return $tokens;
+                }
                 if (preg_match('/\b(integrity|sha256|sha512|checksum|hash|reference|shasum)\b/i', $text) === 1) {
                     return [];
                 }
-                if (preg_match('/(?:=>|=|:)\s*[\'"]([A-Za-z0-9+\/=_\-]{32,})[\'"]/', $text, $m) !== 1) {
-                    return [];
+                // Every literal on the line is looked at, not only the first:
+                // the first one may be a word path, and a key after it on the
+                // same line must not ride through on its back.
+                foreach (allMatches('/(?:=>|=|:)\s*[\'"]([A-Za-z0-9+\/=_\-]{32,})[\'"]/', $text, 1) as $literal) {
+                    if (!isWordPath($literal)) {
+                        return [$literal];
+                    }
                 }
 
-                return [$m[1]];
+                return [];
             },
         ],
         'absolute_path' => [
@@ -948,7 +997,21 @@ function ruleDefinitions(array $config, array $localPatterns): array
                 // and a sentence used to be reported as a path, which is how a commit
                 // message describing this very rule came to fail the check. Spaces are
                 // still allowed further along, so "Program Files" is matched.
-                $hits = array_merge($hits, allMatches('#(?<![A-Za-z0-9])[A-Za-z]:\\\\{1,2}[A-Za-z0-9_.\-][A-Za-z0-9_.\- ]*#', $text));
+                //
+                // The drive letter has to stand at the start of a word of its own. A
+                // letter after a word character is the middle of a word, and a letter
+                // after a backslash is usually the end of an escape: a regular
+                // expression reading a time of day - two digit classes, a colon, two
+                // more - used to be reported as a drive, which is how the grammar of a
+                // code highlighter in www/build came to fail the check.
+                //
+                // A backslash before the letter is let through in three places all the
+                // same, because a real path begins there: behind the long-path and the
+                // device prefix (a question mark or a dot before that backslash), and
+                // right after an escaped newline, carriage return or tab, which is how
+                // a path sits in a JSON string or a log line. A path in quotes, in
+                // brackets or at the start of a line matches as before.
+                $hits = array_merge($hits, allMatches('#(?:(?<![\\\\\w])|(?<=[?.]\\\\)|(?<=\\\\[nrt]))[A-Za-z]:\\\\{1,2}[A-Za-z0-9_.\-][A-Za-z0-9_.\- ]*#', $text));
 
                 // A UNC path (\\server\share) used to be matched here as well. It was
                 // dropped: the pattern also matches every PHP namespace literal, which
@@ -1162,6 +1225,48 @@ function allMatches(string $pattern, string $text, int $group = 0): array
     }
 
     return array_values(array_unique($matches[$group] ?? []));
+}
+
+/**
+ * Whether a long literal is a path spelled out of words.
+ *
+ * Such a literal is long enough for the high_entropy rule, and a directory a
+ * component registry or a style guide route names used to be reported as a
+ * key. The decision is made on what the pieces look like, never on the mere
+ * presence of a slash: base64 carries slashes, and a hex or random segment
+ * inside a path is still exactly what the rule is there to find.
+ *
+ * The literal has to hold a slash, and every piece between the separators
+ * (slash, dash, underscore) has to be a word: lower case, or
+ * capitalised, or humps of a camel-case name each three letters or more,
+ * followed by at most two digits, with no run of five consonants. A random
+ * piece fails at least one of those - a digit inside it, a hump of one or two
+ * letters, a letter salad of consonants - and one failing piece is enough for
+ * the whole literal to stay a finding. A plus or an equals sign never occurs
+ * in a word, so padded base64 never gets this far.
+ *
+ * Words joined only by dashes or underscores are not let through: a pass
+ * phrase is written that way, and is a secret.
+ */
+function isWordPath(string $literal): bool
+{
+    if (!str_contains($literal, '/')) {
+        return false;
+    }
+    $pieces = preg_split('#[/_\-]+#', $literal, -1, PREG_SPLIT_NO_EMPTY);
+    if ($pieces === false || count($pieces) < 2) {
+        return false;
+    }
+    foreach ($pieces as $piece) {
+        if (preg_match('/^(?:[a-z]+|[A-Z][a-z]+)(?:[A-Z][a-z]{2,})*\d{0,2}$/', $piece) !== 1) {
+            return false;
+        }
+        if (preg_match('/[bcdfghjklmnpqrstvwxz]{5}/i', $piece) === 1) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function literalValue(string $raw): ?string

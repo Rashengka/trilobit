@@ -70,6 +70,73 @@ final class PathRefused extends \RuntimeException
         return new self(sprintf("No content is registered at '%s'.", $path));
     }
 
+    /**
+     * The last part of an address that is not one - said differently for a
+     * slash and for a dot, because each of them is refused for a reason of its
+     * own and the person typing can only act on the one that applies.
+     */
+    public static function notASegment(string $segment): self
+    {
+        if ($segment === '') {
+            return new self('The last part of an address cannot be empty.');
+        }
+
+        if (str_contains($segment, '/')) {
+            return new self(sprintf(
+                "'%s' is more than one part of an address. Only the last part is written here; what it is filed "
+                . 'under is chosen from the categories, so that everything above it is an address that exists.',
+                $segment,
+            ));
+        }
+
+        $normalized = PublicPath::normalize($segment);
+        $instead = $normalized === '' ? 'Nothing in it can be kept.' : sprintf("'%s' says the same thing.", $normalized);
+
+        if (str_contains($segment, '.')) {
+            return new self(sprintf(
+                "'%s' has a dot in it, and no address here may: Nette's routing reads a dot as the boundary between "
+                . 'two module names. An extension such as .html is not part of an address either - an old address '
+                . 'with one is carried over as a redirect instead. %s',
+                $segment,
+                $instead,
+            ));
+        }
+
+        return new self(sprintf(
+            "'%s' cannot be the last part of an address as it is written. An address is lower case letters of the "
+            . 'English alphabet, digits and single hyphens between them. %s',
+            $segment,
+            $instead,
+        ));
+    }
+
+    public static function stillHasChildren(string $path, int $count): self
+    {
+        return new self(sprintf(
+            "'%s' still has %d %s filed under it. Move %s somewhere else or delete %s first - deleting it now "
+            . 'would take %s with it.',
+            $path,
+            $count,
+            $count === 1 ? 'address' : 'addresses',
+            $count === 1 ? 'it' : 'them',
+            $count === 1 ? 'it' : 'them',
+            $count === 1 ? 'it' : 'them',
+        ));
+    }
+
+    public static function intoItself(string $from, string $to): self
+    {
+        return new self(sprintf("'%s' cannot be moved to '%s', which is inside it.", $from, $to));
+    }
+
+    public static function noSuchCategory(string $id): self
+    {
+        return new self(sprintf(
+            "There is no category '%s' to file this under; it may have been deleted in the meantime.",
+            $id,
+        ));
+    }
+
     public static function stillTheCanonicalAddress(string $path): self
     {
         return new self(sprintf(

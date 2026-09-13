@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Trilobit\Core\Security;
 
 use Nette\Neon\Neon;
-use Nette\Security\Permission;
 
 /**
  * The pieces every role in this installation is put together out of: which
@@ -22,37 +21,37 @@ use Nette\Security\Permission;
  * to be per tenant.
  *
  * **Registration walks Resource::cases() rather than this file.** The file
- * says what a resource falls under and what may be asked of it; which
- * resources there are is the enum's answer and only the enum's. A resource the
- * enum has and the file does not is refused when this is read, so the two
- * cannot drift apart quietly - and quietly is the only way that mistake ever
- * happens, because its symptom appears at somebody else's first question, as
- * an exception rather than as a denial.
+ * says what may be asked of a resource and whether the whole of it may be
+ * granted; which resources there are is the enum's answer and only the
+ * enum's. A resource the enum has and the file does not is refused when this
+ * is read, so the two cannot drift apart quietly - and quietly is the only way
+ * that mistake ever happens, because its symptom appears at somebody else's
+ * first question, as an exception rather than as a denial.
+ *
+ * **What a resource falls under is its name**, read by
+ * Trilobit\Core\Security\ResourceTree when this is read. The file has no way
+ * of saying it: a key for it would be refused like any key nobody reads.
  */
 final readonly class PermissionStructure
 {
     /** Under the project root. It is Core's own file: the structure is the application's, not a deployment's. */
     public const string FILE = 'src/Core/Security/permissions.neon';
 
-    private const string PARENT = 'parent';
-
     private const string PRIVILEGES = 'privileges';
 
     private const string BUNDLE = 'bundle';
 
     /** Every key a resource may be described by; see fromNeon(). */
-    private const array KEYS = [self::PARENT, self::PRIVILEGES, self::BUNDLE];
+    private const array KEYS = [self::PRIVILEGES, self::BUNDLE];
 
     /**
-     * @param array<string, Resource|null> $parents what each resource falls
-     *     under, by the resource's own value
      * @param array<string, non-empty-list<Privilege>> $privileges what may be
      *     asked of each resource, by the resource's own value
      * @param array<string, bool> $bundles whether the whole of each resource
      *     may be granted, by the resource's own value
      */
     private function __construct(
-        private array $parents,
+        private ResourceTree $tree,
         private array $privileges,
         private array $bundles,
     ) {}
@@ -64,6 +63,8 @@ final readonly class PermissionStructure
 
     public static function fromNeon(string $file): self
     {
+        $tree = ResourceTree::of(self::values());
+
         if (!is_file($file)) {
             throw new \RuntimeException(sprintf(
                 'There is no %s, so this build does not say what may be asked about.',
@@ -76,7 +77,6 @@ final readonly class PermissionStructure
             throw new \RuntimeException(sprintf('%s does not describe any resource.', $file));
         }
 
-        $parents = [];
         $privileges = [];
         $bundles = [];
 
@@ -93,7 +93,7 @@ final readonly class PermissionStructure
 
             if (!is_array($description)) {
                 throw new \RuntimeException(sprintf(
-                    "%s says '%s: %s'; a resource is described by what it falls under and what may be asked of it.",
+                    "%s says '%s: %s'; a resource is described by what may be asked of it.",
                     $file,
                     $resource->value,
                     get_debug_type($description),
@@ -105,7 +105,8 @@ final readonly class PermissionStructure
                 throw new \RuntimeException(sprintf(
                     "%s describes '%s' by %s, and a resource is described by %s and nothing else. A key nobody "
                         . 'reads is a sentence that looks like a rule - a misspelt bundle reads as no bundle, and '
-                        . 'its only symptom is a right somebody never gets.',
+                        . 'its only symptom is a right somebody never gets. What a resource falls under is not a '
+                        . 'key either: it is the name, up to its last dot.',
                     $file,
                     $resource->value,
                     implode(', ', $unknown),
@@ -113,13 +114,12 @@ final readonly class PermissionStructure
                 ));
             }
 
-            $parents[$resource->value] = self::parentIn($description, $resource, $file);
             $privileges[$resource->value] = self::privilegesIn($description, $resource, $file);
             $bundles[$resource->value] = self::bundleIn($description, $resource, $file);
         }
 
         foreach (Resource::cases() as $resource) {
-            if (!array_key_exists($resource->value, $parents)) {
+            if (!array_key_exists($resource->value, $privileges)) {
                 throw new \RuntimeException(sprintf(
                     "%s says nothing about '%s', and every resource has to be described where the others are: "
                         . 'registration reads the enum, so one that is missing here would be registered '
@@ -130,27 +130,23 @@ final readonly class PermissionStructure
             }
         }
 
-        foreach ($parents as $child => $parent) {
-            if ($parent instanceof Resource && !in_array(Privilege::View, $privileges[$parent->value] ?? [], true)) {
+        foreach (Resource::cases() as $resource) {
+            $parent = $tree->parentOf($resource->value);
+            if ($parent !== null && !in_array(Privilege::View, $privileges[$parent], true)) {
                 throw new \RuntimeException(sprintf(
                     "%s says '%s' falls under '%s', which does not offer view. Any right on '%s' opens what it "
                         . "falls under, and opening is view - so every piece of '%s' would be a way into a "
                         . 'resource that could not be opened.',
                     $file,
-                    $child,
-                    $parent->value,
-                    $child,
-                    $child,
+                    $resource->value,
+                    $parent,
+                    $resource->value,
+                    $resource->value,
                 ));
             }
         }
 
-        return new self($parents, $privileges, $bundles);
-    }
-
-    public function parentOf(Resource $resource): ?Resource
-    {
-        return $this->parents[$resource->value] ?? null;
+        return new self($tree, $privileges, $bundles);
     }
 
     /** @return non-empty-list<Privilege> */
@@ -180,6 +176,40 @@ final readonly class PermissionStructure
     public function offersBundle(Resource $resource): bool
     {
         return $this->bundles[$resource->value] ?? false;
+    }
+
+    /**
+     * What everything else falls under: the application inside one business.
+     *
+     * The whole of it is every section there is and every one added later,
+     * which is what owning a business means - so it is the one piece only the
+     * owner's role may hold; see Trilobit\Core\Security\AccessComposition.
+     * It is found in the tree rather than named, so that asking for it is not
+     * a mention of a resource that no question follows - see
+     * tests/Architecture/EveryPermissionQuestionIsPredefinedTest.
+     *
+     * There is one, because every resource's name begins with it. A tree with
+     * none or with two is refused rather than answered with one of them: the
+     * one picked would be the one the owner's role holds.
+     */
+    public function root(): Resource
+    {
+        $roots = array_values(array_filter(
+            Resource::cases(),
+            fn(Resource $resource): bool => $this->tree->ancestorsOf($resource->value) === [],
+        ));
+
+        if (count($roots) !== 1) {
+            throw new \LogicException(sprintf(
+                'Everything has to fall under one resource, and %s is what falls under nothing.',
+                $roots === [] ? 'no resource' : implode(', ', array_map(
+                    static fn(Resource $resource): string => $resource->value,
+                    $roots,
+                )),
+            ));
+        }
+
+        return $roots[0];
     }
 
     /**
@@ -218,15 +248,7 @@ final readonly class PermissionStructure
      */
     public function descendantsOf(Resource $resource): array
     {
-        $under = [];
-        foreach ($this->fromTheTopDown() as $candidate) {
-            $parent = $this->parentOf($candidate);
-            if ($parent === $resource || ($parent instanceof Resource && isset($under[$parent->value]))) {
-                $under[$candidate->value] = $candidate;
-            }
-        }
-
-        return array_values($under);
+        return array_map(Resource::from(...), $this->tree->descendantsOf($resource->value));
     }
 
     /**
@@ -234,113 +256,13 @@ final readonly class PermissionStructure
      * high.
      *
      * It is what any right on the resource opens: somebody who may work in a
-     * section may get to it, so they may view each thing it is inside. A
-     * circle is refused here as it is on the way down, because a walk up a
-     * circle never reaches the top.
+     * section may get to it, so they may view each thing it is inside.
      *
      * @return list<Resource>
      */
     public function ancestorsOf(Resource $resource): array
     {
-        $above = [];
-        $current = $this->parentOf($resource);
-        while ($current instanceof Resource) {
-            if ($current === $resource || in_array($current, $above, true)) {
-                throw new \RuntimeException(sprintf(
-                    'These resources fall under each other in a circle, so none of them is at the top: %s.',
-                    implode(', ', array_map(static fn(Resource $r): string => $r->value, [$resource, ...$above])),
-                ));
-            }
-
-            $above[] = $current;
-            $current = $this->parentOf($current);
-        }
-
-        return $above;
-    }
-
-    /**
-     * Puts every resource into an access list, each one after whatever it
-     * falls under - Nette refuses a parent it has not been given yet.
-     *
-     * No access list the application answers from is built this way:
-     * Trilobit\Core\Security\AccessComposition registers every resource on its
-     * own and works out what falls under what itself.
-     */
-    public function addResourcesTo(Permission $access): void
-    {
-        foreach ($this->fromTheTopDown() as $resource) {
-            $access->addResource($resource->value, $this->parentOf($resource)?->value);
-        }
-    }
-
-    /**
-     * The resources with the ones they fall under first.
-     *
-     * A resource is taken as soon as what it falls under has been taken, and a
-     * pass that takes nothing is a cycle - which is the one shape the checks
-     * on reading cannot see, because every name in it is a resource that
-     * really exists.
-     *
-     * @return list<Resource>
-     */
-    private function fromTheTopDown(): array
-    {
-        $remaining = Resource::cases();
-        $ordered = [];
-        $taken = [];
-
-        while ($remaining !== []) {
-            $waiting = [];
-            foreach ($remaining as $resource) {
-                $parent = $this->parentOf($resource);
-                if ($parent instanceof Resource && !isset($taken[$parent->value])) {
-                    $waiting[] = $resource;
-
-                    continue;
-                }
-
-                $ordered[] = $resource;
-                $taken[$resource->value] = true;
-            }
-
-            if (count($waiting) === count($remaining)) {
-                throw new \RuntimeException(sprintf(
-                    'These resources fall under each other in a circle, so none of them can be registered first: %s.',
-                    implode(', ', array_map(static fn(Resource $r): string => $r->value, $waiting)),
-                ));
-            }
-
-            $remaining = $waiting;
-        }
-
-        return $ordered;
-    }
-
-    /** @param array<array-key, mixed> $description */
-    private static function parentIn(array $description, Resource $resource, string $file): ?Resource
-    {
-        $parent = $description[self::PARENT] ?? null;
-        if ($parent === null) {
-            return null;
-        }
-
-        $under = is_string($parent) ? Resource::tryFrom($parent) : null;
-        if (!$under instanceof Resource) {
-            throw new \RuntimeException(sprintf(
-                "%s says '%s' falls under %s, which is not one of the resources this build has: %s.",
-                $file,
-                $resource->value,
-                var_export($parent, true),
-                implode(', ', self::values()),
-            ));
-        }
-
-        if ($under === $resource) {
-            throw new \RuntimeException(sprintf("%s says '%s' falls under itself.", $file, $resource->value));
-        }
-
-        return $under;
+        return array_map(Resource::from(...), $this->tree->ancestorsOf($resource->value));
     }
 
     /**

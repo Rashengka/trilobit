@@ -1,7 +1,8 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
 {*
- * A linked tile, with something to look at and without.
+ * A linked tile, with something to look at and without, and with the line at
+ * its foot that says what it costs.
  *
  * The example content is invented and has to stay invented.
  *}
@@ -12,34 +13,48 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-card']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    <div class="l-grid">
-                        {include card,
-                            title: 'Ammonite mug',
-                            href: '#',
-                            text: 'Stoneware, spiral in relief, holds three hundred millilitres.',
-                            media: 'A'}
+            {specimen 'default'}
+                <div class="l-grid">
+                    {include card,
+                        title: 'Ammonite mug',
+                        href: '#',
+                        text: 'Stoneware, spiral in relief, holds three hundred millilitres.',
+                        media: 'A'}
 
-                        {include card,
-                            title: 'Crinoid print',
-                            href: '#',
-                            text: 'Ink on cotton paper, unframed, four hundred by five hundred.',
-                            media: 'C'}
-                    </div>
-                {/block}
-            {/embed}
+                    {include card,
+                        title: 'Crinoid print',
+                        href: '#',
+                        text: 'Ink on cotton paper, unframed, four hundred by five hundred.',
+                        media: 'C'}
+                </div>
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'without media'}
-                {block sgSpecimenStage}
-                    <div class="l-grid">
-                        {include card,
-                            title: 'Brachiopod cast',
-                            href: '#',
-                            text: 'Plaster, hand finished, one of a numbered run of forty.'}
-                    </div>
-                {/block}
-            {/embed}
+            {specimen 'without media'}
+                <div class="l-grid">
+                    {include card,
+                        title: 'Brachiopod cast',
+                        href: '#',
+                        text: 'Plaster, hand finished, one of a numbered run of forty.'}
+                </div>
+            {/specimen}
+
+            {specimen 'with a footer'}
+                <div class="l-grid">
+                    {include card,
+                        title: 'Trilobite cast',
+                        href: '#',
+                        text: 'Resin, three lobes, as long as a thumb.',
+                        media: 'T',
+                        footer: '24.00 EUR · in stock'}
+
+                    {include card,
+                        title: 'Graptolite slate',
+                        href: '#',
+                        text: 'A dark stone with pale saw-teeth running across it, split along the bedding and waxed.',
+                        media: 'G',
+                        footer: '38.00 EUR · two left'}
+                </div>
+            {/specimen}
         {/block}
     {/embed}
 {/block}

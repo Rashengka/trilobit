@@ -51,6 +51,8 @@ function run(): int
     $failures = [];
 
     checkRuleSamples($failures);
+    checkWindowsDriveLettersBeginAToken($failures);
+    checkHighEntropySeesThroughWordPaths($failures);
     checkFixtureDirectory($failures);
     checkExemptPaths($failures);
     checkMissingLocalConfig($failures);
@@ -60,6 +62,9 @@ function run(): int
     checkFileNameIsChecked($failures);
     checkAllModeReadsWhatCouldBeCommitted($failures);
     checkStagedModeAndHook($failures);
+    checkEmptyStagedModeIsNotSilentlyClean($failures);
+    checkStagedModeWithACleanFileIsClean($failures);
+    checkHookAllowsPathspecCommitsAndAllowEmpty($failures);
     checkRepositoryIsClean($failures);
 
     if ($failures === []) {
@@ -106,6 +111,110 @@ function checkRuleSamples(array &$failures): void
 }
 
 /**
+ * A drive letter begins a Windows path only where it begins a token.
+ *
+ * A letter straight after a backslash is the end of an escape - the `d` of a
+ * digit class in a regular expression reading a time of day - and a letter
+ * straight after a word character is the middle of a word. The rule used to
+ * take the first for a drive, and failed the build on the grammar of a code
+ * highlighter bundled into www/build. Both directions are held here: every
+ * escape passes, and every place a real path starts in is still reported.
+ *
+ * The paths are assembled from pieces so that this file does not carry the
+ * very shapes it hands the tool. The escapes are written out as they are,
+ * because this file is scanned too, and they have to pass there as well.
+ *
+ * @param list<string> $failures
+ */
+function checkWindowsDriveLettersBeginAToken(array &$failures): void
+{
+    $drive = ':' . '\\';
+
+    $escapes = [
+        'a time of day in a regular expression' => 'const time = /\d\d:\d\d/;',
+        'an escape on either side of a colon' => '$pattern = \'/\x:\y/\';',
+        'the grammar as the bundle carries it' => 'datetime:{pattern:/\d\d?(?:[Tt]| +)\d\d?:\d\d:\d\d/}',
+    ];
+    foreach ($escapes as $case => $line) {
+        [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
+        assertSame(0, $code, sprintf('%s is not a Windows path (output: %s)', $case, oneLine($out)), $failures);
+    }
+
+    $paths = [
+        'a path in single quotes' => "\$path = 'C" . $drive . "Users\\someone\\x';",
+        'a path in double quotes' => "\$data = \"D" . $drive . 'data";',
+        'a path in parentheses' => 'copy(E' . $drive . 'tmp);',
+        'a path at the start of a line' => 'F' . $drive . 'projects\\notes.txt',
+        // A backslash before the drive letter does not always end an escape.
+        // Behind the long-path and the device prefix it is the start of the path
+        // itself, and behind an escaped newline or tab - a path in a JSON string
+        // or a log line - the letter is the first of the path again.
+        'a path behind the long-path prefix' => '\\\\?\\' . 'C' . $drive . 'Users\\someone',
+        'a path behind the device prefix' => '\\\\.\\' . 'D' . $drive . 'data',
+        'a path behind an escaped newline' => '"message": "line\\n' . 'C' . $drive . 'Users\\someone"',
+        'a path behind an escaped tab' => '"path": "\\t' . 'E' . $drive . 'tmp"',
+    ];
+    foreach ($paths as $case => $line) {
+        [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
+        assertSame(1, $code, sprintf('%s is still a finding (output: %s)', $case, oneLine($out)), $failures);
+        assertContains('[absolute_path]', $out, sprintf('%s is still reported by absolute_path', $case), $failures);
+    }
+}
+
+/**
+ * A path spelled out of words is not an opaque literal, however long it is.
+ *
+ * The rule reports a long literal assigned to a name, and a directory path
+ * such as the one a style guide page or a component registry names is long
+ * enough to be one. It used to be reported, and two suppressions in this
+ * repository existed for nothing else. The line is drawn by what the pieces of
+ * the literal look like, not by whether it contains a slash - base64 carries
+ * slashes too - so both directions are held here: every word path passes, and
+ * every shape a key or a token takes is still reported, a slash in it or not.
+ *
+ * The secrets are assembled from pieces so that this file does not carry the
+ * very literals it hands the tool. The word paths are written out as they
+ * are, because this file is scanned too and they have to pass here as well.
+ *
+ * @param list<string> $failures
+ */
+function checkHighEntropySeesThroughWordPaths(array &$failures): void
+{
+    $wordPaths = [
+        'a style guide route' => "const COLLAPSE = '/_styleguide/components/collapse';",
+        'a source directory' => "public const string DIRECTORY = 'src/Core/Presentation/components';",
+        'a fixture directory' => "public const string DIRECTORY = 'tests/Architecture/Fixtures/Permissions';",
+        'a path of words joined by dashes and underscores' => "\$path = 'assets/component-previews/button_group/large-variant';",
+        'a path naming a class' => "\$path = 'src/Core/Presentation/Component/ComponentRegistry';",
+    ];
+    foreach ($wordPaths as $case => $line) {
+        [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
+        assertSame(0, $code, sprintf('%s is not an opaque literal (output: %s)', $case, oneLine($out)), $failures);
+    }
+
+    $hex = 'a3f9c1d4e5b6' . 'a7c8d9e0f1a2' . 'b3c4d5e6f708';
+    $base64 = 'abcD3fGh/IjkL' . 'mN0pQrS+tUvWxYz12==';
+    $jwt = 'eyJhbGciOiJIUzI1NiJ9' . '.' . 'eyJzdWIiOiJkZW1vIn0' . '.' . 'Xk9pQ2mZ7rT4vB8nL3wY6s';
+    $mixed = 'Q7mZp2Rk' . 'X9vT4nWb' . 'L8sY3dHc' . 'F6gJ1eAu';
+    $secrets = [
+        'a hex string' => "\$value = '" . $hex . "';",
+        'base64 with a slash, a plus and padding' => "\$value = '" . $base64 . "';",
+        'a JWT' => "\$value = '" . $jwt . "';",
+        'a key in mixed case with digits' => "\$value = '" . $mixed . "';",
+        'a hex segment inside a path' => "\$value = '/assets/" . '9f86d081884c7d659a2f' . 'eaa0c55ad015a3bf4f1b' . "';",
+        'a path one segment of which is random characters' => "\$value = '/files/" . 'Xk9pQ2mZ' . '7rT4vB8n' . "/download';",
+        'a path one segment of which is random lower case' => "\$value = '/account/activate/" . 'qwhdkzmx' . 'nvbrtplk' . "';",
+        'base64url whose pieces the dashes and underscores separate' => "\$value = '" . 'Zm9vYm-FyQm_F6cXV4' . 'LXRva2VuLXNhbXBsZQ' . "';",
+        'a token behind a word path on the same line' => "\$a = '/_styleguide/components/collapse'; \$b = '" . $mixed . "';",
+    ];
+    foreach ($secrets as $case => $line) {
+        [$code, $out] = checkFiles([DEFAULT_SAMPLE_PATH => $line . "\n"]);
+        assertSame(1, $code, sprintf('%s is still a finding (output: %s)', $case, oneLine($out)), $failures);
+        assertContains('[high_entropy]', $out, sprintf('%s is still reported by high_entropy', $case), $failures);
+    }
+}
+
+/**
  * The fixture directory is skipped by the tool, but only for the .sample
  * extension. Anything else there would be an unchecked hiding place.
  *
@@ -138,7 +247,7 @@ function checkExemptPaths(array &$failures): void
 {
     $czech = (string) file_get_contents(FIXTURES . '/czech_text.sample');
 
-    foreach (['translations/cs.neon', 'LICENSE'] as $path) {
+    foreach (['translations/cs.neon', 'LICENSE', 'www/build/licenses.txt'] as $path) {
         [$code, $out] = checkFiles([$path => $czech]);
         assertSame(0, $code, sprintf('Czech in %s is allowed (output: %s)', $path, oneLine($out)), $failures);
     }
@@ -353,6 +462,139 @@ function checkStagedModeAndHook(array &$failures): void
     assertSame(true, $commitCode !== 0, 'the hook blocks git commit', $failures);
     assertSame($before, $after, 'no commit was created', $failures);
     assertContains('[email]', $commitOut . $commitErr, 'the blocked commit shows the finding', $failures);
+}
+
+/**
+ * `--staged` used to read `git diff --cached`, find nothing staged, and report
+ * the same clean result (exit 0) as a run that actually scanned something.
+ * A commit made with an explicit pathspec (`git commit -- <paths>`) never puts
+ * anything in the ordinary index first, so a manual `bin/check-leaks` run
+ * between such commits always looked clean, whether or not it had scanned a
+ * single line - a silent failure in the sense the project's own rules name:
+ * it produced the same observable output as success.
+ *
+ * @param list<string> $failures
+ */
+function checkEmptyStagedModeIsNotSilentlyClean(array &$failures): void
+{
+    $workspace = workspace([], LOCAL_PATTERNS);
+    $repo = $workspace['dir'] . '/repo';
+    $home = $workspace['home'];
+
+    mkdir($repo, 0777, true);
+    execute(['git', 'init', '--quiet'], $repo, $home);
+    copy(ROOT . '/.check-leaks.yaml', $repo . '/.check-leaks.yaml');
+
+    [$code, $out, $err] = execute([binary(), '--staged'], $repo, $home);
+
+    assertSame(
+        true,
+        $code !== 0 && $code !== 1,
+        sprintf('an empty stage is neither a clean result nor a finding (got %d, output: %s)', $code, oneLine($out . $err)),
+        $failures
+    );
+    assertContains('nothing', $out . $err, 'the message says nothing was staged', $failures);
+    assertContains('--all', $out . $err, 'the message names a mode that scans something', $failures);
+}
+
+/**
+ * A stage that holds a file without a finding still has to report 0 - only an
+ * empty stage is the new, distinct case.
+ *
+ * @param list<string> $failures
+ */
+function checkStagedModeWithACleanFileIsClean(array &$failures): void
+{
+    $workspace = workspace([], LOCAL_PATTERNS);
+    $repo = $workspace['dir'] . '/repo';
+    $home = $workspace['home'];
+
+    mkdir($repo, 0777, true);
+    execute(['git', 'init', '--quiet'], $repo, $home);
+    copy(ROOT . '/.check-leaks.yaml', $repo . '/.check-leaks.yaml');
+    mkdir($repo . '/src/Core', 0777, true);
+    file_put_contents($repo . '/src/Core/Clean.php', "<?php\n");
+    execute(['git', 'add', 'src/Core/Clean.php'], $repo, $home);
+
+    [$code, $out, $err] = execute([binary(), '--staged'], $repo, $home);
+
+    assertSame(0, $code, sprintf('a clean staged file is still a clean run (output: %s)', oneLine($out . $err)), $failures);
+}
+
+/**
+ * The hook must keep working for the two shapes this project actually
+ * commits with: an explicit pathspec, which never touches the ordinary index,
+ * and `--allow-empty`, which stages nothing at all on purpose. Neither may be
+ * blocked by the fix above - a hook that refuses a legitimate empty commit is
+ * not a safer hook, only a more annoying one.
+ *
+ * @param list<string> $failures
+ */
+function checkHookAllowsPathspecCommitsAndAllowEmpty(array &$failures): void
+{
+    $workspace = workspace([], LOCAL_PATTERNS);
+    $repo = $workspace['dir'] . '/repo';
+    $home = $workspace['home'];
+
+    mkdir($repo, 0777, true);
+    execute(['git', 'init', '--quiet'], $repo, $home);
+    foreach (['bin/check-leaks', '.githooks/pre-commit', '.check-leaks.yaml'] as $file) {
+        @mkdir($repo . '/' . dirname($file), 0777, true);
+        copy(ROOT . '/' . $file, $repo . '/' . $file);
+        chmod($repo . '/' . $file, 0755);
+    }
+    execute(['git', 'config', 'core.hooksPath', '.githooks'], $repo, $home);
+
+    $committer = ['git', '-c', 'user.name=Leak Test', '-c', 'user.email=leak-test@example.com'];
+
+    // A first, ordinary commit so the repository has a HEAD to diff against,
+    // and so both files pathspec commits touch below are already tracked -
+    // `git commit -- <path>` only picks up a change to a path git already
+    // knows, never a brand new untracked file.
+    @mkdir($repo . '/src/Core', 0777, true);
+    file_put_contents($repo . '/src/Core/Tracked.php', "<?php\n");
+    file_put_contents($repo . '/src/Core/Leak.php', "<?php\n// nothing here yet\n");
+    execute(['git', 'add', 'src/Core/Tracked.php', 'src/Core/Leak.php'], $repo, $home);
+    execute([...$committer, 'commit', '-m', 'Initial commit', '--quiet'], $repo, $home);
+    $afterFirst = trim(execute(['git', 'rev-list', '--count', '--all'], $repo, $home)[1]);
+
+    // Pathspec commit of a clean change: never staged with `git add`, so this
+    // is exactly the shape the hook must not block.
+    file_put_contents($repo . '/src/Core/Tracked.php', "<?php\n// clean change\n");
+    [$cleanCode] = execute([...$committer, 'commit', '-m', 'A clean pathspec commit', '--', 'src/Core/Tracked.php'], $repo, $home);
+    $afterClean = trim(execute(['git', 'rev-list', '--count', '--all'], $repo, $home)[1]);
+    assertSame(0, $cleanCode, 'a clean pathspec commit is not blocked', $failures);
+    assertSame((string) ((int) $afterFirst + 1), $afterClean, 'the clean pathspec commit was created', $failures);
+
+    // Pathspec commit of a leak: still never staged with `git add`. The hook
+    // sees it through the temporary index git builds for a pathspec commit.
+    file_put_contents($repo . '/src/Core/Leak.php', file_get_contents(FIXTURES . '/email.sample'));
+    [$leakCode, $leakOut, $leakErr] = execute(
+        [...$committer, 'commit', '-m', 'A leaking pathspec commit', '--', 'src/Core/Leak.php'],
+        $repo,
+        $home
+    );
+    $afterLeak = trim(execute(['git', 'rev-list', '--count', '--all'], $repo, $home)[1]);
+    assertSame(true, $leakCode !== 0, 'a leaking pathspec commit is blocked', $failures);
+    assertSame($afterClean, $afterLeak, 'no commit was created for the leaking pathspec commit', $failures);
+    assertContains('[email]', $leakOut . $leakErr, 'the blocked pathspec commit shows the finding', $failures);
+
+    // Nothing staged at all, on purpose: `--allow-empty` must go through even
+    // though `git diff --cached` is empty, the same condition the fix above
+    // reports on for a plain `--staged` run.
+    [$emptyCode, $emptyOut, $emptyErr] = execute(
+        [...$committer, 'commit', '--allow-empty', '-m', 'An intentionally empty commit'],
+        $repo,
+        $home
+    );
+    $afterEmpty = trim(execute(['git', 'rev-list', '--count', '--all'], $repo, $home)[1]);
+    assertSame(
+        0,
+        $emptyCode,
+        sprintf('--allow-empty is not blocked by the empty-stage guard (output: %s)', oneLine($emptyOut . $emptyErr)),
+        $failures
+    );
+    assertSame((string) ((int) $afterClean + 1), $afterEmpty, 'the intentionally empty commit was created', $failures);
 }
 
 /**

@@ -99,14 +99,14 @@ final class TenancyEntitiesTest extends TestCase
             'Alice Ammonite',
             new DateTimeImmutable('2026-09-05T08:00:00+00:00'),
         );
-        $administrator = new Role('administrator', 'Administrator', ['administration']);
+        $owner = new Role('owner', 'Owner', ['administration']);
         $editor = new Role('editor', 'Editor', ['content.write']);
 
-        foreach ([$account, $administrator, $editor] as $entity) {
+        foreach ([$account, $owner, $editor] as $entity) {
             $entityManager->persist($entity);
         }
 
-        $entityManager->persist(new Membership($bikes, $account, $administrator));
+        $entityManager->persist(new Membership($bikes, $account, $owner));
         $entityManager->persist(new Membership($books, $account, $editor));
         $entityManager->flush();
         $entityManager->clear();
@@ -115,7 +115,7 @@ final class TenancyEntitiesTest extends TestCase
         // memberships are ever read: the filter scopes this table like every
         // other tenanted one, so "all of them" always means "all of this
         // tenant's".
-        self::assertSame(['administrator'], $this->rolesHeldIn($bikes));
+        self::assertSame(['owner'], $this->rolesHeldIn($bikes));
         self::assertSame(['editor'], $this->rolesHeldIn($books));
     }
 
@@ -150,7 +150,7 @@ final class TenancyEntitiesTest extends TestCase
             'Alice Ammonite',
             new DateTimeImmutable('2026-09-05T08:00:00+00:00'),
         );
-        $role = new Role('administrator', 'Administrator', ['administration']);
+        $role = new Role('owner', 'Owner', ['administration']);
 
         foreach ([$account, $role] as $entity) {
             $entityManager->persist($entity);

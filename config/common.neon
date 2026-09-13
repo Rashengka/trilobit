@@ -79,6 +79,12 @@ latte:
     strictTypes: true
     strictParsing: true
 
+    # {specimen}, which the style guide draws every specimen with: the specimen
+    # itself, the HTML it came out as and the Latte it was written in, all from
+    # one place. See Trilobit\Core\Presentation\Styleguide\SpecimenNode.
+    extensions:
+        - Trilobit\Core\Presentation\Styleguide\SpecimenExtension
+
 http:
     frames: SAMEORIGIN
 

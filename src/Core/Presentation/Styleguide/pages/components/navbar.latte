@@ -1,0 +1,85 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * What Bootstrap calls a navbar, which is not one component here but two -
+ * c-site-header and c-nav - in the two regions of the shell a page draws them
+ * in. This page registers nothing and shows only what the pages of the two
+ * components do not: the two together, the smaller bands atrium draws once
+ * the content has scrolled, and the two in a space too narrow for one row.
+ * Everything else is on the pages the first paragraph leads to, and is not
+ * drawn a second time here.
+ *
+ * The regions are drawn with the shell's classes, so that they carry the
+ * grounds a theme gives them, and with the same four tokens set on the
+ * specimen as the shell's own specimen sets, for the same reasons
+ * (pages/layout/shell.latte): nothing in a specimen may be held in view,
+ * because it would stick to the window under the page's own banner and be
+ * counted into the clearance a jump to a heading keeps.
+ *
+ * The smaller bands are the page's own mark, data-scrolled="true", written on
+ * the specimen's bands by hand: it is what assets/chrome.ts writes on the
+ * page's bands once the content has scrolled under them, and all a theme reads.
+ *
+ * tests/e2e/navbar.spec.ts measures all three. The example content is invented
+ * and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/site-header.latte'}
+{import '../../../components/nav.latte'}
+{import '../../../components/button.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        There is no navbar component. The band across the top of a page is
+        <a n:href="page group: 'components', page: 'site-header'"><code>c-site-header</code></a>,
+        in the banner's region of the shell, and the links are
+        <a n:href="page group: 'components', page: 'nav'"><code>c-nav</code></a>, in the navigation's -
+        which is also where the entries under an entry are shown. Where the two regions go is the
+        theme's (see <a n:href="page group: 'layout', page: 'shell'">the shell</a>): ledger puts the
+        navigation in a column beside the page, atrium in a row under the banner. Which of them stays in
+        view is on <a n:href="page group: 'foundations', page: 'chrome'">what stays in view</a>.
+    </p>
+
+    <div class="l-stack" data-testid="styleguide-navbar">
+        {specimen 'the banner over the navigation'}
+            <div style="--layout-shell-min-size: auto; --layout-banner-position: static; --layout-nav-position: static; --layout-z-chrome: auto">
+                <div class="l-shell__banner">
+                    {embed block siteHeader, brand: 'Trilobit', href: '#', tagline: 'Modular commerce, contacts and content.'}
+                        {block siteHeaderEnd}
+                            {include button, label: 'Somebody', variant: 'quiet', icon: 'chevron-down'}
+                        {/block}
+                    {/embed}
+                </div>
+
+                <div class="l-shell__nav">
+                    {include nav, items: $sampleNavigation, label: 'Navbar specimen'}
+                </div>
+            </div>
+        {/specimen}
+
+        {specimen 'made smaller once the content has scrolled'}
+            <div style="--layout-shell-min-size: auto; --layout-banner-position: static; --layout-nav-position: static; --layout-z-chrome: auto">
+                <div class="l-shell__banner" data-scrolled="true">
+                    {include siteHeader, brand: 'Trilobit', href: '#', tagline: 'Modular commerce, contacts and content.'}
+                </div>
+
+                <div class="l-shell__nav" data-scrolled="true">
+                    {include nav, items: $sampleNavigation, label: 'Navbar specimen, made smaller'}
+                </div>
+            </div>
+        {/specimen}
+
+        {specimen 'in a narrow space', narrow: true}
+            <div style="--layout-shell-min-size: auto; --layout-banner-position: static; --layout-nav-position: static; --layout-z-chrome: auto">
+                <div class="l-shell__banner">
+                    {include siteHeader, brand: 'Trilobit', href: '#', tagline: 'Modular commerce, contacts and content.'}
+                </div>
+
+                <div class="l-shell__nav">
+                    {include nav, items: $sampleNavigation, label: 'Navbar specimen in a narrow space'}
+                </div>
+            </div>
+        {/specimen}
+    </div>
+{/block}

@@ -47,6 +47,13 @@ final class CmsRoutes implements RouteProvider
         $routes->addRoute(self::ADMIN_PATH . '/pages/add', 'Cms:Admin:Page:add');
         $routes->addRoute(self::ADMIN_PATH . '/pages/<id>', 'Cms:Admin:Page:edit');
 
+        // Categories are Core's - rows of the register other addresses are
+        // filed under - and arranged here, because this is the module that
+        // files pages into them. Same order as above, for the same reason.
+        $routes->addRoute(self::ADMIN_PATH . '/categories', 'Cms:Admin:Category:default');
+        $routes->addRoute(self::ADMIN_PATH . '/categories/add', 'Cms:Admin:Category:add');
+        $routes->addRoute(self::ADMIN_PATH . '/categories/<id>', 'Cms:Admin:Category:edit');
+
         $routes->addRoute(self::ADMIN_PATH . '/menus', 'Cms:Admin:Menu:default');
         $routes->addRoute(self::ADMIN_PATH . '/menus/add', 'Cms:Admin:Menu:add');
         $routes->addRoute(self::ADMIN_PATH . '/menus/<id>', 'Cms:Admin:Menu:edit');

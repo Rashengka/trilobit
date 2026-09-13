@@ -8,7 +8,8 @@
         "isolatedModules": true,
         "skipLibCheck": true,
         "noEmit": true,
+        "allowImportingTsExtensions": true,
         "types": ["vite/client"]
     },
-    "include": ["vite.config.ts", "assets", "src/*/assets", "tests/frontend"]
+    "include": ["vite.config.ts", "vite-plugins", "assets", "src/*/assets", "tests/frontend"]
 }

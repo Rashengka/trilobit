@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Trilobit\Tests\Unit\Core\Security;
 
-use Nette\Security\Permission;
 use Nette\Utils\FileSystem;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -49,6 +48,24 @@ final class PermissionStructureTest extends TestCase
         }
     }
 
+    /**
+     * What everything falls under is the application, found in the names
+     * rather than named: the whole of it is the owner's, so it is the one
+     * resource whose answer decides who that piece is reserved for.
+     */
+    public function testWhatEverythingFallsUnderIsTheApplication(): void
+    {
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+
+        self::assertSame(Resource::App, $structure->root());
+
+        foreach (Resource::cases() as $resource) {
+            if ($resource !== Resource::App) {
+                self::assertContains(Resource::App, $structure->ancestorsOf($resource), $resource->value);
+            }
+        }
+    }
+
     public function testWhatAResourceOffersIsWhatTheFileSays(): void
     {
         $structure = PermissionStructure::of(Bootstrap::rootDirectory());
@@ -58,91 +75,43 @@ final class PermissionStructureTest extends TestCase
     }
 
     /**
-     * A resource is registered after what it falls under, and inheritance then
-     * does the work: one rule about the administration answers for a section
-     * of it. Asked of a real Nette\Security\Permission rather than of the
-     * structure's own idea of it, because the claim is about what the
-     * framework does with what it is given.
+     * The tree is in the names: a resource falls under its name up to the last
+     * dot. The shipped tree is three levels deep, so a walk that stopped at
+     * the parent or at the children would be caught here.
      */
-    public function testARuleOnWhatAResourceFallsUnderAnswersForIt(): void
-    {
-        $access = new Permission();
-        PermissionStructure::of(Bootstrap::rootDirectory())->addResourcesTo($access);
-
-        $access->addRole('administrator');
-        $access->allow('administrator', Resource::Administration->value, Privilege::View->value);
-
-        self::assertTrue($access->isAllowed('administrator', Resource::Content->value, Privilege::View->value));
-        self::assertFalse($access->isAllowed('administrator', Resource::Redirection->value, Privilege::View->value));
-    }
-
-    /**
-     * Everything under a resource, however deep, because that is how far a
-     * rule on it reaches in Nette. The shipped file is one level deep, so the
-     * second level is written here: a walk that stopped at the children would
-     * agree with the shipped file and be wrong the day a section gets one of
-     * its own.
-     */
-    public function testEverythingUnderAResourceIsFoundHoweverDeep(): void
-    {
-        $structure = $this->structureOf(
-            $this->describing(Resource::Administration->value)
-                . $this->describing(Resource::Content->value, Resource::Administration->value)
-                . $this->describing(Resource::Account->value, Resource::Content->value)
-                . $this->describing(Resource::Redirection->value),
-        );
-
-        self::assertEqualsCanonicalizing(
-            [Resource::Content, Resource::Account],
-            $structure->descendantsOf(Resource::Administration),
-        );
-        self::assertSame([Resource::Account], $structure->descendantsOf(Resource::Content));
-        self::assertSame([], $structure->descendantsOf(Resource::Account));
-        self::assertSame([], $structure->descendantsOf(Resource::Redirection));
-    }
-
-    /** The shipped file, which is what every access list is composed from. */
-    public function testTheSectionsOfTheAdministrationFallUnderIt(): void
+    public function testTheTreeIsReadFromTheDotsInTheNames(): void
     {
         $structure = PermissionStructure::of(Bootstrap::rootDirectory());
 
+        self::assertSame([Resource::Administration, Resource::App], $structure->ancestorsOf(Resource::Content));
+        self::assertSame([Resource::Administration, Resource::App], $structure->ancestorsOf(Resource::Account));
+        self::assertSame([Resource::App], $structure->ancestorsOf(Resource::Administration));
+        self::assertSame([Resource::App], $structure->ancestorsOf(Resource::Redirection));
+        self::assertSame([], $structure->ancestorsOf(Resource::App));
+
+        self::assertEqualsCanonicalizing(
+            [Resource::Administration, Resource::Account, Resource::Content, Resource::Redirection],
+            $structure->descendantsOf(Resource::App),
+        );
         self::assertEqualsCanonicalizing(
             [Resource::Account, Resource::Content],
             $structure->descendantsOf(Resource::Administration),
         );
+        self::assertSame([], $structure->descendantsOf(Resource::Content));
         self::assertSame([], $structure->descendantsOf(Resource::Redirection));
     }
 
     /**
-     * Everything a resource falls under, nearest first and however high, because
-     * a right on it opens every one of them. Two levels are written for the
-     * same reason as above: a walk that stopped at the parent would agree with
-     * the shipped file.
-     */
-    public function testEverythingAResourceFallsUnderIsFoundHoweverHigh(): void
-    {
-        $structure = $this->structureOf(
-            $this->describing(Resource::Administration->value)
-                . $this->describing(Resource::Content->value, Resource::Administration->value)
-                . $this->describing(Resource::Account->value, Resource::Content->value)
-                . $this->describing(Resource::Redirection->value),
-        );
-
-        self::assertSame([Resource::Content, Resource::Administration], $structure->ancestorsOf(Resource::Account));
-        self::assertSame([Resource::Administration], $structure->ancestorsOf(Resource::Content));
-        self::assertSame([], $structure->ancestorsOf(Resource::Administration));
-        self::assertSame([], $structure->ancestorsOf(Resource::Redirection));
-    }
-
-    /**
-     * Which resources may be granted whole. The administration and its
-     * content may; the accounts may not, because a new privilege on them is
-     * one nobody should come to hold without having been given it by name.
+     * Which resources may be granted whole. The application, the
+     * administration and its content may; the accounts may not, because a new
+     * privilege on them is one nobody should come to hold without having been
+     * given it by name.
      */
     public function testTheShippedStructureOffersTheWholeOfOnlyWhatItSaysSo(): void
     {
         $structure = PermissionStructure::of(Bootstrap::rootDirectory());
 
+        self::assertTrue($structure->offersBundle(Resource::App));
         self::assertTrue($structure->offersBundle(Resource::Administration));
         self::assertTrue($structure->offersBundle(Resource::Content));
         self::assertFalse($structure->offersBundle(Resource::Account));
@@ -166,11 +135,11 @@ final class PermissionStructureTest extends TestCase
     public function testABundleThatIsNeitherYesNorNoIsRefused(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches("#'administration'#");
+        $this->expectExceptionMessageMatches("#'app\\.administration'#");
 
         $this->structureOf(
             $this->everyResourceExcept(Resource::Administration)
-                . "\nadministration:\n    bundle: everything\n    privileges: [view]\n",
+                . Resource::Administration->value . ":\n    bundle: everything\n    privileges: [view]\n",
         );
     }
 
@@ -186,7 +155,23 @@ final class PermissionStructureTest extends TestCase
 
         $this->structureOf(
             $this->everyResourceExcept(Resource::Administration)
-                . "\nadministration:\n    bundel: true\n    privileges: [view]\n",
+                . Resource::Administration->value . ":\n    bundel: true\n    privileges: [view]\n",
+        );
+    }
+
+    /**
+     * What a resource falls under is its name, so a key saying it as well is
+     * a second sentence that could disagree with the first - and the one read
+     * would be the name. It is refused like any other key nobody reads.
+     */
+    public function testWhatAResourceFallsUnderCannotBeSaidBesideItsName(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches("#'app\\.administration' by parent#");
+
+        $this->structureOf(
+            $this->everyResourceExcept(Resource::Administration)
+                . Resource::Administration->value . ":\n    parent: app\n    privileges: [view]\n",
         );
     }
 
@@ -199,13 +184,10 @@ final class PermissionStructureTest extends TestCase
     public function testAResourceSomethingFallsUnderHasToOfferView(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches("#'administration'.*view#");
+        $this->expectExceptionMessageMatches("#falls under 'app', which does not offer view#");
 
         $this->structureOf(
-            "administration:\n    privileges: [edit]\n\n"
-                . $this->describing(Resource::Content->value, Resource::Administration->value)
-                . $this->describing(Resource::Account->value)
-                . $this->describing(Resource::Redirection->value),
+            $this->everyResourceExcept(Resource::App) . Resource::App->value . ":\n    privileges: [edit]\n",
         );
     }
 
@@ -229,7 +211,7 @@ final class PermissionStructureTest extends TestCase
 
         $this->structureOf(
             $this->everyResourceExcept(Resource::Administration)
-                . "\nadministration:\n    privileges: [view, unpublish]\n",
+                . Resource::Administration->value . ":\n    privileges: [view, unpublish]\n",
         );
     }
 
@@ -241,7 +223,7 @@ final class PermissionStructureTest extends TestCase
     public function testAResourceLeftOutOfTheFileIsRefused(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches("#'administration'#");
+        $this->expectExceptionMessageMatches("#'app\\.administration'#");
 
         $this->structureOf($this->everyResourceExcept(Resource::Administration));
     }
@@ -249,52 +231,12 @@ final class PermissionStructureTest extends TestCase
     public function testAResourceWithNothingToAskOfItIsRefused(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches("#'administration'#");
-
-        $this->structureOf($this->everyResourceExcept(Resource::Administration) . "\nadministration:\n    privileges: []\n");
-    }
-
-    public function testFallingUnderSomethingThatIsNotAResourceIsRefused(): void
-    {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches("#'billing'#");
+        $this->expectExceptionMessageMatches("#'app\\.administration'#");
 
         $this->structureOf(
             $this->everyResourceExcept(Resource::Administration)
-                . "\nadministration:\n    parent: billing\n    privileges: [view]\n",
+                . Resource::Administration->value . ":\n    privileges: []\n",
         );
-    }
-
-    public function testFallingUnderItselfIsRefused(): void
-    {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('#falls under itself#');
-
-        $this->structureOf(
-            $this->everyResourceExcept(Resource::Administration)
-                . "\nadministration:\n    parent: administration\n    privileges: [view]\n",
-        );
-    }
-
-    /**
-     * A circle passes every check made while the file is read - each name in
-     * it is a resource that really exists - so it is caught where it shows,
-     * which is when nothing can be registered first.
-     */
-    public function testResourcesFallingUnderEachOtherInACircleAreRefused(): void
-    {
-        $file = '';
-        foreach (Resource::cases() as $index => $resource) {
-            $under = Resource::cases()[($index + 1) % count(Resource::cases())];
-            $file .= $this->describing($resource->value, $under->value);
-        }
-
-        $structure = $this->structureOf($file);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('#in a circle#');
-
-        $structure->addResourcesTo(new Permission());
     }
 
     public function testAFileThatIsNotThereIsRefused(): void
@@ -338,13 +280,8 @@ final class PermissionStructureTest extends TestCase
      * "%s:" followed by an escaped newline reads to the leak guard as a
      * Windows path and it says so - rightly, by its own rule.
      */
-    private function describing(string $resource, ?string $under = null): string
+    private function describing(string $resource): string
     {
-        $described = $resource . ":\n";
-        if ($under !== null) {
-            $described .= '    parent: ' . $under . "\n";
-        }
-
-        return $described . "    privileges: [view]\n\n";
+        return $resource . ":\n    privileges: [view]\n\n";
     }
 }

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Trilobit\Tests\Unit\Core\Security;
 
 use Nette\Security\Permission;
-use Nette\Utils\FileSystem;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Security\AccessComposition;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
@@ -30,16 +30,6 @@ use Trilobit\Core\Security\Resource;
 #[CoversClass(AccessComposition::class)]
 final class AccessCompositionTest extends TestCase
 {
-    private string $directory = '';
-
-    protected function tearDown(): void
-    {
-        if ($this->directory !== '') {
-            FileSystem::delete($this->directory);
-            $this->directory = '';
-        }
-    }
-
     /**
      * Opening the administration is opening the administration and nothing
      * else. It used to reach every section as well, which made a door into a
@@ -47,7 +37,7 @@ final class AccessCompositionTest extends TestCase
      */
     public function testAPieceOnTheAdministrationSaysNothingAboutItsSections(): void
     {
-        $access = $this->composed(['administration:view']);
+        $access = $this->composed(['app.administration:view']);
 
         self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
         self::assertFalse($this->allows($access, Resource::Content, Privilege::View));
@@ -61,12 +51,38 @@ final class AccessCompositionTest extends TestCase
      */
     public function testAPieceOnASectionOpensTheAdministration(): void
     {
-        $access = $this->composed(['content:view']);
+        $access = $this->composed(['app.administration.content:view']);
 
         self::assertTrue($this->allows($access, Resource::Content, Privilege::View));
         self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
         self::assertFalse($this->allows($access, Resource::Account, Privilege::View));
         self::assertFalse($this->allows($access, Resource::Content, Privilege::Edit));
+    }
+
+    /**
+     * The door reaches every resource above the one the right is on, not only
+     * the nearest: the administration, and the application it is part of.
+     */
+    public function testAPieceOnASectionOpensEveryDoorAboveIt(): void
+    {
+        $access = $this->composed(['app.administration.content:view']);
+
+        self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
+        self::assertTrue($this->allows($access, Resource::App, Privilege::View));
+    }
+
+    /**
+     * Where a visitor is sent is under the application and not under the
+     * administration, so a right on it opens the application and does not
+     * let anybody into the administration.
+     */
+    public function testAPieceOnTheRedirectionOpensTheApplicationAndNotTheAdministration(): void
+    {
+        $access = $this->composed(['app.redirection:view']);
+
+        self::assertTrue($this->allows($access, Resource::Redirection, Privilege::View));
+        self::assertTrue($this->allows($access, Resource::App, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::Administration, Privilege::View));
     }
 
     /**
@@ -77,7 +93,7 @@ final class AccessCompositionTest extends TestCase
      */
     public function testEditingASectionOpensTheAdministrationAndDoesNotLetTheSectionBeRead(): void
     {
-        $access = $this->composed(['content:edit']);
+        $access = $this->composed(['app.administration.content:edit']);
 
         self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
         self::assertTrue($this->allows($access, Resource::Content, Privilege::Edit));
@@ -101,21 +117,19 @@ final class AccessCompositionTest extends TestCase
         }
     }
 
-    /** A door reaches every resource above the one the right is on, not only the nearest. */
-    public function testADoorOpensEverythingAboveHoweverHigh(): void
+    /**
+     * A door reaches every resource above the one the right is on and opens
+     * nothing beside it: editing the accounts opens the administration and
+     * the application, and neither reading the accounts nor the content.
+     */
+    public function testADoorOpensEverythingAboveAndNothingBeside(): void
     {
-        $access = $this->composedOver(
-            $this->describing(Resource::Administration->value, privileges: ['view'])
-                . $this->describing(Resource::Content->value, Resource::Administration->value, ['view', 'edit'])
-                . $this->describing(Resource::Account->value, Resource::Content->value, ['view', 'edit'])
-                . $this->describing(Resource::Redirection->value, privileges: ['view']),
-            ['account:edit'],
-        );
+        $access = $this->composed(['app.administration.account:edit']);
 
-        self::assertTrue($this->allows($access, Resource::Content, Privilege::View));
         self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
-        self::assertFalse($this->allows($access, Resource::Content, Privilege::Edit));
+        self::assertTrue($this->allows($access, Resource::App, Privilege::View));
         self::assertFalse($this->allows($access, Resource::Account, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::Content, Privilege::View));
     }
 
     /**
@@ -127,7 +141,7 @@ final class AccessCompositionTest extends TestCase
     public function testTheWholeAdministrationIsEverythingUnderIt(): void
     {
         $structure = $this->shipped();
-        $access = $this->composed(['administration:*']);
+        $access = $this->composed(['app.administration:*']);
 
         foreach ([Resource::Administration, Resource::Content, Resource::Account] as $resource) {
             foreach ($structure->privilegesOf($resource) as $privilege) {
@@ -144,6 +158,69 @@ final class AccessCompositionTest extends TestCase
     }
 
     /**
+     * The whole application, held by the owner, is every pair this build
+     * offers, the redirection included, because everything is under it.
+     */
+    public function testTheWholeApplicationIsEveryPairThisBuildOffersToTheOwner(): void
+    {
+        $answers = $this->everyAnswerOf($this->composed(['app:*'], as: Role::OWNER), as: Role::OWNER);
+
+        self::assertNotContains(false, $answers, 'the owner holding the whole application was refused something');
+    }
+
+    /**
+     * The whole application is the owner's and nobody else's. On any other
+     * role it is dropped the way an outdated piece is - a role a business
+     * composed for itself holding everything, including whatever is added
+     * next, would be a second owner nobody appointed - and it opens no door,
+     * because nothing is left of it to open one.
+     */
+    public function testTheWholeApplicationOnAnyOtherRoleGivesNothing(): void
+    {
+        self::assertNotContains(true, $this->everyAnswerOf($this->composed(['app:*'])));
+    }
+
+    /** Dropping it takes that one piece away and leaves the rest of the role as it was. */
+    public function testTheWholeApplicationDroppedFromAnotherRoleLeavesTheRestOfIt(): void
+    {
+        $access = $this->composed(['app:*', 'app.administration.content:edit']);
+
+        self::assertTrue($this->allows($access, Resource::Content, Privilege::Edit));
+        self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::Content, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::Account, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::Redirection, Privilege::View));
+    }
+
+    /**
+     * Only holding it is reserved. Taking the whole application away is
+     * allowed on any role, because a denial that grows fails in the safe
+     * direction.
+     */
+    public function testTheWholeApplicationMayBeTakenAwayFromAnyRole(): void
+    {
+        $access = $this->composed(['app.administration.content:edit'], ['app:*']);
+
+        self::assertNotContains(true, $this->everyAnswerOf($access));
+    }
+
+    /**
+     * The owner is one role among the roles of a business, and the rule is
+     * about the role and not about the list: somebody else in the same
+     * business writing the same piece still gets nothing from it.
+     */
+    public function testTheOwnerHoldingTheWholeApplicationLendsNothingToAnotherRole(): void
+    {
+        $access = new AccessComposition($this->shipped())->compose([
+            ['code' => Role::OWNER, 'permissions' => ['app:*']],
+            ['code' => 'editor', 'permissions' => ['app:*']],
+        ]);
+
+        self::assertNotContains(false, $this->everyAnswerOf($access, as: Role::OWNER));
+        self::assertNotContains(true, $this->everyAnswerOf($access));
+    }
+
+    /**
      * The whole of a resource that offers no bundle is left out, the way a
      * piece naming something this build does not have is left out: a doubt
      * takes the right away. It opens no door either, because nothing is left
@@ -151,7 +228,7 @@ final class AccessCompositionTest extends TestCase
      */
     public function testTheWholeOfAResourceOfferingNoBundleIsLeftOut(): void
     {
-        $alone = $this->composed(['account:*']);
+        $alone = $this->composed(['app.administration.account:*']);
 
         foreach ($this->shipped()->privilegesOf(Resource::Account) as $privilege) {
             self::assertFalse($this->allows($alone, Resource::Account, $privilege));
@@ -159,7 +236,7 @@ final class AccessCompositionTest extends TestCase
 
         self::assertFalse($this->allows($alone, Resource::Administration, Privilege::View));
 
-        $withTheRest = $this->composed(['account:*', 'content:edit']);
+        $withTheRest = $this->composed(['app.administration.account:*', 'app.administration.content:edit']);
 
         self::assertFalse($this->allows($withTheRest, Resource::Account, Privilege::View));
         self::assertTrue($this->allows($withTheRest, Resource::Content, Privilege::Edit));
@@ -173,7 +250,7 @@ final class AccessCompositionTest extends TestCase
      */
     public function testAPieceTheSectionDoesNotOfferOpensNothing(): void
     {
-        $access = $this->composed(['content:send']);
+        $access = $this->composed(['app.administration.content:send']);
 
         self::assertFalse($this->allows($access, Resource::Administration, Privilege::View));
     }
@@ -186,7 +263,7 @@ final class AccessCompositionTest extends TestCase
     public function testAWholeSectionTakenAwayLeavesTheRestOfTheAdministration(): void
     {
         $structure = $this->shipped();
-        $access = $this->composed(['administration:*'], ['content:*']);
+        $access = $this->composed(['app.administration:*'], ['app.administration.content:*']);
 
         self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
         foreach ($structure->privilegesOf(Resource::Account) as $privilege) {
@@ -206,7 +283,7 @@ final class AccessCompositionTest extends TestCase
      */
     public function testTakingTheDoorAwayTakesTheOneASectionOpensAsWell(): void
     {
-        $access = $this->composed(['content:view'], ['administration:view']);
+        $access = $this->composed(['app.administration.content:view'], ['app.administration:view']);
 
         self::assertTrue($this->allows($access, Resource::Content, Privilege::View));
         self::assertFalse($this->allows($access, Resource::Administration, Privilege::View));
@@ -218,10 +295,11 @@ final class AccessCompositionTest extends TestCase
      */
     public function testARightTakenAwayOpensNoDoor(): void
     {
-        $access = $this->composed(['content:view'], ['content:view']);
+        $access = $this->composed(['app.administration.content:view'], ['app.administration.content:view']);
 
         self::assertFalse($this->allows($access, Resource::Content, Privilege::View));
         self::assertFalse($this->allows($access, Resource::Administration, Privilege::View));
+        self::assertFalse($this->allows($access, Resource::App, Privilege::View));
     }
 
     /**
@@ -231,7 +309,10 @@ final class AccessCompositionTest extends TestCase
      */
     public function testTheWholeOfAResourceMayBeTakenAwayWithoutABundle(): void
     {
-        $access = $this->composed(['account:view', 'account:edit', 'content:view'], ['account:*']);
+        $access = $this->composed(
+            ['app.administration.account:view', 'app.administration.account:edit', 'app.administration.content:view'],
+            ['app.administration.account:*'],
+        );
 
         foreach ($this->shipped()->privilegesOf(Resource::Account) as $privilege) {
             self::assertFalse($this->allows($access, Resource::Account, $privilege));
@@ -240,7 +321,7 @@ final class AccessCompositionTest extends TestCase
         self::assertTrue($this->allows($access, Resource::Content, Privilege::View));
         self::assertTrue($this->allows($access, Resource::Administration, Privilege::View));
 
-        $nothingElse = $this->composed(['account:view'], ['account:*']);
+        $nothingElse = $this->composed(['app.administration.account:view'], ['app.administration.account:*']);
 
         self::assertFalse($this->allows($nothingElse, Resource::Administration, Privilege::View));
     }
@@ -251,7 +332,10 @@ final class AccessCompositionTest extends TestCase
      */
     public function testTheWholeAdministrationTakenAwayLeavesNothingUnderIt(): void
     {
-        $access = $this->composed(['content:edit', 'account:view'], ['administration:*']);
+        $access = $this->composed(
+            ['app.administration.content:edit', 'app.administration.account:view'],
+            ['app.administration:*'],
+        );
 
         self::assertFalse($this->allows($access, Resource::Content, Privilege::Edit));
         self::assertFalse($this->allows($access, Resource::Account, Privilege::View));
@@ -270,8 +354,14 @@ final class AccessCompositionTest extends TestCase
      */
     public function testTheOrderThePiecesAreWrittenInChangesNothing(): void
     {
-        $granted = ['administration:*', 'content:view', 'account:*', 'redirection:view', 'content:send'];
-        $denied = ['content:*', 'administration:view', 'account:purge'];
+        $granted = [
+            'app.administration:*',
+            'app.administration.content:view',
+            'app.administration.account:*',
+            'app.redirection:view',
+            'app.administration.content:send',
+        ];
+        $denied = ['app.administration.content:*', 'app.administration:view', 'app.administration.account:purge'];
 
         $expected = $this->everyAnswerOf($this->composed($granted, $denied));
         self::assertContains(true, $expected, 'every answer was no, so no ordering could differ');
@@ -296,7 +386,7 @@ final class AccessCompositionTest extends TestCase
      */
     public function testAPieceTheResourceDoesNotOfferReachesNothingUnderIt(): void
     {
-        $access = $this->composed(['administration:edit']);
+        $access = $this->composed(['app.administration:edit']);
 
         self::assertFalse($this->allows($access, Resource::Content, Privilege::Edit));
         self::assertFalse($this->allows($access, Resource::Account, Privilege::Edit));
@@ -304,18 +394,30 @@ final class AccessCompositionTest extends TestCase
 
     public function testAPieceThisBuildNoLongerHasIsLeftOutAndTheRestHolds(): void
     {
-        $access = $this->composed(['invoicing:view', 'content:edit', 'content:apostille']);
+        $access = $this->composed(['invoicing:view', 'app.administration.content:edit', 'app.administration.content:apostille']);
 
         self::assertTrue($this->allows($access, Resource::Content, Privilege::Edit));
         self::assertFalse($this->allows($access, Resource::Content, Privilege::Delete));
+    }
+
+    /**
+     * A piece written under the name an earlier build gave the resource is
+     * one this build does not have, so it reaches nothing - which is why the
+     * stored roles are migrated rather than read under both names.
+     */
+    public function testAPieceUnderANameAnEarlierBuildUsedReachesNothing(): void
+    {
+        $access = $this->composed(['content:edit', 'administration:*']);
+
+        self::assertNotContains(true, $this->everyAnswerOf($access));
     }
 
     /** Nette refuses an empty name, so a role with none is left out rather than raised over. */
     public function testARoleWithAnEmptyCodeIsLeftOut(): void
     {
         $access = new AccessComposition($this->shipped())->compose([
-            ['code' => '', 'permissions' => ['content:edit']],
-            ['code' => 'editor', 'permissions' => ['content:edit']],
+            ['code' => '', 'permissions' => ['app.administration.content:edit']],
+            ['code' => 'editor', 'permissions' => ['app.administration.content:edit']],
         ]);
 
         self::assertSame(['editor'], $access->getRoles());
@@ -325,37 +427,10 @@ final class AccessCompositionTest extends TestCase
      * @param list<string> $pieces
      * @param list<string> $denials
      */
-    private function composed(array $pieces, array $denials = []): Permission
+    private function composed(array $pieces, array $denials = [], string $as = 'editor'): Permission
     {
         return new AccessComposition($this->shipped())
-            ->compose([['code' => 'editor', 'permissions' => $pieces, 'denials' => $denials]]);
-    }
-
-    /** @param list<string> $pieces */
-    private function composedOver(string $neon, array $pieces): Permission
-    {
-        $this->directory = sys_get_temp_dir() . '/trilobit-composition-' . bin2hex(random_bytes(6));
-        $file = $this->directory . '/permissions.neon';
-        FileSystem::write($file, $neon);
-
-        return new AccessComposition(PermissionStructure::fromNeon($file))
-            ->compose([['code' => 'editor', 'permissions' => $pieces]]);
-    }
-
-    /**
-     * One resource as the file writes it - put together out of pieces, as in
-     * PermissionStructureTest, for the leak guard's sake.
-     *
-     * @param list<string> $privileges
-     */
-    private function describing(string $resource, ?string $under = null, array $privileges = ['view']): string
-    {
-        $described = $resource . ":\n";
-        if ($under !== null) {
-            $described .= '    parent: ' . $under . "\n";
-        }
-
-        return $described . '    privileges: [' . implode(', ', $privileges) . "]\n\n";
+            ->compose([['code' => $as, 'permissions' => $pieces, 'denials' => $denials]]);
     }
 
     private function shipped(): PermissionStructure
@@ -363,19 +438,19 @@ final class AccessCompositionTest extends TestCase
         return PermissionStructure::of(Bootstrap::rootDirectory());
     }
 
-    private function allows(Permission $access, Resource $resource, Privilege $privilege): bool
+    private function allows(Permission $access, Resource $resource, Privilege $privilege, string $as = 'editor'): bool
     {
-        return $access->isAllowed('editor', $resource->value, $privilege->value);
+        return $access->isAllowed($as, $resource->value, $privilege->value);
     }
 
     /** @return array<string, bool> by the pair, for every pair the shipped structure offers */
-    private function everyAnswerOf(Permission $access): array
+    private function everyAnswerOf(Permission $access, string $as = 'editor'): array
     {
         $answers = [];
         foreach ($this->shipped()->everyPair() as $pair) {
             $privilege = $pair->privilege;
             self::assertInstanceOf(Privilege::class, $privilege);
-            $answers[$pair->code()] = $this->allows($access, $pair->resource, $privilege);
+            $answers[$pair->code()] = $this->allows($access, $pair->resource, $privilege, $as);
         }
 
         return $answers;

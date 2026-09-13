@@ -1,0 +1,46 @@
+{**
+ * c-tabs - several views of one thing, one shown at a time, and a row of tabs
+ * to switch between them.
+ *
+ * **What the server draws is every panel one under another, each under its
+ * title**, and that is what somebody gets whose browser did not run the
+ * script: all of it, in order, readable. The tabs are assets/tabs.ts's, laid
+ * over this markup once the page has loaded - the tab list, the roles, the one
+ * tab the Tab key stops on, the arrow keys, Home and End, and the hiding of
+ * every panel but one (the pattern of the ARIA Authoring Practices). None of
+ * that is written here, because every piece of it would be a claim about a
+ * control nothing yet answers: a role="tab" the server wrote is a tab that
+ * does nothing until a script arrives, and a panel it hid is content nobody
+ * without the script can reach.
+ *
+ * $panels names the panels, in order: the block of the caller that draws each
+ * one => its title. The script names each tab after its panel's title, which
+ * is why the title is the first thing in the panel. $label names the tab list
+ * and is kept on the root for the script to put there.
+ *
+ * $level makes the titles headings of that level (2 to 6, see
+ * Trilobit\Core\Presentation\Component\HeadingLevel), so that without the
+ * script the panels are parts of the page's outline. Without a level a title
+ * is only a line over its panel.
+ *
+ * $id gives every panel an address, the id and the name of its block joined:
+ * an address naming a panel, or anything inside one, shows that panel.
+ *
+ * Use it with {embed block tabs}, one {block} for each name in $panels.
+ *
+ * @param array<string, string> $panels the name of the block drawing each panel => its title
+ *}
+
+{define tabs, string $label, array $panels, ?string $id = null, ?int $level = null, ?string $testId = null}
+    <div class="c-tabs" data-tabs-label="{$label}" data-testid="{$testId}">
+        <div n:foreach="$panels as $panel => $title" class="c-tabs__panel" n:attr="id: $id === null ? null : $id . '-' . $panel">
+            {if $level === null}
+                <p class="c-tabs__title">{$title}</p>
+            {else}
+                <h2 n:tag="Trilobit\Core\Presentation\Component\HeadingLevel::from($level)->tag()" class="c-tabs__title">{$title}</h2>
+            {/if}
+
+            {include block $panel}
+        </div>
+    </div>
+{/define}

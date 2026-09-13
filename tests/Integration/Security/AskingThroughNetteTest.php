@@ -58,7 +58,7 @@ final class AskingThroughNetteTest extends TestCase
 {
     private const string EDITOR = 'content-editor';
 
-    private const string ADMINISTRATOR = 'administrator';
+    private const string OWNER = 'owner';
 
     /** Granted on the account itself rather than in a business, which is what must not answer. */
     private const string GRANTED_GLOBALLY = 'granted-globally';
@@ -164,7 +164,7 @@ final class AskingThroughNetteTest extends TestCase
 
         $this->nextRequestIn($this->books());
 
-        self::assertSame([self::ADMINISTRATOR], $this->signedIn()->getRoles());
+        self::assertSame([self::OWNER], $this->signedIn()->getRoles());
         self::assertTrue($this->signedIn()->isAllowed(Resource::Content, Privilege::Edit));
     }
 
@@ -285,17 +285,17 @@ final class AskingThroughNetteTest extends TestCase
         $dave = $this->account($accounts, 'dave@example.com', 'Dave Dinocaris');
 
         $entityManager = $this->container->getByType(EntityManagerInterface::class);
-        $editor = new Role(self::EDITOR, 'Content editor', ['administration:view', 'content:edit']);
-        $administrator = new Role(self::ADMINISTRATOR, 'Administrator', ['administration:view', 'content:edit']);
+        $editor = new Role(self::EDITOR, 'Content editor', ['app.administration:view', 'app.administration.content:edit']);
+        $owner = new Role(self::OWNER, 'Owner', ['app.administration:view', 'app.administration.content:edit']);
         $entityManager->persist($editor);
-        $entityManager->persist($administrator);
+        $entityManager->persist($owner);
         $entityManager->persist(new Membership($this->bikes, $alice, $editor));
         $entityManager->persist(new Membership($this->bikes, $carol, $editor));
-        $entityManager->persist(new Membership($this->books, $bob, $administrator));
+        $entityManager->persist(new Membership($this->books, $bob, $owner));
         $entityManager->persist(new Membership($this->books, $dave, $editor));
         $entityManager->flush();
 
-        $alice->grant(new Role(self::GRANTED_GLOBALLY, 'Granted globally', ['content:purge']));
+        $alice->grant(new Role(self::GRANTED_GLOBALLY, 'Granted globally', ['app.administration.content:purge']));
         $accounts->save($alice);
     }
 

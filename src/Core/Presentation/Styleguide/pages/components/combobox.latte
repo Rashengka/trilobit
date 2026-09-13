@@ -1,0 +1,197 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A list somebody picks one answer from, with a line to search it by once it
+ * is long: a long list, a short one that is offered no line, one refused with
+ * a hint under it, one that cannot be used, and one Naja redraws.
+ *
+ * The last one is a snippet, like the redrawn specimens of c-modal, c-tabs and
+ * c-scrollspy. Its label
+ * stays outside the snippet and its select is inside, which is the shape a
+ * list refilled from the server will have: the control has to find its name
+ * again every time the select under it is replaced, and after history.back()
+ * too. tests/e2e/combobox.spec.ts drives it.
+ *
+ * The example content is invented and has to stay invented; the genera are
+ * the names of animals that have been dead for some four hundred million years.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/field.latte'}
+{import '../../../components/combobox.latte'}
+
+{var $genera = [
+    '' => '--- not identified yet',
+    'agnostus' => 'Agnostus',
+    'asaphus' => 'Asaphus',
+    'bumastus' => 'Bumastus',
+    'calymene' => 'Calymene',
+    'ceraurus' => 'Ceraurus',
+    'cheirurus' => 'Cheirurus',
+    'conocoryphe' => 'Conocoryphe',
+    'cyclopyge' => 'Cyclopyge',
+    'dalmanites' => 'Dalmanites',
+    'deiphon' => 'Deiphon',
+    'dicranurus' => 'Dicranurus',
+    'elrathia' => 'Elrathia',
+    'ellipsocephalus' => 'Ellipsocephalus',
+    'encrinurus' => 'Encrinurus',
+    'harpes' => 'Harpes',
+    'illaenus' => 'Illaenus',
+    'isotelus' => 'Isotelus',
+    'lichas' => 'Lichas',
+    'megistaspis' => 'Megistaspis',
+    'odontopleura' => 'Odontopleura',
+    'olenellus' => 'Olenellus',
+    'paradoxides' => 'Paradoxides',
+    'phacops' => 'Phacops',
+    'proetus' => 'Proetus',
+    'redlichia' => 'Redlichia',
+    'sao' => 'Sao',
+    'scutellum' => 'Scutellum',
+    'selenopeltis' => 'Selenopeltis',
+    'trimerus' => 'Trimerus',
+    'walliserops' => 'Walliserops',
+    'acadoparadoxides' => 'Acadoparadoxides',
+    'ampyx' => 'Ampyx',
+    'arthricocephalus' => 'Arthricocephalus',
+    'asteropyge' => 'Asteropyge',
+    'bathyuriscus' => 'Bathyuriscus',
+    'crotalocephalus' => 'Crotalocephalus',
+    'cryptolithus' => 'Cryptolithus',
+    'declivolithus' => 'Declivolithus',
+    'ditomopyge' => 'Ditomopyge',
+    'flexicalymene' => 'Flexicalymene',
+    'greenops' => 'Greenops',
+    'hollardops' => 'Hollardops',
+    'leonaspis' => 'Leonaspis',
+    'modocia' => 'Modocia',
+    'nileus' => 'Nileus',
+    'olenoides' => 'Olenoides',
+    'paralejurus' => 'Paralejurus',
+    'placoparia' => 'Placoparia',
+    'reedops' => 'Reedops',
+    'scabriscutellum' => 'Scabriscutellum',
+    'symphysurus' => 'Symphysurus',
+    'triarthrus' => 'Triarthrus',
+    'zeliszkella' => 'Zeliszkella',
+    'eodalmanitina' => 'Eodalmanitina',
+    'kolihapeltis' => 'Kolihapeltis',
+]}
+
+{var $periods = [
+    'cambrian' => 'Cambrian',
+    'ordovician' => 'Ordovician',
+    'silurian' => 'Silurian',
+    'devonian' => 'Devonian',
+]}
+
+{var $drawers = [
+    'a1' => 'Drawer A1',
+    'a2' => 'Drawer A2',
+    'a3' => 'Drawer A3',
+    'b1' => 'Drawer B1',
+]}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-combobox']}
+        {block sgSectionBody}
+            {specimen 'searching a long list'}
+                {embed block field}
+                    {block fieldLabel}<label for="sg-combobox-genus">Genus</label>{/block}
+
+                    {block fieldControl}
+                        {include combobox,
+                            id: 'sg-combobox-genus',
+                            name: 'genus',
+                            choices: $genera,
+                            chosen: 'phacops',
+                            testId: 'sg-combobox-long'}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'a short list, without a line to search it by'}
+                {embed block field}
+                    {block fieldLabel}<label for="sg-combobox-period">Period</label>{/block}
+
+                    {block fieldControl}
+                        {include combobox,
+                            id: 'sg-combobox-period',
+                            name: 'period',
+                            choices: $periods,
+                            chosen: 'ordovician',
+                            testId: 'sg-combobox-short'}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'with a reason and a hint'}
+                {embed block field, errorId: 'sg-combobox-drawer-error', hintId: 'sg-combobox-drawer-hint'}
+                    {block fieldLabel}<label for="sg-combobox-drawer">Drawer</label>{/block}
+
+                    {block fieldControl}
+                        {include combobox,
+                            id: 'sg-combobox-drawer',
+                            name: 'drawer',
+                            choices: $drawers,
+                            chosen: 'b1',
+                            describedBy: 'sg-combobox-drawer-error sg-combobox-drawer-hint',
+                            invalid: true,
+                            testId: 'sg-combobox-refused'}
+                    {/block}
+
+                    {block fieldError}Drawer B1 is full; pick another one.{/block}
+
+                    {block fieldHint}Counted from the left of the cabinet.{/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'disabled'}
+                {embed block field}
+                    {block fieldLabel}<label for="sg-combobox-cabinet">Cabinet</label>{/block}
+
+                    {block fieldControl}
+                        {include combobox,
+                            id: 'sg-combobox-cabinet',
+                            name: 'cabinet',
+                            choices: $drawers,
+                            chosen: 'a2',
+                            disabled: true,
+                            testId: 'sg-combobox-disabled'}
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'redrawn by Naja'}
+                {embed block field, hintId: 'sg-combobox-redrawn-hint'}
+                    {block fieldLabel}<label for="sg-combobox-redrawn">Genus, drawn again by the server</label>{/block}
+
+                    {block fieldControl}
+                        <div class="l-stack">
+                            <div n:snippet="redrawnSpecimen" data-testid="sg-combobox-snippet">
+                                {include combobox,
+                                    id: 'sg-combobox-redrawn',
+                                    name: 'redrawn',
+                                    choices: $genera,
+                                    chosen: 'calymene',
+                                    describedBy: 'sg-combobox-redrawn-hint',
+                                    testId: 'sg-combobox-redrawn'}
+                            </div>
+
+                            <div class="l-cluster">
+                                <a
+                                    n:href="redrawSpecimen!"
+                                    class="c-button c-button--quiet ajax"
+                                    data-testid="sg-combobox-redraw"
+                                >Draw it again</a>
+                            </div>
+                        </div>
+                    {/block}
+
+                    {block fieldHint}The button asks the server for this field again, through Naja, and the page puts the answer in its place.{/block}
+                {/embed}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

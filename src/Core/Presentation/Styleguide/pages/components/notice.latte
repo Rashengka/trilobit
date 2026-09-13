@@ -1,6 +1,9 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
-{* One sentence a page has to say, as information and as a refusal. *}
+{*
+ * One sentence a page has to say, as information and as a refusal, one the
+ * reader may put away with its c-close, and a refusal with a title over it.
+ *}
 
 {import '../../templates/furniture.latte'}
 {import '../../../components/notice.latte'}
@@ -8,17 +11,28 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-notice']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'info'}
-                {block sgSpecimenStage}
-                    {include notice, message: 'The catalogue was saved.'}
-                {/block}
-            {/embed}
+            {specimen 'info'}
+                {include notice, message: 'The catalogue was saved.'}
+            {/specimen}
 
-            {embed block sgSpecimen, variant: 'danger'}
-                {block sgSpecimenStage}
-                    {include notice, message: 'The address or the password is not right.', variant: 'danger'}
-                {/block}
-            {/embed}
+            {specimen 'danger'}
+                {include notice, message: 'The address or the password is not right.', variant: 'danger'}
+            {/specimen}
+
+            {specimen 'dismissible'}
+                {include notice,
+                    message: 'The draft was kept for you.',
+                    dismissible: true,
+                    testId: 'sample-notice-dismissible',
+                }
+            {/specimen}
+
+            {specimen 'with a title'}
+                {include notice,
+                    title: 'The page was not published',
+                    message: 'Its address is taken by another page. Choose another one and publish it again.',
+                    variant: 'danger'}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

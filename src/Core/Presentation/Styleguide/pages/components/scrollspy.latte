@@ -1,0 +1,90 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The contents of a long piece of text, beside it, marking the section being
+ * read. tests/e2e/scrollspy.spec.ts scrolls this page in both themes and reads
+ * which entry is marked, and redraws the specimen through Naja.
+ *
+ * The specimen is a snippet, like the last one of c-combobox, so that the
+ * button under it can ask the server for it again. The sections are long
+ * enough that scrolling passes each of them; they are invented and have to
+ * stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/scrollspy.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        Scroll the page and watch the entries: the section whose top has come up into the upper quarter
+        of what the banner leaves of the window is the one marked. Without the script it is a list of
+        contents that works and marks nothing. It stays in view beside the sections while they scroll,
+        where there is room for it beside them.
+    </p>
+
+    {embed block sgSection, component: $components['c-scrollspy']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                <div class="l-stack">
+                    <div n:snippet="redrawnSpecimen" class="sg-beside" data-testid="sg-scrollspy-snippet">
+                        {include scrollspy,
+                            label: 'Sections of the field notes',
+                            items: [
+                                new Trilobit\Core\Presentation\Component\ListGroupItem('Finding the site', '#sg-scrollspy-finding'),
+                                new Trilobit\Core\Presentation\Component\ListGroupItem('Lifting the slab', '#sg-scrollspy-lifting'),
+                                new Trilobit\Core\Presentation\Component\ListGroupItem('Splitting the rock', '#sg-scrollspy-splitting'),
+                                new Trilobit\Core\Presentation\Component\ListGroupItem('Cleaning the find', '#sg-scrollspy-cleaning'),
+                                new Trilobit\Core\Presentation\Component\ListGroupItem('Writing it up', '#sg-scrollspy-writing'),
+                            ],
+                            testId: 'sample-scrollspy'}
+
+                        <div class="l-stack">
+                            <section class="l-stack" id="sg-scrollspy-finding">
+                                <h2>Finding the site</h2>
+                                <p>The quarry lies at the end of a track that floods every spring. Leave the car at the gate and walk the last part, keeping to the side the tractors use.</p>
+                                <p>The good layer is a grey band a little above head height on the northern face. It shows best in the afternoon, when the sun falls across it and every ridge throws a shadow.</p>
+                                <p>Mark the place on the map before starting, and again on the way out: the face is cut back every year and nothing looks the same the next time.</p>
+                            </section>
+
+                            <section class="l-stack" id="sg-scrollspy-lifting">
+                                <h2>Lifting the slab</h2>
+                                <p>A slab that has come away on its own is worth more than one cut out, because the break follows the layer. Look along the foot of the face first.</p>
+                                <p>Lift it by the edges, never by the middle, and turn it over onto the blanket rather than onto the ground. Two people make this easy and one makes it slow.</p>
+                                <p>Wrap it before moving it anywhere. A slab carried bare comes home in more pieces than it left in, and the pieces never quite fit again.</p>
+                            </section>
+
+                            <section class="l-stack" id="sg-scrollspy-splitting">
+                                <h2>Splitting the rock</h2>
+                                <p>Split along the layer with a broad chisel and light blows, working round the edge a little at a time. A heavy blow opens the rock wherever it likes.</p>
+                                <p>When the layer gives, lift the upper half slowly and look before lifting it further: the find may be on either face, and often it is half on each.</p>
+                                <p>Keep both halves together, taped, with a note of which way up they were. The counterpart is half the record.</p>
+                            </section>
+
+                            <section class="l-stack" id="sg-scrollspy-cleaning">
+                                <h2>Cleaning the find</h2>
+                                <p>Clean it at home, not at the quarry, under a good light and with the slab on a bag of sand so that it cannot rock.</p>
+                                <p>Take the rock away with a needle held almost flat, a grain at a time. The shell is harder than the rock round it, but not by much.</p>
+                                <p>Stop before it looks finished. What is left can always come off later, and what came off cannot go back.</p>
+                            </section>
+
+                            <section class="l-stack" id="sg-scrollspy-writing">
+                                <h2>Writing it up</h2>
+                                <p>Give it a number, and write the number on the slab, on the counterpart and in the book, in the same hand.</p>
+                                <p>Note the layer, the face, the day and who found it. A find with no note is a nice stone and nothing more.</p>
+                                <p>Photograph it with a scale beside it, lit from one side, before anybody asks to borrow it.</p>
+                            </section>
+                        </div>
+                    </div>
+
+                    <div class="l-cluster">
+                        <a
+                            n:href="redrawSpecimen!"
+                            class="c-button c-button--quiet ajax"
+                            data-testid="sg-scrollspy-redraw"
+                        >Draw it again</a>
+                    </div>
+                </div>
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

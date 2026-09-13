@@ -6,7 +6,8 @@ namespace Trilobit\Core\Security;
 
 /**
  * One piece a role is put together out of: a resource and something that may
- * be done to it - or the whole of the resource, written `content:*`.
+ * be done to it - or the whole of the resource, written
+ * `app.administration.content:*`.
  *
  * It is what a row in core_role.permissions says, and this class is the only
  * place that knows how it is written down. Two places knowing a format is how
@@ -32,9 +33,8 @@ namespace Trilobit\Core\Security;
 final readonly class Grant
 {
     /**
-     * A colon, because a resource's own value may contain a dot - a section
-     * and a decision point inside it read naturally that way - and no
-     * privilege contains either.
+     * A colon, because a resource's own value is a path and its segments are
+     * separated by dots, and no privilege contains either.
      */
     private const string SEPARATOR = ':';
 

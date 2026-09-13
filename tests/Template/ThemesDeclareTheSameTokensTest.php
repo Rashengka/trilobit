@@ -7,6 +7,7 @@ namespace Trilobit\Tests\Template;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Trilobit\Core\Presentation\Styleguide\OverviewPresenter;
 use Trilobit\Tests\Architecture\BaseCssHoldsNoLiteralsTest;
 
 /**
@@ -62,6 +63,27 @@ final class ThemesDeclareTheSameTokensTest extends TestCase
     }
 
     /**
+     * Every token the guide lists as a colour swatch has to be declared by
+     * every theme, not merely by whichever one somebody had open while typing
+     * OverviewPresenter::COLOUR_TOKENS. A typo or a renamed token still passes
+     * PHP - it is just a string - and the guide would draw it as a swatch with
+     * nothing in it rather than fail anywhere.
+     */
+    #[DataProvider('themes')]
+    public function testItDeclaresEveryColourTokenTheStyleGuideLists(string $name, string $source): void
+    {
+        $declared = $this->tokensIn($source);
+
+        foreach (array_keys($this->colourTokens()) as $token) {
+            self::assertContains(
+                $token,
+                $declared,
+                sprintf('%s lists %s as a swatch and the theme %s does not declare it', OverviewPresenter::class, $token, $name),
+            );
+        }
+    }
+
+    /**
      * The second theme has to move the navigation, not merely repaint it. These
      * are the tokens the page shell is built out of in assets/base.css, and a
      * theme that gave them all the same values would pass every other check
@@ -96,6 +118,21 @@ final class ThemesDeclareTheSameTokensTest extends TestCase
 
         $tokens = array_values(array_unique($matches[1]));
         sort($tokens);
+
+        return $tokens;
+    }
+
+    /**
+     * The tokens the guide shows, read from where the guide keeps them rather
+     * than written out a second time here.
+     *
+     * @return array<mixed>
+     */
+    private function colourTokens(): array
+    {
+        $tokens = new \ReflectionClassConstant(OverviewPresenter::class, 'COLOUR_TOKENS')->getValue();
+        self::assertIsArray($tokens);
+        self::assertNotSame([], $tokens);
 
         return $tokens;
     }

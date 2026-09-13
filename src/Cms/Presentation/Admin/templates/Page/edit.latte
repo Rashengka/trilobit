@@ -9,10 +9,18 @@
  * be a second way of drawing a form, unthemed and untested. It is the same
  * arrangement the sign-in page uses.
  *
+ * Where the page answers is asked as two things: the category it is filed
+ * under, chosen from the ones there are, and the last part of the address,
+ * written. A whole address is never typed here - a deeper one typed by hand is
+ * a row whose parents do not exist. The button beside the last part asks the
+ * register for one made of the title; the rules it is made by are the
+ * register's, and the script only carries the question and the answer (see
+ * assets/segment-suggestion.ts).
+ *
  * Whatever the register refused - the address is taken, it begins with
- * something reserved, it is spelled in a way addresses are not stored in -
- * arrives as a list of sentences the presenter read off the form, so this page
- * is handed strings rather than a component to interrogate.
+ * something reserved, the last part holds a slash or a dot - arrives as a list
+ * of sentences the presenter read off the form, so this page is handed strings
+ * rather than a component to interrogate.
  *}
 
 {import '../../../../../Core/Presentation/components/page-heading.latte'}
@@ -49,6 +57,12 @@
                     {include notice, message: $error, variant: 'danger', testId: 'cms-page-error'}
                 {/foreach}
 
+                {if $typedAddress !== ''}
+                    {include notice,
+                        message: 'This page answers at ' . $typedAddress . ', an address typed out in full before categories existed. It stays there until the category or the last part below is changed; then it moves, and the old address keeps leading to the new one.',
+                        testId: 'cms-page-legacy-address'}
+                {/if}
+
                 {embed block field, testId: 'cms-page-title-field'}
                     {block fieldLabel}<label n:name="title">Title</label>{/block}
 
@@ -57,12 +71,39 @@
                     {/block}
                 {/embed}
 
-                {embed block field, testId: 'cms-page-address-field'}
-                    {block fieldLabel}<label n:name="address">Address</label>{/block}
+                {embed block field, testId: 'cms-page-category-field', hintId: 'cms-page-category-hint'}
+                    {block fieldLabel}<label n:name="category">Category</label>{/block}
 
                     {block fieldControl}
-                        <input n:name="address" data-testid="cms-page-address-input">
+                        <select n:name="category" data-combobox aria-describedby="cms-page-category-hint" data-testid="cms-page-category-input"></select>
                     {/block}
+
+                    {block fieldHint}What the page is filed under. Its address begins with the category's.{/block}
+                {/embed}
+
+                {embed block field, testId: 'cms-page-segment-field', hintId: 'cms-page-segment-hint'}
+                    {block fieldLabel}<label n:name="segment">Last part of the address</label>{/block}
+
+                    {block fieldControl}
+                        <div class="l-cluster">
+                            <input n:name="segment" aria-describedby="cms-page-segment-hint" data-testid="cms-page-segment-input">
+
+                            {include button,
+                                label: 'Suggest from the title',
+                                variant: 'quiet',
+                                testId: 'cms-page-suggest',
+                                attributes: [
+                                    'data-suggest-segment' => $suggestUrl,
+                                    'data-suggest-from' => 'title',
+                                    'data-suggest-under' => 'category',
+                                    'data-suggest-into' => 'segment',
+                                ]}
+
+                            <output data-suggest-status aria-live="polite" data-testid="cms-page-suggest-status"></output>
+                        </div>
+                    {/block}
+
+                    {block fieldHint}Lower case letters, digits and hyphens - no slash and no dot.{/block}
                 {/embed}
 
                 {embed block field, testId: 'cms-page-state-field'}
@@ -113,7 +154,7 @@
                     <button n:name="send" class="c-button" data-testid="cms-page-save">Save</button>
 
                     {if !$isNew}
-                        <button n:name="delete" class="c-button c-button--quiet" data-testid="cms-page-delete">Delete this page</button>
+                        <button n:name="delete" class="c-button c-button--danger" data-testid="cms-page-delete">Delete this page</button>
                     {/if}
                 </div>
             </form>

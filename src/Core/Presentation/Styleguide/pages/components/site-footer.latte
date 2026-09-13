@@ -8,13 +8,11 @@
 {block sgPage}
     {embed block sgSection, component: $components['c-site-footer']}
         {block sgSectionBody}
-            {embed block sgSpecimen, variant: 'default'}
-                {block sgSpecimenStage}
-                    {embed block siteFooter}
-                        {block siteFooterBody}<p>Trilobit &mdash; open source, MIT.</p>{/block}
-                    {/embed}
-                {/block}
-            {/embed}
+            {specimen 'default'}
+                {embed block siteFooter}
+                    {block siteFooterBody}<p>Trilobit &mdash; open source, MIT.</p>{/block}
+                {/embed}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

@@ -85,12 +85,31 @@
     --color-highlight: light-dark(oklch(0.92 0.13 95), oklch(0.45 0.1 95));
     --color-highlight-ink: light-dark(oklch(0.28 0.05 95), oklch(0.97 0.02 95));
 
+    /* Laid over the page behind an open dialog: the ink of the page, thin
+       enough for the page to show through, so it reads as still there. */
+    --color-backdrop: light-dark(oklch(0.24 0.02 255 / 0.45), oklch(0.08 0.01 255 / 0.7));
+
+    /* The code the style guide highlights, which sits on --color-canvas-sunken:
+       each pair holds 4.5:1 against it in both modes, measured by
+       tests/e2e/styleguide-code.spec.ts. */
+    --color-code-comment: light-dark(oklch(0.49 0.02 255), oklch(0.74 0.02 245));
+    --color-code-keyword: light-dark(oklch(0.47 0.15 300), oklch(0.8 0.11 300));
+    --color-code-name: light-dark(oklch(0.47 0.11 235), oklch(0.8 0.1 215));
+    --color-code-string: light-dark(oklch(0.46 0.11 150), oklch(0.82 0.12 150));
+    --color-code-literal: light-dark(oklch(0.5 0.13 45), oklch(0.8 0.11 55));
+
     --color-banner: light-dark(oklch(1 0 0), oklch(0.22 0.015 255));
     --color-banner-ink: var(--color-ink);
     --color-nav: light-dark(oklch(1 0 0), oklch(0.22 0.015 255));
     --color-nav-ink: var(--color-ink-muted);
     --color-nav-ink-active: var(--color-ink);
     --color-nav-marker: var(--color-accent);
+
+    /* Under the pointer in the navigation. A token of the navigation's own
+       rather than the page's hover, because a theme may paint its navigation
+       on a ground the page's hover would wash out; atrium's navigation is the
+       page's colour, so here the two are one. */
+    --color-nav-hover: var(--color-surface-hover);
 
     /* ---- Spacing ------------------------------------------------------ */
 
@@ -122,10 +141,28 @@
        their line. */
     --icon-size: 1.125em;
 
+    /* The thickness of a c-progress bar, and the size of a c-spinner standing
+       for a whole region that is loading. The small spinner is --icon-size. */
+    --progress-size: 0.5rem;
+    --spinner-size: 2.25rem;
+
     --shadow-raised: 0 1px 2px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
         0 8px 24px light-dark(oklch(0.24 0.02 255 / 0.07), oklch(0 0 0 / 0.35));
 
     --motion-fast: 120ms ease;
+
+    /* How long a dialog takes to come in over the page and go again; nothing
+       moves for somebody who asked for reduced motion (assets/base.css). */
+    --motion-layer: 200ms ease-out;
+
+    /* One turn of whatever loops while a page waits: a spinner's turn, a
+       placeholder's pulse, the run of a bar that does not know how far it has
+       got. Nobody who asked for reduced motion sees any of them move. */
+    --motion-loop: 1s;
+
+    /* What a disclosure takes to open or close: long enough to be seen to
+       unfold, the way this theme takes its time. */
+    --motion-unfold: 240ms ease;
 
     /* ---- Layout -------------------------------------------------------- */
 
@@ -164,6 +201,105 @@
 
     --layout-card-min: 17rem;
     --layout-card-media-ratio: 16 / 9;
+
+    /* How tall the list a combobox opens grows before it scrolls: about ten
+       choices, which is where a list starts offering a line to search it by
+       (assets/combobox.ts). */
+    --layout-combobox-list-size: 20rem;
+
+    /* How wide a c-modal is drawn, where the window is wider than that, and how
+       far a c-offcanvas reaches in from its edge. */
+    --layout-modal-width: 34rem;
+    --layout-offcanvas-size: 24rem;
+
+    /*
+     * What stays in view while the page scrolls under it, each band on a
+     * switch of its own: `sticky` holds it, `static` lets it scroll away with
+     * the page. Two switches rather than one, because a held banner and a held
+     * navigation are worth something for different reasons, and somebody who
+     * wants one should not get the other with it.
+     *
+     * Atrium holds both, one under the other, on a window wide enough - see
+     * the end of this file. Here are the values for everywhere else: a narrow
+     * window, and paper.
+     */
+    --layout-banner-position: static;
+    --layout-nav-position: static;
+
+    /*
+     * How far down the window a held navigation stays. Atrium's is a row under
+     * the banner, so it is held where the held banner ends - a length the page
+     * measures (assets/chrome.ts), because the banner is as tall as what is in
+     * it. A banner that is not held reaches nowhere, and the navigation is then
+     * held at the top.
+     */
+    --layout-nav-inset: var(--layout-banner-reach);
+
+    /*
+     * The size of the two bands, which is what atrium changes once the page
+     * has scrolled (the end of this file). The rules that draw them read these
+     * and nothing else, so the smaller bands are these tokens given other
+     * values, and not a second description of the bands.
+     *
+     * The scale applies to the navigation's own entries and not to the entries
+     * a block opens under them: the block is read when it is opened, and it
+     * opens at the size of the page.
+     */
+    --layout-banner-padding-block: var(--space-md);
+    --layout-banner-brand-size: var(--text-xl);
+    --layout-nav-entry-scale: 1;
+    --layout-nav-entry-padding-block: var(--space-xs);
+    --layout-nav-entry-padding-inline: var(--space-sm);
+
+    /* How long the bands take to change size. Nobody who asked for reduced
+       motion sees it take any time: assets/base.css leaves the transition out. */
+    --layout-chrome-motion: var(--motion-fast);
+
+    /*
+     * The layer whatever is held is drawn in: above the content that scrolls
+     * under it. The menu of whoever is signed in is a popover, drawn in the
+     * browser's top layer above every layer named here, and needs none of its
+     * own. A layer added later is named beside this one rather than numbered in
+     * between wherever it is first needed.
+     *
+     * The entries a navigation opens as a block over the page are the one
+     * thing that opens and cannot be a popover: the same list lies in the page
+     * in a theme that unfolds it in place, and a popover is never in the page.
+     * So the block has a layer of its own, above what is held. The list a
+     * c-combobox opens is drawn in the same layer, for the same reason: the
+     * library shows and hides it in the page, beside the control.
+     *
+     * The toasts held in a corner of the window (c-toast) are over all of it:
+     * they report what came of something just done, which is worth more than
+     * whatever they happen to cover, and they are put away with a button.
+     */
+    --layout-z-chrome: 1;
+    --layout-z-menu: 2;
+    --layout-z-toast: 3;
+
+    /*
+     * The entries under an entry of the navigation (c-nav).
+     *
+     * Atrium opens them as a block over the page, hung under the row - the
+     * first level as columns, and the level under each as a list beneath it.
+     * Two levels and no more: a block over the page that went on opening would
+     * cover the page it was meant to lead into. The buttons inside the block
+     * are therefore not drawn, and the level under the second is folded for
+     * good; every entry drawn still leads to its own page.
+     *
+     * The band the navigation is held in lets the block hang out of it
+     * (--layout-nav-overflow), or the block would be cut off at the band's
+     * lower edge.
+     */
+    --layout-nav-overflow: visible;
+    --layout-nav-sub-position: absolute;
+    --layout-nav-sub-column: 13rem;
+    --layout-nav-sub-padding: var(--space-md);
+    --layout-nav-sub-indent: 0px;
+    --layout-nav-inner-toggle: none;
+    --layout-nav-inner-folded: grid;
+    --color-nav-panel: var(--color-surface);
+    --color-nav-panel-line: var(--color-line);
 }
 
 /*
@@ -188,4 +324,46 @@
     inline-size: min(100%, var(--layout-content-width));
     margin-inline: auto;
     padding-inline: var(--layout-gutter);
+}
+
+/*
+ * On a window wide enough, atrium holds its banner and its navigation in view,
+ * the navigation under the banner - and once the content has scrolled up under
+ * them, it makes both smaller (.ai/plans/09-chrome-a-sirka-obsahu.md, L3). The
+ * menu stays within reach wherever the page is, and the two bands give back
+ * most of the room they take at the top of the page.
+ *
+ * Smaller is these tokens and nothing else: the banner lower, the entries of
+ * the navigation at three quarters of their size with far less room around
+ * them. The page marks its own two bands with data-scrolled="true" when the
+ * content has gone up under them (assets/chrome.ts), so what is redeclared here
+ * reaches the chrome and not a specimen of the same components further down the
+ * page.
+ *
+ * Only on a screen. Paper holds nothing and makes nothing smaller, and a narrow
+ * window keeps the values above for the same reason ledger lets go there: on a
+ * window that small, a banner and a row of links held for good would take the
+ * room the content scrolls in.
+ *
+ * And only once the page measures its chrome (data-chrome-measured, set by
+ * assets/chrome.ts). The navigation is held where the held banner ends, and
+ * that is a length the page measures; without the script it would be held at
+ * the top of the window, over the banner. So a page without the script holds
+ * nothing and lets both bands scroll away, which is what atrium did before it
+ * held them.
+ */
+@media screen and (width >= 52rem) {
+    [data-theme='atrium'][data-chrome-measured] {
+        --layout-banner-position: sticky;
+        --layout-nav-position: sticky;
+    }
+
+    [data-theme='atrium'] [data-scrolled='true'] {
+        --layout-banner-padding-block: var(--space-2xs);
+        --layout-banner-brand-size: var(--text-lg);
+        --layout-nav-padding: var(--space-3xs) 0;
+        --layout-nav-entry-scale: 0.75;
+        --layout-nav-entry-padding-block: var(--space-3xs);
+        --layout-nav-entry-padding-inline: var(--space-xs);
+    }
 }

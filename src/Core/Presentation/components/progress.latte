@@ -1,0 +1,50 @@
+{**
+ * c-progress - how far something has got, or how much of something there is.
+ *
+ * Two questions, and the browser has an element for each, so the component
+ * draws the one the caller asks for rather than a bar of divs that says nothing:
+ *
+ * - <progress> answers "how far has it got": an import, an upload, the steps
+ *   of an order that will end. Without a value it is the browser's own
+ *   indeterminate state - under way, not known how far - which a screen reader
+ *   reports as busy rather than as nought per cent.
+ * - <meter> (measure: true) answers "how much is there": storage used, a
+ *   drawer's places filled, a stock level. It is a reading that stays where it
+ *   is, and low, high and optimum say which part of the range is good; the
+ *   browser works out which of the three the value is in, and base.css draws
+ *   each in the theme's ink for it.
+ *
+ * The label wraps the element, which names it without an id to keep unique on
+ * a page. The value is said once: as the element's value text in the
+ * accessibility tree, and as the text beside the bar for whoever sees it -
+ * which is therefore hidden from the tree, or the number would be read twice.
+ * Without a text of its own the value is said as a percentage of the maximum.
+ *
+ * min is always 0. Nothing in the application measures from anywhere else, and
+ * a parameter for it would be a parameter nobody passes.
+ *}
+
+{define progress, string $label, int|float|null $value = null, int|float $max = 100, string $text = '', bool $measure = false, int|float|null $low = null, int|float|null $high = null, int|float|null $optimum = null, ?string $testId = null}
+    {var string $said = $text !== '' || $value === null ? $text : round($value / $max * 100) . '%'}
+
+    <label class="c-progress" data-testid="{$testId}">
+        <span class="c-progress__label">{$label}</span>
+
+        {if $measure}
+            <meter
+                class="c-progress__bar"
+                min="0"
+                max="{$max}"
+                value="{$value ?? 0}"
+                low="{$low}"
+                high="{$high}"
+                optimum="{$optimum}"
+                aria-valuetext="{$said ?: null}"
+            >{$said}</meter>
+        {else}
+            <progress class="c-progress__bar" max="{$max}" value="{$value}" aria-valuetext="{$said ?: null}">{$said}</progress>
+        {/if}
+
+        <span class="c-progress__value" aria-hidden="true" n:if="$said !== ''">{$said}</span>
+    </label>
+{/define}

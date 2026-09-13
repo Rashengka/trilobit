@@ -29,9 +29,11 @@ use Trilobit\Core\Security\AdministersTheInstallation;
  * you would be refused" one sentence rather than two.
  *
  * **This section asks no permission question of any kind and may not.** The
- * access list has no meaning outside a business and the person reading this
- * page is in none, so such a question would not raise - it would quietly
- * answer no. What holds that down is
+ * access list has no meaning outside a business and this page is about none,
+ * so such a question would not raise - it would quietly answer no, or, for a
+ * reader who holds a role in the business the request arrived at, answer with
+ * that business's rights on a page that is not about it. What holds that down
+ * is
  * Trilobit\Tests\Architecture\NoPermissionQuestionInTheInstallationSectionTest,
  * which reads this directory for the two enums the way
  * Trilobit\Tests\Architecture\PermissionQuestions reads the rest of the

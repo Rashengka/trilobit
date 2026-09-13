@@ -318,6 +318,16 @@ names; a checkout with no `var/build/modules.json` fails the build with a
 message naming the command to run, rather than bundling every module's code
 regardless of `config/modules.neon`.
 
+The licences of the third-party packages whose code the build bundled are in
+`www/build/licenses.txt`, collected from the bundled modules and from the
+packages their stylesheets `@import` by `vite-plugins/bundled-licenses.ts`,
+which fails the build when such a package
+ships no licence file or declares no `license`. A package that declares a
+licence and publishes no file of it has the text supplied by this repository,
+in `vite-plugins/licenses/<name>/<version>.txt` - one version at a time, so an
+update has to be looked at again - and a supplied text the build does not use
+fails the build too.
+
 ### The build is in the repository
 
 `www/build` is committed, so a clone runs without Node at all: point a document
@@ -477,6 +487,102 @@ renders every page of the style guide and fails when a registered variant has
 no specimen on any of them. So a component nobody has shown does not pass
 `composer check`.
 
+The set follows the components section of Bootstrap 5.3's documentation, from
+Accordion to Tooltips - the list and the shape of the documentation, not its
+CSS, classes or wording. Where the application already had the idea under a
+name of its own, the name stays: Bootstrap's alert is `c-notice`, its navbar is
+`c-site-header` with `c-nav`. A component also refuses what it does not know:
+an unknown variant fails through `Argument` rather than drawing the default,
+which would look like a choice somebody made.
+
+#### Interactive ones start from what the browser already does
+
+Every interactive component is built on the element or attribute that already
+behaves that way, and script is added only where the platform has no such
+behaviour:
+
+| component | built on | script for |
+|---|---|---|
+| Accordion, Collapse | `<details>` / `<summary>`; an accordion's items share a `name` | nothing |
+| Modal, Offcanvas | `<dialog>` opened by invoker commands (`commandfor`) | browsers without invoker commands (`assets/dialog.ts`) |
+| Dropdown, Popover, Tooltip | the `popover` attribute, hung from their element by CSS anchor positioning | keyboard of the menu; placing where the browser cannot anchor (`assets/anchor.ts`) |
+| Tabs | headed sections, each one visible | turning them into a tab list |
+| Scrollspy | a list of links | marking the section in view, with an `IntersectionObserver` |
+| Carousel | a `scroll-snap` track that scrolls by hand and by keyboard | the previous and next buttons |
+| Toast | a live region | dismissing |
+
+The browser does the hard part that way - focus, `Escape`, light dismiss, the
+top layer - and does it the same on every page, including the parts nobody
+tests. Dialogs and popovers live in the top layer, so none of them needs a
+`z-index`; the few layers the page itself stacks are the `--layout-z-*` tokens
+of a theme.
+
+Some choices behind the table, each with the reason it was made:
+
+- `c-dropdown` is the menu button of the WAI-ARIA Authoring Practices: the
+  arrow keys, `Home`, `End` and a first letter move between its items. The
+  signed-in person's menu (`c-user-menu`) is not one: a name, an address and a
+  switch for preferences are not menu items, and `role="menu"` would tell a
+  screen reader they were.
+- `c-tooltip` describes its element through `aria-describedby`, and never
+  carries the element's name. It opens on hover and on focus, stays while the
+  pointer moves onto it and goes on `Escape` (WCAG 1.4.13). It uses
+  `popover="manual"`, because `popover="hint"` exists only in Chrome 133 and
+  newer.
+- Tabs switch as the arrow keys move, rather than on `Enter`, and the chosen
+  tab is not written into the address.
+- A carousel never turns by itself. A carousel that moved on its own would need
+  a way to stop it (WCAG 2.2.2), and nothing here needs one that moves.
+- A toast stays until it is dismissed. A notice that goes after a fixed time is
+  gone before some people have read it (WCAG 2.2.1). Nette's flash messages are
+  drawn as toasts, in the `flashes` snippet of both layouts, after a redirect
+  and after a Naja redraw alike; `info` and `danger` are the types there are.
+- An open dialog locks the page's scrolling with `overflow: hidden` on the root
+  and nothing more. `scrollbar-gutter: stable` beside it would keep the width of
+  a classic scroll bar that is no longer drawn, and take it from every fixed
+  panel - a modal 7.5 pixels off centre, measured on Linux, and invisible on a
+  Mac, whose scroll bars take no room.
+
+Every behaviour survives Naja redrawing part of a page. Most of them listen on
+the document and prepare nothing, so there is nothing a snippet could bring in
+unprepared. Those that do prepare an element - the combobox, the tabs, the
+scrollspy - register a Naja extension before `naja.initialize()` and draw the
+page's own elements only after it. The other order gets past every test that
+does not go back: Naja keeps the markup of each snippet as it initialises, and
+markup that was already enhanced comes back from `history.back()` as a control
+with nothing behind it. The guard against enhancing an element twice is the
+library's handle on the element in memory, not a mark in the DOM, because a
+mark comes back from the history cache while the handle does not.
+
+#### The combobox
+
+A `<select>` with a long list becomes `c-combobox`, which is
+[Tom Select](https://tom-select.js.org/) (Apache-2.0) drawn by the
+application's own CSS. The library's stylesheet is not used: the classes the
+library lets be named are named `c-combobox__*`, the state classes it hard-codes
+are allowed by name for its version
+(`tests/Architecture/StylesheetClassesAreNamedByKindTest`), and the whole look
+comes from tokens like every other component's. Three libraries were tried
+against the real stylesheet and a real Naja. Tom Select was the one that could
+be coloured from tokens without `!important`, that kept the focus on the
+element with the `combobox` role, and that left a dependent select's value
+empty rather than stale.
+
+It still did not do the whole of the accessibility, so what was missing is
+written on top of it: `Home`, `End`, `PageUp` and `PageDown`, a live count of
+the matches, the `aria-describedby` of `c-field` carried over to the element
+that has the focus (without it the hint and the error are lost), and a name that
+says the chosen value, as a native select does. It does not open when it is
+tabbed onto, because a native select does not either, and it shows every option
+(`maxOptions: null`) rather than silently the first fifty. Searching switches on
+from ten options.
+
+It is in the shared `app.js`, about 16 kB gzipped on every page. Loading it only
+where it is used would be a lazy `import()`, and a chunk loaded that way gets no
+`?v=` from `VersionedViteMapper` - after a deployment a browser could run an old
+chunk against a new `app.js`. Versioning those chunks comes first, splitting the
+bundle after it. A `multiple` select stays native.
+
 ### The style guide
 
 `/_styleguide` is part of the application, not a separate tool: same base
@@ -491,18 +597,28 @@ at `/_styleguide/<group>/<page>`:
 |---|---|
 | Foundations | the colour tokens, the content width, and a page that insists on a width of its own |
 | Content | one for every group of native elements - reboot, typography, code, images, tables, figures |
+| Forms | one for every group of form controls - controls, checks, fieldsets, states |
 | Components | one for every component |
 
 The pages are written down once, in
 `Trilobit\Core\Presentation\Styleguide\StyleguidePages`, and everything else is
 read from that list: a route per page, the menu down the side of every page,
-and `/_styleguide` itself, which is the way into all of them. Content and
+and `/_styleguide` itself, which is the way into all of them. Content, Forms and
 Components are derived from their registers, so a component has a page, a place
 in the menu and a tile on the front page the moment it is registered; what is
 left to write is the file under
 `src/Core/Presentation/Styleguide/pages/` that shows it, and the gates will not
-pass without it. Layout and Forms get a group when there is something to put
-in one.
+pass without it. Layout gets a group when there is something to put in one.
+
+The controls of a form - every kind of input, `select`, `textarea`, checkboxes
+and radio buttons, `label`, `fieldset` and `legend`, and their focused, refused
+and disabled states - are styled by their own names in `assets/base.css` and
+never through whatever is drawn around them, so a control looks the same in
+every arrangement of a form (`tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest`).
+They are catalogued in `Trilobit\Core\Presentation\Form\FormElementRegistry`
+the way the elements of running text are in `ContentGroupRegistry`. The two
+sentences a browser has no element for - why an answer was refused and what a
+field is for - are drawn under the control by `c-field`.
 
 It exists only where `trilobit.styleguide` is on - by default in the `dev` and
 `staging` modes and not in `prod` (see `TRILOBIT_ENV` below), and
@@ -516,6 +632,33 @@ how wide the content runs, so a specimen can be looked at in any of them where
 it lives. The one page without it is the page drawn at a width of its own:
 beside a page not drawn at the setting, a control showing the setting is a
 question nobody needs to be asked.
+
+#### A specimen and its source
+
+A specimen is written once, with the `{specimen}` tag
+(`Trilobit\Core\Presentation\Styleguide\SpecimenExtension`). Below the rendered
+specimen, two tabs show its source. The first is the HTML the specimen
+rendered, taken from the same render. The second is the Latte it was written
+in, cut out of the same template by the positions of Latte's own parser. Nobody
+writes a second copy of the markup, so what the source tab shows cannot drift
+from what the page draws. The HTML is laid out again by `HtmlSource::format`
+over PHP's `Dom\HTMLDocument`: blocks on lines of their own, inline elements
+kept in their line, and the content of `pre`, `textarea`, `script` and `style`
+left untouched. A test compares the DOM of every specimen with the DOM of its
+formatted source, so a lost space between two inline elements fails it.
+
+The source is coloured by [Prism](https://prismjs.com/) (MIT), because it is
+the one that knows Latte: its `latte` grammar covers tags, `n:` attributes and
+the PHP inside them. highlight.js has no Latte grammar. Prism loads only the
+grammars the guide uses, and only in the guide's own entry point
+(`assets/styleguide.ts`), so no other page pays for it. Its theme is not used;
+the colours of its `.token.*` classes are tokens, in both themes and both
+modes.
+
+Latte does not recompile a template when only the code of an extension
+changes. It watches the template file, not the compiler of a tag. After a change
+to `SpecimenNode`, delete `var/tmp/cache/latte`, or the guide goes on rendering
+with the old compiler.
 
 ### What somebody prefers, and where it is kept
 
@@ -572,8 +715,8 @@ overview, the section belonging to the installation rather than to any business
 in it, and a menu made of the way back to where this person's administration
 begins and whatever the enabled modules put a section on it.
 
-Make somebody who can sign in. There are two kinds of administrator and the
-command says which it means:
+Make somebody who can sign in. There are two kinds of administrator, one
+account may be both, and the command says which it means:
 
 ```sh
 # administers the installation: no business, no role, no membership
@@ -582,17 +725,34 @@ bin/trilobit app:account you@example.com --name 'Your Name'
 # administers one business: the account, the role, and the membership joining
 # them in the business that answers at that host
 bin/trilobit app:account someone@example.com --tenant localhost --name 'Their Name'
+
+# both: administers the installation and owns the business at that host - the
+# one person of a simple installation running one shop
+bin/trilobit app:account you@example.com --tenant localhost --also-installation --name 'Your Name'
 ```
 
 They are **different scopes rather than different levels**. An account
-administering the installation creates and looks after the businesses and holds
-nothing inside any of them; an account administering a business holds every
-permission this build offers, in that business and nowhere else. The two cannot
-be combined: an account that is one is refused the other, and
-`Trilobit\Core\Domain\Tenancy\Membership` will not be constructed for an account
-administering the installation at all, so no screen and no command can arrange
-it by accident. Seeing what a business sees is a job for taking somebody's
-identity for a while, not for belonging to both.
+administering the installation creates and looks after the businesses, and
+that gives it nothing inside any of them; an account administering a business
+is its owner and holds the whole of the application - `app:*`, every permission
+this build offers and every one a later build adds - in that business and
+nowhere else. The owner is the one role the application defines rather than a
+business, and the command writes it again on every run, so a row under its code
+saying anything else says the whole of the application once more.
+
+**One account may be both, and only when that is said.** Without
+`--also-installation` the command refuses to give the installation's
+administrator a role in a business and names the switch, and
+`Trilobit\Core\Domain\Tenancy\Membership` refuses the same thing through its
+constructor and names the one way that takes it -
+`Membership::forTheInstallationsAdministrator()`, which takes nobody else. So
+no screen and no command makes an account both by accident, and every place
+that does it says so by name. Being both changes neither scope: in a business
+the account is asked about as a member of it and nowhere else, and whether it
+administers the installation is still the flag on the account, never worked out
+from belonging to no business. What the switch does not do is make an existing
+member of a business the installation's administrator - that is settled when
+an account is made.
 
 The business is named by a host rather than by an identifier, because a host is
 what a person knows and what `app:tenant` was given. A host nobody has claimed
@@ -668,10 +828,11 @@ nobody finds is not a way back, and it was the mark alone that nobody found.
 It is filtered like every other entry rather than trusted: where somebody
 belongs is not the same claim as what they may open. Today the two agree for
 anybody who reaches a page of the administration, because any right in a
-section opens the administration it is a section of - `content:view` and
-nothing else opens that section and the overview, and nothing more - but where
-they ever come apart, the person is drawn no way back and their bar begins
-with the section they may open. Nothing the bar offers answers 403.
+section opens the administration it is a section of -
+`app.administration.content:view` and nothing else opens that section and the
+overview, and nothing more - but where they ever come apart, the person is
+drawn no way back and their bar begins with the section they may open. Nothing
+the bar offers answers 403.
 The entries after it are the sections: a module contributes one when it has an
 administration page to contribute one for, and Core contributes the way into
 the section belonging to the installation by tagging a service,
@@ -741,17 +902,34 @@ privilege at all - there is no `checkPrivilege()` in the class. So a typo in a
 privilege writes a rule nobody ever asks about, or asks a question no rule ever
 answers, and either way the answer is a quiet "no" that reads exactly like
 somebody having decided it. Which pairs mean anything is said in
-`src/Core/Security/permissions.neon`: what each resource falls under, which
-privileges make sense on it, and whether the whole of it may be granted.
+`src/Core/Security/permissions.neon`: which privileges make sense on each
+resource, and whether the whole of it may be granted.
 
-The resources form a tree, and it means two things. Upwards it is a door: any
-right on a resource lets its holder view everything above it, so somebody who
-may edit content may open the administration. Downwards nothing is inherited -
-a pair means that pair, so opening the administration is not reading its
-content. The whole of a resource is written `content:*` and is every privilege
-of it and of everything under it, including privileges added later; granted, it
-is honoured only on a resource marked `bundle: true` and dropped elsewhere,
-because a right that grows by itself has to be one somebody decided should.
+The resources form a tree, and the tree is in their names: a resource is the
+path to it, and it falls under its name up to the last dot. There are five -
+`app`, the application inside one business and what everything falls under;
+`app.administration` and its two sections, `app.administration.account` and
+`app.administration.content`; and `app.redirection`, which is a decision on a
+public page rather than a section, so it is under the application and not under
+the administration. Nothing but the name says what a resource falls under, and
+every resource a name passes through has to exist, or the build does not
+start. Moving a resource is therefore renaming it, and renaming it is a
+migration of the pieces stored on every role - on purpose, so that it cannot
+happen without anybody looking at the roles.
+
+The tree means two things. Upwards it is a door: any right on a resource lets
+its holder view everything above it, so somebody who may edit content may open
+the administration, and the application it is part of. Downwards nothing is
+inherited - a pair means that pair, so opening the administration is not
+reading its content. The whole of a resource is written
+`app.administration.content:*` and is every privilege of it and of everything
+under it, including privileges added later; granted, it is honoured only on a
+resource marked `bundle: true` and dropped elsewhere, because a right that
+grows by itself has to be one somebody decided should.
+The whole of the application, `app:*`, is honoured on one role only: the owner
+of the business, whose code is `Trilobit\Core\Domain\User\Role::OWNER`. On any
+other role it is dropped as the list is composed, the way an outdated piece is,
+so no screen, import or hand-edited row can make a second owner.
 Taking a right away wins over everything, the doors included, and the whole of
 any resource may be taken away. All of it is worked out in
 `Trilobit\Core\Security\AccessComposition` as sets, so the order pieces are
@@ -820,18 +998,22 @@ The two kinds of administrator are different scopes rather than different
 levels, so they get two addresses and two pages: `/admin` for somebody who
 administers a business, and `/admin/installation` - written in
 `src/Core/Presentation/Installation/` - for somebody who administers the
-installation. Which of them a person lands on
-is decided once, in `Trilobit\Core\Presentation\Admin\Landing`, and it is a
-redirect they can see in the address bar.
+installation. An account that is both - see "The administration" above - is
+admitted to both and offered both in the bar, and begins in the business:
+`/admin`, signing in and the mark in the banner take it to the overview,
+because that is where the everyday work is, and the installation is one entry
+away. Which of them a person lands on is decided once, in
+`Trilobit\Core\Presentation\Admin\Landing`, and it is a redirect they can see in
+the address bar.
 
 The rejected shape was one section that showed different things according to
 who was looking. Both of these pages exist for everybody and say the same thing
 to whoever opens them; a single page drawing one thing for one reader and
 another for another is a difference nobody can point at, and there would be
-nowhere to stand to ask whether it was right. It also has to be lived with in
-the other direction: somebody who administers the installation and types
-`/admin` by hand is refused, on purpose, because the alternative is one address
-meaning two pages.
+nowhere to stand to ask whether it was right. Being both does not make a third,
+mixed section either: it is the same two, each saying to that account what it
+says to everybody else - `tests/Integration/Admin/AdministrationTest` compares
+what each draws for somebody in both with what it draws for somebody in one.
 
 The installation's section asks no permission question of any kind and may not.
 The access list has no meaning outside a business, so such a question would not
@@ -911,10 +1093,12 @@ as happily.
 ### What is not there yet
 
 Nobody composes a role in the administration. `bin/trilobit app:account
---tenant` makes one and derives what it holds from every pair the build offers,
-rather than from a list written down beside it - a list would go on saying what
-the application used to offer, and the account holding it would quietly stop
-being able to reach whatever was added afterwards.
+--tenant` makes the owner's role, which holds the whole of the application
+rather than a list of pairs - a list would go on saying what the application
+used to offer, and the account holding it would quietly stop being able to
+reach whatever was added afterwards. The two rules that belong beside it -
+nobody hands out more than they hold, and the last owner of a business cannot
+be removed - arrive with the first screen that edits roles or memberships.
 
 There is no way to write down a permission being taken away. A role carries the
 pieces it was assembled from and nothing else, so somebody holding two roles is
@@ -1095,6 +1279,17 @@ class and table names taken from them. It is not in the repository and not in
 any ignore list either - a committed list of forbidden words would be exactly
 the disclosure it is meant to prevent.
 
+A bare `bin/check-leaks` (equivalently `bin/check-leaks --staged`) scans only
+what is staged in the ordinary index. Since this project commits with an
+explicit pathspec (`git commit -- <paths>`), which never touches that index,
+running it by hand between such commits usually finds nothing staged - and it
+says so, with exit code 3, rather than reporting the same "clean" result
+(exit 0) a real scan would. Run `bin/check-leaks --all` to scan everything
+that could end up in a commit instead. The pre-commit hook is unaffected by
+this: it skips the tool entirely when nothing is staged, because there is
+nothing there for a leak to hide in, and because that is also the shape of a
+deliberate `git commit --allow-empty`, which the hook must not block.
+
 ### The gate
 
 ```sh
@@ -1134,6 +1329,16 @@ the repository. Raising a threshold back up is something nobody ever gets round
 to, so lowering it is made impossible rather than discouraged. The same goes for
 the analysis level: `max` from the first commit, because it is never raised
 afterwards either.
+
+`phpstan.neon` also pins `phpVersion` to `80400` - PHP 8.4, the floor
+`composer.json`'s `require.php` (`>=8.4`) still allows - instead of leaving
+PHPStan to infer it from whatever PHP the analyser itself runs on. CI runs the
+gate on both 8.4 and 8.5, and a developer's or CI's own container drifts ahead
+of the floor over time; without the pin, `stan` silently checks against the
+newer runtime and API that only exists there passes locally and in the 8.5 CI
+job, then fails the 8.4 job the first time somebody uses it.
+`tests/Architecture/PhpVersionMatchesComposerTest` keeps the pin and the floor
+from drifting apart.
 
 ### The test suites
 

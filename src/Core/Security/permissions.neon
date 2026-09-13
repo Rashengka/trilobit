@@ -1,13 +1,13 @@
 #
 # What may be asked about, and what may be asked of it.
 #
-# This file is the structure: which resources exist, which one each of them
-# falls under, and which of the privileges make sense on it. It is not who may
-# do what - that is an assignment, it belongs to a business rather than to the
-# application, and it stays in the database, on the roles a tenant makes for
-# itself out of the pairs written down here. Mixing the two into one source
-# would mean the structure could change while the application is running, and
-# the structure is exactly the part every request may share.
+# This file is the structure: which resources exist, and which of the
+# privileges make sense on each of them. It is not who may do what - that is
+# an assignment, it belongs to a business rather than to the application, and
+# it stays in the database, on the roles a tenant makes for itself out of the
+# pairs written down here. Mixing the two into one source would mean the
+# structure could change while the application is running, and the structure
+# is exactly the part every request may share.
 #
 # NEON rather than JSON because it is the language the rest of the
 # configuration is written in, and because it has comments: a permission
@@ -19,23 +19,30 @@
 # a case missing from this file is refused too, because registration walks the
 # enum and would otherwise register a resource nobody has said anything about.
 #
-# `parent` makes the resources a tree, and the tree means two things and no
-# third. Upwards it is a door: any right on a resource lets its holder view
-# everything the resource falls under, so somebody who may work in a section
-# may get to it. Downwards nothing is inherited - a pair means that pair and
-# nothing else, so opening the administration is not reading every section of
-# it. A resource something falls under therefore has to offer `view`.
+# The resources are a tree, and the tree is in the names: a resource falls
+# under its name up to the last dot, and every resource a name passes through
+# has to exist, or the build does not start. There is no key for it - one
+# would be a second sentence that could disagree with the name. Moving a
+# resource is renaming it, which is a migration of every role holding a piece
+# of it.
 #
-# `bundle: true` lets the whole of a resource be granted, written `content:*`:
-# every privilege of it and of everything under it, including the ones added
-# after the role was written. That growing is exactly why it is said here and
-# not assumed - a resource that should never grow on its own leaves it out, and
-# the whole of it granted on a role is then dropped, the way an outdated piece
-# is dropped. The whole of any resource may always be taken away; a denial
-# that grows fails in the safe direction. None of this is given to Nette as it
-# is written - it is worked out while an access list is composed, and the list
-# holds a plain rule of its own on every resource; see
-# Trilobit\Core\Security\AccessComposition.
+# The tree means two things and no third. Upwards it is a door: any right on a
+# resource lets its holder view everything the resource falls under, so
+# somebody who may work in a section may get to it. Downwards nothing is
+# inherited - a pair means that pair and nothing else, so opening the
+# administration is not reading every section of it. A resource something
+# falls under therefore has to offer `view`.
+#
+# `bundle: true` lets the whole of a resource be granted, written
+# `app.administration.content:*`: every privilege of it and of everything under
+# it, including the ones added after the role was written. That growing is
+# exactly why it is said here and not assumed - a resource that should never
+# grow on its own leaves it out, and the whole of it granted on a role is then
+# dropped, the way an outdated piece is dropped. The whole of any resource may
+# always be taken away; a denial that grows fails in the safe direction. None
+# of this is given to Nette as it is written - it is worked out while an access
+# list is composed, and the list holds a plain rule of its own on every
+# resource; see Trilobit\Core\Security\AccessComposition.
 #
 # Not every pair a role could be assembled from is checked somewhere yet, and
 # that is allowed on purpose: a piece may be defined before the first section
@@ -45,12 +52,24 @@
 # tests/Architecture/EveryPermissionQuestionIsPredefinedTest.
 #
 
+# The application inside one business, and what everything else falls under.
+# Viewing it is the only thing asked of it, and nobody needs to be given that by
+# name: any right below opens it, and no page asks for it.
+#
+# A bundle, because the whole of it is everything in the business, including
+# sections nobody has written yet - which is what owning a business means.
+# Which role may carry that is a question about the role, not about this file:
+# the owner's and no other, see Trilobit\Core\Security\AccessComposition.
+app:
+    bundle: true
+    privileges: [view]
+
 # The administration as a whole. Opening it at all is the one thing asked of
 # it, and anybody holding a right in one of its sections may open it. Its
 # whole is everything in it, which is what administering a business means: a
 # section added to the administration is one its administrators should have
 # without anybody going back to their role.
-administration:
+app.administration:
     bundle: true
     privileges: [view]
 
@@ -63,8 +82,7 @@ administration:
 # privilege added later must never reach somebody who was not given it by
 # name. The whole administration still reaches it, because that is a decision
 # about the administration and not about the accounts.
-account:
-    parent: administration
+app.administration.account:
     privileges: [view, add, edit, delete, purge]
 
 # What the public site is drawn from. Ordering is its own privilege because a
@@ -74,16 +92,18 @@ account:
 # A bundle, because a whole section of content is how an editor's role is
 # meant: whatever the site learns to hold next, whoever keeps the content
 # keeps that too.
-content:
-    parent: administration
+app.administration.content:
     bundle: true
     privileges: [view, add, edit, delete, purge, export, change_priority]
 
-# Where a visitor is sent. Not a section of the administration and not under
-# it: it is a decision inside a page that answers to the public, so a role
-# that may overrule it is not thereby a role that may open anything.
+# Where a visitor is sent. Under the application, so that the whole of the
+# application reaches it; not under the administration, because it is a
+# decision inside a page that answers to the public rather than a section of
+# anything, so a role that may overrule it is not thereby a role that may open
+# the administration. The door it opens is the application's, which no page
+# asks for.
 #
 # No bundle: it is one decision with two privileges, and overruling where a
 # visitor ends up is not something to come by without being given it.
-redirection:
+app.redirection:
     privileges: [view, force_redirect]

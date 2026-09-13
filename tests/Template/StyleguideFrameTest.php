@@ -101,10 +101,18 @@ final class StyleguideFrameTest extends TestCase
         self::assertNotNull($front, 'the style guide has no front page');
 
         $specimens = [];
-        foreach ($front->querySelectorAll('[data-styleguide-component], [data-styleguide-content]') as $section) {
-            $specimens[] = $section->getAttribute('data-styleguide-component')
-                ?? $section->getAttribute('data-styleguide-content')
-                ?? '';
+        $kinds = [
+            StyleguideSpecimens::COMPONENT,
+            StyleguideSpecimens::CONTENT,
+            StyleguideSpecimens::FORM,
+            StyleguideSpecimens::LAYOUT,
+        ];
+        foreach ($front->querySelectorAll(implode(', ', array_map(static fn(string $kind): string => '[' . $kind . ']', $kinds))) as $section) {
+            foreach ($kinds as $kind) {
+                if ($section->hasAttribute($kind)) {
+                    $specimens[] = $section->getAttribute($kind) ?? '';
+                }
+            }
         }
 
         self::assertSame([], $specimens, 'the front page of the style guide still carries specimens');
