@@ -412,6 +412,38 @@ for: `tests/e2e/administration.spec.ts` brings the migrations up to date and
 makes itself an account under a reserved documentation address, because a
 password in a public repository is a disclosure git keeps forever.
 
+The server Playwright starts is PHP's own, on a port that belongs to the
+checkout: `TRILOBIT_E2E_PORT` from the environment, else from the checkout's
+`.env`, else 18100. The environment wins so that one run can move elsewhere
+without editing a file; `.env` is what the checkout stands on otherwise, so a
+second checkout of the repository on the same machine - a worktree - puts its
+own port there once and never has to remember to export it. An empty value
+counts as unset at either level, and a value that is not a port stops the run
+rather than falling back to 18100.
+
+When something already answers on that port, a developer's machine takes it
+over instead of failing - a server an interrupted run left behind, or one
+started by hand to watch its log:
+
+```sh
+# From the checkout's directory. The path is absolute on purpose: PHP's server
+# resolves a relative one against www/ on every request.
+TRILOBIT_ENV=dev php -d auto_prepend_file="$PWD/tests/e2e/checkout-identity.php" -S 127.0.0.1:18100 -t www
+```
+
+It is taken over only when it proves to be this checkout's.
+`tests/e2e/global-setup.ts` asks it, before any spec runs, on a path only
+`tests/e2e/checkout-identity.php` answers, and compares the answer - a hash of
+the checkout's directory, so that the server does not tell anybody where it is
+on the disk - with its own. A server of any other checkout, one from before this
+check, or one started without that file or outside `dev`, stops the run with a
+message naming the port. Without that question the specs would run against the
+other checkout's code and database, while what they prepare through
+`bin/trilobit` went into this checkout's, and the run would mostly be green. The
+file is loaded by nothing but that command line, answers nothing but that one
+path, and only under PHP's own server in `dev`. A build server never takes a
+server over: CI starts its own, and a taken port fails there.
+
 `npm run e2e:docker` runs the same suite on Linux, in Playwright's own image of
 the version `package-lock.json` installs, with PHP added (`docker/e2e/Dockerfile`).
 It needs only Docker and this checkout's database (`docker compose up -d
