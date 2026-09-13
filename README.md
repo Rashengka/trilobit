@@ -1626,6 +1626,64 @@ the password to use there, once. For a real deployment point
 the document root at `www/` and leave the rest of the checkout outside it;
 `www/.htaccess` covers Apache.
 
+### Setting it up in the browser
+
+What `migrations:migrate`, `app:tenant` and the two `app:account` lines of the
+first block do can be done in a browser instead: with `.env` filled in,
+`app:warmup` run and `www/` served, open `/_setup` -
+`http://localhost:8000/_setup` above. The wizard there is one page, and what it offers is read off the
+database every time, so it picks up wherever the installation stands - after
+`migrations:migrate` run by hand, or a visit that stopped half-way:
+
+1. **The database.** When nothing answers where `.env` says it is, the page
+   says so, with status 503. In debug mode - `TRILOBIT_ENV=dev`, or staging
+   for a request carrying the debug secret - it also says where it looked:
+   `TRILOBIT_DB_HOST`, `TRILOBIT_DB_PORT`, `TRILOBIT_DB_NAME`,
+   `TRILOBIT_DB_USER`, and what the database driver said; never the password.
+   Anywhere else it says only that nothing answered and that this README is
+   where to look. The page is public on a fresh installation, and a host and
+   a user name are a map for whoever is probing it; debug mode is the line
+   because it is where the framework's own error page already shows the same.
+2. **The tables.** *Install* runs every migration that has not run yet - the
+   same run `bin/trilobit migrations:migrate` makes.
+3. **You, and the first business.** The account that administers the
+   installation, and one business answering at the host the page is open at
+   (more are `app:tenant`'s). Whether you run that business yourself as well
+   is asked and has no answer chosen in advance, because being both is a
+   decision: yes is the simple installation - one person, both scopes, the
+   owner's role in that business, the same as `app:account --tenant
+   --also-installation`; no is the separated one, where `app:account --tenant`
+   later makes whoever runs it. The password follows `app:password`'s rule -
+   twelve characters or more, not the address, typed twice - and only its
+   argon2id hash is kept.
+4. **Signing in.** The wizard ends on the sign-in page and signs nobody in:
+   an identity is only ever made by `Trilobit\Core\Security\Authenticator`,
+   and the first sign-in is when the chosen password is shown to work.
+
+**It is there only for an empty installation.** That is read from the
+database on every request rather than from a switch somebody could forget to
+turn off: once the installation holds one account of any kind or one business
+- made here, or by `app:account` or `app:tenant` - every request to `/_setup`,
+a posted form included, is answered 404, exactly as an address nothing claims
+is. So an installation that already has something is finished from the
+command line: `bin/trilobit app:account you@example.com` makes its
+administrator, as in the first block. And what the wizard picks up is an
+empty installation only: a database that is migrated and holds nothing goes
+on from the account.
+
+**Of two visitors finishing at the same moment, one becomes the administrator
+and the other is answered 404 with nothing of theirs written, and a visitor
+finishing while a command makes the first account is refused the same way.**
+The database decides that, not a question asked first: the wizard writes one
+row under the one key `core_setup_completion` has, inside the transaction that
+makes the account and the business, so a second visitor waits for the first
+and is refused; and with that row held it reads the accounts and the
+businesses again with a locking read, which waits for a row a command has
+written and not committed yet, and sees it. `/_setup` is also the one path answered at a host no business claims,
+because on a fresh installation there is no business yet; see "Tenants and
+domains" above. Its migrations run in every mode - they make tables, and
+`Mode::mayAlterData()` is about seeding and deleting, which it never does.
+
 A few settings are worth knowing about:
 
 - `.env` holds what differs between deployments. Every value in `.env.example`

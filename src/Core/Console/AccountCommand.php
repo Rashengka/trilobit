@@ -17,10 +17,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
-use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
 use Trilobit\Core\Security\Accounts;
-use Trilobit\Core\Security\Grant;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Tenancy\HostTenants;
 use Trilobit\Core\Tenancy\Tenancy;
@@ -107,9 +105,6 @@ final class AccountCommand extends Command
      * number somebody has to keep in step.
      */
     public const int GENERATED_LENGTH = 24;
-
-    /** What a person reads for the owner's role; the code is Trilobit\Core\Domain\User\Role::OWNER. */
-    private const string ROLE_NAME = 'Owner';
 
     public function __construct(
         private readonly Accounts $accounts,
@@ -331,8 +326,7 @@ final class AccountCommand extends Command
      */
     private function administer(Tenant $tenant, User $account, bool $both): void
     {
-        $role = $this->accounts->applicationRoleMadeIfMissing(Role::OWNER, self::ROLE_NAME);
-        $role->redefine([new Grant($this->structure->root(), null)->code()]);
+        $role = $this->accounts->ownersRole($this->structure);
 
         $this->entityManager->flush();
 

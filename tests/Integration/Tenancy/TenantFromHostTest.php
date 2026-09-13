@@ -111,6 +111,33 @@ final class TenantFromHostTest extends TestCase
         $application->run();
     }
 
+    /**
+     * The one path that is not refused at a host nobody claims: the setup
+     * wizard, which is what a fresh installation - no business anywhere, so no
+     * host claimed by one - is set up through. It enters no business either,
+     * because there is none it could be.
+     */
+    public function testTheSetupWizardIsServedAtAHostNobodyClaims(): void
+    {
+        $container = $this->installation();
+
+        $this->arriveAt($container, 'nobody.example.com', '/_setup');
+        $this->settleTheTenant($container);
+
+        self::assertFalse($container->getByType(Tenancy::class)->isEntered());
+    }
+
+    /** And only that path: one that merely begins with the same letters is refused like any other. */
+    public function testAPathThatOnlyLooksLikeTheWizardIsRefused(): void
+    {
+        $container = $this->installation();
+
+        $this->expectException(TenancyRefused::class);
+
+        $this->arriveAt($container, 'nobody.example.com', '/_setup-and-more');
+        $this->settleTheTenant($container);
+    }
+
     /** A tenant is entered by the time anything is routed, not merely available to be. */
     public function testNothingIsRoutedBeforeTheTenantIsEntered(): void
     {

@@ -14,6 +14,7 @@ use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouteProvider;
 use Trilobit\Core\Routing\SessionRoutes;
+use Trilobit\Core\Routing\SetupRoutes;
 use Trilobit\Core\Routing\StyleguideRoutes;
 
 #[CoversClass(ReservedSegments::class)]
@@ -25,6 +26,7 @@ final class ReservedSegmentsTest extends TestCase
 
         self::assertTrue($reserved->isReserved(AdminRoutes::PATH));
         self::assertTrue($reserved->isReserved(StyleguideRoutes::PATH));
+        self::assertTrue($reserved->isReserved(SetupRoutes::PATH));
     }
 
     /**
@@ -111,6 +113,7 @@ final class ReservedSegmentsTest extends TestCase
         self::assertSame(
             [
                 PreferenceRoutes::PATH,
+                SetupRoutes::PATH,
                 StyleguideRoutes::PATH,
                 AdminRoutes::PATH,
                 'alpha',
