@@ -137,10 +137,33 @@ final readonly class Authenticator implements NetteAuthenticator, IdentityHandle
      * An identity this build did not write is signed out rather than carried
      * on with. Its roles were put there by something else, and a set nothing
      * here can vouch for is the one thing decision D3 cannot afford to trust.
+     *
+     * **An account switched off, or gone, is signed out here and now.** The
+     * roles are read from memberships, and a membership says nothing about
+     * whether the account behind it may still sign in - so before this, a
+     * switched-off account went on holding every role it had in the one browser
+     * it was already in, and an account that no longer existed went on being
+     * signed in as nobody. Refusing the password is authenticate()'s half;
+     * this is the half that reaches a session opened before. It is the account
+     * row, read before anything else and outside a business as much as in one:
+     * holding no roles is not the same as not being signed in, because the
+     * installation's administrator holds none anywhere. The read is one query
+     * per request and the entity manager keeps the row for whatever else asks
+     * about the same person in it - Trilobit\Core\Security\Landlords does.
      */
     public function wakeupIdentity(IIdentity $identity): ?IIdentity
     {
-        return $identity instanceof Identity ? $this->holdingWhatIsHeldHere($identity) : null;
+        if (!$identity instanceof Identity) {
+            return null;
+        }
+
+        $person = $identity->getId();
+        $account = is_int($person) ? $this->accounts->withId($person) : null;
+        if (!$account instanceof User || !$account->isActive()) {
+            return null;
+        }
+
+        return $this->holdingWhatIsHeldHere($identity);
     }
 
     /**
