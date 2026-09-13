@@ -1,0 +1,13 @@
+#
+# What may be asked of the resources the suites' own module brings; see
+# Trilobit\Tests\Double\Security\DemoResource.
+#
+
+# A section, and the whole of it may be granted, as the root of a module's
+# section is meant to be.
+app.administration.demo:
+    bundle: true
+    privileges: [view]
+
+app.administration.demo.ledger:
+    privileges: [view, edit]

@@ -13,6 +13,7 @@ use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
+use Trilobit\Core\Security\ResourceName;
 use Trilobit\Core\Tenancy\Tenancy;
 use Trilobit\Core\Tenancy\TenancyRefused;
 
@@ -45,7 +46,7 @@ final class PermissionsTest extends TestCase
             $named[] = $type instanceof \ReflectionNamedType ? $type->getName() : (string) $type;
         }
 
-        self::assertSame([Resource::class, Privilege::class], $named);
+        self::assertSame([ResourceName::class, Privilege::class], $named);
     }
 
     /** A parameter with a default is a parameter that can be left out, so neither of these has one. */
@@ -95,7 +96,7 @@ final class PermissionsTest extends TestCase
     {
         return new Permissions(
             new Tenancy(self::createStub(EntityManagerInterface::class)),
-            PermissionStructure::of(Bootstrap::rootDirectory()),
+            PermissionStructure::of(Bootstrap::rootDirectory(), []),
             self::createStub(EntityManagerInterface::class),
             self::createStub(SignedIn::class),
         );

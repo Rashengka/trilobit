@@ -8,9 +8,14 @@ use Nette\Utils\FileSystem;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Security\Grant;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
+use Trilobit\Tests\Double\Security\DemoResource;
+use Trilobit\Tests\Double\Security\NumberedResource;
+use Trilobit\Tests\Double\Security\ResourcesOf;
+use Trilobit\Tests\Double\Security\StrayResource;
 
 /**
  * The pieces roles are assembled from, as the file says them and as an access
@@ -41,7 +46,7 @@ final class PermissionStructureTest extends TestCase
      */
     public function testTheShippedStructureDescribesEveryResource(): void
     {
-        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory(), []);
 
         foreach (Resource::cases() as $resource) {
             self::assertNotSame([], $structure->privilegesOf($resource), $resource->value);
@@ -55,7 +60,7 @@ final class PermissionStructureTest extends TestCase
      */
     public function testWhatEverythingFallsUnderIsTheApplication(): void
     {
-        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory(), []);
 
         self::assertSame(Resource::App, $structure->root());
 
@@ -68,7 +73,7 @@ final class PermissionStructureTest extends TestCase
 
     public function testWhatAResourceOffersIsWhatTheFileSays(): void
     {
-        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory(), []);
 
         self::assertTrue($structure->offers(Resource::Content, Privilege::Edit));
         self::assertFalse($structure->offers(Resource::Content, Privilege::Send));
@@ -81,7 +86,7 @@ final class PermissionStructureTest extends TestCase
      */
     public function testTheTreeIsReadFromTheDotsInTheNames(): void
     {
-        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory(), []);
 
         self::assertSame([Resource::Administration, Resource::App], $structure->ancestorsOf(Resource::Content));
         self::assertSame([Resource::Administration, Resource::App], $structure->ancestorsOf(Resource::Account));
@@ -109,7 +114,7 @@ final class PermissionStructureTest extends TestCase
      */
     public function testTheShippedStructureOffersTheWholeOfOnlyWhatItSaysSo(): void
     {
-        $structure = PermissionStructure::of(Bootstrap::rootDirectory());
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory(), []);
 
         self::assertTrue($structure->offersBundle(Resource::App));
         self::assertTrue($structure->offersBundle(Resource::Administration));
@@ -247,13 +252,145 @@ final class PermissionStructureTest extends TestCase
         PermissionStructure::fromNeon(sys_get_temp_dir() . '/trilobit-no-such-permissions.neon');
     }
 
+    /**
+     * A module brings resources of its own, in an enum and a file of its own,
+     * and they join the tree Core's are in - under the administration, by their
+     * names, exactly as if Core had written them. Core names none of them.
+     */
+    public function testAModulesResourcesJoinTheTreeUnderCoresOwn(): void
+    {
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory(), [ResourcesOf::demo()]);
+
+        self::assertSame([Resource::Administration, Resource::App], $structure->ancestorsOf(DemoResource::Demo));
+        self::assertSame(
+            [DemoResource::Demo, Resource::Administration, Resource::App],
+            $structure->ancestorsOf(DemoResource::Ledger),
+        );
+        self::assertEqualsCanonicalizing(
+            [Resource::Account, Resource::Content, DemoResource::Demo, DemoResource::Ledger],
+            $structure->descendantsOf(Resource::Administration),
+        );
+        self::assertTrue($structure->offers(DemoResource::Ledger, Privilege::Edit));
+        self::assertFalse($structure->offers(DemoResource::Ledger, Privilege::Delete));
+        self::assertTrue($structure->offersBundle(DemoResource::Demo));
+        self::assertFalse($structure->offersBundle(DemoResource::Ledger));
+        self::assertSame(Resource::App, $structure->root());
+        self::assertSame(DemoResource::Ledger, $structure->resourceNamed('app.administration.demo.ledger'));
+        self::assertSame([...Resource::cases(), ...DemoResource::cases()], $structure->resources());
+        self::assertContains(
+            'app.administration.demo.ledger:edit',
+            array_map(static fn(Grant $pair): string => $pair->code(), $structure->everyPair()),
+        );
+    }
+
+    /**
+     * A build without the module has none of what it brings, and says so by
+     * answering rather than by raising: nothing is offered on it and its name
+     * reads as nothing. That is what lets a role naming it wait for the
+     * module, and what makes a question about it the loud refusal the two
+     * services raise for a pair nobody offers.
+     */
+    public function testWhatAModuleBringsIsAbsentFromABuildWithoutIt(): void
+    {
+        $structure = PermissionStructure::of(Bootstrap::rootDirectory(), []);
+
+        self::assertFalse($structure->offers(DemoResource::Ledger, Privilege::Edit));
+        self::assertFalse($structure->offersBundle(DemoResource::Demo));
+        self::assertNull($structure->resourceNamed('app.administration.demo.ledger'));
+        self::assertSame(Resource::cases(), $structure->resources());
+    }
+
+    /**
+     * A module's file speaks for the module's resources and for nobody
+     * else's. Otherwise switching a module on could change what may be asked
+     * of one of Core's, and the change would be in a file nobody reading
+     * Core's would open.
+     */
+    public function testAModulesFileMayNotDescribeAResourceItDidNotBring(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches("#'app\\.administration', which is not one of the resources it brings#");
+
+        $file = $this->fileOf(
+            $this->describing(DemoResource::Demo->value)
+                . $this->describing(DemoResource::Ledger->value)
+                . $this->describing(Resource::Administration->value),
+        );
+        PermissionStructure::of(Bootstrap::rootDirectory(), [new ResourcesOf(DemoResource::cases(), $file)]);
+    }
+
+    /** The same rule Core's own file is held to, for the same reason: registration walks the enum. */
+    public function testAModuleHasToDescribeEveryResourceItBrings(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches("#'app\\.administration\\.demo\\.ledger'#");
+
+        $file = $this->fileOf($this->describing(DemoResource::Demo->value));
+        PermissionStructure::of(Bootstrap::rootDirectory(), [new ResourcesOf(DemoResource::cases(), $file)]);
+    }
+
+    /**
+     * One name, two resources: a piece written under it would read back as
+     * whichever came first, and which came first is the order modules happen
+     * to be registered in.
+     */
+    public function testTwoResourcesUnderOneNameAreRefused(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches("#'app\\.administration\\.content' is brought by both#");
+
+        $file = $this->fileOf($this->describing(StrayResource::Content->value));
+        PermissionStructure::of(Bootstrap::rootDirectory(), [new ResourcesOf([StrayResource::Content], $file)]);
+    }
+
+    /** A module's resource is held to the tree like Core's are: what it passes through has to exist. */
+    public function testAModulesResourceUnderNothingThisBuildHasIsRefused(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches("#falls under 'app\\.elsewhere'#");
+
+        $file = $this->fileOf($this->describing(StrayResource::Elsewhere->value));
+        PermissionStructure::of(Bootstrap::rootDirectory(), [new ResourcesOf([StrayResource::Elsewhere], $file)]);
+    }
+
+    /**
+     * A resource is named by the path to it. The interface cannot say that on
+     * its own - an enum backed by an integer is a backed enum too - so it is
+     * said here, when the structure is read.
+     */
+    public function testAResourceNamedByANumberIsRefused(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('#NumberedResource::Ledger is named by a number#');
+
+        $file = $this->fileOf("7:\n    privileges: [view]\n");
+        PermissionStructure::of(Bootstrap::rootDirectory(), [new ResourcesOf([NumberedResource::Ledger], $file)]);
+    }
+
+    public function testAModulesFileThatIsNotThereIsRefused(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('#does not say what may be asked about#');
+
+        PermissionStructure::of(
+            Bootstrap::rootDirectory(),
+            [new ResourcesOf(DemoResource::cases(), sys_get_temp_dir() . '/trilobit-no-such-module-permissions.neon')],
+        );
+    }
+
     private function structureOf(string $neon): PermissionStructure
+    {
+        return PermissionStructure::fromNeon($this->fileOf($neon));
+    }
+
+    /** $neon written to a file of its own, removed again when the test is over. */
+    private function fileOf(string $neon): string
     {
         $this->directory = sys_get_temp_dir() . '/trilobit-permissions-' . bin2hex(random_bytes(6));
         $file = $this->directory . '/permissions.neon';
         FileSystem::write($file, $neon);
 
-        return PermissionStructure::fromNeon($file);
+        return $file;
     }
 
     /**

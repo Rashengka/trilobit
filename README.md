@@ -1286,7 +1286,7 @@ somebody having decided it. Which pairs mean anything is said in
 resource, and whether the whole of it may be granted.
 
 The resources form a tree, and the tree is in their names: a resource is the
-path to it, and it falls under its name up to the last dot. There are five -
+path to it, and it falls under its name up to the last dot. Core has five -
 `app`, the application inside one business and what everything falls under;
 `app.administration` and its two sections, `app.administration.account` and
 `app.administration.content`; and `app.redirection`, which is a decision on a
@@ -1296,6 +1296,30 @@ every resource a name passes through has to exist, or the build does not
 start. Moving a resource is therefore renaming it, and renaming it is a
 migration of the pieces stored on every role - on purpose, so that it cannot
 happen without anybody looking at the roles.
+
+A module brings resources of its own, because Core may not name a module and so
+cannot hold them. They are an enum in the module implementing
+`Trilobit\Core\Security\ResourceName`, described in a `permissions.neon` of the
+module's own, and handed over by a service implementing
+`Trilobit\Core\Security\ResourceProvider` tagged
+`CoreExtension::TAG_RESOURCE_PROVIDER`. `Shop` brings three:
+`app.administration.shop`, its section, with `app.administration.shop.catalogue`
+and `app.administration.shop.price` under it - the price a sibling of the
+catalogue rather than a part of it, so that somebody may write about a product
+without changing what it costs. They fall under Core's administration by their
+names, and are asked about the way Core's are:
+`#[Needs(ShopResource::Catalogue, Privilege::Edit)]`. What a build has is
+`PermissionStructure::resources()`, Core's and those of the modules it is made
+of, and that list is what registration walks. A module's file describes its
+own resources, all of them, and nobody else's; two resources under one name
+are refused. A build without the module has none of its resources: a role
+naming one keeps the piece in its row, the rest of the role still holds, and
+the piece holds again the day the module is switched back on - while a question
+about it in that build raises rather than answering no.
+`tests/Architecture/EveryResourceEnumIsContributedTest` fails on an enum of
+resources in `src/` that no build brings, because the rule below reads the
+questions by their enums and would otherwise pass over that enum's questions
+without a word.
 
 The tree means two things. Upwards it is a door: any right on a resource lets
 its holder view everything above it, so somebody who may edit content may open

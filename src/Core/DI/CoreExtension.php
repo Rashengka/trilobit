@@ -127,6 +127,9 @@ final class CoreExtension extends CompilerExtension
     /** Services tagged with this put entries into the site's menus; see Trilobit\Core\Navigation\NavigationContributor. */
     public const string TAG_NAVIGATION_CONTRIBUTOR = 'trilobit.navigation_contributor';
 
+    /** Services tagged with this bring resources of their module's own; see Trilobit\Core\Security\ResourceProvider. */
+    public const string TAG_RESOURCE_PROVIDER = 'trilobit.resource_provider';
+
     /** The console's own tag; the value is the name the command answers to. */
     private const string TAG_CONSOLE_COMMAND = 'console.command';
 
@@ -632,6 +635,7 @@ final class CoreExtension extends CompilerExtension
         $this->service('navigation')->setArgument('contributors', $this->taggedServices(self::TAG_NAVIGATION_CONTRIBUTOR));
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
         $this->service('seedCommand')->setArgument('providers', $this->taggedServices(self::TAG_SEED_PROVIDER));
+        $this->service('permissionStructure')->setArgument('providers', $this->taggedServices(self::TAG_RESOURCE_PROVIDER));
         $this->service('ports')->setArguments([$this->taggedPorts()]);
     }
 

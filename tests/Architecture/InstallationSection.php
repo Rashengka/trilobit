@@ -7,6 +7,7 @@ namespace Trilobit\Tests\Architecture;
 use Nette\Utils\Finder;
 use Trilobit\Core\Security\AdministersTheInstallation;
 use Trilobit\Core\Security\Gate;
+use Trilobit\Core\Security\ResourceName;
 
 /**
  * The section of the installation's own administrator, as a place rather than
@@ -25,16 +26,20 @@ final class InstallationSection
 
     /**
      * Every permission question written in $directory, as
-     * Trilobit\Tests\Architecture\PermissionQuestions reads them: by the two
+     * Trilobit\Tests\Architecture\PermissionQuestions reads them: by the
      * enums, and never by the name of a method or of the service it is asked
      * of.
      *
+     * @param list<ResourceName> $resources what a
+     *     question may be about - the widest build's, so that a question about
+     *     a module's resource is found here too
+     *
      * @return list<string> where each one is, ready to be read in a report
      */
-    public static function permissionQuestionsIn(string $directory): array
+    public static function permissionQuestionsIn(string $directory, array $resources): array
     {
         $asked = [];
-        foreach (PermissionQuestions::askedIn($directory) as $question) {
+        foreach (PermissionQuestions::askedIn($directory, $resources) as $question) {
             $privilege = $question['privilege'];
             $asked[] = $question['where'] . ': ' . $question['resource']->value
                 . ($privilege === null ? '' : ', ' . $privilege->value);

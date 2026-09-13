@@ -14,6 +14,7 @@ use Trilobit\Core\Security\Memberships;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
+use Trilobit\Core\Security\ResourceName;
 use Trilobit\Core\Tenancy\Tenancy;
 use Trilobit\Core\Tenancy\TenancyRefused;
 
@@ -53,11 +54,12 @@ final class AuthorizatorTest extends TestCase
      * The two halves of a pair are our enums, plus the string the interface
      * promises and cannot be narrowed away. `mixed` would be the easy way to
      * satisfy the interface and would let anything at all through to be sorted
-     * out at run time.
+     * out at run time. The resource is the interface every enum of resources
+     * implements - Core's and each module's - and nothing wider.
      */
     public function testEachHalfOfThePairIsOurEnumOrTheStringTheInterfacePromises(): void
     {
-        self::assertEqualsCanonicalizing(['string', Resource::class, 'null'], $this->typesOfParameter(1));
+        self::assertEqualsCanonicalizing(['string', ResourceName::class, 'null'], $this->typesOfParameter(1));
         self::assertEqualsCanonicalizing(['string', Privilege::class, 'null'], $this->typesOfParameter(2));
     }
 
@@ -174,7 +176,7 @@ final class AuthorizatorTest extends TestCase
     {
         return new Authorizator(
             new Tenancy(self::createStub(EntityManagerInterface::class)),
-            PermissionStructure::of(Bootstrap::rootDirectory()),
+            PermissionStructure::of(Bootstrap::rootDirectory(), []),
             new Memberships(self::createStub(EntityManagerInterface::class)),
         );
     }

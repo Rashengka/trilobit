@@ -7,9 +7,13 @@ namespace Trilobit\Tests\Unit\Core\Security;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Security\Grant;
+use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
+use Trilobit\Tests\Double\Security\DemoResource;
+use Trilobit\Tests\Double\Security\ResourcesOf;
 
 /**
  * How a piece of a role is written down and read back.
@@ -24,7 +28,7 @@ final class GrantTest extends TestCase
 {
     public function testAPairReadsBackAsItWasWrittenOut(): void
     {
-        $grant = Grant::parse('app.administration.content:edit');
+        $grant = Grant::parse('app.administration.content:edit', $this->coreAlone());
 
         self::assertInstanceOf(Grant::class, $grant);
         self::assertSame(Resource::Content, $grant->resource);
@@ -36,7 +40,7 @@ final class GrantTest extends TestCase
     /** The star is the whole resource, and it is written back as a star rather than as a list. */
     public function testAStarIsTheWholeOfAResource(): void
     {
-        $grant = Grant::parse('app.administration:*');
+        $grant = Grant::parse('app.administration:*', $this->coreAlone());
 
         self::assertInstanceOf(Grant::class, $grant);
         self::assertSame(Resource::Administration, $grant->resource);
@@ -48,6 +52,24 @@ final class GrantTest extends TestCase
     public function testTheWholeOfAResourceIsWrittenOutAsAStar(): void
     {
         self::assertSame('app.administration.content:*', new Grant(Resource::Content, null)->code());
+    }
+
+    /**
+     * A piece naming a resource a module brings reads back in a build that has
+     * the module, and as nothing in a build that does not. Nothing is written
+     * back either way, so the row still says it the day the module is switched
+     * on again - and holds again from that request on.
+     */
+    public function testAPieceOfAModuleReadsBackOnlyWhereTheModuleIs(): void
+    {
+        $withTheModule = PermissionStructure::of(Bootstrap::rootDirectory(), [ResourcesOf::demo()]);
+
+        $grant = Grant::parse('app.administration.demo.ledger:edit', $withTheModule);
+        self::assertInstanceOf(Grant::class, $grant);
+        self::assertSame(DemoResource::Ledger, $grant->resource);
+        self::assertSame('app.administration.demo.ledger:edit', $grant->code());
+
+        self::assertNull(Grant::parse('app.administration.demo.ledger:edit', $this->coreAlone()));
     }
 
     /** @return iterable<string, array{string}> */
@@ -72,6 +94,11 @@ final class GrantTest extends TestCase
     #[DataProvider('unreadable')]
     public function testAnythingElseReadsBackAsNothing(string $written): void
     {
-        self::assertNull(Grant::parse($written));
+        self::assertNull(Grant::parse($written, $this->coreAlone()));
+    }
+
+    private function coreAlone(): PermissionStructure
+    {
+        return PermissionStructure::of(Bootstrap::rootDirectory(), []);
     }
 }

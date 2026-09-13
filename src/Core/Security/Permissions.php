@@ -79,15 +79,14 @@ final class Permissions
      * @throws TenancyRefused when no tenant has been entered, because the
      *     answer would otherwise be somebody else's
      */
-    public function isAllowed(Resource $resource, Privilege $privilege): bool
+    public function isAllowed(ResourceName $resource, Privilege $privilege): bool
     {
         if (!$this->structure->offers($resource, $privilege)) {
             throw new \LogicException(sprintf(
-                "Nothing may be answered about '%s' of '%s': %s does not offer that pair, so no role can hold it "
-                    . 'and the answer would be no for everybody, for ever.',
+                "Nothing may be answered about '%s' of '%s': this build's structure does not offer that pair, so "
+                    . 'no role can hold it and the answer would be no for everybody, for ever.',
                 $privilege->value,
-                $resource->value,
-                PermissionStructure::FILE,
+                PermissionStructure::nameOf($resource),
             ));
         }
 
@@ -100,7 +99,7 @@ final class Permissions
 
         $held = $this->inThisTenant($tenant);
         foreach ($held['roles'][$person] ?? [] as $code) {
-            if ($held['access']->isAllowed($code, $resource->value, $privilege->value)) {
+            if ($held['access']->isAllowed($code, PermissionStructure::nameOf($resource), $privilege->value)) {
                 return true;
             }
         }

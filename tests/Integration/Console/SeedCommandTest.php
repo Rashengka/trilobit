@@ -218,7 +218,7 @@ final class SeedCommandTest extends TestCase
     {
         $container = $this->seeded($output);
         $passwords = $this->passwordsIn($output);
-        $everyPair = $this->pairs(PermissionStructure::of(Bootstrap::rootDirectory())->everyPair());
+        $everyPair = $this->pairs($container->getByType(PermissionStructure::class)->everyPair());
 
         foreach ([self::AMMONITE_OWNER => ['Ammonite Bikes', 'Belemnite Books'], self::BELEMNITE_OWNER => ['Belemnite Books', 'Ammonite Bikes']] as $email => [$own, $other]) {
             $this->signIn($container, $email, $passwords);
@@ -520,7 +520,7 @@ final class SeedCommandTest extends TestCase
         $permissions = $container->getByType(Permissions::class);
 
         $allowed = [];
-        foreach (PermissionStructure::of(Bootstrap::rootDirectory())->everyPair() as $pair) {
+        foreach ($container->getByType(PermissionStructure::class)->everyPair() as $pair) {
             self::assertInstanceOf(Privilege::class, $pair->privilege);
             if ($permissions->isAllowed($pair->resource, $pair->privilege)) {
                 $allowed[] = $pair;
