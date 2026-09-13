@@ -170,12 +170,29 @@ const distance = 600;
  * sixty-fourths. A coarser step - a sixteenth - reaches only every fourth of
  * them, and which four in sixteen it reaches is decided by the fraction the
  * content above the heading already puts it at; a clearance short by a
- * sixty-fourth then fails or passes by the luck of the page.
+ * sixty-fourth then fails or passes by the luck of the page. Firefox keeps
+ * positions in sixtieths, and a step of a sixty-fourth, being finer, reaches
+ * every one of those as well.
  */
 const sixtyFourths = Array.from({ length: 64 }, (_, index) => index / 64);
 
+/**
+ * The part of a pixel $browser keeps a length in: Chromium's layout unit is a
+ * sixty-fourth, Firefox's a sixtieth. A browser this does not know is refused,
+ * so that a claim about the clearance is never made against a guess.
+ */
+function layoutUnit(browser: string): number {
+    const units: Record<string, number> = { chromium: 1 / 64, firefox: 1 / 60 };
+    const unit = units[browser];
+    if (unit === undefined) {
+        throw new Error(`the layout unit of ${browser} is not known here`);
+    }
+
+    return unit;
+}
+
 for (const size of windows) {
-    test(`in atrium at ${size.width}px the banner and the navigation stay in view, made smaller`, async ({ page }) => {
+    test(`in atrium at ${size.width}px the banner and the navigation stay in view, made smaller`, async ({ page, browserName }) => {
         await open(page, size);
 
         const full = await measure(page);
@@ -202,10 +219,24 @@ for (const size of windows) {
 
         // What a jump keeps clear is what the two bands cover now, not what they
         // covered at the top - and half a pixel more, for the browser rounding
-        // the jump to a whole one (assets/chrome.ts). Exactly that: both are
-        // whole numbers of sixty-fourths, and a clearance short by less than
-        // one is laid out a whole one short.
-        expect(small.offset, 'the clearance a jump keeps is not the height of the smaller bands').toBe(small.navBottom + 0.5);
+        // the jump to a whole one (assets/chrome.ts). Never less, and more by
+        // less than one unit of the browser's layout: the clearance is taken
+        // up to the next sixty-fourth, which is finer than either unit.
+        const unit = layoutUnit(browserName);
+        expect(small.offset, 'the clearance a jump keeps is short of the smaller bands and the half').toBeGreaterThanOrEqual(
+            small.navBottom + 0.5,
+        );
+        expect(small.offset, 'the clearance a jump keeps is a unit of layout or more past the smaller bands').toBeLessThan(
+            small.navBottom + 0.5 + unit,
+        );
+
+        // Exactly that where the unit is a sixty-fourth: there the bands and
+        // the clearance are both whole numbers of them, and a clearance short
+        // by less than one is laid out a whole one short. Firefox lays out in
+        // sixtieths, so the clearance there is the next sixty-fourth past them.
+        if (unit === 1 / 64) {
+            expect(small.offset, 'the clearance a jump keeps is not the height of the smaller bands').toBe(small.navBottom + 0.5);
+        }
 
         // And held: scrolled further, neither band moves while the content does.
         await wheel(page, 300);
