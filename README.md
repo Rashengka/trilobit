@@ -487,6 +487,102 @@ renders every page of the style guide and fails when a registered variant has
 no specimen on any of them. So a component nobody has shown does not pass
 `composer check`.
 
+The set follows the components section of Bootstrap 5.3's documentation, from
+Accordion to Tooltips - the list and the shape of the documentation, not its
+CSS, classes or wording. Where the application already had the idea under a
+name of its own, the name stays: Bootstrap's alert is `c-notice`, its navbar is
+`c-site-header` with `c-nav`. A component also refuses what it does not know:
+an unknown variant fails through `Argument` rather than drawing the default,
+which would look like a choice somebody made.
+
+#### Interactive ones start from what the browser already does
+
+Every interactive component is built on the element or attribute that already
+behaves that way, and script is added only where the platform has no such
+behaviour:
+
+| component | built on | script for |
+|---|---|---|
+| Accordion, Collapse | `<details>` / `<summary>`; an accordion's items share a `name` | nothing |
+| Modal, Offcanvas | `<dialog>` opened by invoker commands (`commandfor`) | browsers without invoker commands (`assets/dialog.ts`) |
+| Dropdown, Popover, Tooltip | the `popover` attribute, hung from their element by CSS anchor positioning | keyboard of the menu; placing where the browser cannot anchor (`assets/anchor.ts`) |
+| Tabs | headed sections, each one visible | turning them into a tab list |
+| Scrollspy | a list of links | marking the section in view, with an `IntersectionObserver` |
+| Carousel | a `scroll-snap` track that scrolls by hand and by keyboard | the previous and next buttons |
+| Toast | a live region | dismissing |
+
+The browser does the hard part that way - focus, `Escape`, light dismiss, the
+top layer - and does it the same on every page, including the parts nobody
+tests. Dialogs and popovers live in the top layer, so none of them needs a
+`z-index`; the few layers the page itself stacks are the `--layout-z-*` tokens
+of a theme.
+
+Some choices behind the table, each with the reason it was made:
+
+- `c-dropdown` is the menu button of the WAI-ARIA Authoring Practices: the
+  arrow keys, `Home`, `End` and a first letter move between its items. The
+  signed-in person's menu (`c-user-menu`) is not one: a name, an address and a
+  switch for preferences are not menu items, and `role="menu"` would tell a
+  screen reader they were.
+- `c-tooltip` describes its element through `aria-describedby`, and never
+  carries the element's name. It opens on hover and on focus, stays while the
+  pointer moves onto it and goes on `Escape` (WCAG 1.4.13). It uses
+  `popover="manual"`, because `popover="hint"` exists only in Chrome 133 and
+  newer.
+- Tabs switch as the arrow keys move, rather than on `Enter`, and the chosen
+  tab is not written into the address.
+- A carousel never turns by itself. A carousel that moved on its own would need
+  a way to stop it (WCAG 2.2.2), and nothing here needs one that moves.
+- A toast stays until it is dismissed. A notice that goes after a fixed time is
+  gone before some people have read it (WCAG 2.2.1). Nette's flash messages are
+  drawn as toasts, in the `flashes` snippet of both layouts, after a redirect
+  and after a Naja redraw alike; `info` and `danger` are the types there are.
+- An open dialog locks the page's scrolling with `overflow: hidden` on the root
+  and nothing more. `scrollbar-gutter: stable` beside it would keep the width of
+  a classic scroll bar that is no longer drawn, and take it from every fixed
+  panel - a modal 7.5 pixels off centre, measured on Linux, and invisible on a
+  Mac, whose scroll bars take no room.
+
+Every behaviour survives Naja redrawing part of a page. Most of them listen on
+the document and prepare nothing, so there is nothing a snippet could bring in
+unprepared. Those that do prepare an element - the combobox, the tabs, the
+scrollspy - register a Naja extension before `naja.initialize()` and draw the
+page's own elements only after it. The other order gets past every test that
+does not go back: Naja keeps the markup of each snippet as it initialises, and
+markup that was already enhanced comes back from `history.back()` as a control
+with nothing behind it. The guard against enhancing an element twice is the
+library's handle on the element in memory, not a mark in the DOM, because a
+mark comes back from the history cache while the handle does not.
+
+#### The combobox
+
+A `<select>` with a long list becomes `c-combobox`, which is
+[Tom Select](https://tom-select.js.org/) (Apache-2.0) drawn by the
+application's own CSS. The library's stylesheet is not used: the classes the
+library lets be named are named `c-combobox__*`, the state classes it hard-codes
+are allowed by name for its version
+(`tests/Architecture/StylesheetClassesAreNamedByKindTest`), and the whole look
+comes from tokens like every other component's. Three libraries were tried
+against the real stylesheet and a real Naja. Tom Select was the one that could
+be coloured from tokens without `!important`, that kept the focus on the
+element with the `combobox` role, and that left a dependent select's value
+empty rather than stale.
+
+It still did not do the whole of the accessibility, so what was missing is
+written on top of it: `Home`, `End`, `PageUp` and `PageDown`, a live count of
+the matches, the `aria-describedby` of `c-field` carried over to the element
+that has the focus (without it the hint and the error are lost), and a name that
+says the chosen value, as a native select does. It does not open when it is
+tabbed onto, because a native select does not either, and it shows every option
+(`maxOptions: null`) rather than silently the first fifty. Searching switches on
+from ten options.
+
+It is in the shared `app.js`, about 16 kB gzipped on every page. Loading it only
+where it is used would be a lazy `import()`, and a chunk loaded that way gets no
+`?v=` from `VersionedViteMapper` - after a deployment a browser could run an old
+chunk against a new `app.js`. Versioning those chunks comes first, splitting the
+bundle after it. A `multiple` select stays native.
+
 ### The style guide
 
 `/_styleguide` is part of the application, not a separate tool: same base
@@ -535,6 +631,33 @@ how wide the content runs, so a specimen can be looked at in any of them where
 it lives. The one page without it is the page drawn at a width of its own:
 beside a page not drawn at the setting, a control showing the setting is a
 question nobody needs to be asked.
+
+#### A specimen and its source
+
+A specimen is written once, with the `{specimen}` tag
+(`Trilobit\Core\Presentation\Styleguide\SpecimenExtension`). Below the rendered
+specimen, two tabs show its source. The first is the HTML the specimen
+rendered, taken from the same render. The second is the Latte it was written
+in, cut out of the same template by the positions of Latte's own parser. Nobody
+writes a second copy of the markup, so what the source tab shows cannot drift
+from what the page draws. The HTML is laid out again by `HtmlSource::format`
+over PHP's `Dom\HTMLDocument`: blocks on lines of their own, inline elements
+kept in their line, and the content of `pre`, `textarea`, `script` and `style`
+left untouched. A test compares the DOM of every specimen with the DOM of its
+formatted source, so a lost space between two inline elements fails it.
+
+The source is coloured by [Prism](https://prismjs.com/) (MIT), because it is
+the one that knows Latte: its `latte` grammar covers tags, `n:` attributes and
+the PHP inside them. highlight.js has no Latte grammar. Prism loads only the
+grammars the guide uses, and only in the guide's own entry point
+(`assets/styleguide.ts`), so no other page pays for it. Its theme is not used;
+the colours of its `.token.*` classes are tokens, in both themes and both
+modes.
+
+Latte does not recompile a template when only the code of an extension
+changes. It watches the template file, not the compiler of a tag. After a change
+to `SpecimenNode`, delete `var/tmp/cache/latte`, or the guide goes on rendering
+with the old compiler.
 
 ### What somebody prefers, and where it is kept
 
