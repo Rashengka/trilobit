@@ -105,6 +105,16 @@ for (const theme of themes) {
             const past = stage(page, 'a measure past its high bound').locator('.c-progress__bar');
             const pastFill = await paintedAt(past, 0.5);
             expectClose(pastFill, await resolved(past, 'color', '--color-danger'), `a measure past its bound in ${where}`);
+
+            // The track of a meter is the theme's, as the track of a progress bar
+            // is. Firefox gives <meter> a grey gradient of its own, which a
+            // background colour alone leaves drawn over the theme's.
+            for (const [bar, x, what] of [
+                [measure, 0.9, 'a measure'],
+                [past, 0.97, 'a measure past its bound'],
+            ] as const) {
+                expectClose(await paintedAt(bar, x), await resolved(bar, 'color', '--color-canvas-sunken'), `the track of ${what} in ${where}`);
+            }
             expect(contrast(pastFill, await paintedAt(past, 0.97)), `past its bound against the track in ${where}`)
                 .toBeGreaterThanOrEqual(3);
         });

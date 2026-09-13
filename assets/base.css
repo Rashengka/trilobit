@@ -1685,6 +1685,11 @@
 
         appearance: none;
         background-color: var(--color-canvas-sunken);
+        /* Firefox gives <meter> a grey gradient of its own, and a gradient is
+           drawn over the background colour: without this the track of a meter
+           was grey in either mode, and in the dark one the fill hardly stood
+           out from it. */
+        background-image: none;
         block-size: var(--progress-size);
         border: var(--border-hairline) solid var(--color-line);
         border-radius: var(--radius-pill);
