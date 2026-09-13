@@ -73,8 +73,26 @@ test.describe('the code under a specimen', () => {
         await context.close();
     });
 
-    test('copies the code it sits on, says so, and is reached by keyboard', async ({ page, context }) => {
-        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    test('copies the code it sits on, says so, and is reached by keyboard', async ({ page, context, browserName }) => {
+        // What the page hands the clipboard, heard on its way there and passed
+        // on to the browser's own writeText, whose answer is what the status
+        // says. Firefox lets a page write from a key pressed on a button, but
+        // Playwright has no permission there that would let a test read the
+        // clipboard back; Chromium has, and is asked what is on it as well.
+        await page.addInitScript(() => {
+            const clipboard = navigator.clipboard;
+            const write = clipboard.writeText.bind(clipboard);
+            const written: string[] = [];
+            (window as unknown as { written: string[] }).written = written;
+            clipboard.writeText = (text: string): Promise<void> => {
+                written.push(text);
+
+                return write(text);
+            };
+        });
+        if (browserName === 'chromium') {
+            await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        }
         await page.goto(BADGE);
 
         const frame = specimen(page, 'plain').locator('[data-sg-code]').first();
@@ -86,9 +104,11 @@ test.describe('the code under a specimen', () => {
         await page.keyboard.press('Enter');
 
         await expect(frame.getByRole('status')).toHaveText('Copied to the clipboard.');
-        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-            (await frame.locator('code').textContent()) ?? 'the code is empty',
-        );
+        const code = (await frame.locator('code').textContent()) ?? 'the code is empty';
+        expect(await page.evaluate(() => (window as unknown as { written: string[] }).written)).toEqual([code]);
+        if (browserName === 'chromium') {
+            expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(code);
+        }
     });
 });
 
