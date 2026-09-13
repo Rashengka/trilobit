@@ -183,10 +183,11 @@ final class AccountCommandTest extends TestCase
 
         $this->execute($container, 'alice@example.com', tenant: self::HOST);
 
-        $role = $container->getByType(Accounts::class)->roleWithCode('owner');
+        $role = $container->getByType(Accounts::class)->applicationRole('owner');
         self::assertInstanceOf(Role::class, $role);
         self::assertSame('Owner', $role->name());
         self::assertSame(['app:*'], $role->permissions());
+        self::assertNull($role->business(), 'the owner\'s role is the application\'s, not the business the command was run for');
     }
 
     /**
@@ -207,7 +208,7 @@ final class AccountCommandTest extends TestCase
 
         $this->execute($container, 'alice@example.com', tenant: self::HOST);
 
-        $role = $container->getByType(Accounts::class)->roleWithCode('owner');
+        $role = $container->getByType(Accounts::class)->applicationRole('owner');
         self::assertInstanceOf(Role::class, $role);
         self::assertSame(['app:*'], $role->permissions());
         self::assertCount(1, $entityManager->getRepository(Role::class)->findAll(), 'the row was reused, not doubled');
