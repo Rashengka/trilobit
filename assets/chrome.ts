@@ -204,6 +204,13 @@ function reach(band: Element | null): number {
  * so that a height measured off the grid - under a zoom, say - errs a little
  * further down the page and never under the band.
  *
+ * Firefox lays out in sixtieths of a pixel rather than sixty-fourths, and a
+ * band there is a whole number of sixtieths tall. A clearance taken up to the
+ * next sixty-fourth is then a hair past what is covered and the half, by less
+ * than one sixtieth, and that is all it is: never short of it
+ * (tests/e2e/chrome-condense.spec.ts jumps at every place in the pixel in
+ * both browsers).
+ *
  * Where nothing is held there is nothing to keep clear of, and zero stays zero.
  */
 function clearance(covered: number): number {

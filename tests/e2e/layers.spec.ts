@@ -33,8 +33,27 @@ const modes = ['light', 'dark'] as const;
  * a scrollbar that takes room (see withScrollbar) could not have one. Left
  * out for this file only: the other suites are measured the way they always
  * were.
+ *
+ * Firefox hides them another way, and one no page can undo: headless, it is
+ * given a stylesheet of the browser's own rank that sets scrollbar-width: none
+ * on everything, and nothing turns it off but a window. So this file runs
+ * Firefox with one - in the display bin/e2e-docker.mjs starts in the
+ * container - and tells it to draw the classic scrollbar of Linux, fifteen
+ * pixels wide as Chrome's is, rather than one laid over the page. That holds
+ * for every case in the file, so in Firefox the scrollbar "as the browser
+ * draws it" is that one too, as it is in Chrome on Linux. Chrome stays as the
+ * run asks for it.
  */
-test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
+test.use({
+    launchOptions: {
+        ignoreDefaultArgs: ['--hide-scrollbars'],
+        firefoxUserPrefs: {
+            'widget.gtk.overlay-scrollbars.enabled': false,
+            'widget.non-native-theme.scrollbar.size.override': 15,
+        },
+    },
+    headless: [async ({ headless, browserName }, use) => use(browserName === 'firefox' ? false : headless), { scope: 'worker' }],
+});
 
 async function drawIn(page: Page, theme: string, mode: string): Promise<void> {
     await page.evaluate(
@@ -116,7 +135,9 @@ async function withoutInvokerCommands(page: Page): Promise<void> {
  * failed CI, so the second kind is forced here rather than left to whichever
  * machine runs the suite: a style for ::-webkit-scrollbar makes Chrome draw a
  * scrollbar that takes room on any system, once it has not been told to hide
- * every scrollbar (the test.use at the top of this file).
+ * every scrollbar (the test.use at the top of this file). Firefox takes no
+ * notice of that style; it draws one that takes room because the same test.use
+ * tells it to.
  */
 const scrollbars = ['as the browser draws it', 'taking room'] as const;
 
@@ -270,10 +291,15 @@ test.describe('c-modal', () => {
 
     /**
      * The page behind a modal is inert, which is the browser's and is what
-     * keeps the keyboard in: Tab goes round the dialog and out to the
-     * browser's own controls, and never to anything on the page behind it.
+     * keeps the keyboard in: Tab goes through the dialog, and never to
+     * anything on the page behind it. Past the last button it goes where the
+     * browser takes it - out to its own controls and back round in Chrome, and
+     * nowhere at all in Firefox, which leaves it on that button - and that is
+     * the browser's and not the dialog's, so it is not asked. What is asked is
+     * that every control of the dialog is reached, counting the one the
+     * dialog put the focus on when it opened, and that nothing behind it is.
      */
-    test('Tab goes round the dialog and never reaches the page behind it', async ({ page }) => {
+    test('Tab goes through the dialog and never reaches the page behind it', async ({ page }) => {
         await page.goto(modalPage);
         const dialog = page.getByTestId('sg-modal');
 
@@ -281,17 +307,22 @@ test.describe('c-modal', () => {
         await page.keyboard.press('Enter');
         await expect(dialog).toBeVisible();
 
-        const visited = new Set<string>();
-        for (let step = 0; step < 10; step++) {
-            await page.keyboard.press('Tab');
-            const where = await dialog.evaluate((element) => {
-                const focused = document.activeElement;
-                if (focused === null || focused === document.body) {
+        const focused = (): Promise<string> =>
+            dialog.evaluate((element) => {
+                const on = document.activeElement;
+                if (on === null || on === document.body) {
                     return 'nowhere on the page';
                 }
 
-                return element.contains(focused) ? focused.textContent?.trim() || focused.getAttribute('aria-label') || focused.tagName : `outside: ${focused.outerHTML.slice(0, 80)}`;
+                return element.contains(on) ? on.textContent?.trim() || on.getAttribute('aria-label') || on.tagName : `outside: ${on.outerHTML.slice(0, 80)}`;
             });
+
+        const opened = await focused();
+        expect(opened, 'opening put the focus behind the dialog').not.toMatch(/^outside/);
+        const visited = new Set<string>([opened]);
+        for (let step = 0; step < 10; step++) {
+            await page.keyboard.press('Tab');
+            const where = await focused();
 
             expect(where, `step ${step} took the focus behind the dialog`).not.toMatch(/^outside/);
             visited.add(where);
