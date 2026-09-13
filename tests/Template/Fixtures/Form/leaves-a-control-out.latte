@@ -1,0 +1,21 @@
+{templateType Trilobit\Core\Presentation\Form\ArrangementTemplate}
+
+{*
+ * An arrangement written to make one mistake: it draws every control but the
+ * notes. Trilobit\Tests\Template\FormArrangementsDifferOnlyInTheirWrappingTest
+ * has to see the form refused rather than drawn without it.
+ *}
+
+{import '../../../../src/Core/Presentation/Form/templates/parts.latte'}
+
+<div class="l-form l-form--vertical">
+    {include formErrors, errors: $errors}
+
+    {foreach $fields as $field}
+        {continueIf $field->name() === 'notes'}
+
+        {include formField, field: $field}
+    {/foreach}
+
+    {include formButtons, buttons: $buttons}
+</div>

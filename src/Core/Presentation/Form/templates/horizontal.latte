@@ -1,0 +1,20 @@
+{templateType Trilobit\Core\Presentation\Form\ArrangementTemplate}
+
+{*
+ * Horizontal: every label beside its control. The arrangement is one grid of
+ * two columns, and each field lays its label into the first and everything
+ * else into the second, so the labels of every field line up and so do the
+ * controls. The buttons start under the controls, in the second column.
+ *}
+
+{import 'parts.latte'}
+
+<div class="l-form l-form--horizontal">
+    {include formErrors, errors: $errors}
+
+    {foreach $fields as $field}
+        {include formField, field: $field}
+    {/foreach}
+
+    {include formButtons, buttons: $buttons}
+</div>

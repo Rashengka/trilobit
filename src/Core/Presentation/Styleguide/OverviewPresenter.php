@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Styleguide;
 
 use Nette\Application\BadRequestException;
+use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
@@ -13,6 +14,7 @@ use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Form\FormElementGroup;
 use Trilobit\Core\Presentation\Form\FormElementRegistry;
+use Trilobit\Core\Presentation\Form\FormFactory;
 use Trilobit\Core\Presentation\Front\FrontPresenter;
 use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 
@@ -124,8 +126,72 @@ final class OverviewPresenter extends FrontPresenter
         private readonly ContentGroupRegistry $contentGroups,
         private readonly FormElementRegistry $formElements,
         private readonly StyleguidePages $pages,
+        private readonly FormFactory $forms,
     ) {
         parent::__construct();
+    }
+
+    /**
+     * The arrangements on the Layout page of the Forms group, each drawn over
+     * the same form (sampleForm()). The page is there to show that they differ
+     * in how they lay a form out and in nothing else, and a different form in
+     * each would show nothing of the kind.
+     */
+    protected function createComponentArrangedInline(): Form
+    {
+        return $this->sampleForm($this->forms->createInline());
+    }
+
+    protected function createComponentArrangedInlineUnlabelled(): Form
+    {
+        return $this->sampleForm($this->forms->createInline(labelsShown: false));
+    }
+
+    protected function createComponentArrangedVertical(): Form
+    {
+        return $this->sampleForm($this->forms->createVertical());
+    }
+
+    protected function createComponentArrangedHorizontal(): Form
+    {
+        return $this->sampleForm($this->forms->createHorizontal());
+    }
+
+    /**
+     * One control of every kind the design system draws, one of them refused
+     * and one with a hint, two required, one hidden - and a reason about the
+     * form as a whole, which is what shows the arrangements laying that out
+     * too. Refused from the start, the way a form comes back from the server,
+     * because a specimen nobody has sent is otherwise never refused.
+     *
+     * Nothing handles it when it is sent: it comes back drawn as it went.
+     */
+    private function sampleForm(Form $form): Form
+    {
+        $form->addText('name', 'Name of the specimen')
+            ->setRequired('A specimen has to be called something.')
+            ->setDefaultValue('Segmented disc');
+        $form->addEmail('curator', "Curator's address")
+            ->setOption('description', 'Where questions about the specimen are sent.')
+            ->setDefaultValue('curator@example.com');
+        $period = $form->addSelect('period', 'Period', [
+            'cambrian' => 'Cambrian',
+            'ordovician' => 'Ordovician',
+            'silurian' => 'Silurian',
+        ])->setDefaultValue('silurian');
+        $form->addTextArea('notes', 'Notes')
+            ->setHtmlAttribute('rows', 2);
+        $form->addCheckbox('displayed', 'On public display');
+        $form->addRadioList('state', 'State of the specimen', ['complete' => 'Complete', 'fragment' => 'A fragment'])
+            ->setRequired('Say what state the specimen is in.')
+            ->setDefaultValue('fragment');
+        $form->addHidden('drawer', 'B-12');
+        $form->addSubmit('save', 'Save');
+
+        $period->addError('No drawer in the collection holds that period.');
+        $form->addError('The catalogue could not be saved just now.');
+
+        return $form;
     }
 
     /**

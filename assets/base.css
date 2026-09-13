@@ -746,6 +746,122 @@
         max-inline-size: var(--layout-measure);
     }
 
+    /*
+     * ==== The arrangements of a generated form ==============================
+     *
+     * The three shapes a form made by Trilobit\Core\Presentation\Form\FormFactory
+     * comes in, named the way Bootstrap names them (.ai/plans/19): inline, the
+     * fields side by side; vertical, every label over its control; horizontal,
+     * every label beside it. They lay out c-field and never the controls inside
+     * it: a control is drawn by its own name in @layer base and looks the same
+     * in all three, and tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest
+     * refuses a rule that would reach one through .l-form.
+     *
+     * In every arrangement what was said about the whole form runs across it
+     * above the fields, and the buttons start under the fields - on a line of
+     * their own in a row, and under the controls rather than under the labels
+     * beside them. The hidden inputs are drawn after .l-form rather than inside
+     * it, so none of these rules ever lays one out.
+     */
+    .l-form {
+        gap: var(--space-md);
+    }
+
+    .l-form--vertical {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /*
+     * Lined up along the top, so that the controls of every field start on one
+     * line whatever is said under any of them - lined up along the bottom, a
+     * reason under one control would lift that control out of the row.
+     *
+     * A box to tick has its words beside it and nothing over it, so its field
+     * keeps one line of a label's room all the same, set in a label's type,
+     * and starts where the others do. Only where the labels are seen: out of
+     * sight, no label takes room, and nothing has to be kept for one.
+     */
+    .l-form--inline {
+        align-items: start;
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .l-form--inline > .c-field > .c-field__label:empty::before {
+        content: '\a0';
+    }
+
+    /* In a row a field is as wide as its label and its control, and a
+       sentence under the control wraps at that width rather than widening the
+       field to its own length - which would take a row's room for words. */
+    .l-form--inline > .c-field > :is(.c-field__error, .c-field__hint) {
+        contain: inline-size;
+    }
+
+    /*
+     * One grid of two columns for the whole form, and every field a subgrid of
+     * it: the label in the first column, the control and the sentences under it
+     * in the second, so the labels of all the fields line up and so do the
+     * controls. The first column is as wide as the longest label and never
+     * wider than a third of the form - a long label wraps rather than pushing
+     * the controls aside.
+     */
+    .l-form--horizontal {
+        display: grid;
+        grid-template-columns: fit-content(33%) minmax(0, 1fr);
+    }
+
+    /* A subgrid keeps a gap of its own where it declares one, and c-field
+       declares one: normal hands the columns back the form's gap, so that the
+       controls and the buttons, which are not in any field, start on one line. */
+    .l-form--horizontal > .c-field {
+        align-items: baseline;
+        display: grid;
+        gap: var(--space-2xs) normal;
+        grid-column: 1 / -1;
+        grid-template-columns: subgrid;
+    }
+
+    .l-form--horizontal > .c-field > .c-field__label {
+        grid-column: 1;
+    }
+
+    /* The one control whose baseline is not its first line: a browser puts a
+       textarea's at the bottom, which would draw its label beside the last
+       line. Beside one, the label is set down from the top by as much as the
+       words inside the box are, out of the same tokens the box is drawn with. */
+    .l-form--horizontal > .c-field:has(> .c-field__control > textarea) {
+        align-items: start;
+    }
+
+    .l-form--horizontal > .c-field:has(> .c-field__control > textarea) > .c-field__label {
+        padding-block-start: calc(var(--space-xs) + var(--border-hairline));
+    }
+
+    .l-form--horizontal > .c-field > :not(.c-field__label) {
+        grid-column: 2;
+    }
+
+    .l-form__errors {
+        display: flex;
+        flex-basis: 100%;
+        flex-direction: column;
+        gap: var(--space-sm);
+        grid-column: 1 / -1;
+    }
+
+    .l-form__buttons {
+        display: flex;
+        flex-basis: 100%;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+    }
+
+    .l-form--horizontal > .l-form__buttons {
+        grid-column: 2;
+    }
+
     /* ==== Components ==================================================== */
 
     /* Its height and the size of the name are the banner's tokens, which a

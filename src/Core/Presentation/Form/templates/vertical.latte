@@ -1,0 +1,19 @@
+{templateType Trilobit\Core\Presentation\Form\ArrangementTemplate}
+
+{*
+ * Vertical: every label over its control, the fields one under another, and
+ * the buttons under them - which is what c-field already is, one after
+ * another.
+ *}
+
+{import 'parts.latte'}
+
+<div class="l-form l-form--vertical">
+    {include formErrors, errors: $errors}
+
+    {foreach $fields as $field}
+        {include formField, field: $field}
+    {/foreach}
+
+    {include formButtons, buttons: $buttons}
+</div>
