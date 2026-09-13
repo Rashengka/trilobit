@@ -114,6 +114,38 @@ configuration and the source tree disagree about which modules exist, and
 rule. The one rule that matters is the one expressed by absence - a module may
 depend on Core and on libraries, and never on another module.
 
+### Services are built when they are first used
+
+The container's services are lazy (`di: lazy: true` in `config/common.neon`).
+Every service that takes arguments or has a setup call is a native PHP 8.4
+lazy object: the container hands it out at once, and its constructor and
+setup - with the whole tree of services they take - run only when something
+first calls a method on it or reads a property. A presenter is handed the
+user, the menu, the preferences and more; a request that asks it nothing about
+one of them no longer pays for building it. `bin/measure-services` counts, per
+kind of request, how many services the container created and how many of those
+it actually had to build.
+
+What this asks of a service you write:
+
+- **A constructor may not have an effect somebody relies on without calling
+  the service.** Registering the service with something else, starting a
+  session, setting a global: all of it now happens at the first call, or never
+  if there is none. A service that needs it says `lazy: false` in its own
+  definition, with the reason beside it. None does today.
+- **A constructor that validates fails at the first call, not at injection.**
+  The error is the same one; it arrives a step later, and a request that never
+  calls the service never meets it.
+- **Setup calls run with the constructor**, in the same initialiser, before the
+  first call returns - which is why the entity manager's tenant filter, switched
+  on by a setup call, is on before any query can be written.
+- A lazy object is an instance of its own class, so `instanceof`, `::class`
+  and `===` behave as before, without building it; `final` and `readonly`
+  classes are fine.
+
+`Trilobit\Tests\Integration\LazyServicesTest` fails when lazy services are
+switched off, and holds the tenant filter to the claim above.
+
 ## Tenants and domains
 
 One installation runs several businesses, and which one a request belongs to is
@@ -144,7 +176,8 @@ bin/trilobit app:tenant 'Your Business' localhost www.example.com
 |---|---|
 | `core_content_path`, `core_media_file`, `core_tenant_membership`, `core_domain` | the business's |
 | `core_setting` | the installation's - a setting is true of the installation, not of one business |
-| `core_user`, `core_role` | the installation's - see below |
+| `core_user` | the installation's - see below |
+| `core_role` | both - the application's roles belong to no business, a role a business composes is its own; see "Who may do what" |
 | `core_audit_entry` | the installation's, for now |
 
 An account is global and belonging to a business is a relationship:
@@ -170,6 +203,15 @@ reason, so an entity nobody thought about is one the filter cannot scope.
 `tests/Architecture/EveryTenantedEntityIsScopedTest` asks that of every mapped
 entity at build time rather than at the first query: adding an entity to `src/`
 with neither the association nor the attribute fails it by name.
+
+A table may hold the installation's rows beside each business's own, and say so
+with `#[PartlyShared(because: '...')]`. Its business column is empty on the rows
+of none. In a business the filter reads that business's rows and the rows of
+none; before a business is settled, the rows of none alone - they belong to
+nobody in particular, so there is nothing in them to leak, and refusing them
+would stop the application reading what it defines itself. Such an entity still
+needs the association, and one declaring the attribute without it is reported by
+the same test as an entity nobody thought about.
 
 Switching business also empties the object manager, because an object already
 loaded is handed back without a query - past a filter that only ever sees SQL.
@@ -679,8 +721,9 @@ where its arrangement says and every control is still named.
 Every control is a field of its own, in the order of the form: controls laid
 out together on one row, and the groups `addGroup()` makes, are not drawn yet.
 
-It exists only where `trilobit.styleguide` is on - by default in debug mode, off
-in production, and `config/local.neon` overrides either. Off means none of its
+It exists only where `trilobit.styleguide` is on - by default in the `dev` and
+`staging` modes and not in `prod` (see `TRILOBIT_ENV` below), and
+`config/local.neon` overrides either. Off means none of its
 routes is registered, so every one of its paths is claimed by nobody and the
 answer is 404 rather than 403: a tool that is not there has nothing to admit
 to.
@@ -942,6 +985,36 @@ a loophole in this: it is a question with no business in it at all, so it is
 asked of `Trilobit\Core\Security\Landlords` and never of these two - see "The
 administration" above.
 
+### A role is the application's or one business's
+
+A role of the application belongs to no business and may be held in any of
+them; the owner's is one. A role a business composes for itself
+(`Role::ofBusiness()`) belongs to that business, may be held there alone, and
+is read nowhere else - so two businesses may each have an `editor` and each mean
+something else by it. Its code is unique within the business, and the
+application's codes are unique among themselves.
+
+Three things keep one business's role out of another:
+
+- a membership naming a role of another business cannot be made; both ways of
+  making one refuse it,
+- a membership row written past that refusal grants nothing, because reading a
+  role in a business reads the application's and its own, and the join from the
+  membership finds nothing else,
+- a role is looked up by its code only among the application's roles
+  (`Accounts::applicationRole()`), so the command that makes an owner can never
+  be handed a business's role under the same code.
+
+A business cannot compose a role under a code the application defines, in any
+case. The whole of the application is honoured on the owner's code alone, so a
+business's `owner` would be an owner nobody made; and inside one business a code
+names one role, so the application's role and the business's under the same
+code would quietly become one of the two. The refusal is in the object, so it
+holds for the rows the application itself defines; a code somebody wrote into
+the application's rows by hand is not known to it.
+`tests/Integration/Security/PermissionsInATenantTest` asks the same question
+from both businesses' side.
+
 ### The framework's own question is the only one
 
 `$this->getUser()->isAllowed(Resource::Content, Privilege::Edit)` works, and it
@@ -1150,9 +1223,10 @@ as happily.
 
 ### What is not there yet
 
-Nobody composes a role in the administration. `bin/trilobit app:account
---tenant` makes the owner's role, which holds the whole of the application
-rather than a list of pairs - a list would go on saying what the application
+Nobody composes a role in the administration yet: a business's own role exists
+in the model and nothing makes one but the tests. `bin/trilobit app:account
+--tenant` makes the owner's role - the application's - which holds the whole of
+the application rather than a list of pairs - a list would go on saying what the application
 used to offer, and the account holding it would quietly stop being able to
 reach whatever was added afterwards. The two rules that belong beside it -
 nobody hands out more than they hold, and the last owner of a business cannot
@@ -1189,6 +1263,27 @@ alphabet would otherwise decide which module goes first - and an installation
 starting from an empty schema would try to create a module's table with a
 foreign key into one of Core's that does not exist yet. See
 `Trilobit\Core\Doctrine\ChronologicalComparator`.
+
+### A unique index over a column that may be empty
+
+MariaDB does not hold one NULL to be equal to another, so an index unique over
+a nullable column lets every row with NULL in it in twice, without a word. It
+bites wherever "none" is one of the values being kept apart: a role's code is
+unique within its business, and the application's roles have no business, so
+an index over the business and the code would let the application's `owner` in
+twice. The code is unique together with `tenant_key` instead - a virtual column
+the database works out as the business, or 0 where there is none - so the
+database holds every writer to it, including one that goes past the entity.
+It is mapped with a `columnDefinition`, which the schema comparison generates
+and then does not report as a difference. See `Trilobit\Core\Domain\User\Role`
+and `tests/Integration/Doctrine/RoleCodesTest`.
+
+An `ALTER TABLE` over an InnoDB table says how it is to run -
+`ALGORITHM=INPLACE, LOCK=NONE` - so that the server cannot quietly choose a way
+that locks the table under a running application. Where the server refuses
+that, the refusal is the information: `Version20260913063908` says which two
+statements it refused and why they run as `ALGORITHM=COPY, LOCK=NONE`, the
+online copy, instead.
 
 ### Generating a migration
 
@@ -1283,14 +1378,24 @@ A few settings are worth knowing about:
   is empty on purpose - a committed file carrying a host, a user name or a
   password is a disclosure git keeps forever. A variable set in the process
   environment wins over the file, so a container needs no `.env` at all.
-- `TRILOBIT_DEBUG=1` turns on the debug bar and the detailed error page. It is
-  a variable rather than a check on the visitor's address, because an address
-  check is unreliable in production and would mean an address written into a
-  public repository. Set it while working on the checkout: with it off the
+- `TRILOBIT_ENV` says which kind of deployment this is: `dev`, `staging` or
+  `prod`. `dev` and `staging` turn on the debug bar, the detailed error page
+  and the style guide. `staging` runs over real data, so `dev` is the only mode
+  in which a tool may seed or delete data -
+  `Trilobit\Core\Config\Mode::mayAlterData()` is the question such a tool asks.
+  Empty, absent or misspelled is `prod`, so forgetting it closes the
+  application rather than opening its debugger. It is a variable rather than a
+  check on the visitor's address, because an address check is unreliable in
+  production and would mean an address written into a public repository. Set
+  `TRILOBIT_ENV=dev` while working on the checkout: outside debug mode the
   framework never rechecks the compiled container, so a change to a compiler
   extension has no effect until `var/tmp` is cleared. A change to a `.neon`
   file is picked up either way - the boot puts what those files say into the
   cache key.
+- `TRILOBIT_DEBUG`, which `TRILOBIT_ENV` replaced, is no longer read. Left set
+  without `TRILOBIT_ENV` it stops the application with a message saying what
+  to write instead, because falling back to `prod` there would quietly take
+  the debugger and the style guide away from a machine that had them.
 - `TRILOBIT_EDITOR` and `TRILOBIT_EDITOR_ROOT` decide what happens when a line
   of a stack trace is clicked. The first is the URL pattern, and it defaults to
   the scheme a JetBrains editor registers. The second is where this checkout
@@ -1388,6 +1493,53 @@ job, then fails the 8.4 job the first time somebody uses it.
 `tests/Architecture/PhpVersionMatchesComposerTest` keeps the pin and the floor
 from drifting apart.
 
+### The gate on the lowest supported PHP
+
+```sh
+docker compose up -d        # once: the database the suites run against
+bin/check-floor
+```
+
+The pin catches what analysis can see, and that is not everything a newer PHP
+has. A constant that only exists on the newer runtime passes `stan` there - it
+is defined, after all - and fails on the floor the moment a test reaches it.
+`bin/check-floor` runs the whole gate on the floor itself, before a push rather
+than in CI's floor job afterwards.
+
+It reads the floor out of `composer.json`'s `require.php`, builds the image
+`trilobit-php-floor:<floor>` from `docker/php-floor`, and runs `composer check`
+in a container that is removed afterwards. The container runs over this
+checkout, uncommitted changes included, and against the database of this
+checkout's own compose stack; when that database is not up, the script says so
+and what to type instead of starting anything. `bin/check-floor --print-floor`
+prints the version it would use.
+
+Nothing it does is written back to the checkout. The checkout is mounted
+read-only and the gate runs on a copy of it - every file git would commit, plus
+`vendor/` as installed. That is not caution for its own sake: the gate writes
+(a suite rebuilds `var/build`; the analysers and PHPUnit keep caches), and
+through a shared mount those writes would land, from a different PHP, in files
+the development container is using.
+
+`vendor/` is used as installed because `composer.lock` is the same file CI
+installs from on the floor, and nothing in it asks for more than the floor. If
+it ever does, Composer's platform check stops the first tool with the reason,
+rather than letting the run pass on something else.
+
+Two things to know:
+
+- A function a polyfill supplies runs on the floor too, so the floor passes it.
+  That is the right answer and not a gap: `symfony/polyfill-php85`, which the
+  console component requires, defines `array_first()` on the floor, in CI and in
+  production alike.
+- Do not run it while `composer check` is running in the same checkout. Both
+  runs make their test schemas in the same database under the same names, and
+  would drop each other's.
+
+It needs Docker with the compose plugin, git, and a PHP to start the script
+with; the floor itself comes from the image. The exit code is the gate's own,
+or 125 with a line saying why when the gate could not be run at all.
+
 ### The test suites
 
 `phpunit.xml` declares one suite per level, including the ones that are still
@@ -1402,11 +1554,14 @@ notices is missing.
 | `integration` | a real container and a real database | a browser |
 | `combination` | booting each combination of modules and running its migrations | anything past booting and migrating |
 | `install` | a fresh clone, installed from scratch | writing into your working copy |
-| `tooling` | the leak guard | - |
+| `tooling` | the leak guard, and how `bin/check-floor` reads the floor | Docker |
 
 `tests/Tooling/CheckLeaksTest.php` is a standalone script rather than a test
 case, because the guard has to work before Composer does. `LeakGuardTest` runs
-it as a child process so that `composer check` covers it too.
+it as a child process so that `composer check` covers it too. `CheckFloorTest`
+runs `bin/check-floor` up to the point where it would need Docker - which
+floor it reads out of each shape of `require.php`, and that it refuses the
+shapes it cannot read rather than guessing.
 
 Run one suite with `vendor/bin/phpunit --testsuite unit`.
 

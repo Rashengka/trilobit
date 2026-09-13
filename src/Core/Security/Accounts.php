@@ -43,21 +43,38 @@ final readonly class Accounts
         return $this->entityManager->getRepository(User::class)->find($id);
     }
 
-    public function roleWithCode(string $code): ?Role
+    /**
+     * The application's role under $code - never a business's, whichever
+     * business the process is in.
+     *
+     * A code is looked up only among the application's roles because only
+     * there does it mean the same thing everywhere. A business's role under the
+     * same code is that business's own; found here, it would be handed to
+     * whoever asked - the command that makes an owner, for one - as if it were
+     * everybody's.
+     */
+    public function applicationRole(string $code): ?Role
     {
-        return $this->entityManager->getRepository(Role::class)->findOneBy(['code' => $code]);
+        return $this->entityManager->getRepository(Role::class)->findOneBy(['code' => $code, 'tenant' => null]);
     }
 
     /**
-     * The role under $code, made - granting nothing, and called $name - when
-     * there is none yet. Made once, even when two runs ask at the same moment.
+     * The application's role under $code, made - granting nothing, and called
+     * $name - when there is none yet. Made once, even when two runs ask at the
+     * same moment.
      *
      * **Asking first and inserting afterwards is not enough on its own.** Two
      * runs - two deployments, two browser suites preparing their accounts -
-     * both find no row, both insert one, and the code is unique, so the second
-     * insert is refused. That refusal is the answer rather than a fault: it
-     * means another run made the role in between, and the row it made is the
-     * one to take. So the refusal is caught and the role asked for again.
+     * both find no row, both insert one, and the code is unique among the
+     * application's roles, so the second insert is refused. That refusal is the
+     * answer rather than a fault: it means another run made the role in
+     * between, and the row it made is the one to take. So the refusal is caught
+     * and the role asked for again.
+     *
+     * It is unique among the application's roles only because the index is not
+     * over the business column, whose NULL MariaDB lets in twice - see
+     * Trilobit\Core\Domain\User\Role. The row goes in without a business, which
+     * is what makes it the application's.
      *
      * The insert goes past the entity manager on purpose. A flush that fails
      * closes the entity manager for good, so the refusal could only be caught
@@ -69,9 +86,9 @@ final readonly class Accounts
      * would have to remember to take: it holds for a writer nobody has written
      * yet as much as for this one.
      */
-    public function roleWithCodeMadeIfMissing(string $code, string $name): Role
+    public function applicationRoleMadeIfMissing(string $code, string $name): Role
     {
-        $role = $this->roleWithCode($code);
+        $role = $this->applicationRole($code);
         if ($role instanceof Role) {
             return $role;
         }
@@ -89,7 +106,7 @@ final readonly class Accounts
             // Another run made it between the question above and this insert.
         }
 
-        return $this->roleWithCode($code) ?? throw new LogicException(sprintf(
+        return $this->applicationRole($code) ?? throw new LogicException(sprintf(
             'The role %s was inserted, or refused because it was already there, and still cannot be read back. '
             . 'A transaction opened before it was made would see it that way; this is not meant to run inside one.',
             $code,

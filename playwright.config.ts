@@ -65,8 +65,8 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: process.env.CI === undefined,
         // Stated rather than taken from .env, so that the style guide is on
-        // whatever the machine running this happens to be configured for.
-        env: { TRILOBIT_DEBUG: '1' },
+        // whatever mode the machine running this happens to be in.
+        env: { TRILOBIT_ENV: 'dev' },
         stdout: 'pipe',
         stderr: 'pipe',
     },
