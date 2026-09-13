@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Tests\Integration\Cms;
 
+use Dom\Element;
 use Dom\HTMLDocument;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Request as ApplicationRequest;
@@ -17,10 +18,10 @@ use PHPUnit\Framework\TestCase;
 use Trilobit\Cms\Application\Page\Pages;
 use Trilobit\Cms\Domain\Menu\MenuItem;
 use Trilobit\Cms\Domain\Menu\MenuRepository;
-use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Core\Bootstrap;
-use Trilobit\Core\Domain\Tenancy\Tenant;
+use Trilobit\Core\Domain\Navigation\Menu;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Core\Navigation\Menus;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Double\StandInHttpRequest;
@@ -29,7 +30,7 @@ use Trilobit\Tests\Tenants;
 
 /**
  * A menu entry that leads into a module this build does not have is left out
- * of the menu, and nothing about the page is otherwise different.
+ * of the site's navigation, and nothing about the page is otherwise different.
  *
  * This is the claim the whole idea of a switchable module rests on, seen from
  * the one place a person meets it. A menu entry is a row somebody saved, so it
@@ -44,6 +45,12 @@ use Trilobit\Tests\Tenants;
  * entry has to be absent from one and present in the other. Asserting only its
  * absence would pass just as well on a build where the whole menu had
  * disappeared, or where the entry had never been saved.
+ *
+ * The menu is the one in the layout: the entries somebody arranged are drawn
+ * in the site's navigation, which Core draws for every contributor alike, and
+ * the page no longer draws a copy of them inside its content
+ * (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3). Which entries this build
+ * can draw is therefore decided once, by Core, for whatever contributes.
  *
  * The module that is switched off is named as a string here and nowhere in
  * src/Cms: a destination is text in a row, never a class, which is what makes
@@ -77,7 +84,7 @@ final class MenuLeadingIntoASwitchedOffModuleTest extends TestCase
         $menu = $this->menuOf($this->site(withTheOtherModule: false));
 
         self::assertNull(
-            $menu->querySelector('[data-testid="cms-menu-shop"]'),
+            $menu->querySelector('[data-testid="nav-menu-shop"]'),
             'the entry into a module this build does not have was drawn',
         );
         self::assertNull(
@@ -86,8 +93,8 @@ final class MenuLeadingIntoASwitchedOffModuleTest extends TestCase
         );
         self::assertStringNotContainsString(
             'error',
-            (string) $menu->querySelector('[data-testid="cms-menu"]')?->textContent,
-            'the framework wrote its own complaint into the page instead of the entry being left out',
+            (string) $menu->textContent,
+            'the framework wrote its own complaint into the navigation instead of the entry being left out',
         );
     }
 
@@ -100,7 +107,7 @@ final class MenuLeadingIntoASwitchedOffModuleTest extends TestCase
     {
         $menu = $this->menuOf($this->site(withTheOtherModule: true));
 
-        $entry = $menu->querySelector('[data-testid="cms-menu-shop"]');
+        $entry = $menu->querySelector('[data-testid="nav-menu-shop"]');
 
         self::assertNotNull($entry, 'the entry was left out of a build that has the module');
         self::assertSame('/shop', $entry->getAttribute('href'));
@@ -113,11 +120,11 @@ final class MenuLeadingIntoASwitchedOffModuleTest extends TestCase
             $menu = $this->menuOf($this->site($withTheOtherModule));
 
             self::assertNotNull(
-                $menu->querySelector('[data-testid="cms-menu-home"]'),
+                $menu->querySelector('[data-testid="nav-menu-home"]'),
                 'an entry into Core went missing as well',
             );
             self::assertNotNull(
-                $menu->querySelector('[data-testid="cms-menu-about-us"]'),
+                $menu->querySelector('[data-testid="nav-menu-about-us"]'),
                 'an entry into this module went missing as well',
             );
         }
@@ -133,20 +140,22 @@ final class MenuLeadingIntoASwitchedOffModuleTest extends TestCase
         $menu = $this->menuOf($this->site(withTheOtherModule: true));
 
         self::assertNull(
-            $menu->querySelector('[data-testid="cms-menu-not-ready"]'),
+            $menu->querySelector('[data-testid="nav-menu-not-ready"]'),
             'an entry leading to a draft was drawn',
         );
     }
 
     /** The page itself is drawn whole, which is what "does not throw" has to mean. */
-    private function menuOf(Container $container): HTMLDocument
+    private function menuOf(Container $container): Element
     {
         $document = $this->page($container, '/about-us');
 
-        self::assertNotNull($document->querySelector('[data-testid="cms-menu"]'), 'no menu was drawn at all');
         self::assertSame('About us', $document->querySelector('[data-testid="cms-page-title"]')?->textContent);
 
-        return $document;
+        $menu = $document->querySelector('[data-testid="layout-nav"]');
+        self::assertInstanceOf(Element::class, $menu, 'no navigation was drawn at all');
+
+        return $menu;
     }
 
     private function page(Container $container, string $path): HTMLDocument
@@ -195,7 +204,7 @@ final class MenuLeadingIntoASwitchedOffModuleTest extends TestCase
             config: ['services' => ['http.request' => ['factory' => StandInHttpRequest::class]]],
         );
         Migrations::run($container);
-        $tenant = Tenants::enter($container, 'Ammonite Bikes', Tenants::HOST);
+        Tenants::enter($container, 'Ammonite Bikes', Tenants::HOST);
 
         $pages = $container->getByType(Pages::class);
         $home = $pages->create('About us', 'about-us');
@@ -203,17 +212,13 @@ final class MenuLeadingIntoASwitchedOffModuleTest extends TestCase
 
         $unfinished = $pages->create('Not ready', 'not-ready');
 
+        $main = $container->getByType(Menus::class)->namedOrNew(Menu::MAIN);
         $entries = $container->getByType(MenuRepository::class);
-        $entries->save(MenuItem::toRoute($tenant, MenuItem::MAIN, 'Home', self::IN_CORE, 10));
-        $entries->save($this->toPage($tenant, 'About us', $home, 20));
-        $entries->save(MenuItem::toRoute($tenant, MenuItem::MAIN, 'Shop', self::IN_ANOTHER_MODULE, 30));
-        $entries->save($this->toPage($tenant, 'Not ready', $unfinished, 40));
+        $entries->save(MenuItem::toRoute($main, 'Home', self::IN_CORE, 10));
+        $entries->save(MenuItem::toPage($main, 'About us', $home, 20));
+        $entries->save(MenuItem::toRoute($main, 'Shop', self::IN_ANOTHER_MODULE, 30));
+        $entries->save(MenuItem::toPage($main, 'Not ready', $unfinished, 40));
 
         return $container;
-    }
-
-    private function toPage(Tenant $tenant, string $label, Page $page, int $position): MenuItem
-    {
-        return MenuItem::toPage($tenant, MenuItem::MAIN, $label, $page, $position);
     }
 }

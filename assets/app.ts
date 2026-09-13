@@ -11,7 +11,7 @@ import { comboboxesInSnippets, enhanceWithin } from './combobox';
 import { answerTheDialogButtons, dialogsInSnippets } from './dialog';
 import { openWhatTheAddressNames } from './disclosure';
 import { keepTheDropdownsToTheKeyboard } from './dropdown';
-import { unfoldTheNavigation } from './nav';
+import { currentBranchesInSnippets, unfoldTheCurrentBranchWithin, unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
 import { followTheChrome, scrollspiesInSnippets, spyWithin } from './scrollspy';
 import { layTabsWithin, switchTheTabs, tabsInSnippets } from './tabs';
@@ -147,6 +147,10 @@ naja.registerExtension(comboboxesInSnippets);
 naja.registerExtension(dialogsInSnippets);
 naja.registerExtension(tabsInSnippets);
 naja.registerExtension(scrollspiesInSnippets);
+// Unfolds the way to the current page in a snippet Naja brings, redrawn or
+// brought back by history.back(); the page's own is unfolded below, once Naja
+// has kept the server's markup. See assets/nav.ts.
+naja.registerExtension(currentBranchesInSnippets);
 naja.initialize({ history: true });
 enhanceWithin(document);
 
@@ -158,6 +162,11 @@ switchTheTabs();
 layTabsWithin(document);
 followTheChrome();
 spyWithin(document);
+
+// The way to the current page, unfolded where the theme unfolds in place -
+// after Naja has started, like the tabs, so that what it keeps of a snippet is
+// the server's folded markup and the way back unfolds it again.
+unfoldTheCurrentBranchWithin(document);
 
 // After Naja has started, like the comboboxes, and with no extension of its
 // own: it listens on the document and prepares no notice, so there is nothing

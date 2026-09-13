@@ -12,12 +12,13 @@ use Trilobit\Cms\Domain\Menu\MenuItem;
 use Trilobit\Cms\Domain\Menu\MenuRepository;
 use Trilobit\Cms\Domain\Menu\MenuTarget;
 use Trilobit\Cms\Domain\Page\Page;
+use Trilobit\Core\Domain\Navigation\Menu;
+use Trilobit\Core\Navigation\Menus;
 use Trilobit\Core\Presentation\Admin\AdminPresenter;
 use Trilobit\Core\Presentation\Link\Destinations;
 use Trilobit\Core\Security\Needs;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
-use Trilobit\Core\Tenancy\Tenancy;
 
 /**
  * Arranging the menus: the entries there are, and the form one is arranged in.
@@ -58,7 +59,7 @@ final class MenuPresenter extends AdminPresenter
         private readonly MenuRepository $entries,
         private readonly Pages $pages,
         private readonly Destinations $destinations,
-        private readonly Tenancy $tenancy,
+        private readonly Menus $menus,
     ) {
         parent::__construct();
     }
@@ -80,7 +81,7 @@ final class MenuPresenter extends AdminPresenter
 
         $this->edited = $entry;
         $this->form()->setDefaults([
-            'menu' => $entry->menu(),
+            'menu' => $entry->menu()->name(),
             'label' => $entry->label(),
             'targetType' => $entry->targetType()->value,
             'target' => $entry->target(),
@@ -130,8 +131,8 @@ final class MenuPresenter extends AdminPresenter
         $form = new Form();
         $form->addText('menu', 'Menu')
             ->setRequired('An entry belongs to a menu.')
-            ->setMaxLength(MenuItem::MAX_MENU_LENGTH)
-            ->setDefaultValue(MenuItem::MAIN);
+            ->setMaxLength(Menu::MAX_NAME_LENGTH)
+            ->setDefaultValue(Menu::MAIN);
         $form->addText('label', 'Label')
             ->setRequired('An entry needs something to be called.')
             ->setMaxLength(MenuItem::MAX_LABEL_LENGTH);
@@ -226,19 +227,17 @@ final class MenuPresenter extends AdminPresenter
     /** @param array<string, mixed> $values */
     private function newEntry(array $values, MenuTarget $kind, ?Page $page, string $target): MenuItem
     {
-        $tenant = $this->tenancy->tenant();
-        $menu = $this->text($values, 'menu');
+        $menu = $this->menus->namedOrNew($this->text($values, 'menu'));
         $label = $this->text($values, 'label');
 
         return match ($kind) {
             MenuTarget::Page => MenuItem::toPage(
-                $tenant,
                 $menu,
                 $label,
                 $page ?? throw new \LogicException('An entry leading to a page is only made once a page was chosen.'),
             ),
-            MenuTarget::Url => MenuItem::toUrl($tenant, $menu, $label, $target),
-            MenuTarget::Route => MenuItem::toRoute($tenant, $menu, $label, $target),
+            MenuTarget::Url => MenuItem::toUrl($menu, $label, $target),
+            MenuTarget::Route => MenuItem::toRoute($menu, $label, $target),
         };
     }
 
@@ -303,7 +302,7 @@ final class MenuPresenter extends AdminPresenter
         foreach ($this->entries->all() as $entry) {
             $id = $entry->id();
             if ($id !== null && $entry !== $this->edited) {
-                $choices[$id] = $entry->menu() . ': ' . $entry->label();
+                $choices[$id] = $entry->menu()->name() . ': ' . $entry->label();
             }
         }
 
@@ -322,7 +321,7 @@ final class MenuPresenter extends AdminPresenter
 
             $summaries[] = new MenuSummary(
                 $id,
-                $entry->menu(),
+                $entry->menu()->name(),
                 $entry->label(),
                 $this->leadsTo($entry),
                 $entry->isVisible(),

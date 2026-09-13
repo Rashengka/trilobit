@@ -101,7 +101,9 @@ final class NavTest extends TestCase
             $ids[] = (string) $button->getAttribute('aria-controls');
         }
 
-        self::assertCount(3, $ids);
+        // The three entries with entries under them, and the Menu button the
+        // whole list may be folded behind.
+        self::assertCount(4, $ids);
         self::assertSame($ids, array_values(array_unique($ids)));
     }
 
@@ -114,21 +116,114 @@ final class NavTest extends TestCase
         self::assertCount(1, $page->querySelectorAll('.c-nav__list'));
     }
 
-    private function render(): HTMLDocument
+    /**
+     * The button a theme may fold the whole navigation behind
+     * (.ai/plans/10-menu-submenu-a-rozcestniky.md, M1: ledger on a narrow
+     * window). It is drawn in every theme and at every width, and it is the
+     * stylesheet that decides whether it is shown - so what is asked here is
+     * only that it is a disclosure that says what it opens.
+     */
+    public function testTheNavigationHasOneMenuButtonBeforeItsListAndNamingIt(): void
     {
+        $page = $this->render();
+        $nav = $page->querySelector('nav');
+        self::assertInstanceOf(Element::class, $nav);
+
+        $buttons = $this->childrenOf($nav, 'button');
+        self::assertCount(1, $buttons, 'the navigation itself has exactly one button of its own');
+        $button = $buttons[0];
+
+        self::assertSame('button', $button->getAttribute('type'));
+        self::assertSame('Menu', trim((string) $button->textContent));
+        self::assertSame(
+            'false',
+            $button->getAttribute('aria-expanded'),
+            'folded is the state the stylesheet may show; open would leave nothing to fold',
+        );
+
+        $list = $page->getElementById((string) $button->getAttribute('aria-controls'));
+        self::assertInstanceOf(Element::class, $list, 'aria-controls names nothing on the page');
+        self::assertSame(
+            $list,
+            $button->nextElementSibling,
+            'the list the button opens does not follow it, and that is what the stylesheet folds it by',
+        );
+        self::assertStringContainsString('c-nav__list', (string) $list->getAttribute('class'));
+    }
+
+    /** Two navigations on one page would otherwise fold each other's list. */
+    public function testTwoNavigationsOnOnePageFoldListsOfTheirOwn(): void
+    {
+        $page = ComponentRendering::render(
+            'nav.latte',
+            "{include nav, items: \$items, label: 'Primary', testId: 'layout-nav'}\n{include nav, items: \$items, label: 'Pages'}",
+            ['items' => [new NavigationItem('Home', '/', true, 'home')]],
+        );
+
+        self::assertCount(1, $page->querySelectorAll('[data-testid="layout-nav-menu"]'), 'the button is not named after its navigation');
+
+        $ids = [];
+        foreach ($page->querySelectorAll('.c-nav__menu') as $button) {
+            $ids[] = (string) $button->getAttribute('aria-controls');
+        }
+
+        self::assertCount(2, $ids);
+        self::assertSame($ids, array_values(array_unique($ids)));
+        foreach ($ids as $id) {
+            self::assertInstanceOf(Element::class, $page->getElementById($id), sprintf('%s names nothing on the page', $id));
+        }
+    }
+
+    /**
+     * Every entry above the current page says the page is under it, and only
+     * those do. It is what ledger unfolds by itself and what atrium marks
+     * without opening anything (.ai/plans/10-menu-submenu-a-rozcestniky.md,
+     * M1, decided 2026-09-13) - and the server says it, so the mark is there
+     * without the script.
+     */
+    public function testTheEntriesAboveTheCurrentPageSayItIsUnderThem(): void
+    {
+        $page = $this->render('mountain');
+
+        $expected = ['home' => null, 'shop' => 'true', 'bicycles' => 'true', 'mountain' => 'page', 'hardtail' => null, 'helmets' => null];
+        foreach ($expected as $id => $current) {
+            self::assertSame($current, $this->byTestId($page, $id)->getAttribute('aria-current'), $id . ': wrong aria-current');
+        }
+    }
+
+    public function testNoEntryIsMarkedWhereTheCurrentPageIsNotInTheNavigation(): void
+    {
+        self::assertCount(0, $this->render(null)->querySelectorAll('[aria-current]'));
+    }
+
+    /** @param ?string $current the testid of the entry for the page being drawn; the home page unless said */
+    private function render(?string $current = 'home'): HTMLDocument
+    {
+        $entry = static fn(string $label, string $href, string $id, NavigationItem ...$children): NavigationItem => new NavigationItem(
+            $label,
+            $href,
+            $id === $current,
+            $id,
+            array_values($children),
+        );
+
         return ComponentRendering::render(
             'nav.latte',
             "{include nav, items: \$items, label: 'Primary'}",
             ['items' => [
-                new NavigationItem('Home', '/', true, 'home'),
-                new NavigationItem('Shop', '/shop', false, 'shop', [
-                    new NavigationItem('Bicycles', '/shop/bicycles', false, 'bicycles', [
-                        new NavigationItem('Mountain', '/shop/bicycles/mountain', false, 'mountain', [
-                            new NavigationItem('Hardtail', '/shop/bicycles/mountain/hardtail', false, 'hardtail'),
-                        ]),
-                    ]),
-                    new NavigationItem('Helmets', '/shop/helmets', false, 'helmets'),
-                ]),
+                $entry('Home', '/', 'home'),
+                $entry(
+                    'Shop',
+                    '/shop',
+                    'shop',
+                    $entry(
+                        'Bicycles',
+                        '/shop/bicycles',
+                        'bicycles',
+                        $entry('Mountain', '/shop/bicycles/mountain', 'mountain', $entry('Hardtail', '/shop/bicycles/mountain/hardtail', 'hardtail')),
+                    ),
+                    $entry('Helmets', '/shop/helmets', 'helmets'),
+                ),
             ]],
         );
     }

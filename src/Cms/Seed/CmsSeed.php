@@ -9,7 +9,9 @@ use Trilobit\Cms\Domain\Menu\MenuItem;
 use Trilobit\Cms\Domain\Menu\MenuRepository;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Core\Content\Categories;
+use Trilobit\Core\Domain\Navigation\Menu;
 use Trilobit\Core\Domain\Tenancy\Tenant;
+use Trilobit\Core\Navigation\Menus;
 use Trilobit\Core\Seed\SeedProvider;
 
 /**
@@ -36,7 +38,8 @@ final readonly class CmsSeed implements SeedProvider
     public function __construct(
         private Pages $pages,
         private Categories $categories,
-        private MenuRepository $menus,
+        private MenuRepository $entries,
+        private Menus $menus,
     ) {}
 
     public function seed(Tenant $business): array
@@ -70,17 +73,19 @@ final readonly class CmsSeed implements SeedProvider
             '',
         );
 
-        $this->menus->save(MenuItem::toPage($business, MenuItem::MAIN, 'About us', $about, 0));
+        $main = $this->menus->namedOrNew(Menu::MAIN);
 
-        $careEntry = MenuItem::toPage($business, MenuItem::MAIN, 'Customer care', $care, 1);
-        $this->menus->save($careEntry);
+        $this->entries->save(MenuItem::toPage($main, 'About us', $about, 0));
+
+        $careEntry = MenuItem::toPage($main, 'Customer care', $care, 1);
+        $this->entries->save($careEntry);
         foreach ([$delivery, $returns] as $position => $page) {
-            $entry = MenuItem::toPage($business, MenuItem::MAIN, $page->title(), $page, $position);
+            $entry = MenuItem::toPage($main, $page->title(), $page, $position);
             $entry->fileUnder($careEntry);
-            $this->menus->save($entry);
+            $this->entries->save($entry);
         }
 
-        $this->menus->save(MenuItem::toUrl($business, MenuItem::MAIN, 'Elsewhere', 'https://www.example.org/', 2));
+        $this->entries->save(MenuItem::toUrl($main, 'Elsewhere', 'https://www.example.org/', 2));
 
         return [
             sprintf(

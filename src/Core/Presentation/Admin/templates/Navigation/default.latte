@@ -1,0 +1,102 @@
+{templateType Trilobit\Core\Presentation\Admin\NavigationDefaultTemplate}
+
+{*
+ * The site's navigation, as it is drawn, and the ways to change it.
+ *
+ * Every change is a button of one form, and a button is drawn only where the
+ * person reading may press it and the move can be made - see
+ * Trilobit\Core\Presentation\Admin\NavigationPresenter. An entry moves past a
+ * neighbour of another contributor and never past one of its own, because the
+ * order inside one contributor is that contributor's: the entries somebody
+ * arranged keep the position they were given.
+ *
+ * Each button names the entry or the contributor it acts on, for somebody who
+ * cannot see the row it stands in.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/badge.latte'}
+{import '../../../components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'admin-navigation-headline',
+        leadTestId: 'admin-navigation-lead'}
+
+    {embed block panel, testId: 'admin-navigation-panel'}
+        {block panelTitle}The site's navigation{/block}
+
+        {block panelBody}
+            <form n:name="arrangement" class="l-stack" data-testid="admin-navigation-form">
+                {if !$mayArrange}
+                    {include notice,
+                        message: 'You may look at this order; changing it is somebody else\'s to do.',
+                        testId: 'admin-navigation-read-only'}
+                {/if}
+
+                {if $rows === []}
+                    {include notice,
+                        message: 'Nothing is drawn in the navigation.',
+                        testId: 'admin-navigation-empty'}
+                {else}
+                    <ol class="l-stack" data-testid="admin-navigation-rows">
+                        <li n:foreach="$rows as $row" class="l-cluster" data-testid="admin-navigation-row-{$row->index}">
+                            <span data-testid="admin-navigation-label-{$row->index}">{$row->label}</span>
+
+                            {include badge, label: $row->source, testId: 'admin-navigation-source-' . $row->index}
+
+                            <button
+                                n:if="$row->canMoveUp"
+                                n:name="'up' . $row->index"
+                                class="c-button c-button--quiet"
+                                data-testid="admin-navigation-up-{$row->index}"
+                            >Move up<span class="u-visually-hidden">: {$row->label}</span></button>
+
+                            <button
+                                n:if="$row->canMoveDown"
+                                n:name="'down' . $row->index"
+                                class="c-button c-button--quiet"
+                                data-testid="admin-navigation-down-{$row->index}"
+                            >Move down<span class="u-visually-hidden">: {$row->label}</span></button>
+                        </li>
+                    </ol>
+                {/if}
+
+                <h3>What it is made of</h3>
+
+                <ul class="l-stack" data-testid="admin-navigation-sources">
+                    <li n:foreach="$sources as $source" class="l-cluster" data-testid="admin-navigation-source-row-{$source->index}">
+                        <span>{$source->label}</span>
+
+                        {if $source->hidden}
+                            {include badge, label: 'Hidden', testId: 'admin-navigation-hidden-' . $source->index}
+                        {/if}
+
+                        {if $mayArrange}
+                            {if $source->hidden}
+                                <button
+                                    n:name="'show' . $source->index"
+                                    class="c-button c-button--quiet"
+                                    data-testid="admin-navigation-show-{$source->index}"
+                                >Show<span class="u-visually-hidden">: {$source->label}</span></button>
+                            {else}
+                                <button
+                                    n:name="'hide' . $source->index"
+                                    class="c-button c-button--quiet"
+                                    data-testid="admin-navigation-hide-{$source->index}"
+                                >Hide<span class="u-visually-hidden">: {$source->label}</span></button>
+                            {/if}
+                        {/if}
+                    </li>
+                </ul>
+
+                <div class="l-cluster" n:if="$isComposed && $mayArrange">
+                    <button n:name="useDefault" class="c-button c-button--danger" data-testid="admin-navigation-reset">Go back to the default</button>
+                </div>
+            </form>
+        {/block}
+    {/embed}
+{/block}

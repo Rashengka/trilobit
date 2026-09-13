@@ -24,6 +24,7 @@ use Trilobit\Cms\Domain\Menu\MenuItem;
 use Trilobit\Cms\Domain\Menu\MenuRepository;
 use Trilobit\Cms\Domain\Menu\MenuTarget;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Domain\Navigation\Menu;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
@@ -99,7 +100,7 @@ final class MenuAdministrationTest extends TestCase
 
         $entry = $this->onlyEntry();
 
-        self::assertSame(MenuItem::MAIN, $entry->menu());
+        self::assertSame(Menu::MAIN, $entry->menu()->name());
         self::assertSame('Shop', $entry->label());
         self::assertSame(MenuTarget::Route, $entry->targetType());
         self::assertSame(self::IN_ANOTHER_MODULE, $entry->target());
@@ -183,7 +184,7 @@ final class MenuAdministrationTest extends TestCase
     private function values(array $overrides = []): array
     {
         return [
-            'menu' => MenuItem::MAIN,
+            'menu' => Menu::MAIN,
             'label' => 'Shop',
             'targetType' => 'route',
             'page' => '',

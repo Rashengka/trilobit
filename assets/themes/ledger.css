@@ -242,6 +242,11 @@
     --layout-nav-inner-folded: none;
     --color-nav-panel: transparent;
     --color-nav-panel-line: transparent;
+
+    /* Beside the page there is room for the whole navigation: no Menu button,
+       and nothing folded behind one. See the narrow window below. */
+    --layout-nav-menu-toggle: none;
+    --layout-nav-menu-folded: flex;
 }
 
 /*
@@ -253,6 +258,12 @@
  * Nothing is held there either. On a window that small a banner and a row of
  * links held for good would take the room the content scrolls in, which is
  * the room holding them was meant to save.
+ *
+ * And the navigation is folded behind a Menu button, and opens as a column
+ * (.ai/plans/10-menu-submenu-a-rozcestniky.md, M1, decided 2026-09-13). As a
+ * row under the banner, an entry unfolded in place made the row as tall as
+ * everything it held; in a column it unfolds under itself and across the
+ * menu, the way it does beside the page.
  */
 @media (width < 52rem) {
     [data-theme='ledger'] {
@@ -262,10 +273,12 @@
         --layout-shell-columns: minmax(0, 1fr);
         --layout-shell-rows: auto auto 1fr auto;
         --layout-nav-size: auto;
-        --layout-nav-direction: row;
-        --layout-nav-wrap: wrap;
+        --layout-nav-direction: column;
+        --layout-nav-wrap: nowrap;
         --layout-nav-padding: 0.5rem 0.75rem;
-        --layout-nav-marker-block-end: 3px;
-        --layout-nav-marker-inline-start: 0px;
+        --layout-nav-marker-block-end: 0px;
+        --layout-nav-marker-inline-start: 3px;
+        --layout-nav-menu-toggle: inline-flex;
+        --layout-nav-menu-folded: none;
     }
 }

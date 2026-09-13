@@ -43,16 +43,17 @@ use Trilobit\Core\Security\AdministersTheInstallation;
 final class SignpostPresenter extends AdminPresenter
 {
     /**
-     * Everything Core itself contributed to the bar, which is what this
-     * section is made of. It is the module segment of a destination and
-     * therefore the same key Menu::itemsOf() sorts by; Core is a module to
-     * that reading like any other.
+     * What Core contributed to the bar for this section: the entries leading
+     * into it. Not everything Core contributed - Core also contributes the
+     * arrangement of a business's navigation, which is a business's own
+     * section, so the module segment of a destination is not enough to say
+     * what belongs here.
      */
-    private const string SECTION = 'core';
+    private const string SECTION = 'Core:Installation:';
 
     public function renderDefault(): void
     {
-        $items = $this->signpostOf(self::SECTION);
+        $items = $this->signpostUnder(self::SECTION);
         if ($items === []) {
             // The same answer the other signpost gives: a section with nothing
             // in it is not a page announcing that it has nothing in it. It

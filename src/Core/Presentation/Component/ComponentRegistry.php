@@ -63,7 +63,7 @@ final class ComponentRegistry
                 'c-nav',
                 'The primary navigation. A theme decides whether it reads as a row or as a column, and whether '
                 . 'the entries under an entry unfold in place or open as a block over the page.',
-                ['default', 'with entries nested under an entry'],
+                ['default', 'with entries nested under an entry', 'with the current page under an entry', 'folded behind a menu button'],
             ),
             new Component(
                 'c-tabs',

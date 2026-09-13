@@ -137,6 +137,7 @@ final class EveryAdministrationViewIsGatedTest extends TestCase
                 'Cms/Presentation/Admin/PagePresenter.php: edit',
                 'Cms/Presentation/Admin/SignpostPresenter.php: default',
                 'Core/Presentation/Admin/DashboardPresenter.php: default',
+                'Core/Presentation/Admin/NavigationPresenter.php: default',
                 // Coming in and nothing else. Ending a session is not a page of
                 // the administration at all - one identity, one session, one
                 // act, whoever is doing it - so it lives at

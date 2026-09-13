@@ -6,15 +6,9 @@ namespace Trilobit\Cms\Presentation\Front;
 
 use Nette\Application\UI\Template;
 use Trilobit\Cms\Application\Page\Pages;
-use Trilobit\Cms\Domain\Menu\MenuItem;
-use Trilobit\Cms\Domain\Menu\MenuRepository;
-use Trilobit\Cms\Domain\Menu\MenuTarget;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Core\Content\Address;
-use Trilobit\Core\Content\PublicPath;
 use Trilobit\Core\Presentation\Front\ContentPresenter;
-use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
-use Trilobit\Core\Presentation\Link\Destinations;
 
 /**
  * A page, drawn at whichever address the register says leads to it.
@@ -30,18 +24,15 @@ use Trilobit\Core\Presentation\Link\Destinations;
  * the only answer that does not tell a stranger that something is being
  * written.
  *
- * **The menu is filtered before it is drawn, not while it is drawn.** An entry
- * naming a page of a module that is switched off is left out here, where there
- * is something that can ask whether this build has it; asking the framework
- * for the link instead would produce a broken href and a page that looks
- * finished. See Trilobit\Core\Presentation\Link\Destinations.
+ * **The menu is not this page's to draw.** The entries somebody arranged are
+ * in the site's navigation, which Core puts together and the layout draws
+ * around every page (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3); what
+ * this module adds to it is Trilobit\Cms\Navigation\ArrangedEntries.
  */
 final class PagePresenter extends ContentPresenter
 {
     public function __construct(
         private readonly Pages $pages,
-        private readonly MenuRepository $menu,
-        private readonly Destinations $destinations,
     ) {
         parent::__construct();
     }
@@ -69,7 +60,6 @@ final class PagePresenter extends ContentPresenter
         $template->heading = $page->title();
         $template->perex = $page->perex();
         $template->body = $page->content();
-        $template->menu = $this->siteMenu($page);
     }
 
     /**
@@ -97,65 +87,5 @@ final class PagePresenter extends ContentPresenter
         }
 
         return $page;
-    }
-
-    /**
-     * The site menu, as addresses, with every entry this build cannot draw
-     * left out.
-     *
-     * @return list<NavigationItem>
-     */
-    private function siteMenu(Page $current): array
-    {
-        $items = [];
-        foreach ($this->menu->topOf(MenuItem::MAIN) as $entry) {
-            $href = $this->hrefOf($entry);
-            if ($href === null) {
-                continue;
-            }
-
-            $items[] = new NavigationItem(
-                $entry->label(),
-                $href,
-                $entry->page() === $current,
-                'cms-menu-' . PublicPath::normalize($entry->label()),
-            );
-        }
-
-        return $items;
-    }
-
-    /**
-     * Where one entry leads, or null when this build cannot say.
-     *
-     * Each kind fails in its own way and every one of them ends here rather
-     * than in the template:
-     *
-     * - a page that was taken down, or never given an address, is not linked
-     *   to, because a menu is part of what a visitor may see;
-     * - an address somebody typed is theirs and is drawn as it stands;
-     * - a route into a module this build does not have is left out, which is
-     *   the whole reason this method returns null rather than a string.
-     */
-    private function hrefOf(MenuItem $entry): ?string
-    {
-        return match ($entry->targetType()) {
-            MenuTarget::Page => $this->addressOfLinkedPage($entry->page()),
-            MenuTarget::Url => $entry->target() === '' ? null : $entry->target(),
-            MenuTarget::Route => $this->destinations->drawnByThisBuild($entry->target())
-                ? $this->link(':' . ltrim($entry->target(), ':'))
-                : null,
-        };
-    }
-
-    private function addressOfLinkedPage(?Page $page): ?string
-    {
-        if (!$page instanceof Page || !$page->isPublished()) {
-            return null;
-        }
-
-        $address = $this->pages->addressOf($page);
-
-        return $address === null ? null : $this->getHttpRequest()->getUrl()->getBasePath() . $address;
     }
 }

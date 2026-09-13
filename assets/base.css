@@ -1158,6 +1158,55 @@
         color: var(--color-nav-ink);
     }
 
+    /*
+     * The button the whole navigation may be folded behind, and the list it
+     * folds. The theme says whether the button is shown
+     * (--layout-nav-menu-toggle) and whether the list is folded while the
+     * button says it is (--layout-nav-menu-folded) - ledger on a narrow window
+     * does both. Neither happens until assets/nav.ts has marked the page with
+     * data-nav-folds: without the script nothing could open the list again, so
+     * the button is not drawn and the navigation is whole.
+     *
+     * Set off from the edges the way the list is, and not from the list itself,
+     * which is set off on its own.
+     */
+    .c-nav__menu {
+        align-items: center;
+        background-color: transparent;
+        border: 0;
+        border-radius: var(--radius-sm);
+        color: var(--color-nav-ink);
+        cursor: pointer;
+        display: none;
+        font: inherit;
+        gap: var(--space-2xs);
+        margin: var(--layout-nav-padding);
+        margin-block-end: 0;
+        padding-block: var(--space-xs);
+        padding-inline: var(--space-sm);
+    }
+
+    [data-nav-folds] .c-nav__menu {
+        display: var(--layout-nav-menu-toggle);
+    }
+
+    [data-nav-folds] .c-nav__menu[aria-expanded='false'] + .c-nav__list {
+        display: var(--layout-nav-menu-folded);
+    }
+
+    .c-nav__menu:hover {
+        background-color: var(--color-nav-hover);
+        color: var(--color-nav-ink-active);
+    }
+
+    .c-nav__menu .c-icon {
+        transition: rotate var(--motion-fast);
+    }
+
+    .c-nav__menu[aria-expanded='true'] .c-icon {
+        rotate: 0.5turn;
+    }
+
     /* Positioned, so that a block a theme opens over the page under an entry
        hangs from the whole row rather than from the one entry. */
     .c-nav__list {
@@ -1351,10 +1400,18 @@
         color: var(--color-nav-ink-active);
     }
 
-    .c-nav__link[aria-current='page'] {
+    /*
+     * The current page, and every entry it is under: the same marker, so that
+     * the way to the page can be read off the navigation even where the entries
+     * under an entry are folded (atrium). Only the page itself is set heavier.
+     */
+    .c-nav__link[aria-current] {
         border-block-end-color: var(--color-nav-marker);
         border-inline-start-color: var(--color-nav-marker);
         color: var(--color-nav-ink-active);
+    }
+
+    .c-nav__link[aria-current='page'] {
         font-weight: var(--font-weight-display);
     }
 

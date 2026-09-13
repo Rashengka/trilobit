@@ -362,13 +362,16 @@ for (const [where, link] of [
 
         // From whatever comes before the link; the first link of the page has
         // nothing before it, and is what a Tab from nothing focused reaches.
+        // Only what is drawn counts: a button the theme does not draw - the
+        // navigation's Menu button beside the page - takes no focus, and
+        // focusing it would leave the focus where it was.
         const before = await page.evaluate((selector) => {
             const target = document.querySelector(selector);
             if (target === null) {
                 throw new Error(`nothing matches ${selector}`);
             }
 
-            const focusable = [...document.querySelectorAll('a[href], button')];
+            const focusable = [...document.querySelectorAll('a[href], button')].filter((element) => element.checkVisibility());
             const previous = focusable[focusable.indexOf(target) - 1];
             if (previous instanceof HTMLElement) {
                 previous.focus({ preventScroll: true });
