@@ -1,0 +1,91 @@
+{templateType Trilobit\Core\Presentation\Setup\WizardTemplate}
+
+{*
+ * The setup wizard, in whichever of its three states the database is in; see
+ * Trilobit\Core\Setup\Step. There is no fourth: an installation somebody
+ * administers never gets as far as this file.
+ *
+ * Where the database cannot be reached, what the page says depends on whether
+ * $attempt is there, and that is decided by the build rather than here - it is
+ * made in debug mode only (Trilobit\Core\Setup\Progress). A production page
+ * says that nothing answers and where the instructions are, and nothing about
+ * where it looked.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/notice.latte'}
+{import '../../../components/table.latte'}
+
+{block content}
+    <div class="l-measure l-stack l-stack--loose">
+        {include pageHeading,
+            title: 'Set up this installation',
+            lead: 'From an empty database to an installation you can sign in to.',
+            testId: 'setup-headline'}
+
+        {if $step === Trilobit\Core\Setup\Step::DatabaseUnreachable}
+            <section class="l-stack" data-testid="setup-unreachable">
+                {include notice, message: 'Nothing answered where this installation looks for its database, so it cannot be set up yet.', variant: 'danger'}
+
+                {if $attempt !== null}
+                    <p>
+                        This is a working copy, so here is what was tried. Each value is read from <code>.env</code>
+                        beside the application, or from the environment of the process running it, which wins over
+                        the file. Change whichever is wrong, then try again.
+                    </p>
+
+                    {embed block table, caption: 'Where the database was looked for', captionVisible: true, testId: 'setup-attempt'}
+                        {block tableHead}
+                            <tr><th scope="col">Setting</th><th scope="col">What was tried</th></tr>
+                        {/block}
+                        {block tableBody}
+                            <tr><th scope="row"><code>TRILOBIT_DB_HOST</code></th><td>{$attempt->host}</td></tr>
+                            <tr><th scope="row"><code>TRILOBIT_DB_PORT</code></th><td>{$attempt->port}</td></tr>
+                            <tr><th scope="row"><code>TRILOBIT_DB_NAME</code></th><td>{$attempt->name}</td></tr>
+                            <tr><th scope="row"><code>TRILOBIT_DB_USER</code></th><td>{$attempt->user}</td></tr>
+                            <tr><th scope="row"><code>TRILOBIT_DB_PASSWORD</code></th><td>not shown</td></tr>
+                        {/block}
+                    {/embed}
+
+                    <p>What the database driver said: <code data-testid="setup-attempt-reason">{$attempt->reason}</code></p>
+                {else}
+                    <p>
+                        Whoever runs this server will find what to set in the README, under Installation. This page
+                        carries on by itself once the database answers.
+                    </p>
+                {/if}
+
+                <p><a href="{$setupUrl}" class="c-button" data-testid="setup-try-again">Try again</a></p>
+            </section>
+        {elseif $step === Trilobit\Core\Setup\Step::Install}
+            {embed block panel, testId: 'setup-install-panel'}
+                {block panelTitle}The tables{/block}
+
+                {block panelBody}
+                    <p>
+                        The database answers, and not everything this application keeps in it is there yet.
+                        Installing makes it - the same as <code>bin/trilobit migrations:migrate</code> does.
+                    </p>
+                    {control install}
+                {/block}
+            {/embed}
+        {elseif $step === Trilobit\Core\Setup\Step::FirstAdministrator}
+            {embed block panel, testId: 'setup-administrator-panel'}
+                {block panelTitle}You, and your first business{/block}
+
+                {block panelBody}
+                    <p>
+                        Last, the account that administers this installation, and the business it starts with.
+                        Once they exist this page is gone, and you are sent to sign in with what you choose here.
+                    </p>
+                    <p data-testid="setup-host">
+                        The business will answer at <strong>{$host}</strong>, the address this page is open at.
+                        More addresses can be given to it later with <code>bin/trilobit app:tenant</code>.
+                    </p>
+                    {control administrator}
+                {/block}
+            {/embed}
+        {/if}
+    </div>
+{/block}

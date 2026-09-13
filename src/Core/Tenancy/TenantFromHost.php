@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Tenancy;
 
 use Nette\Http\IRequest;
+use Trilobit\Core\Routing\SetupRoutes;
 
 /**
  * Settles whose request this is, from the host it arrived at, before anything
@@ -37,9 +38,24 @@ final readonly class TenantFromHost
         private Tenancy $tenancy,
     ) {}
 
+    /**
+     * One path is let through without a business: the setup wizard's. A fresh
+     * installation has no business at all, so no host is claimed by one, and
+     * the wizard is how it gets its first - it could not answer at all
+     * otherwise. It enters no business either, because there is none it could
+     * be; it reads nothing that belongs to one, and what it writes it writes
+     * outright. Once the installation has an administrator the wizard answers
+     * as an address nobody claims, which is what an unrouted path here would
+     * have got anyway. See Trilobit\Core\Routing\SetupRoutes.
+     */
     public function __invoke(): void
     {
-        $host = $this->request->getUrl()->getHost();
+        $url = $this->request->getUrl();
+        if (SetupRoutes::isTheWizard($url->getPathInfo())) {
+            return;
+        }
+
+        $host = $url->getHost();
 
         $this->tenancy->enter(
             $this->hosts->tenantAt($host) ?? throw TenancyRefused::unknownHost($host),

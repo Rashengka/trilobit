@@ -70,6 +70,7 @@ use Trilobit\Core\Routing\ContentRouter;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\SessionRoutes;
+use Trilobit\Core\Routing\SetupRoutes;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Authenticator;
@@ -79,6 +80,8 @@ use Trilobit\Core\Security\Landlords;
 use Trilobit\Core\Security\Memberships;
 use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
+use Trilobit\Core\Setup\Installer;
+use Trilobit\Core\Setup\Progress;
 use Trilobit\Core\Tenancy\Businesses;
 use Trilobit\Core\Tenancy\HostTenants;
 use Trilobit\Core\Tenancy\Tenancy;
@@ -390,6 +393,26 @@ final class CoreExtension extends CompilerExtension
             ->setFactory(SessionRoutes::class)
             ->setAutowired(false)
             ->addTag(self::TAG_ROUTE_PROVIDER);
+
+        // The setup wizard (.ai/plans/23-instalace-na-zelene-louce.md), in
+        // every build: a fresh installation of any build has to be set up. Its
+        // route is registered unconditionally and what answers there is the
+        // data's question, asked on the request - see
+        // Trilobit\Core\Routing\SetupRoutes for why not the router's.
+        $builder->addDefinition($this->prefix('setupRoutes'))
+            ->setFactory(SetupRoutes::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ROUTE_PROVIDER);
+
+        // How far the setup has got, and whether a database that cannot be
+        // reached may be described: in debug mode only, the mode in which the
+        // framework's own error page already describes it. See
+        // Trilobit\Core\Setup\Progress.
+        $builder->addDefinition($this->prefix('setupProgress'))
+            ->setFactory(Progress::class, ['explains' => $this->debugMode()]);
+
+        $builder->addDefinition($this->prefix('installer'))
+            ->setFactory(Installer::class);
 
         $builder->addDefinition($this->prefix('adminMenu'))
             ->setFactory(Menu::class, [[]]);
@@ -957,6 +980,24 @@ final class CoreExtension extends CompilerExtension
             "Parameter 'mode' has to be one of dev, staging or prod; got '%s'. It is set by the boot.",
             $value,
         ));
+    }
+
+    /**
+     * Whether this container is compiled in debug mode - the parameter the
+     * boot set from the mode, and on staging from the debug gate, so a staging
+     * deployment answers it once per each of its two compiled containers.
+     */
+    private function debugMode(): bool
+    {
+        $value = $this->getContainerBuilder()->parameters['debugMode'] ?? null;
+        if (!is_bool($value)) {
+            throw new InvalidStateException(sprintf(
+                "Parameter 'debugMode' has to be true or false; got %s. It is set by the boot.",
+                get_debug_type($value),
+            ));
+        }
+
+        return $value;
     }
 
     private function parameterString(string $name): string

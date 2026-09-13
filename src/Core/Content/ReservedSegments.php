@@ -9,6 +9,7 @@ use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouteProvider;
 use Trilobit\Core\Routing\SessionRoutes;
+use Trilobit\Core\Routing\SetupRoutes;
 use Trilobit\Core\Routing\StyleguideRoutes;
 
 /**
@@ -59,6 +60,10 @@ final readonly class ReservedSegments
         // is the price of an address a person may type, and it is paid on
         // purpose - see Trilobit\Core\Routing\SessionRoutes.
         SessionRoutes::SIGN_OUT_PATH,
+        // Reserved for good, although the wizard behind it lives only until
+        // the installation has an administrator - see
+        // Trilobit\Core\Routing\SetupRoutes.
+        SetupRoutes::PATH,
         StyleguideRoutes::PATH,
     ];
 

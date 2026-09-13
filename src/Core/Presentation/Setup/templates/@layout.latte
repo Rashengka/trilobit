@@ -1,0 +1,48 @@
+{templateType Trilobit\Core\Presentation\Setup\WizardTemplate}
+
+{*
+ * The chrome the setup wizard is drawn in.
+ *
+ * The same shell, components and tokens as the rest of the application, and
+ * less of it: there is no business yet to have a navigation, and nobody signed
+ * in to have an account menu. The mark in the banner leads back to the wizard,
+ * because there is nowhere else on this installation yet to lead to.
+ *}
+
+{import '../../components/site-header.latte'}
+{import '../../components/site-footer.latte'}
+
+<!DOCTYPE html>
+<html lang="en" n:attr="$preferences->attributes()">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{$pageTitle} | {$siteName}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/vnd.microsoft.icon" href="/favicon.ico" sizes="16x16 32x32">
+</head>
+<body class="l-shell" data-testid="setup-layout" data-preference-url="{$preferenceUrl}">
+
+<header class="l-shell__banner" data-testid="setup-header">
+    {include siteHeader, brand: $siteName, href: $setupUrl, tagline: 'Setup', testId: 'setup-home-link'}
+</header>
+
+<main class="l-shell__main" data-testid="setup-content">
+    <div class="l-container l-stack l-stack--loose">
+        {include content}
+    </div>
+</main>
+
+<div class="l-shell__footer" data-testid="setup-footer">
+    {embed block siteFooter}
+        {block siteFooterBody}<p>{$siteName} &mdash; setup.</p>{/block}
+    {/embed}
+</div>
+
+{block scripts}
+    {asset 'vite:assets/app.ts'}
+{/block}
+
+</body>
+</html>

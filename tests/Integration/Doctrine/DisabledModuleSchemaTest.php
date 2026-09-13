@@ -123,6 +123,7 @@ final class DisabledModuleSchemaTest extends TestCase
             'core_migration',
             'core_role',
             'core_setting',
+            'core_setup_completion',
             'core_tenant',
             'core_tenant_membership',
             'core_user',
