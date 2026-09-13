@@ -11,6 +11,7 @@ use Nette\Utils\FileSystem;
 use Tracy\Debugger;
 use Trilobit\Core\Config\EditorLinks;
 use Trilobit\Core\Config\Environment;
+use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Config\TracyScrubber;
 use Trilobit\Core\Module\ModuleList;
 
@@ -20,9 +21,10 @@ use Trilobit\Core\Module\ModuleList;
  * Everything that differs between two deployments of the same code arrives
  * through the environment file, and everything that differs between two builds
  * of the application arrives through the configuration files. Nothing is
- * decided by detection: debug mode is a variable rather than a check on the
- * visitor's address, because an address check is unreliable in production and
- * would mean an address written down in a public repository.
+ * decided by detection: debug mode follows the mode the environment names -
+ * see Trilobit\Core\Config\Mode - rather than a check on the visitor's address,
+ * because an address check is unreliable in production and would mean an
+ * address written down in a public repository.
  *
  * Two things are decided here rather than in configuration, and both for the
  * same reason: they are needed before there is a container to read a
@@ -49,12 +51,21 @@ final class Bootstrap
      *     list of, and that checkout is the one booted - its configuration,
      *     its environment file and its var/ - as configurationFiles() already
      *     takes it to be.
+     * @param Environment|null $environment what this deployment says about
+     *     itself; by default the .env beside the application, overlaid with the
+     *     process environment. A suite passes its own to build in a mode the
+     *     machine it runs on is not in.
      */
-    public static function configurator(?ModuleList $modules = null): Configurator
+    public static function configurator(?ModuleList $modules = null, ?Environment $environment = null): Configurator
     {
         $root = $modules?->rootDirectory() ?? self::rootDirectory();
         $modules ??= ModuleList::fromNeon($root . '/config/modules.neon', $root);
-        $environment = Environment::load($root . '/.env');
+        $environment ??= Environment::load($root . '/.env');
+
+        // Read before anything is written or switched on, so that a deployment
+        // still carrying the retired flag stops here with the sentence that
+        // says what to change, rather than half-way through a boot.
+        $mode = Mode::fromEnvironment($environment);
 
         // var/ holds only generated files, so it is not in the repository and a
         // fresh clone does not have it. Creating it here rather than asking for
@@ -69,7 +80,7 @@ final class Bootstrap
         $files = self::configurationFiles($modules);
 
         $configurator = new Configurator();
-        $configurator->setDebugMode($environment->flag('TRILOBIT_DEBUG'));
+        $configurator->setDebugMode($mode->debugMode());
         $configurator->enableTracy($logDirectory);
         self::pointTheEditorLinksAtThisMachine($environment, $root);
         TracyScrubber::install();
@@ -90,6 +101,12 @@ final class Bootstrap
             // builds that differ only in which modules are on have to be two
             // cached containers, not one.
             'modules' => $modules->all(),
+            // Which of the three deployments this is, for the parts inside the
+            // container that ask. Static for the same reason as the modules:
+            // what it decides is compiled in - the style guide's routes are
+            // registered or they are not - so two modes are two cached
+            // containers.
+            'mode' => $mode->value,
             // What the configuration files say, as one value.
             //
             // Outside debug mode the framework does not look at whether a

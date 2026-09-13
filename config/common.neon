@@ -24,11 +24,13 @@ parameters:
 
         # Whether this build has a style guide at /_styleguide.
         #
-        # On while developing and off in production, where it would be a page
-        # with nothing behind it. Off means the route is never registered, so
-        # the path is claimed by nobody and the answer is 404 rather than 403:
-        # a tool that is not here has nothing to admit to.
-        styleguide: %debugMode%
+        # Left null, the mode decides: there in dev and staging, and gone in
+        # prod, where it would be a page with nothing behind it - see
+        # TRILOBIT_ENV in .env.example. true or false, here or in
+        # config/local.neon, overrules the mode. Off means the route is never
+        # registered, so the path is claimed by nobody and the answer is 404
+        # rather than 403: a tool that is not here has nothing to admit to.
+        styleguide: null
 
 di:
     # Every service that takes arguments or has a setup is a native PHP 8.4

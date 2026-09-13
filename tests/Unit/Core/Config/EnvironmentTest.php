@@ -45,9 +45,9 @@ final class EnvironmentTest extends TestCase
 
     public function testKeepsAnEmptyValueAsAnEmptyString(): void
     {
-        $environment = Environment::fromString("TRILOBIT_DEBUG=\n");
+        $environment = Environment::fromString("TRILOBIT_ENV=\n");
 
-        self::assertSame('', $environment->get('TRILOBIT_DEBUG'));
+        self::assertSame('', $environment->get('TRILOBIT_ENV'));
     }
 
     public function testReportsAnAbsentNameAsNull(): void

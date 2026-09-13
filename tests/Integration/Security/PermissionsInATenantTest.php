@@ -58,12 +58,16 @@ final class PermissionsInATenantTest extends TestCase
 
     private ?Tenant $books = null;
 
+    /** The first business's own role, the one the first account holds there. */
+    private ?Role $editor = null;
+
     protected function tearDown(): void
     {
         $this->container?->getByType(SignedIn::class)->logout(true);
         $this->container = null;
         $this->bikes = null;
         $this->books = null;
+        $this->editor = null;
         $this->passwords = [];
 
         if ($this->schema !== '') {
@@ -194,9 +198,8 @@ final class PermissionsInATenantTest extends TestCase
         $accounts = $this->container()->getByType(Accounts::class);
         $cora = $this->account($accounts, 'cora@example.com', 'Cora Crinoid', landlord: true);
         $entityManager = $this->container()->getByType(EntityManagerInterface::class);
-        $editor = $accounts->roleWithCode(self::EDITOR);
-        self::assertInstanceOf(Role::class, $editor);
-        $entityManager->persist(Membership::forTheInstallationsAdministrator($this->business(), $cora, $editor));
+        self::assertInstanceOf(Role::class, $this->editor);
+        $entityManager->persist(Membership::forTheInstallationsAdministrator($this->business(), $cora, $this->editor));
         $entityManager->flush();
 
         $this->signInAs('cora@example.com');
@@ -208,6 +211,104 @@ final class PermissionsInATenantTest extends TestCase
 
         self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
         self::assertFalse($this->permissions()->isAllowed(Resource::Administration, Privilege::View));
+    }
+
+    /**
+     * Two businesses each compose a role under the same name, and each means
+     * something else by it: here the first one's editor edits and the second
+     * one's deletes. Somebody holding the first one's is allowed what it
+     * allows at home, and nothing in the second business - not even what the
+     * second business's role of that name allows, although the name is the
+     * name the access list there is keyed by.
+     */
+    public function testARoleOfTheSameNameInAnotherBusinessAnswersNothingForSomebodyHoldingTheirOwn(): void
+    {
+        $this->installation();
+        $this->theSecondBusinessComposesAnEditorOfItsOwn();
+        $this->signIn();
+
+        self::assertTrue($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Delete));
+
+        Tenants::switchTo($this->container(), $this->tenantWithoutAnyRole());
+
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Delete));
+    }
+
+    /**
+     * The same from the second business's side, so that the no above cannot be
+     * a role that answers nothing anywhere: the second business's editor
+     * deletes there and neither deletes nor edits in the first.
+     */
+    public function testTheSecondBusinessesRoleOfThatNameAnswersForItsHolderThereAndNowhereElse(): void
+    {
+        $this->installation();
+        $this->theSecondBusinessComposesAnEditorOfItsOwn();
+        $this->signInAs('dora@example.com');
+
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Delete));
+
+        Tenants::switchTo($this->container(), $this->tenantWithoutAnyRole());
+
+        self::assertTrue($this->permissions()->isAllowed(Resource::Content, Privilege::Delete));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
+    }
+
+    /**
+     * A membership naming another business's role cannot be made - see
+     * Trilobit\Core\Domain\Tenancy\Membership - so it is written here past the
+     * object, the way a hand-edited row or a writer nobody has written yet
+     * would. It still grants nothing: reading a role in this business reads the
+     * application's and this business's own, and the second business's
+     * administrator is neither.
+     *
+     * The row is counted first, so that the no is the row being passed over
+     * rather than the row not being there.
+     */
+    public function testAMembershipNamingAnotherBusinesssRoleGrantsNothing(): void
+    {
+        $this->installation();
+
+        $accounts = $this->container()->getByType(Accounts::class);
+        $eve = $this->account($accounts, 'eve@example.com', 'Eve Eurypterid');
+        $connection = $this->container()->getByType(EntityManagerInterface::class)->getConnection();
+        $foreign = $connection->fetchOne('SELECT id FROM core_role WHERE code = ?', [self::ADMINISTRATOR]);
+        $connection->insert('core_tenant_membership', [
+            'tenant_id' => $this->business()->id(),
+            'user_id' => $eve->id(),
+            'role_id' => $foreign,
+        ]);
+
+        $rows = $connection->fetchOne('SELECT COUNT(*) FROM core_tenant_membership WHERE user_id = ?', [$eve->id()]);
+        self::assertSame(1, is_numeric($rows) ? (int) $rows : -1, 'the row naming the other business\'s role is there');
+
+        $this->signInAs('eve@example.com');
+
+        self::assertFalse($this->permissions()->isAllowed(Resource::Content, Privilege::Edit));
+        self::assertFalse($this->permissions()->isAllowed(Resource::Administration, Privilege::View));
+    }
+
+    /**
+     * The second business's own role under the first one's name, allowing
+     * something else, held there by an account of its own.
+     */
+    private function theSecondBusinessComposesAnEditorOfItsOwn(): void
+    {
+        $accounts = $this->container()->getByType(Accounts::class);
+        $dora = $this->account($accounts, 'dora@example.com', 'Dora Dinichthys');
+
+        $entityManager = $this->container()->getByType(EntityManagerInterface::class);
+        $editor = Role::ofBusiness(
+            $this->tenantWithoutAnyRole(),
+            self::EDITOR,
+            'Content editor',
+            ['app.administration.content:delete'],
+        );
+        $entityManager->persist($editor);
+        $entityManager->persist(new Membership($this->tenantWithoutAnyRole(), $dora, $editor));
+        $entityManager->flush();
     }
 
     /**
@@ -241,8 +342,13 @@ final class PermissionsInATenantTest extends TestCase
         $bob = $this->account($accounts, 'bob@example.com', 'Bob Belemnite');
 
         $entityManager = $this->container->getByType(EntityManagerInterface::class);
-        $editor = new Role(self::EDITOR, 'Content editor', $editing);
-        $administrator = new Role(self::ADMINISTRATOR, 'Administrator', ['app.administration:view', 'app.administration.content:edit']);
+        $this->editor = $editor = Role::ofBusiness($this->bikes, self::EDITOR, 'Content editor', $editing);
+        $administrator = Role::ofBusiness(
+            $this->books,
+            self::ADMINISTRATOR,
+            'Administrator',
+            ['app.administration:view', 'app.administration.content:edit'],
+        );
         $entityManager->persist($editor);
         $entityManager->persist($administrator);
         $entityManager->persist(new Membership($this->bikes, $alice, $editor));

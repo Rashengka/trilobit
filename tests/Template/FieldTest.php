@@ -80,6 +80,48 @@ final class FieldTest extends TestCase
         self::assertFalse($field->querySelector('.c-field__hint')?->hasAttribute('id') ?? true);
     }
 
+    /**
+     * A required field carries a mark after its label, and the mark says
+     * nothing to a screen reader: the control's own required attribute
+     * already does, on the field a caller draws by hand as much as on one
+     * this component never sees the control of.
+     */
+    public function testARequiredFieldCarriesAnAriaHiddenMarkAfterItsLabel(): void
+    {
+        $field = $this->fieldIn($this->draw(
+            '{embed block field, required: true}' . self::LABEL . self::CONTROL . '{/embed}',
+        ));
+
+        $mark = $field->querySelector('.c-field__required');
+        self::assertNotNull($mark, 'a required field drew no mark');
+        self::assertSame('true', $mark->getAttribute('aria-hidden'));
+    }
+
+    /** A field nobody said was required carries no mark: one to explain would be one said about nothing. */
+    public function testAFieldNotSaidToBeRequiredCarriesNoMark(): void
+    {
+        $field = $this->fieldIn($this->draw('{embed block field}' . self::LABEL . self::CONTROL . '{/embed}'));
+
+        self::assertNull($field->querySelector('.c-field__required'));
+    }
+
+    /**
+     * The mark lives inside the element labelHidden hides, so a label taken
+     * out of sight takes its mark with it - a mark left standing on its own
+     * without the label it belongs to would tell a sighted person nothing.
+     */
+    public function testARequiredMarkIsHiddenTogetherWithAHiddenLabel(): void
+    {
+        $field = $this->fieldIn($this->draw(
+            '{embed block field, labelHidden: true, required: true}' . self::LABEL . self::CONTROL . '{/embed}',
+        ));
+
+        $wrapper = $field->querySelector('.c-field__label');
+        self::assertNotNull($wrapper);
+        self::assertTrue($wrapper->classList->contains('u-visually-hidden'));
+        self::assertNotNull($wrapper->querySelector('.c-field__required'), 'the mark is not inside the hidden wrapper');
+    }
+
     private function draw(string $call): HTMLDocument
     {
         return ComponentRendering::render('field.latte', $call);

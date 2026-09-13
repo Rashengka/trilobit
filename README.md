@@ -176,7 +176,8 @@ bin/trilobit app:tenant 'Your Business' localhost www.example.com
 |---|---|
 | `core_content_path`, `core_media_file`, `core_tenant_membership`, `core_domain` | the business's |
 | `core_setting` | the installation's - a setting is true of the installation, not of one business |
-| `core_user`, `core_role` | the installation's - see below |
+| `core_user` | the installation's - see below |
+| `core_role` | both - the application's roles belong to no business, a role a business composes is its own; see "Who may do what" |
 | `core_audit_entry` | the installation's, for now |
 
 An account is global and belonging to a business is a relationship:
@@ -202,6 +203,15 @@ reason, so an entity nobody thought about is one the filter cannot scope.
 `tests/Architecture/EveryTenantedEntityIsScopedTest` asks that of every mapped
 entity at build time rather than at the first query: adding an entity to `src/`
 with neither the association nor the attribute fails it by name.
+
+A table may hold the installation's rows beside each business's own, and say so
+with `#[PartlyShared(because: '...')]`. Its business column is empty on the rows
+of none. In a business the filter reads that business's rows and the rows of
+none; before a business is settled, the rows of none alone - they belong to
+nobody in particular, so there is nothing in them to leak, and refusing them
+would stop the application reading what it defines itself. Such an entity still
+needs the association, and one declaring the attribute without it is reported by
+the same test as an entity nobody thought about.
 
 Switching business also empties the object manager, because an object already
 loaded is handed back without a query - past a filter that only ever sees SQL.
@@ -401,6 +411,39 @@ Unlike `composer check`, it writes to the database this checkout is configured
 for: `tests/e2e/administration.spec.ts` brings the migrations up to date and
 makes itself an account under a reserved documentation address, because a
 password in a public repository is a disclosure git keeps forever.
+
+`npm run e2e:docker` runs the same suite on Linux, in Playwright's own image of
+the version `package-lock.json` installs, with PHP added (`docker/e2e/Dockerfile`).
+It needs only Docker and this checkout's database (`docker compose up -d
+database`): the container joins that database's network, and the server
+Playwright starts listens on the container's own loopback, so it cannot collide
+with a server another checkout left running. Run it before merging a change to
+the frontend, and once more when a plan that touched the frontend is finished -
+and with Firefox as well at those two moments, not on every run:
+
+```sh
+npm run e2e:docker                                   # Chromium
+npm run e2e:docker -- --browser=firefox              # Firefox
+npm run e2e:docker -- --browser=all --workers=2      # both; anything else goes to playwright test
+```
+
+It shows what a Mac cannot. Linux draws a classic scrollbar fifteen pixels wide
+where macOS draws one that takes no room, so a layout that forgot about the
+scrollbar is off by fifteen pixels here and right on the Mac; the fonts are
+Linux's; and Chromium is Playwright's headless build, the one CI runs. Firefox
+draws a design differently again, and supports some of what the components use
+later than Chromium or not at all - which is where a fallback turns out to work
+or not. Outside the image, `PLAYWRIGHT_BROWSERS=firefox` (or `all`) selects the
+same project, but needs Playwright's Firefox installed, and CI runs Chromium
+only.
+
+It leaves two things behind on purpose: the image `trilobit-e2e:<version>`, and
+a volume `<compose project>-e2e-node-modules` holding `node_modules` installed
+for Linux. The checkout's own `node_modules` was installed for the machine it is
+on and holds native code for it, so it is neither read nor written from the
+container; the volume is reinstalled only when the lock file changes. Traces of
+failed tests land in `test-results/` as they do on the host.
+
 `npm run test:frontend` runs what is claimed about the build itself under
 Node's own runner, because `composer test` has no Node to run it with.
 
@@ -629,7 +672,7 @@ at `/_styleguide/<group>/<page>`:
 |---|---|
 | Foundations | the colour tokens, the content width, and a page that insists on a width of its own |
 | Content | one for every group of native elements - reboot, typography, code, images, tables, figures |
-| Forms | one for every group of form controls - controls, checks, fieldsets, states |
+| Forms | one for every group of form controls - controls, checks, fieldsets, states - and one for the arrangements a whole form is laid out in |
 | Components | one for every component |
 
 The pages are written down once, in
@@ -640,20 +683,80 @@ Components are derived from their registers, so a component has a page, a place
 in the menu and a tile on the front page the moment it is registered; what is
 left to write is the file under
 `src/Core/Presentation/Styleguide/pages/` that shows it, and the gates will not
-pass without it. Layout gets a group when there is something to put in one.
+pass without it.
 
 The controls of a form - every kind of input, `select`, `textarea`, checkboxes
 and radio buttons, `label`, `fieldset` and `legend`, and their focused, refused
 and disabled states - are styled by their own names in `assets/base.css` and
 never through whatever is drawn around them, so a control looks the same in
 every arrangement of a form (`tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest`).
+A required field carries a mark after its label, aria-hidden because a screen
+reader already hears required off the control's own attribute, which a
+generated field carries on its own and a hand-written one only where the
+caller says it is required, with the sentence explaining the mark drawn once
+above a form's fields rather than on each of them.
 They are catalogued in `Trilobit\Core\Presentation\Form\FormElementRegistry`
 the way the elements of running text are in `ContentGroupRegistry`. The two
 sentences a browser has no element for - why an answer was refused and what a
 field is for - are drawn under the control by `c-field`.
 
-It exists only where `trilobit.styleguide` is on - by default in debug mode, off
-in production, and `config/local.neon` overrides either. Off means none of its
+#### A form drawn in an arrangement
+
+A form does not have to be written out control by control.
+`Trilobit\Core\Presentation\Form\FormFactory`, a service injected like any
+other, makes one already laid out in one of three arrangements, named the way
+Bootstrap names them:
+
+| method | arrangement |
+|---|---|
+| `createInline()` | the fields side by side in a row, wrapping where it runs out; the labels over the controls may be out of sight (`labelsShown: false`) |
+| `createVertical()` | every label over its control, the fields one under another |
+| `createHorizontal()` | every label beside its control, the labels in one column and the controls in the next |
+
+In every one of them the buttons start under the fields. `create()` is the
+framework's own form with the framework's own renderer, for a form drawn by hand
+with `n:name`, the way the sign-in page is. Which arrangement a form is in is
+decided where it is made, so moving it to another is one word in the presenter
+and nothing in the template, which draws it with `{control}`.
+
+Each arrangement is a Latte template of its own
+(`src/Core/Presentation/Form/templates/`), and every field in it is `c-field`,
+the component a form written out by hand draws its fields with. That is why the
+arrangements are templates: the markup of one label and one control is written
+once, in one file, for both kinds of form. The framework's `DefaultFormRenderer`
+would draw the same field as a table of labels and inputs, unthemed, and a
+renderer writing its markup in PHP would be a second copy of `c-field` that
+drifts away from the first with nothing failing.
+
+What is not laying out is written once as well, in the renderer the three
+arrangements have in common (`ArrangedFormRenderer`). It hands the template
+every control joined to the sentences about it through `aria-describedby`,
+and marked `aria-invalid` where it was refused. It draws the hidden inputs
+after the arrangement and outside it, the way the framework's renderer does, so
+that a row or a grid never lays one out. And it refuses to draw a form whose
+arrangement left a control out, because a control that is not drawn is not
+sent, and nothing on the page would look wrong. A label out of sight is
+`u-visually-hidden` on the label of `c-field`: gone from the page for the eye,
+and still there to name the control for everybody else.
+
+`tests/Template/FormArrangementsDifferOnlyInTheirWrappingTest` draws one form
+with a control of every kind in every arrangement, and reads back what a person
+or the server can tell from it - which controls there are under which names,
+what each is called, the reasons and the hint and which control each is joined
+to, which are required, and where the hidden inputs went - against what the
+form holds, so that three arrangements losing the same thing cannot pass by
+agreeing with each other. They are laid out by `l-form` in `assets/base.css`, a
+layout primitive over `c-field` that never reaches a control, and shown over one
+and the same form on the Layout page of the Forms group, where
+`tests/e2e/form-layout.spec.ts` measures in both themes that every label is
+where its arrangement says and every control is still named.
+
+Every control is a field of its own, in the order of the form: controls laid
+out together on one row, and the groups `addGroup()` makes, are not drawn yet.
+
+It exists only where `trilobit.styleguide` is on - by default in the `dev` and
+`staging` modes and not in `prod` (see `TRILOBIT_ENV` below), and
+`config/local.neon` overrides either. Off means none of its
 routes is registered, so every one of its paths is claimed by nobody and the
 answer is 404 rather than 403: a tool that is not there has nothing to admit
 to.
@@ -915,6 +1018,36 @@ a loophole in this: it is a question with no business in it at all, so it is
 asked of `Trilobit\Core\Security\Landlords` and never of these two - see "The
 administration" above.
 
+### A role is the application's or one business's
+
+A role of the application belongs to no business and may be held in any of
+them; the owner's is one. A role a business composes for itself
+(`Role::ofBusiness()`) belongs to that business, may be held there alone, and
+is read nowhere else - so two businesses may each have an `editor` and each mean
+something else by it. Its code is unique within the business, and the
+application's codes are unique among themselves.
+
+Three things keep one business's role out of another:
+
+- a membership naming a role of another business cannot be made; both ways of
+  making one refuse it,
+- a membership row written past that refusal grants nothing, because reading a
+  role in a business reads the application's and its own, and the join from the
+  membership finds nothing else,
+- a role is looked up by its code only among the application's roles
+  (`Accounts::applicationRole()`), so the command that makes an owner can never
+  be handed a business's role under the same code.
+
+A business cannot compose a role under a code the application defines, in any
+case. The whole of the application is honoured on the owner's code alone, so a
+business's `owner` would be an owner nobody made; and inside one business a code
+names one role, so the application's role and the business's under the same
+code would quietly become one of the two. The refusal is in the object, so it
+holds for the rows the application itself defines; a code somebody wrote into
+the application's rows by hand is not known to it.
+`tests/Integration/Security/PermissionsInATenantTest` asks the same question
+from both businesses' side.
+
 ### The framework's own question is the only one
 
 `$this->getUser()->isAllowed(Resource::Content, Privilege::Edit)` works, and it
@@ -1123,9 +1256,10 @@ as happily.
 
 ### What is not there yet
 
-Nobody composes a role in the administration. `bin/trilobit app:account
---tenant` makes the owner's role, which holds the whole of the application
-rather than a list of pairs - a list would go on saying what the application
+Nobody composes a role in the administration yet: a business's own role exists
+in the model and nothing makes one but the tests. `bin/trilobit app:account
+--tenant` makes the owner's role - the application's - which holds the whole of
+the application rather than a list of pairs - a list would go on saying what the application
 used to offer, and the account holding it would quietly stop being able to
 reach whatever was added afterwards. The two rules that belong beside it -
 nobody hands out more than they hold, and the last owner of a business cannot
@@ -1162,6 +1296,27 @@ alphabet would otherwise decide which module goes first - and an installation
 starting from an empty schema would try to create a module's table with a
 foreign key into one of Core's that does not exist yet. See
 `Trilobit\Core\Doctrine\ChronologicalComparator`.
+
+### A unique index over a column that may be empty
+
+MariaDB does not hold one NULL to be equal to another, so an index unique over
+a nullable column lets every row with NULL in it in twice, without a word. It
+bites wherever "none" is one of the values being kept apart: a role's code is
+unique within its business, and the application's roles have no business, so
+an index over the business and the code would let the application's `owner` in
+twice. The code is unique together with `tenant_key` instead - a virtual column
+the database works out as the business, or 0 where there is none - so the
+database holds every writer to it, including one that goes past the entity.
+It is mapped with a `columnDefinition`, which the schema comparison generates
+and then does not report as a difference. See `Trilobit\Core\Domain\User\Role`
+and `tests/Integration/Doctrine/RoleCodesTest`.
+
+An `ALTER TABLE` over an InnoDB table says how it is to run -
+`ALGORITHM=INPLACE, LOCK=NONE` - so that the server cannot quietly choose a way
+that locks the table under a running application. Where the server refuses
+that, the refusal is the information: `Version20260913063908` says which two
+statements it refused and why they run as `ALGORITHM=COPY, LOCK=NONE`, the
+online copy, instead.
 
 ### Generating a migration
 
@@ -1256,14 +1411,24 @@ A few settings are worth knowing about:
   is empty on purpose - a committed file carrying a host, a user name or a
   password is a disclosure git keeps forever. A variable set in the process
   environment wins over the file, so a container needs no `.env` at all.
-- `TRILOBIT_DEBUG=1` turns on the debug bar and the detailed error page. It is
-  a variable rather than a check on the visitor's address, because an address
-  check is unreliable in production and would mean an address written into a
-  public repository. Set it while working on the checkout: with it off the
+- `TRILOBIT_ENV` says which kind of deployment this is: `dev`, `staging` or
+  `prod`. `dev` and `staging` turn on the debug bar, the detailed error page
+  and the style guide. `staging` runs over real data, so `dev` is the only mode
+  in which a tool may seed or delete data -
+  `Trilobit\Core\Config\Mode::mayAlterData()` is the question such a tool asks.
+  Empty, absent or misspelled is `prod`, so forgetting it closes the
+  application rather than opening its debugger. It is a variable rather than a
+  check on the visitor's address, because an address check is unreliable in
+  production and would mean an address written into a public repository. Set
+  `TRILOBIT_ENV=dev` while working on the checkout: outside debug mode the
   framework never rechecks the compiled container, so a change to a compiler
   extension has no effect until `var/tmp` is cleared. A change to a `.neon`
   file is picked up either way - the boot puts what those files say into the
   cache key.
+- `TRILOBIT_DEBUG`, which `TRILOBIT_ENV` replaced, is no longer read. Left set
+  without `TRILOBIT_ENV` it stops the application with a message saying what
+  to write instead, because falling back to `prod` there would quietly take
+  the debugger and the style guide away from a machine that had them.
 - `TRILOBIT_EDITOR` and `TRILOBIT_EDITOR_ROOT` decide what happens when a line
   of a stack trace is clicked. The first is the URL pattern, and it defaults to
   the scheme a JetBrains editor registers. The second is where this checkout

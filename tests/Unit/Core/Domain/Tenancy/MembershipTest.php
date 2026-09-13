@@ -91,9 +91,46 @@ final class MembershipTest extends TestCase
         self::assertSame('administrator', $membership->role()->code());
     }
 
-    private function tenant(): Tenant
+    /**
+     * A role one business composed is held in that business and nowhere else.
+     * Held in another, it would hand somebody there whatever the first business
+     * put into it - rights nobody in the second one ever gave.
+     */
+    public function testARoleOfAnotherBusinessCannotBeHeldHere(): void
     {
-        return new Tenant('Ammonite Bikes', new DateTimeImmutable('2026-09-07T08:00:00+00:00'));
+        $role = Role::ofBusiness($this->tenant('Trilobite Books'), 'editor', 'Editor');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('#editor is a role of Trilobite Books.*Ammonite Bikes#');
+
+        new Membership($this->tenant(), $this->member(), $role);
+    }
+
+    /** The deliberate way for the installation's administrator is no way round it. */
+    public function testNorByTheWayForTheInstallationsAdministrator(): void
+    {
+        $role = Role::ofBusiness($this->tenant('Trilobite Books'), 'editor', 'Editor');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('#editor is a role of Trilobite Books.*Ammonite Bikes#');
+
+        Membership::forTheInstallationsAdministrator($this->tenant(), $this->landlord(), $role);
+    }
+
+    /** The same call with the business's own role, so that the refusal above is about whose the role is. */
+    public function testARoleOfThisBusinessIsHeldHere(): void
+    {
+        $bikes = $this->tenant();
+
+        $membership = new Membership($bikes, $this->member(), Role::ofBusiness($bikes, 'editor', 'Editor'));
+
+        self::assertSame('editor', $membership->role()->code());
+        self::assertSame($bikes, $membership->role()->business());
+    }
+
+    private function tenant(string $name = 'Ammonite Bikes'): Tenant
+    {
+        return new Tenant($name, new DateTimeImmutable('2026-09-07T08:00:00+00:00'));
     }
 
     private function role(): Role

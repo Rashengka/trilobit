@@ -33,9 +33,20 @@ use Trilobit\Core\Domain\Tenancy\Tenant;
  * absent exactly when it matters, and the request would look perfectly
  * healthy.
  *
+ * **A table can hold the installation's rows beside each business's own.** It
+ * says so with Trilobit\Core\Tenancy\PartlyShared, and its tenant column is
+ * empty on the rows of no business. In a business it is read with that
+ * business's rows and the rows of none; before a business is settled, with the
+ * rows of none alone. That is not the filter standing down: it still compares,
+ * and what it lets through is only what belongs to nobody in particular. Such a
+ * table still needs its tenant column, and an entity declaring itself partly
+ * shared without one is refused like any other.
+ *
  * It scopes reading. Writing is scoped by the column being NOT NULL and by
  * whoever creates the row taking the tenant from Trilobit\Core\Tenancy\
- * Tenancy, because a filter is not consulted on an insert.
+ * Tenancy, because a filter is not consulted on an insert. On a partly shared
+ * table the column may be empty, so there it is whoever creates a row that
+ * says which business it is, or that it is none's.
  */
 final class TenantFilter extends SQLFilter
 {
@@ -57,6 +68,10 @@ final class TenantFilter extends SQLFilter
             return '';
         }
 
+        if (self::isPartlyShared($targetEntity->getName())) {
+            return $this->withTheRowsOfNoBusiness($targetEntity, $targetTableAlias);
+        }
+
         if (!$this->hasParameter(self::PARAMETER)) {
             throw TenancyRefused::noTenantEntered();
         }
@@ -69,10 +84,43 @@ final class TenantFilter extends SQLFilter
         );
     }
 
-    /** @param class-string $entity */
+    /**
+     * Whether $entity is one table for everybody.
+     *
+     * An entity carrying Trilobit\Core\Tenancy\PartlyShared as well is not:
+     * of two declarations that disagree, the one that scopes more is the one
+     * taken, so that a stray attribute can only ever narrow what is read.
+     *
+     * @param class-string $entity
+     */
     public static function isShared(string $entity): bool
     {
-        return new ReflectionClass($entity)->getAttributes(Shared::class) !== [];
+        $class = new ReflectionClass($entity);
+
+        return $class->getAttributes(Shared::class) !== [] && $class->getAttributes(PartlyShared::class) === [];
+    }
+
+    /** @param class-string $entity */
+    public static function isPartlyShared(string $entity): bool
+    {
+        return new ReflectionClass($entity)->getAttributes(PartlyShared::class) !== [];
+    }
+
+    /**
+     * The rows of the business the process is in and the rows of none, or the
+     * rows of none alone before a business is settled.
+     *
+     * @param ClassMetadata<object> $entity
+     */
+    private function withTheRowsOfNoBusiness(ClassMetadata $entity, string $alias): string
+    {
+        $column = $alias . '.' . self::tenantColumnOf($entity);
+
+        if (!$this->hasParameter(self::PARAMETER)) {
+            return sprintf('%s IS NULL', $column);
+        }
+
+        return sprintf('(%1$s = %2$s OR %1$s IS NULL)', $column, $this->getParameter(self::PARAMETER));
     }
 
     /**
