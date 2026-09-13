@@ -30,6 +30,22 @@ parameters:
         # a tool that is not here has nothing to admit to.
         styleguide: %debugMode%
 
+di:
+    # Every service that takes arguments or has a setup is a native PHP 8.4
+    # lazy object: the container hands out the object at once, and runs its
+    # constructor and setup - with the whole tree of services they take - only
+    # when something first touches it. A request pays for what it uses rather
+    # than for everything its presenter was handed; bin/measure-services is
+    # what measures the difference.
+    #
+    # What it asks of a service: nothing may rely on its constructor having run
+    # merely because the service was injected somewhere. One that registers
+    # itself with something else, or sets global state, in its constructor runs
+    # late or not at all, so such a service says `lazy: false` in its own
+    # definition, with the reason beside it. Trilobit\Tests\Integration\
+    # LazyServicesTest fails when this line is switched off.
+    lazy: true
+
 extensions:
     core: Trilobit\Core\DI\CoreExtension
 
