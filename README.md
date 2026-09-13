@@ -114,6 +114,38 @@ configuration and the source tree disagree about which modules exist, and
 rule. The one rule that matters is the one expressed by absence - a module may
 depend on Core and on libraries, and never on another module.
 
+### Services are built when they are first used
+
+The container's services are lazy (`di: lazy: true` in `config/common.neon`).
+Every service that takes arguments or has a setup call is a native PHP 8.4
+lazy object: the container hands it out at once, and its constructor and
+setup - with the whole tree of services they take - run only when something
+first calls a method on it or reads a property. A presenter is handed the
+user, the menu, the preferences and more; a request that asks it nothing about
+one of them no longer pays for building it. `bin/measure-services` counts, per
+kind of request, how many services the container created and how many of those
+it actually had to build.
+
+What this asks of a service you write:
+
+- **A constructor may not have an effect somebody relies on without calling
+  the service.** Registering the service with something else, starting a
+  session, setting a global: all of it now happens at the first call, or never
+  if there is none. A service that needs it says `lazy: false` in its own
+  definition, with the reason beside it. None does today.
+- **A constructor that validates fails at the first call, not at injection.**
+  The error is the same one; it arrives a step later, and a request that never
+  calls the service never meets it.
+- **Setup calls run with the constructor**, in the same initialiser, before the
+  first call returns - which is why the entity manager's tenant filter, switched
+  on by a setup call, is on before any query can be written.
+- A lazy object is an instance of its own class, so `instanceof`, `::class`
+  and `===` behave as before, without building it; `final` and `readonly`
+  classes are fine.
+
+`Trilobit\Tests\Integration\LazyServicesTest` fails when lazy services are
+switched off, and holds the tenant filter to the claim above.
+
 ## Tenants and domains
 
 One installation runs several businesses, and which one a request belongs to is
