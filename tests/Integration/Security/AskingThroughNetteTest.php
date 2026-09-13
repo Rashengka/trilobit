@@ -125,6 +125,89 @@ final class AskingThroughNetteTest extends TestCase
     }
 
     /**
+     * Switching an account off takes it away now, not at its next sign-in.
+     *
+     * Refusing the password is only half of it: a session opened before the
+     * account was switched off goes on being somebody, and before this it went
+     * on holding every role that person held - so blocking somebody did nothing
+     * to the one browser they were already in. The role is still held here by
+     * the membership nobody touched, which is what makes this about the account
+     * and not about the rights: were the session carried on, it would answer
+     * yes.
+     */
+    public function testAnAccountSwitchedOffInOneRequestIsSignedOutInTheNext(): void
+    {
+        $this->installation();
+        $this->signInAs('alice@example.com');
+
+        self::assertTrue($this->signedIn()->isAllowed(Resource::Content, Privilege::Edit));
+
+        $this->switchOff('alice@example.com');
+        $this->nextRequestIn($this->bikes());
+
+        self::assertFalse($this->signedIn()->isLoggedIn());
+        self::assertNull($this->signedIn()->getIdentity(), 'nothing of the person is carried on either');
+        self::assertFalse($this->signedIn()->isAllowed(Resource::Content, Privilege::Edit));
+    }
+
+    /**
+     * The same before any business is settled - the installation's own
+     * section, a host nothing claims. Holding no roles there is not the same
+     * thing as not being signed in: the installation's administrator holds
+     * none anywhere and is signed in all the same.
+     */
+    public function testAnAccountSwitchedOffIsSignedOutBeforeABusinessIsSettledToo(): void
+    {
+        $this->installation();
+        $this->signInAs('alice@example.com');
+
+        $this->switchOff('alice@example.com');
+        $this->nextRequestOutsideEveryBusiness();
+
+        self::assertFalse($this->signedIn()->isLoggedIn());
+    }
+
+    /**
+     * A session outliving the row it was made from is signed out rather than
+     * carried on as somebody who no longer exists. Before this it stayed
+     * signed in, holding nothing - a person nobody could find in the list of
+     * accounts, still signed in.
+     */
+    public function testAnAccountThatIsGoneIsSignedOutInTheNextRequest(): void
+    {
+        $this->installation();
+        $this->signInAs('carol@example.com');
+
+        $this->withdrawEveryMembershipOf('carol@example.com');
+        $this->container()
+            ->getByType(EntityManagerInterface::class)
+            ->createQuery(sprintf('DELETE FROM %s u WHERE u.email = :email', User::class))
+            ->setParameter('email', 'carol@example.com')
+            ->execute();
+        $this->nextRequestIn($this->bikes());
+
+        self::assertFalse($this->signedIn()->isLoggedIn());
+    }
+
+    /**
+     * The control for the three above: an account nobody switched off stays
+     * signed in across requests, outside a business as well as in one. A
+     * wakeup that signed everybody out would pass all three.
+     */
+    public function testAnAccountNobodySwitchedOffStaysSignedInAcrossRequests(): void
+    {
+        $this->installation();
+        $this->signInAs('alice@example.com');
+
+        $this->nextRequestOutsideEveryBusiness();
+        self::assertTrue($this->signedIn()->isLoggedIn());
+
+        $this->nextRequestIn($this->bikes());
+        self::assertTrue($this->signedIn()->isLoggedIn());
+        self::assertTrue($this->signedIn()->isAllowed(Resource::Content, Privilege::Edit));
+    }
+
+    /**
      * A role is held in a business, so carrying it into another one is not a
      * lesser right, it is somebody else's. The session is not ended over it -
      * a person who really does belong to two businesses is indistinguishable
@@ -337,6 +420,30 @@ final class AskingThroughNetteTest extends TestCase
             ))
             ->setParameter('email', $email)
             ->execute();
+    }
+
+    /**
+     * What blocking somebody does, said in the language of the table for the
+     * same reason as withdrawing a membership above.
+     */
+    private function switchOff(string $email): void
+    {
+        $this->container()
+            ->getByType(EntityManagerInterface::class)
+            ->createQuery(sprintf('UPDATE %s u SET u.active = false WHERE u.email = :email', User::class))
+            ->setParameter('email', $email)
+            ->execute();
+    }
+
+    /**
+     * A request nothing settles a business for - the installation's own
+     * section, or a host no business claims.
+     */
+    private function nextRequestOutsideEveryBusiness(): void
+    {
+        $this->letGoOfTheConnection($this->container);
+
+        $this->container = Boot::coreAlone();
     }
 
     /**

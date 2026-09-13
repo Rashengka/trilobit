@@ -105,6 +105,24 @@ final class UserTest extends TestCase
     }
 
     /**
+     * Switching an account off is the way it is taken away, so it has to be
+     * something that can be undone: an account blocked by mistake, or blocked
+     * while something was looked into, is the same account once it is let back
+     * in, with everything it did still attributed to it.
+     */
+    public function testASwitchedOffAccountCanBeSwitchedBackOn(): void
+    {
+        $account = $this->account();
+        self::assertTrue($account->isActive(), 'a new account can sign in');
+
+        $account->deactivate();
+        self::assertFalse($account->isActive());
+
+        $account->activate();
+        self::assertTrue($account->isActive());
+    }
+
+    /**
      * Administering the installation is the other scope, and an account is in
      * one of the two rather than at a level within one. An account nobody said
      * anything about is in the ordinary one.

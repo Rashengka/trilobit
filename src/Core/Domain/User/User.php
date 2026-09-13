@@ -169,10 +169,28 @@ class User
         return $this->landlord;
     }
 
-    /** The way an account is taken away: it stops being able to sign in and stays attributable. */
+    /**
+     * The way an account is taken away: it stops being able to sign in and stays attributable.
+     *
+     * It takes effect at once rather than at the next sign-in: a session opened
+     * before is signed out on its next request, because
+     * Trilobit\Core\Security\Authenticator::wakeupIdentity() reads this row every
+     * request. Refusing the password alone would leave the one browser the
+     * person is already in exactly as it was.
+     */
     public function deactivate(): void
     {
         $this->active = false;
+    }
+
+    /**
+     * Lets a switched-off account in again, with the password it had and with
+     * everything it did still attributed to it - which is why switching off is
+     * the way an account is taken away, rather than deleting it.
+     */
+    public function activate(): void
+    {
+        $this->active = true;
     }
 
     public function createdAt(): DateTimeImmutable
