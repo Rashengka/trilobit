@@ -174,7 +174,9 @@ test.describe('with the keyboard, and to a screen reader', () => {
         await expect(inside).toBeHidden();
     });
 
-    test('a title given a level is a heading in the tree, inside the control that opens it', async ({ page }) => {
+    test('a title given a level is a heading in the tree, inside the control that opens it', async ({ page, browserName }) => {
+        test.skip(browserName !== 'chromium', 'reads Chrome\'s own accessibility tree over the DevTools protocol, which only Chromium speaks');
+
         await page.goto('/_styleguide/components/collapse');
 
         const stage = specimen(page, 'with a heading');
