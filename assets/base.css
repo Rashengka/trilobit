@@ -1559,6 +1559,29 @@
         font-weight: var(--font-weight-display);
     }
 
+    /* Hidden from a screen reader, which already hears required off the
+       control's own attribute - this is for the eye, and aria-hidden is what
+       keeps it from being said twice. */
+    .c-field__required {
+        color: var(--color-danger);
+        padding-inline-start: var(--space-3xs);
+    }
+
+    /*
+     * What the mark above means, said once above a form's fields (see
+     * Trilobit\Core\Presentation\Form\templates\parts.latte). Spans the full
+     * width of whichever arrangement it is drawn in - grid-column for the
+     * horizontal arrangement's grid, flex-basis for inline's wrapping row -
+     * the way .l-form__errors and .l-form__buttons already do, and does
+     * nothing in vertical's flex column, which needs neither.
+     */
+    .c-field-required-note {
+        color: var(--color-ink-muted);
+        flex-basis: 100%;
+        font-size: var(--text-sm);
+        grid-column: 1 / -1;
+    }
+
     /* Nothing styles the control here. What a form puts into the slot is an
        element the framework wrote, and it is drawn by its own name in @layer
        base - the same in this component as in any other arrangement. */

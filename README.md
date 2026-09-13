@@ -615,6 +615,11 @@ and radio buttons, `label`, `fieldset` and `legend`, and their focused, refused
 and disabled states - are styled by their own names in `assets/base.css` and
 never through whatever is drawn around them, so a control looks the same in
 every arrangement of a form (`tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest`).
+A required field carries a mark after its label, aria-hidden because a screen
+reader already hears required off the control's own attribute, which a
+generated field carries on its own and a hand-written one only where the
+caller says it is required, with the sentence explaining the mark drawn once
+above a form's fields rather than on each of them.
 They are catalogued in `Trilobit\Core\Presentation\Form\FormElementRegistry`
 the way the elements of running text are in `ContentGroupRegistry`. The two
 sentences a browser has no element for - why an answer was refused and what a

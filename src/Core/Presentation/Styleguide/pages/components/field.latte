@@ -68,6 +68,24 @@
                     {/block}
                 {/embed}
             {/specimen}
+
+            {*
+             * The mark is aria-hidden: a screen reader already hears required
+             * off the control's own attribute. What explains the mark to
+             * everybody else - the sentence in fieldRequiredNote, drawn once
+             * above a form's fields rather than on this one - is on the
+             * Layout page of the Forms group instead, where there is a form
+             * for it to be above.
+             *}
+            {specimen 'required'}
+                {embed block field, required: true}
+                    {block fieldLabel}<label for="sg-field-catalogue-number">Catalogue number</label>{/block}
+
+                    {block fieldControl}
+                        <input id="sg-field-catalogue-number" type="text" required>
+                    {/block}
+                {/embed}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

@@ -63,7 +63,11 @@
                         testId: 'cms-page-legacy-address'}
                 {/if}
 
-                {embed block field, testId: 'cms-page-title-field'}
+                {* Title and the segment below are required (PagePresenter::createComponentPage()); c-field
+                   does not own the element, so this page says so instead of it being read off the control. *}
+                <p class="c-field-required-note">Fields marked with * are required.</p>
+
+                {embed block field, testId: 'cms-page-title-field', required: true}
                     {block fieldLabel}<label n:name="title">Title</label>{/block}
 
                     {block fieldControl}
@@ -81,7 +85,7 @@
                     {block fieldHint}What the page is filed under. Its address begins with the category's.{/block}
                 {/embed}
 
-                {embed block field, testId: 'cms-page-segment-field', hintId: 'cms-page-segment-hint'}
+                {embed block field, testId: 'cms-page-segment-field', hintId: 'cms-page-segment-hint', required: true}
                     {block fieldLabel}<label n:name="segment">Last part of the address</label>{/block}
 
                     {block fieldControl}

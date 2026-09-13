@@ -24,13 +24,28 @@
  * a filter over a table. A label that was not there at all would leave the
  * control without a name for somebody who cannot see the row either.
  *
+ * A required field carries a mark after its label (required) - a caller says
+ * so because the control is the caller's own element and this component does
+ * not own it to ask. It is aria-hidden: a screen reader already says required
+ * off the control's own attribute, and saying it twice would be saying it
+ * once too often. It is drawn inside the same element labelHidden hides,
+ * rather than beside it, so a mark nobody sees the label of is never left
+ * standing on its own - hiding the one hides the other, by construction
+ * rather than by a second flag every caller would have to remember.
+ *
+ * A form that marks any field this way has to say once, above its fields,
+ * what the mark means (WCAG 3.3.2) - written out where the fields are laid
+ * out (Trilobit\Core\Presentation\Form\templates\parts.latte and the four
+ * hand-written forms that use c-field), not here: this component is one
+ * field, and the sentence is about the form the field is part of.
+ *
  * Use it with {embed block field}, filling in fieldLabel and fieldControl, and
  * fieldError or fieldHint when there is something to say.
  *}
 
-{define field, ?string $testId = null, ?string $hintId = null, ?string $errorId = null, bool $labelHidden = false}
+{define field, ?string $testId = null, ?string $hintId = null, ?string $errorId = null, bool $labelHidden = false, bool $required = false}
     <div class="c-field" data-testid="{$testId}">
-        <div n:class="'c-field__label', $labelHidden ? 'u-visually-hidden'">{block fieldLabel}{/block}</div>
+        <div n:class="'c-field__label', $labelHidden ? 'u-visually-hidden'">{block fieldLabel}{/block}<span n:if="$required" class="c-field__required" aria-hidden="true">*</span></div>
 
         <div class="c-field__control">{block fieldControl}{/block}</div>
 

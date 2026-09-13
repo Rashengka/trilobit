@@ -172,6 +172,41 @@ final class FormArrangementsDifferOnlyInTheirWrappingTest extends TestCase
         );
     }
 
+    /**
+     * The two required fields of the sample - a line of text and a set of
+     * choices, both with a label of their own - carry a mark, whether or not
+     * the arrangement draws it where it can be seen: the mark lives inside
+     * the same element as the label, so it is only ever hidden along with it,
+     * never on its own.
+     *
+     * The sentence explaining what the mark means is drawn once, above the
+     * fields, and only where at least one mark can be seen - a form whose
+     * labels are all out of sight has no mark to explain either.
+     *
+     * @param \Closure(FormFactory): Form $create
+     */
+    #[DataProvider('arrangements')]
+    public function testRequiredFieldsCarryAMarkAndTheFormExplainsItWhereItCanBeSeen(
+        string $arrangement,
+        \Closure $create,
+    ): void {
+        $page = $this->draw($this->sample($create($this->forms())));
+        $labelsShown = $this->dataName() !== 'inline, with the labels unseen';
+
+        $marks = $page->querySelectorAll('.c-field__required');
+        self::assertCount(2, $marks, 'the two required, labelled fields do not both carry a mark');
+        foreach ($marks as $mark) {
+            self::assertInstanceOf(Element::class, $mark);
+            self::assertSame('true', $mark->getAttribute('aria-hidden'), 'the mark says its own word to a screen reader');
+
+            $wrapper = $mark->closest('.c-field__label');
+            self::assertInstanceOf(Element::class, $wrapper, 'the mark is not inside the label it belongs to');
+            self::assertSame($labelsShown, !$wrapper->classList->contains('u-visually-hidden'));
+        }
+
+        self::assertCount($labelsShown ? 1 : 0, $page->querySelectorAll('.c-field-required-note'));
+    }
+
     /** Two forms made by the factory are two forms, not one handed out twice. */
     public function testEveryFormItMakesIsANewOne(): void
     {

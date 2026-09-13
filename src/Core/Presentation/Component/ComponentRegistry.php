@@ -166,6 +166,7 @@ final class ComponentRegistry
                     'with a control that is not a line of text',
                     'with a reason and a hint',
                     'with its label out of sight',
+                    'required',
                 ],
             ),
             new Component(

@@ -32,12 +32,28 @@
 {/define}
 
 {*
+ * What a required field's mark means, said once above the fields rather than
+ * on each of them - c-field itself never says it, because it is one field and
+ * the sentence is about the form. Drawn only where $shown says the mark is
+ * somewhere on the page for it to explain: ArrangementTemplate::$requiredNoteShown
+ * is false where no field is both required and labelled, or where the labels
+ * are out of sight and the marks are hidden along with them.
+ *}
+{define formRequiredNote, bool $shown}
+    <p class="c-field-required-note" n:if="$shown">Fields marked with * are required.</p>
+{/define}
+
+{*
  * One field. A set of choices is a group named by its label, with each choice
  * inside its own label, the way the Checks page of the style guide draws one
  * by hand.
  *}
 {define formField, Trilobit\Core\Presentation\Form\FormField $field, bool $labelHidden = false}
-    {embed block field, errorId: $field->errorId(), hintId: $field->hintId(), labelHidden: $labelHidden}
+    {embed block field,
+        errorId: $field->errorId(),
+        hintId: $field->hintId(),
+        labelHidden: $labelHidden,
+        required: $field->label() !== null && $field->isRequired()}
         {block fieldLabel}{$field->label()}{/block}
 
         {block fieldControl}

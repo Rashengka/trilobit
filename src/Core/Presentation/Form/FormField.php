@@ -58,6 +58,16 @@ final readonly class FormField
     }
 
     /**
+     * Whether an answer has to be given - the framework's own flag, read back
+     * rather than kept a second time, so that a control marked required after
+     * this was made is still marked required here.
+     */
+    public function isRequired(): bool
+    {
+        return $this->control->isRequired();
+    }
+
+    /**
      * What the control is called: a label pointing at it, or - for a set of
      * choices - an element the set is named by. Nothing for a box to tick and a
      * button, whose words are part of the control itself.

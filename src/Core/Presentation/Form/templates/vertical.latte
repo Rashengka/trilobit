@@ -10,6 +10,7 @@
 
 <div class="l-form l-form--vertical">
     {include formErrors, errors: $errors}
+    {include formRequiredNote, shown: $requiredNoteShown}
 
     {foreach $fields as $field}
         {include formField, field: $field}
