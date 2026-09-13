@@ -788,7 +788,16 @@
         flex-wrap: wrap;
     }
 
-    .l-form--inline > .c-field > .c-field__label:empty::before {
+    /*
+     * :not(:has(*)) rather than :empty - :empty also fails on a whitespace
+     * text node, which a change to nothing but the indentation of
+     * src/Core/Presentation/components/field.latte could add or remove
+     * without changing what the field draws. :has(*) asks whether there is
+     * an element inside (a label, or c-field's own required mark) and never
+     * looks at text nodes, so it reads the same regardless of how that file
+     * is formatted.
+     */
+    .l-form--inline > .c-field > .c-field__label:not(:has(*))::before {
         content: '\a0';
     }
 
