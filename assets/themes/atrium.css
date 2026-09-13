@@ -202,6 +202,10 @@
     --layout-card-min: 17rem;
     --layout-card-media-ratio: 16 / 9;
 
+    /* The narrowest a control in a row of them (l-form__row) is drawn beside
+       the one before it; narrower than that, it goes under it instead. */
+    --layout-field-min: 10rem;
+
     /* How tall the list a combobox opens grows before it scrolls: about ten
        choices, which is where a list starts offering a line to search it by
        (assets/combobox.ts). */

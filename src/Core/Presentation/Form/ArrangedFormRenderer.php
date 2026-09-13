@@ -36,9 +36,12 @@ use Nette\Utils\Html;
  * seeing it go. So every control that is not hidden has to have been drawn by
  * the time the template is done, or the form is not drawn at all.
  *
- * Groups of controls (addGroup) are not drawn as groups yet: every control is
- * a field of its own, in the order of the form. Controls laid out together on
- * one row are step 5 of the plan and will be something a FormField carries.
+ * Controls laid out beside each other under the label of the first - a row,
+ * written with the framework's own nextTo option - are handed over as one
+ * FormRow, drawn where its first control is (see FormRow). A row that cannot
+ * be drawn as one is refused as loudly, by the name of the control that is
+ * wrong. The groups addGroup() makes are not drawn as groups: every control
+ * of one is a field, in the order of the form.
  * tests/Template/FormArrangementsDifferOnlyInTheirWrappingTest holds the
  * arrangements to one another.
  */
@@ -73,13 +76,31 @@ abstract class ArrangedFormRenderer implements FormRenderer
             $controls[] = $control;
         }
 
-        $fields = $buttons = [];
+        $rows = $this->rows($form, $controls);
+        $laterInARow = [];
+        foreach ($rows as $row) {
+            foreach (array_slice($row, 1) as $member) {
+                $laterInARow[spl_object_id($member)] = true;
+            }
+        }
+
+        $fields = $buttons = $drawn = [];
         foreach ($controls as $control) {
-            if ($control->getOption('type') === 'hidden') {
+            if ($control->getOption('type') === 'hidden' || isset($laterInARow[spl_object_id($control)])) {
+                continue;
+            }
+
+            $row = $rows[spl_object_id($control)] ?? null;
+            if ($row !== null) {
+                $members = array_map(static fn(BaseControl $member): FormField => new FormField($member), $row);
+                $fields[] = new FormRow($members);
+                array_push($drawn, ...$members);
+
                 continue;
             }
 
             $field = new FormField($control);
+            $drawn[] = $field;
             if ($field->kind === 'button') {
                 $buttons[] = $field;
             } else {
@@ -96,7 +117,7 @@ abstract class ArrangedFormRenderer implements FormRenderer
 
         $undrawn = array_map(
             static fn(FormField $field): string => $field->name(),
-            array_filter([...$fields, ...$buttons], static fn(FormField $field): bool => !$field->isDrawn()),
+            array_filter($drawn, static fn(FormField $field): bool => !$field->isDrawn()),
         );
         if ($undrawn !== []) {
             throw new \LogicException(sprintf(
@@ -108,6 +129,99 @@ abstract class ArrangedFormRenderer implements FormRenderer
         }
 
         return $this->begin($form) . "\n" . $body . $this->end($form, $controls);
+    }
+
+    /**
+     * The rows the controls are laid out in, by their first control: a
+     * control whose nextTo option names another, followed along as far as
+     * the chain goes, the way DefaultFormRenderer::renderControl() follows it.
+     *
+     * Each of these is refused rather than drawn somehow: a row naming
+     * something that is not a control of the form; a hidden input or a button
+     * in a row - the one has no place on the page, the others have a row of
+     * their own; a control two others are to be next to, which would be drawn
+     * twice; and controls next to one another in a circle, none of which is
+     * first. The framework's renderer draws the second-to-last twice and loops
+     * for ever on the last.
+     *
+     * @param list<BaseControl> $controls
+     * @return array<int, non-empty-list<BaseControl>> every row, by the spl_object_id() of its first control
+     */
+    private function rows(Form $form, array $controls): array
+    {
+        $next = $previous = [];
+        foreach ($controls as $control) {
+            $name = $control->getOption('nextTo');
+            if ($name === null) {
+                continue;
+            }
+
+            $after = is_string($name) ? $form->getComponent($name, false) : null;
+            if (!$after instanceof BaseControl || !in_array($after, $controls, true)) {
+                throw new \LogicException(sprintf(
+                    '%s is to be next to %s, which is not a control of the form.',
+                    $control->getName(),
+                    is_scalar($name) ? (string) $name : get_debug_type($name),
+                ));
+            }
+
+            foreach ([$control, $after] as $member) {
+                if (in_array($member->getOption('type'), ['hidden', 'button'], true)) {
+                    throw new \LogicException(sprintf(
+                        '%s cannot be laid out in a row: a hidden input has no place on the page, and the buttons '
+                        . 'have a row of their own.',
+                        $member->getName(),
+                    ));
+                }
+            }
+
+            $already = $previous[spl_object_id($after)] ?? null;
+            if ($already !== null) {
+                throw new \LogicException(sprintf(
+                    '%s is to be next to both %s and %s, and can be drawn in one row only.',
+                    $after->getName(),
+                    $already->getName(),
+                    $control->getName(),
+                ));
+            }
+
+            $next[spl_object_id($control)] = $after;
+            $previous[spl_object_id($after)] = $control;
+        }
+
+        // Every control has one before it at most and one after it at most,
+        // so the rows are the chains starting at a control with none before
+        // it - and what is left over is a circle.
+        $rows = $inARow = [];
+        foreach ($controls as $control) {
+            if (!isset($next[spl_object_id($control)]) || isset($previous[spl_object_id($control)])) {
+                continue;
+            }
+
+            $row = [$control];
+            for ($at = $control; isset($next[spl_object_id($at)]);) {
+                $at = $next[spl_object_id($at)];
+                $row[] = $at;
+            }
+
+            foreach ($row as $member) {
+                $inARow[spl_object_id($member)] = true;
+            }
+            $rows[spl_object_id($control)] = $row;
+        }
+
+        $circle = array_filter(
+            $controls,
+            static fn(BaseControl $control): bool => isset($next[spl_object_id($control)]) && !isset($inARow[spl_object_id($control)]),
+        );
+        if ($circle !== []) {
+            throw new \LogicException(sprintf(
+                '%s are each to be next to another of them in a circle, so none of them is first in the row.',
+                implode(', ', array_map(static fn(BaseControl $control): string => (string) $control->getName(), $circle)),
+            ));
+        }
+
+        return $rows;
     }
 
     /**

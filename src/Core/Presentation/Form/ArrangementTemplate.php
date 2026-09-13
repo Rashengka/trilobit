@@ -24,7 +24,8 @@ final readonly class ArrangementTemplate
 
     /**
      * @param list<string> $errors what was said about the form as a whole
-     * @param list<FormField> $fields every control that is not hidden and not a button, in the order of the form
+     * @param list<FormField|FormRow> $fields every field, in the order of the form: a control that is not hidden
+     *     and not a button, or a row of them drawn where its first control is
      * @param list<FormField> $buttons every button, in the order of the form
      * @param bool $labelsShown whether the labels are drawn where they can be seen
      */
@@ -36,7 +37,7 @@ final readonly class ArrangementTemplate
     ) {
         $this->requiredNoteShown = $labelsShown && array_any(
             $fields,
-            static fn(FormField $field): bool => $field->isRequired() && $field->label() instanceof Html,
+            static fn(FormField|FormRow $field): bool => $field->isRequired() && $field->label() instanceof Html,
         );
     }
 }

@@ -158,11 +158,13 @@ final class OverviewPresenter extends FrontPresenter
     }
 
     /**
-     * One control of every kind the design system draws, one of them refused
-     * and one with a hint, two required, one hidden - and a reason about the
-     * form as a whole, which is what shows the arrangements laying that out
-     * too. Refused from the start, the way a form comes back from the server,
-     * because a specimen nobody has sent is otherwise never refused.
+     * One control of every kind the design system draws, two of them refused
+     * and two with a hint, three required, one hidden, two in a row under the
+     * label of the first - the one with a hint, the other required and
+     * refused - and a reason about the form as a whole, which is what shows
+     * the arrangements laying that out too. Refused from the start, the way a
+     * form comes back from the server, because a specimen nobody has sent is
+     * otherwise never refused.
      *
      * Nothing handles it when it is sent: it comes back drawn as it went.
      */
@@ -174,6 +176,13 @@ final class OverviewPresenter extends FrontPresenter
         $form->addEmail('curator', "Curator's address")
             ->setOption('description', 'Where questions about the specimen are sent.')
             ->setDefaultValue('curator@example.com');
+        $form->addInteger('bodyLength', 'Length in millimetres')
+            ->setOption('description', 'Measured along the axis of the body.')
+            ->setOption('nextTo', 'bodyWidth')
+            ->setDefaultValue(38);
+        $width = $form->addInteger('bodyWidth', 'Width in millimetres')
+            ->setRequired('Say how wide the specimen is.')
+            ->setDefaultValue(0);
         $period = $form->addSelect('period', 'Period', [
             'cambrian' => 'Cambrian',
             'ordovician' => 'Ordovician',
@@ -188,6 +197,7 @@ final class OverviewPresenter extends FrontPresenter
         $form->addHidden('drawer', 'B-12');
         $form->addSubmit('save', 'Save');
 
+        $width->addError('A width has to be at least one millimetre.');
         $period->addError('No drawer in the collection holds that period.');
         $form->addError('The catalogue could not be saved just now.');
 
