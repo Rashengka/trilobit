@@ -12,7 +12,7 @@
     {include formErrors, errors: $errors}
 
     {foreach $fields as $field}
-        {continueIf $field->name() === 'notes'}
+        {continueIf $field instanceof Trilobit\Core\Presentation\Form\FormField && $field->name() === 'notes'}
 
         {include formField, field: $field}
     {/foreach}

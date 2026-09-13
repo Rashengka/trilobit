@@ -34,6 +34,15 @@ const labelled = [
     ['textbox', 'Notes'],
 ] as const;
 
+/**
+ * The row of the sample form - two controls laid out as one field under the
+ * label of the first - by what each is to a screen reader.
+ */
+const row = [
+    ['spinbutton', 'Length in millimetres'],
+    ['spinbutton', 'Width in millimetres'],
+] as const;
+
 interface Box {
     x: number;
     y: number;
@@ -74,6 +83,20 @@ for (const arrangement of arrangements) {
         await expect(form.getByRole('radio', { name: 'Complete', exact: true })).toHaveCount(1);
         await expect(form.getByRole('radio', { name: 'A fragment', exact: true })).toHaveCount(1);
         await expect(form.getByRole('button', { name: 'Save', exact: true })).toHaveCount(1);
+
+        // Every control of the row by a name of its own, the second one's
+        // from a label out of sight - and each told what is said about it
+        // and not about the other one.
+        for (const [role, name] of row) {
+            await expect(form.getByRole(role, { name, exact: true })).toHaveCount(1);
+        }
+        const width = form.getByRole('spinbutton', { name: 'Width in millimetres', exact: true });
+        await expect(width).toHaveAttribute('aria-invalid', 'true');
+        await expect(width).toHaveAttribute('required', '');
+        await expect(width).toHaveAccessibleDescription('A width has to be at least one millimetre.');
+        const length = form.getByRole('spinbutton', { name: 'Length in millimetres', exact: true });
+        await expect(length).toHaveAccessibleDescription('Measured along the axis of the body.');
+        await expect(length).not.toHaveAttribute('aria-invalid');
 
         // Refused, and saying why to somebody who cannot see the sentence
         // under it.
@@ -125,8 +148,11 @@ test('a label out of sight is still in the page, and still names its control', a
 for (const theme of themes) {
     test(`every arrangement lays its fields out the way it is named, in ${theme}`, async ({ page }) => {
         // A window wide enough, and the widest content, for a row that can be
-        // one line to be one.
-        await page.setViewportSize({ width: 1920, height: 1080 });
+        // one line to be one: seven fields side by side, one of them the row
+        // of two controls, which at 1920 pixels is one field too many for a
+        // line and wraps the last - the way inline is meant to, and not what
+        // this is measuring.
+        await page.setViewportSize({ width: 2560, height: 1080 });
         await page.goto(address);
         await drawIn(page, theme, 'light');
         await page.evaluate(() => document.documentElement.setAttribute('data-content-width', 'full'));
@@ -153,21 +179,24 @@ for (const theme of themes) {
             expect(over.x, `the label of ${name} does not start where its control does`).toBeCloseTo(underBox.x, 0);
         }
 
-        // Horizontal: the controls in one column, and the button starting
-        // under them rather than under the labels.
+        // Horizontal: the controls in one column - the row starting in it
+        // too - and the button starting under them rather than under the
+        // labels.
+        columns.push((await boxOf(horizontal.getByRole('spinbutton', { name: 'Length in millimetres', exact: true }))).x);
         for (const column of columns) {
             expect(column, 'the controls of the horizontal form are not in one column').toBeCloseTo(columns[0] ?? 0, 0);
         }
         const save = await boxOf(horizontal.getByRole('button', { name: 'Save', exact: true }));
         expect(save.x, 'the button does not start under the controls').toBeCloseTo(columns[0] ?? 0, 0);
 
-        // Inline: every field beside the one before it, their controls
-        // starting on one line, and the button under all of them.
+        // Inline: every field beside the one before it - the row one field
+        // among them - their controls starting on one line, and the button
+        // under all of them.
         for (const arrangement of inline) {
             const form = formIn(page, arrangement);
             const fields = await Promise.all((await form.locator('.l-form > .c-field').all()).map(boxOf));
             const slots = await Promise.all((await form.locator('.l-form > .c-field > .c-field__control').all()).map(boxOf));
-            expect(fields).toHaveLength(6);
+            expect(fields).toHaveLength(7);
 
             for (let index = 1; index < fields.length; index++) {
                 const before = fields[index - 1] as Box;
@@ -209,6 +238,82 @@ for (const theme of themes) {
                 (await boxOf(form.locator('.l-form'))).height,
                 0,
             );
+        }
+    });
+
+    /*
+     * The row: the length and the width, one field under the label of the
+     * first. On a wide window its controls are on one line in every
+     * arrangement, the label that is seen is where the arrangement puts a
+     * label, and the second one's is out of sight. On a narrow one they go
+     * under one another rather than past the edge of the form.
+     */
+    test(`a row is one line under the label of its first control, and wraps where there is no room, in ${theme}`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1920, height: 1080 });
+        await page.goto(address);
+        await drawIn(page, theme, 'light');
+        await page.evaluate(() => document.documentElement.setAttribute('data-content-width', 'full'));
+
+        for (const arrangement of arrangements) {
+            const form = formIn(page, arrangement);
+            const [first, second] = row.map(([role, name]) => form.getByRole(role, { name, exact: true })) as [Locator, Locator];
+            const firstBox = await boxOf(first);
+            const secondBox = await boxOf(second);
+
+            expect(secondBox.y, `the row of ${arrangement} is not one line`).toBeCloseTo(firstBox.y, 0);
+            expect(secondBox.x, `the width of ${arrangement} is not beside the length`).toBeGreaterThanOrEqual(
+                firstBox.x + firstBox.width,
+            );
+
+            // The second one's label: in the page, naming its control, and
+            // out of sight.
+            const unseen = await labelOf(form, second);
+            await expect(unseen).toHaveText('Width in millimetres');
+            expect(await unseen.evaluate((node) => getComputedStyle(node.parentElement ?? node).clipPath)).toBe('inset(50%)');
+
+            // The first one's is the row's, where the arrangement puts a label.
+            const label = await labelOf(form, first);
+            if (arrangement === 'inline, with the labels out of sight') {
+                expect(await label.evaluate((node) => getComputedStyle(node.parentElement ?? node).clipPath)).toBe('inset(50%)');
+
+                continue;
+            }
+
+            const labelBox = await boxOf(label);
+            if (arrangement === 'horizontal') {
+                expect(labelBox.x + labelBox.width, 'the label of the row runs into it').toBeLessThanOrEqual(firstBox.x);
+                expect(labelBox.y, 'the label of the row is under it').toBeLessThan(firstBox.y + firstBox.height);
+                expect(labelBox.y + labelBox.height, 'the label of the row is over it').toBeGreaterThan(firstBox.y);
+            } else {
+                expect(labelBox.y + labelBox.height, `the label of the row of ${arrangement} is not over it`).toBeLessThanOrEqual(
+                    firstBox.y,
+                );
+                expect(labelBox.x, `the label of the row of ${arrangement} does not start where it does`).toBeCloseTo(firstBox.x, 0);
+            }
+        }
+
+        // No room for two beside each other: one under the other, starting
+        // where it starts, and the row inside the form.
+        await page.setViewportSize({ width: 320, height: 800 });
+        for (const arrangement of arrangements) {
+            const form = formIn(page, arrangement);
+            const [first, second] = row.map(([role, name]) => form.getByRole(role, { name, exact: true })) as [Locator, Locator];
+            const firstBox = await boxOf(first);
+            const secondBox = await boxOf(second);
+
+            expect(secondBox.y, `the row of ${arrangement} does not go under itself`).toBeGreaterThanOrEqual(
+                firstBox.y + firstBox.height,
+            );
+            expect(secondBox.x, `the width of ${arrangement} does not start where the length does`).toBeCloseTo(firstBox.x, 0);
+
+            const formBox = await boxOf(form);
+            for (const box of [await boxOf(form.locator('.l-form__row')), firstBox, secondBox]) {
+                expect(box.x + box.width, `the row of ${arrangement} runs past the edge of the form`).toBeLessThanOrEqual(
+                    formBox.x + formBox.width,
+                );
+            }
         }
     });
 }

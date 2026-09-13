@@ -1,9 +1,10 @@
 {templateType Trilobit\Core\Presentation\Form\ArrangementTemplate}
 
 {*
- * An arrangement written to make one mistake: it draws every control and never
- * says why one of them was refused - the control still points at the reason,
- * and the reason is nowhere. Trilobit\Tests\Template\FormArrangementsDifferOnlyInTheirWrappingTest
+ * An arrangement written to make one mistake: it draws every control - those
+ * of a row each as a field of its own - and never says why any of them was
+ * refused: the controls still point at the reasons, and the reasons are
+ * nowhere. Trilobit\Tests\Template\FormArrangementsDifferOnlyInTheirWrappingTest
  * has to report it.
  *}
 
@@ -13,7 +14,8 @@
 <div class="l-form l-form--vertical">
     {include formErrors, errors: $errors}
 
-    {foreach $fields as $field}
+    {foreach $fields as $entry}
+        {foreach $entry instanceof Trilobit\Core\Presentation\Form\FormRow ? $entry->fields : [$entry] as $field}
         {embed block field, hintId: $field->hintId()}
             {block fieldLabel}{$field->label()}{/block}
 
@@ -29,6 +31,7 @@
 
             {block fieldHint}{$field->hint()}{/block}
         {/embed}
+        {/foreach}
     {/foreach}
 
     {include formButtons, buttons: $buttons}
