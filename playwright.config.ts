@@ -1,4 +1,7 @@
 import { defineConfig, devices, type Project } from '@playwright/test';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { e2ePort } from './tests/e2e/checkout.mjs';
 
 /**
  * The browser-side suite.
@@ -15,7 +18,17 @@ import { defineConfig, devices, type Project } from '@playwright/test';
  * configuration those measurements need.
  */
 
-const port = Number(process.env.TRILOBIT_E2E_PORT ?? 18100);
+/**
+ * Each checkout's own: TRILOBIT_E2E_PORT from the environment, else from the
+ * checkout's .env (where .ai/bin/worktree writes one per worktree), else 18100.
+ * Why in that order is on e2ePort() in tests/e2e/checkout.mjs.
+ */
+const root = fileURLToPath(new URL('.', import.meta.url));
+const port = e2ePort(root);
+
+/** $value as one word of the shell webServer.command runs in, whatever the checkout's directory is called. */
+const shellWord = (value: string): string => `'${value.replaceAll("'", `'\\''`)}'`;
+
 const baseURL = `http://127.0.0.1:${port}`;
 
 /**
@@ -70,6 +83,9 @@ export default defineConfig({
     forbidOnly: process.env.CI !== undefined,
     reporter: process.env.CI !== undefined ? 'github' : 'list',
 
+    // Asks the server whose it is before any spec runs; see reuseExistingServer.
+    globalSetup: './tests/e2e/global-setup.ts',
+
     use: {
         baseURL,
         trace: 'retain-on-failure',
@@ -90,12 +106,26 @@ export default defineConfig({
         // the migration is a no-op and the tenant only gains the hosts it is
         // missing, which is what lets a developer keep one database between
         // runs.
+        //
+        // tests/e2e/checkout-identity.php is loaded before every request and
+        // answers, on one path of its own, which checkout the server is. By its
+        // absolute path: PHP's server resolves a relative one against the
+        // document root on every request, not against the directory it was
+        // started in, and a prepended file it cannot open is a fatal error on
+        // every page - served, of all things, with status 200.
         command: [
             'php bin/trilobit migrations:migrate --no-interaction',
             `php bin/trilobit app:tenant 'Trilobit E2E' 127.0.0.1`,
-            `php -S 127.0.0.1:${port} -t www`,
+            `php -d ${shellWord(`auto_prepend_file=${join(root, 'tests', 'e2e', 'checkout-identity.php')}`)} -S 127.0.0.1:${port} -t www`,
         ].join(' && '),
         url: baseURL,
+        // On a developer's machine a server that already answers is taken over
+        // - one left by an interrupted run, or started by hand to watch its log
+        // - instead of failing on the port. Playwright takes it without asking
+        // whose it is, so tests/e2e/global-setup.ts asks, and stops the run
+        // unless it is this checkout's: a server another worktree left on the
+        // port would otherwise have this checkout's specs run against its code
+        // and its database, green. A build server always starts its own.
         reuseExistingServer: process.env.CI === undefined,
         // Stated rather than taken from .env, so that the style guide is on
         // whatever mode the machine running this happens to be in.

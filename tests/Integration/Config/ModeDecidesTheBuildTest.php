@@ -9,6 +9,7 @@ use Nette\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Config\DebugGate;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Config\ModeNotNamed;
@@ -34,15 +35,57 @@ final class ModeDecidesTheBuildTest extends TestCase
 {
     private const string PATH = '/' . StyleguideRoutes::PATH;
 
+    /** Made up for this test and long enough to count; no deployment has it. */
+    private const string INVENTED = 'made-up-' . 'made-up-' . 'made-up-' . 'made-up-' . 'made-up-';
+
     public function testProductionIsBuiltWithoutDebugMode(): void
     {
         self::assertFalse($this->container('prod')->parameters['debugMode']);
+        self::assertFalse($this->container('prod', phrase: self::INVENTED, cookie: self::INVENTED)->parameters['debugMode']);
     }
 
-    public function testDevelopmentAndStagingAreBuiltInDebugMode(): void
+    public function testDevelopmentIsBuiltInDebugMode(): void
     {
         self::assertTrue($this->container('dev')->parameters['debugMode']);
-        self::assertTrue($this->container('staging')->parameters['debugMode']);
+    }
+
+    /** Staging's data is real, so without the secret it is built as production is. */
+    public function testStagingIsBuiltWithoutDebugModeUnlessTheCookieOpensTheGate(): void
+    {
+        self::assertFalse($this->container('staging')->parameters['debugMode']);
+        self::assertFalse($this->container('staging', phrase: self::INVENTED)->parameters['debugMode']);
+        self::assertFalse($this->container('staging', phrase: self::INVENTED, cookie: 'made-up-and-wrong')->parameters['debugMode']);
+        self::assertTrue($this->container('staging', phrase: self::INVENTED, cookie: self::INVENTED)->parameters['debugMode']);
+    }
+
+    /**
+     * Debug mode is a static parameter, and the compiled container is cached
+     * by its static parameters, so on staging - where it follows the request -
+     * the two answers are two compiled containers side by side rather than
+     * one overwriting the other on every request that differs from the last.
+     */
+    public function testOnStagingTheTwoAnswersAreTwoCompiledContainers(): void
+    {
+        $shut = $this->container('staging', phrase: self::INVENTED);
+        $open = $this->container('staging', phrase: self::INVENTED, cookie: self::INVENTED);
+
+        self::assertNotSame($shut::class, $open::class);
+    }
+
+    /**
+     * A console has no cookies, so a command run on staging is built as it
+     * would be in production - which is what a deployment script rehearsed
+     * there is going to meet.
+     */
+    public function testAConsoleOnStagingIsNotInDebugMode(): void
+    {
+        $container = Boot::container(
+            ModuleList::of([], Bootstrap::rootDirectory()),
+            environment: Environment::fromValues(['TRILOBIT_ENV' => 'staging', DebugGate::VARIABLE => self::INVENTED]),
+        );
+
+        self::assertTrue($container->parameters['consoleMode']);
+        self::assertFalse($container->parameters['debugMode']);
     }
 
     /** Neither its front page nor any of its pages is routed, so each of them is a 404. */
@@ -104,12 +147,21 @@ final class ModeDecidesTheBuildTest extends TestCase
         );
     }
 
-    private function container(string $mode, ?bool $styleguide = null): Container
+    /**
+     * @param string|null $phrase what the deployment names as the debug gate's
+     *     secret, or null for a deployment that names none
+     * @param string|null $cookie what the request carries in the gate's
+     *     cookie, or null for a request without it
+     */
+    private function container(string $mode, ?bool $styleguide = null, ?string $phrase = null, ?string $cookie = null): Container
     {
         return Boot::container(
             ModuleList::of(['cms' => true, 'crm' => true, 'shop' => true], Bootstrap::rootDirectory()),
             styleguide: $styleguide,
-            environment: Environment::fromValues(['TRILOBIT_ENV' => $mode]),
+            environment: Environment::fromValues(
+                ['TRILOBIT_ENV' => $mode, ...($phrase === null ? [] : [DebugGate::VARIABLE => $phrase])],
+            ),
+            cookies: $cookie === null ? [] : [DebugGate::COOKIE => $cookie],
         );
     }
 }
