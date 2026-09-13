@@ -1329,6 +1329,53 @@ job, then fails the 8.4 job the first time somebody uses it.
 `tests/Architecture/PhpVersionMatchesComposerTest` keeps the pin and the floor
 from drifting apart.
 
+### The gate on the lowest supported PHP
+
+```sh
+docker compose up -d        # once: the database the suites run against
+bin/check-floor
+```
+
+The pin catches what analysis can see, and that is not everything a newer PHP
+has. A constant that only exists on the newer runtime passes `stan` there - it
+is defined, after all - and fails on the floor the moment a test reaches it.
+`bin/check-floor` runs the whole gate on the floor itself, before a push rather
+than in CI's floor job afterwards.
+
+It reads the floor out of `composer.json`'s `require.php`, builds the image
+`trilobit-php-floor:<floor>` from `docker/php-floor`, and runs `composer check`
+in a container that is removed afterwards. The container runs over this
+checkout, uncommitted changes included, and against the database of this
+checkout's own compose stack; when that database is not up, the script says so
+and what to type instead of starting anything. `bin/check-floor --print-floor`
+prints the version it would use.
+
+Nothing it does is written back to the checkout. The checkout is mounted
+read-only and the gate runs on a copy of it - every file git would commit, plus
+`vendor/` as installed. That is not caution for its own sake: the gate writes
+(a suite rebuilds `var/build`; the analysers and PHPUnit keep caches), and
+through a shared mount those writes would land, from a different PHP, in files
+the development container is using.
+
+`vendor/` is used as installed because `composer.lock` is the same file CI
+installs from on the floor, and nothing in it asks for more than the floor. If
+it ever does, Composer's platform check stops the first tool with the reason,
+rather than letting the run pass on something else.
+
+Two things to know:
+
+- A function a polyfill supplies runs on the floor too, so the floor passes it.
+  That is the right answer and not a gap: `symfony/polyfill-php85`, which the
+  console component requires, defines `array_first()` on the floor, in CI and in
+  production alike.
+- Do not run it while `composer check` is running in the same checkout. Both
+  runs make their test schemas in the same database under the same names, and
+  would drop each other's.
+
+It needs Docker with the compose plugin, git, and a PHP to start the script
+with; the floor itself comes from the image. The exit code is the gate's own,
+or 125 with a line saying why when the gate could not be run at all.
+
 ### The test suites
 
 `phpunit.xml` declares one suite per level, including the ones that are still
@@ -1343,11 +1390,14 @@ notices is missing.
 | `integration` | a real container and a real database | a browser |
 | `combination` | booting each combination of modules and running its migrations | anything past booting and migrating |
 | `install` | a fresh clone, installed from scratch | writing into your working copy |
-| `tooling` | the leak guard | - |
+| `tooling` | the leak guard, and how `bin/check-floor` reads the floor | Docker |
 
 `tests/Tooling/CheckLeaksTest.php` is a standalone script rather than a test
 case, because the guard has to work before Composer does. `LeakGuardTest` runs
-it as a child process so that `composer check` covers it too.
+it as a child process so that `composer check` covers it too. `CheckFloorTest`
+runs `bin/check-floor` up to the point where it would need Docker - which
+floor it reads out of each shape of `require.php`, and that it refuses the
+shapes it cannot read rather than guessing.
 
 Run one suite with `vendor/bin/phpunit --testsuite unit`.
 

@@ -1,0 +1,58 @@
+# The gate on the lowest PHP composer.json allows. Run it through
+# bin/check-floor: the script works out the version and the paths this file
+# needs, and on its own the file is refused, because every one of them is
+# required.
+#
+# The script names this file together with compose.yaml and nothing else, so the
+# service below belongs to the same compose project as the database compose.yaml
+# starts for this checkout - a worktree's stack or the main one, whichever the
+# script was run from. It joins that project's network and reads the connection
+# the way the database itself was set up: from the same .env, with the same
+# defaults. The stack is never started from here. The service sits in a profile
+# of its own, so `docker compose up` does not know about it, and the script runs
+# it with --no-deps.
+
+services:
+    floor:
+        profiles: [floor]
+        build:
+            context: docker/php-floor
+            args:
+                PHP_VERSION: ${TRILOBIT_FLOOR_PHP:?run bin/check-floor rather than this file}
+        image: trilobit-php-floor:${TRILOBIT_FLOOR_PHP:?run bin/check-floor rather than this file}
+
+        environment:
+            # Inside the network the database answers under its service name,
+            # on the standard port, whatever the host publishes it on.
+            TRILOBIT_DB_HOST: database
+            TRILOBIT_DB_PORT: '3306'
+            # The same expressions compose.yaml gives the database container, so
+            # this is the account that database was created with.
+            # tests/Tooling/CheckFloorTest keeps the two files in step.
+            TRILOBIT_DB_NAME: ${TRILOBIT_DB_NAME:-trilobit}
+            TRILOBIT_DB_USER: ${TRILOBIT_DB_USER:-trilobit}
+            TRILOBIT_DB_PASSWORD: ${TRILOBIT_DB_PASSWORD:-trilobit}
+            # What the copy's .git file points at; see gate.sh.
+            TRILOBIT_FLOOR_GIT_DIR: ${TRILOBIT_FLOOR_GIT_DIR:?run bin/check-floor rather than this file}
+
+        # All three read-only. Nothing the gate does may reach a file on the
+        # host; gate.sh says why.
+        volumes:
+            # The checkout. gate.sh copies what the gate needs out of it.
+            - type: bind
+              source: .
+              target: /src
+              read_only: true
+            # The repository, at the path it has on the host, because that is
+            # the path a worktree's .git file names.
+            - type: bind
+              source: ${TRILOBIT_FLOOR_GIT_COMMON_DIR:?run bin/check-floor rather than this file}
+              target: ${TRILOBIT_FLOOR_GIT_COMMON_DIR:?run bin/check-floor rather than this file}
+              read_only: true
+            # The leak guard's private pattern list, which is kept outside the
+            # repository on purpose. Without it the guard refuses to report
+            # success and the gate stops at its first step.
+            - type: bind
+              source: ${TRILOBIT_FLOOR_LEAK_CONFIG:?run bin/check-floor rather than this file}
+              target: /root/.config/trilobit
+              read_only: true
