@@ -21,6 +21,7 @@ use Trilobit\Core\Domain\Navigation\Menu;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Navigation\Menus;
+use Trilobit\Core\Presentation\Listing\Listing;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
 use Trilobit\Tests\Migrations;
@@ -112,6 +113,19 @@ final class SeededContentTest extends TestCase
 
         self::assertCount(1, $drafts);
         self::assertSame('Summer sale', $drafts[0]->title());
+    }
+
+    /**
+     * The list of pages in the administration is filtered and paged
+     * (.ai/plans/15), and a list that fits on one page shows neither the way
+     * through it nor what a filter does to the page somebody is on.
+     */
+    public function testThePagesOfABusinessRunToMoreThanOnePageOfTheList(): void
+    {
+        $container = $this->seeded();
+        $this->enter($container, 'Ammonite Bikes');
+
+        self::assertGreaterThan(Listing::PER_PAGE, count($container->getByType(Pages::class)->all()));
     }
 
     /**

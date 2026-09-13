@@ -13,6 +13,7 @@ use Trilobit\Cms\Domain\Page\PageRepository;
 use Trilobit\Cms\Infrastructure\Doctrine\DoctrineMenuRepository;
 use Trilobit\Cms\Infrastructure\Doctrine\DoctrinePageRepository;
 use Trilobit\Cms\Navigation\ArrangedEntries;
+use Trilobit\Cms\Presentation\Admin\PageListingFactory;
 use Trilobit\Cms\Presentation\Front\CmsSignpost;
 use Trilobit\Cms\Routing\CmsRoutes;
 use Trilobit\Cms\Seed\CmsSeed;
@@ -100,5 +101,11 @@ final class CmsExtension extends CompilerExtension
         // where it answers in Core's register.
         $builder->addDefinition($this->prefix('pages'))
             ->setFactory(Pages::class);
+
+        // The list of pages in the administration, made by a factory the
+        // container writes, so the presenter asks for the list rather than
+        // for everything the list is made of.
+        $builder->addFactoryDefinition($this->prefix('pageListing'))
+            ->setImplement(PageListingFactory::class);
     }
 }
