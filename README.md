@@ -1461,8 +1461,8 @@ A few settings are worth knowing about:
   together with the visitor's address, which behind a proxy is the proxy's for
   everybody, and it lets any request from the local machine in with no secret
   at all when no forwarding header is there. Both names carry the word
-  `secret`, so that whatever hides secrets from the error page by the words in
-  their names hides these two as well.
+  `secret`, so Tracy hides the variable, the cookie and the `Cookie` header
+  carrying it by the rule described in the last item of this list.
 
   Because debug mode is compiled into the container, a staging deployment
   keeps two compiled containers side by side, and the first request of each
