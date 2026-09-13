@@ -33,8 +33,27 @@ const modes = ['light', 'dark'] as const;
  * a scrollbar that takes room (see withScrollbar) could not have one. Left
  * out for this file only: the other suites are measured the way they always
  * were.
+ *
+ * Firefox hides them another way, and one no page can undo: headless, it is
+ * given a stylesheet of the browser's own rank that sets scrollbar-width: none
+ * on everything, and nothing turns it off but a window. So this file runs
+ * Firefox with one - in the display bin/e2e-docker.mjs starts in the
+ * container - and tells it to draw the classic scrollbar of Linux, fifteen
+ * pixels wide as Chrome's is, rather than one laid over the page. That holds
+ * for every case in the file, so in Firefox the scrollbar "as the browser
+ * draws it" is that one too, as it is in Chrome on Linux. Chrome stays as the
+ * run asks for it.
  */
-test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
+test.use({
+    launchOptions: {
+        ignoreDefaultArgs: ['--hide-scrollbars'],
+        firefoxUserPrefs: {
+            'widget.gtk.overlay-scrollbars.enabled': false,
+            'widget.non-native-theme.scrollbar.size.override': 15,
+        },
+    },
+    headless: [async ({ headless, browserName }, use) => use(browserName === 'firefox' ? false : headless), { scope: 'worker' }],
+});
 
 async function drawIn(page: Page, theme: string, mode: string): Promise<void> {
     await page.evaluate(
@@ -116,7 +135,9 @@ async function withoutInvokerCommands(page: Page): Promise<void> {
  * failed CI, so the second kind is forced here rather than left to whichever
  * machine runs the suite: a style for ::-webkit-scrollbar makes Chrome draw a
  * scrollbar that takes room on any system, once it has not been told to hide
- * every scrollbar (the test.use at the top of this file).
+ * every scrollbar (the test.use at the top of this file). Firefox takes no
+ * notice of that style; it draws one that takes room because the same test.use
+ * tells it to.
  */
 const scrollbars = ['as the browser draws it', 'taking room'] as const;
 

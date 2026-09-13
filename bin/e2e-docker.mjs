@@ -124,7 +124,11 @@ const inside = [
     'stamp=node_modules/.trilobit-e2e-lock',
     'wanted=$(sha256sum package-lock.json | cut -d" " -f1)',
     'if [ "$(cat "$stamp" 2>/dev/null)" != "$wanted" ]; then npm ci --no-audit --no-fund && echo "$wanted" > "$stamp"; fi',
-    'exec npx playwright test "$@"',
+    // Under a display of its own, which the image has and a headless browser
+    // never asks for: Firefox run headless by Playwright draws no scrollbar at
+    // all, so the one file that needs a scrollbar taking room
+    // (tests/e2e/layers.spec.ts) runs it with a window.
+    'exec xvfb-run --auto-servernum npx playwright test "$@"',
 ].join('\n');
 
 const run = [

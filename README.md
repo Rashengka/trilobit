@@ -391,9 +391,12 @@ scrollbar is off by fifteen pixels here and right on the Mac; the fonts are
 Linux's; and Chromium is Playwright's headless build, the one CI runs. Firefox
 draws a design differently again, and supports some of what the components use
 later than Chromium or not at all - which is where a fallback turns out to work
-or not. Outside the image, `PLAYWRIGHT_BROWSERS=firefox` (or `all`) selects the
-same project, but needs Playwright's Firefox installed, and CI runs Chromium
-only.
+or not. Firefox run headless by Playwright draws no scrollbar at all, so the one
+file that needs a scrollbar taking room (`tests/e2e/layers.spec.ts`) runs it
+with a window, in a virtual display the container starts for it. Outside the
+image, `PLAYWRIGHT_BROWSERS=firefox` (or `all`) selects the same project, but
+needs Playwright's Firefox installed - and, for that file, a display - and CI
+runs Chromium only.
 
 It leaves two things behind on purpose: the image `trilobit-e2e:<version>`, and
 a volume `<compose project>-e2e-node-modules` holding `node_modules` installed
