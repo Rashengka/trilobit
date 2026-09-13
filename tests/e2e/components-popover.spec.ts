@@ -92,11 +92,28 @@ async function placement(anchor: Locator, floating: Locator) {
 async function scrollTo(locator: Locator, where: 'center' | 'end'): Promise<void> {
     await locator.evaluate((element, block) => element.scrollIntoView({ block }), where);
 
-    // A theme makes its held bands smaller once the page has scrolled, over a
-    // moment, and the page moves under them while it does. A popover opened in
-    // that moment is placed against where its element was, and the browser keeps
-    // the side it chose for as long as it still fits - so the element is let
-    // come to rest before anything is opened.
+    // A popover opened while the page is still moving is placed against where
+    // its element was, and the browser keeps the side it chose for as long as
+    // it still fits - so the element is let come to rest before anything is
+    // opened.
+    await untilAtRest(locator);
+}
+
+/**
+ * Waits until $locator has been drawn at the same place for a few frames.
+ *
+ * A theme makes its held bands smaller once the page has scrolled, over a
+ * moment, and the page moves under them while it does: the browser keeps the
+ * reader's place by scrolling a little further in every frame of it. While the
+ * page scrolls, the box Chrome reports for an anchored popover is a frame
+ * behind - it is laid out against the scroll position the frame began with -
+ * and only the drawing is moved with the scroll as it happens. So a popover
+ * measured in that moment is measured where its element was a frame earlier,
+ * as far off it as the page scrolled in that frame, and over it; nobody sees it
+ * there, but the measurement does. Measured at rest, the box is where it is
+ * drawn.
+ */
+async function untilAtRest(locator: Locator): Promise<void> {
     await locator.evaluate(
         (element) =>
             new Promise<void>((resolve) => {
@@ -496,8 +513,11 @@ test.describe('c-tooltip', () => {
         expect(over.centreDelta).toBeLessThanOrEqual(1);
         expect(await drawnOnTop(above.getByRole('tooltip'))).toBe(true);
 
+        // The link is further down the page: the focus scrolls to it, and the
+        // tooltip is shown while the page is still moving (untilAtRest()).
         const below = page.getByTestId('sample-tooltip-below');
         await below.getByRole('link').focus();
+        await untilAtRest(below.getByRole('tooltip'));
         const under = await placement(below.getByRole('link'), below.getByRole('tooltip'));
         expect(under.gapBelow).toBeGreaterThanOrEqual(0);
         expect(under.gapBelow).toBeLessThan(24);
