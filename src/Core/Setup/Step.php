@@ -21,12 +21,12 @@ enum Step
     /** The database answers and not every migration this build has has run in it. */
     case Install;
 
-    /** The tables are there and nobody administers the installation yet (decision O4). */
+    /** The tables are there and hold no account and no business (decision O4). */
     case FirstAdministrator;
 
     /**
-     * Somebody administers the installation, and the wizard is over - not
-     * refused, but not there (decision O3).
+     * The installation holds an account or a business, and the wizard is over
+     * - not refused, but not there (decision O3).
      */
     case Done;
 }

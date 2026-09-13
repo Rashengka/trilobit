@@ -8,6 +8,7 @@ use Doctrine\DBAL\Exception as DatabaseFailure;
 use Doctrine\DBAL\Exception\TableNotFoundException;
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\ORM\EntityManagerInterface;
+use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\User;
 
 /**
@@ -16,20 +17,23 @@ use Trilobit\Core\Domain\User\User;
  * memory of it).
  *
  * The questions go in the order in which each one can be asked at all: whether
- * anything answers, then whether somebody already administers the
- * installation - which ends the wizard whatever else is true, a pending
- * migration included - and only then whether the migrations have all run.
+ * anything answers, then whether the installation already holds anything -
+ * which ends the wizard whatever else is true, a pending migration included -
+ * and only then whether the migrations have all run.
  *
- * **"Somebody administers the installation" is the flag on an account and
- * nothing else** (decision O3). An installation holding only the administrator
- * of a business is one nobody looks after as a whole, and the wizard stays how
- * it gets somebody who does. A database with no accounts table yet is one
- * nobody administers either, which is the fresh installation's case.
+ * **The wizard is for an empty installation and for nothing else** (decision
+ * O3 in .ai/plans/23-instalace-na-zelene-louce.md, tightened on 2026-09-13).
+ * One account of any kind, or one business, and it is over: an installation
+ * that already has something was set up some other way - `app:tenant`,
+ * `app:account` - and is finished that way, never by a public page able to
+ * make its administrator. A database with no tables yet holds nothing, which
+ * is the fresh installation's case.
  *
- * **Nothing here decides between two visitors.** This is a reading, made
+ * **Nothing here decides between two writers.** This is a reading, made
  * before anybody writes, and two readings made at the same moment agree. What
- * decides is Trilobit\Core\Domain\Setup\Completion, inside the installer's
- * transaction; this only says which page to draw.
+ * decides is Trilobit\Core\Setup\Installer, which asks the same question again
+ * inside its transaction, after taking the claim; this only says which page
+ * to draw.
  */
 final class Progress
 {
@@ -66,7 +70,7 @@ final class Progress
             return Step::DatabaseUnreachable;
         }
 
-        if ($this->theInstallationHasAnAdministrator()) {
+        if ($this->holdsAny(User::class) || $this->holdsAny(Tenant::class)) {
             return Step::Done;
         }
 
@@ -84,11 +88,18 @@ final class Progress
         return $this->attempt;
     }
 
-    private function theInstallationHasAnAdministrator(): bool
+    /**
+     * Whether there is a row of $entity. Both entities asked about are shared
+     * rather than a business's, so the question needs no business entered; a
+     * table that is not there yet holds nothing.
+     *
+     * @param class-string $entity
+     */
+    private function holdsAny(string $entity): bool
     {
         try {
             $count = $this->entityManager
-                ->createQuery(sprintf('SELECT COUNT(u.id) FROM %s u WHERE u.landlord = true', User::class))
+                ->createQuery(sprintf('SELECT COUNT(e.id) FROM %s e', $entity))
                 ->getSingleScalarResult();
         } catch (TableNotFoundException) {
             return false;

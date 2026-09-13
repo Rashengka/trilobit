@@ -44,9 +44,9 @@ final readonly class TenantFromHost
      * the wizard is how it gets its first - it could not answer at all
      * otherwise. It enters no business either, because there is none it could
      * be; it reads nothing that belongs to one, and what it writes it writes
-     * outright. Once the installation has an administrator the wizard answers
-     * as an address nobody claims, which is what an unrouted path here would
-     * have got anyway. See Trilobit\Core\Routing\SetupRoutes.
+     * outright. Once the installation holds an account or a business the
+     * wizard answers as an address nobody claims, which is what an unrouted
+     * path here would have got anyway. See Trilobit\Core\Routing\SetupRoutes.
      */
     public function __invoke(): void
     {

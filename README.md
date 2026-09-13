@@ -1575,20 +1575,26 @@ database every time, so it picks up wherever the installation stands - after
    an identity is only ever made by `Trilobit\Core\Security\Authenticator`,
    and the first sign-in is when the chosen password is shown to work.
 
-**It exists only until the installation has an administrator.** That is read
-from the accounts on every request rather than from a switch somebody could
-forget to turn off: once any account administers the installation - made here,
-or by `app:account` without `--tenant` - every request to `/_setup`, a posted
-form included, is answered 404, exactly as an address nothing claims is. An
-installation whose only accounts administer businesses therefore still has the
-wizard open; the commands above make the installation's administrator first.
+**It is there only for an empty installation.** That is read from the
+database on every request rather than from a switch somebody could forget to
+turn off: once the installation holds one account of any kind or one business
+- made here, or by `app:account` or `app:tenant` - every request to `/_setup`,
+a posted form included, is answered 404, exactly as an address nothing claims
+is. So an installation that already has something is finished from the
+command line: `bin/trilobit app:account you@example.com` makes its
+administrator, as in the first block. And what the wizard picks up is an
+empty installation only: a database that is migrated and holds nothing goes
+on from the account.
 
 **Of two visitors finishing at the same moment, one becomes the administrator
-and the other is answered 404 with nothing of theirs written.** The database
-decides that, not a question asked first: the wizard writes one row under the
-one key `core_setup_completion` has, inside the transaction that makes the
-account and the business, and the second insert waits for the first and is
-refused. `/_setup` is also the one path answered at a host no business claims,
+and the other is answered 404 with nothing of theirs written, and a visitor
+finishing while a command makes the first account is refused the same way.**
+The database decides that, not a question asked first: the wizard writes one
+row under the one key `core_setup_completion` has, inside the transaction that
+makes the account and the business, so a second visitor waits for the first
+and is refused; and with that row held it reads the accounts and the
+businesses again with a locking read, which waits for a row a command has
+written and not committed yet, and sees it. `/_setup` is also the one path answered at a host no business claims,
 because on a fresh installation there is no business yet; see "Tenants and
 domains" above. Its migrations run in every mode - they make tables, and
 `Mode::mayAlterData()` is about seeding and deleting, which it never does.

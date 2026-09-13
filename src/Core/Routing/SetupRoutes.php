@@ -11,9 +11,9 @@ use Nette\Application\Routers\RouteList;
  *
  * The route is registered in every build and matches whatever the data says;
  * whether there is anything behind it is the presenter's question, asked of
- * the database on every request, and the answer once the installation has an
- * administrator is 404, the same answer as an address nobody claims (decision
- * O3 in .ai/plans/23-instalace-na-zelene-louce.md). The router cannot ask it:
+ * the database on every request, and the answer once the installation holds
+ * an account or a business is 404, the same answer as an address nobody
+ * claims (decision O3 in .ai/plans/23-instalace-na-zelene-louce.md). The router cannot ask it:
  * a route that matched only while the database agreed would put a query in
  * front of routing every request, and a database that cannot be reached is
  * precisely when the wizard has something to say.

@@ -60,8 +60,8 @@ final readonly class ReservedSegments
         // is the price of an address a person may type, and it is paid on
         // purpose - see Trilobit\Core\Routing\SessionRoutes.
         SessionRoutes::SIGN_OUT_PATH,
-        // Reserved for good, although the wizard behind it lives only until
-        // the installation has an administrator - see
+        // Reserved for good, although the wizard behind it lives only while
+        // the installation holds nothing - see
         // Trilobit\Core\Routing\SetupRoutes.
         SetupRoutes::PATH,
         StyleguideRoutes::PATH,

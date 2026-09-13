@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Setup;
 
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\Migrations\DependencyFactory;
@@ -34,6 +35,14 @@ use Trilobit\Core\Security\PermissionStructure;
  */
 final readonly class Installer
 {
+    /**
+     * What an installation has to hold none of for the wizard to finish it:
+     * an account, and a business (decision O3, tightened on 2026-09-13).
+     *
+     * @var list<class-string>
+     */
+    private const array EMPTY_OF = [User::class, Tenant::class];
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private DependencyFactory $migrations,
@@ -73,22 +82,37 @@ final readonly class Installer
     }
 
     /**
-     * Makes the installation's first administrator and its first business, or
-     * refuses because somebody else already did - and says which: true when
-     * this call made them, false when it made nothing at all.
+     * Makes the installation's first administrator and its first business on
+     * an installation that holds nothing yet, or refuses - and says which:
+     * true when this call made them, false when it made nothing at all.
      *
-     * **The claim comes first, and it is what decides.** The row of
-     * Trilobit\Core\Domain\Setup\Completion is inserted before anything else,
-     * inside the same transaction, under a key there is only one of. A second
-     * call at the same moment waits on that row and is refused when the first
-     * commits, with nothing of its own written yet; a second call afterwards
-     * is refused at once. Asking "is there an administrator yet?" first would
-     * let both of two simultaneous visitors through, which is the one outcome
-     * a public page on a fresh installation must not have. The insert goes
-     * past the entity manager for the reason
-     * Trilobit\Core\Security\Accounts::applicationRoleMadeIfMissing() gives: a
-     * refused flush closes the entity manager for good, a refused statement on
-     * the connection does not.
+     * **Two things are settled inside the transaction, in this order, and
+     * neither by asking first.** Asking "is the installation still empty?"
+     * before writing would let through both of two visitors finishing at the
+     * same moment, and a visitor finishing while `app:account` or `app:tenant`
+     * makes a first row; the wizard is a public page, and either would hand
+     * whoever was quicker the installation.
+     *
+     * - **The claim.** The row of Trilobit\Core\Domain\Setup\Completion goes
+     *   in first, under a key there is only one of. A second wizard waits on
+     *   it and is refused when the first commits. The insert goes past the
+     *   entity manager for the reason
+     *   Trilobit\Core\Security\Accounts::applicationRoleMadeIfMissing() gives:
+     *   a refused flush closes the entity manager for good, a refused
+     *   statement on the connection does not.
+     * - **The emptiness, with the claim held.** Accounts and businesses are
+     *   read with a locking read (FOR UPDATE), which reads what is committed
+     *   rather than a snapshot and waits for a row another transaction has
+     *   written and not committed yet - so a command making an account at this
+     *   moment is waited for and then seen. On an empty table the same read
+     *   locks the gap a row would go into, so a command starting a moment
+     *   later waits for this transaction instead. The isolation level is said
+     *   outright for this transaction, because it is what makes that gap lock
+     *   exist, and a server configured to READ COMMITTED would otherwise take
+     *   none without saying so.
+     *
+     * Refused either way, everything is rolled back, the claim included, so
+     * that the row never says the wizard finished an installation it did not.
      *
      * **Being both is said by $alsoTheBusiness and by nothing else.** With it
      * the administrator owns the business as well, through
@@ -107,8 +131,9 @@ final readonly class Installer
      * Accounts::applicationRoleMadeIfMissing() says it is not meant for: if
      * `app:account` made the same role in the very same moment, the read back
      * would not see it and this call would fail - loudly, with everything it
-     * wrote rolled back. Only one wizard can be past the claim at a time, so
-     * that is the whole of the exposure, and failing is the right answer to it.
+     * wrote rolled back. On an installation with no account the only command
+     * it could be racing is one making the first account, and the locking
+     * read above has already waited for that one.
      */
     public function complete(
         string $email,
@@ -125,6 +150,8 @@ final readonly class Installer
         $connection = $this->entityManager->getConnection();
         $claim = $this->entityManager->getClassMetadata(Completion::class);
 
+        // For the next transaction only, which is the one opened below.
+        $connection->executeStatement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         $connection->beginTransaction();
 
         try {
@@ -135,6 +162,12 @@ final readonly class Installer
                     [$claim->getColumnName('completedAt') => Types::DATETIME_IMMUTABLE],
                 );
             } catch (UniqueConstraintViolationException) {
+                $connection->rollBack();
+
+                return false;
+            }
+
+            if ($this->holdsAnything($connection)) {
                 $connection->rollBack();
 
                 return false;
@@ -165,5 +198,28 @@ final readonly class Installer
         }
 
         return true;
+    }
+
+    /**
+     * Whether the installation holds an account or a business, read with a
+     * lock - see complete(). The tables and columns are the mapping's, read
+     * off it rather than written out a second time.
+     */
+    private function holdsAnything(Connection $connection): bool
+    {
+        foreach (self::EMPTY_OF as $entity) {
+            $mapping = $this->entityManager->getClassMetadata($entity);
+            $found = $connection->fetchOne(sprintf(
+                'SELECT %s FROM %s LIMIT 1 FOR UPDATE',
+                $mapping->getSingleIdentifierColumnName(),
+                $mapping->getTableName(),
+            ));
+
+            if ($found !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -41,11 +41,11 @@ use Trilobit\Tests\Tenants;
  *
  * What it does is read off the database and nothing else, so every case here
  * starts from a database in a particular state and asks the page what it
- * offers: nothing migrated, migrated with nobody administering the
- * installation, and migrated with somebody who does. The last is the one that
- * matters most - decision O3 closes the wizard for good the moment the
- * installation has an administrator, and a wizard that stayed open would be a
- * public page able to make one.
+ * offers: nothing migrated, migrated and empty, and migrated with something in
+ * it - an administrator, any account, a business. The last is the one that
+ * matters most - decision O3, tightened on 2026-09-13, closes the wizard for
+ * good the moment the installation holds anything, and a wizard that stayed
+ * open would be a public page able to make its administrator.
  *
  * Requests are run through the presenter the way AdministrationTest runs them,
  * with the Sec-Fetch-Site header a browser posting the form sends: nette/forms
@@ -129,8 +129,9 @@ final class SetupWizardTest extends TestCase
 
     /**
      * Decision O4: a database that is already migrated - by `bin/trilobit
-     * migrations:migrate`, or by an earlier visit that stopped half-way - goes
-     * on from the account rather than being refused or migrated again.
+     * migrations:migrate`, or by an earlier visit that stopped half-way - and
+     * holds nothing goes on from the account rather than being refused or
+     * migrated again. One that holds something is not the wizard's (below).
      */
     public function testAMigratedDatabaseWithNobodyAdministeringItGoesOnFromTheAccount(): void
     {
@@ -255,12 +256,14 @@ final class SetupWizardTest extends TestCase
     }
 
     /**
-     * What closes it is an administrator of the installation, and only that
-     * (decision O3 names the kind of account). An installation holding only
-     * the administrator of a business is still one nobody looks after as a
-     * whole, and the wizard is still how it gets somebody who does.
+     * Decision O3 as tightened on 2026-09-13: the wizard is for an empty
+     * installation and nothing else. An account of any kind closes it - here
+     * the administrator of a business, made by `app:account --tenant` with no
+     * administrator of the installation beside it. Such an installation is
+     * finished from the command line; a public page able to make its
+     * administrator is exactly what it must not have.
      */
-    public function testAnAdministratorOfABusinessAloneDoesNotCloseIt(): void
+    public function testAnAccountOfAnyKindClosesIt(): void
     {
         $container = $this->migratedDatabase();
         $container->getByType(Accounts::class)->save(new User(
@@ -270,7 +273,47 @@ final class SetupWizardTest extends TestCase
             new \DateTimeImmutable('2026-09-13T08:00:00+00:00'),
         ));
 
-        self::assertNotNull($this->pageOf($this->get())->querySelector('[data-testid="setup-administrator"]'));
+        $this->assertNotFound(fn(): Response => $this->get());
+        $this->assertNotFound(fn(): Response => $this->finish($this->password(), 'both'));
+        self::assertNull($container->getByType(Accounts::class)->withEmail(self::EMAIL));
+    }
+
+    /** And so does a business with nobody in it at all - `app:tenant` run on its own. */
+    public function testABusinessWithNobodyInItClosesItToo(): void
+    {
+        $container = $this->migratedDatabase();
+        Tenants::create($container, 'Brachiopod Books', 'books.localhost');
+
+        $this->assertNotFound(fn(): Response => $this->get());
+        $this->assertNotFound(fn(): Response => $this->finish($this->password(), 'both'));
+        self::assertNull($container->getByType(Accounts::class)->withEmail(self::EMAIL));
+    }
+
+    /**
+     * The installer asks the same of the data by itself, past the wizard: a
+     * completion on an installation that is not empty is refused and leaves
+     * nothing behind, not even its claim.
+     */
+    public function testTheInstallerRefusesAnInstallationThatIsNotEmpty(): void
+    {
+        $container = $this->migratedDatabase();
+        Tenants::create($container, 'Brachiopod Books', 'books.localhost');
+
+        self::assertFalse($container->getByType(Installer::class)->complete(
+            self::EMAIL,
+            'Ada Ammonite',
+            $this->password(),
+            'Ammonite Bikes',
+            self::HOST,
+            true,
+        ));
+
+        $container->getByType(EntityManagerInterface::class)->clear();
+        self::assertNull($container->getByType(Accounts::class)->withEmail(self::EMAIL));
+        self::assertCount(1, $container->getByType(EntityManagerInterface::class)->getRepository(Tenant::class)->findAll());
+        $claims = $container->getByType(Connection::class)->fetchOne('SELECT COUNT(*) FROM core_setup_completion');
+        self::assertIsNumeric($claims);
+        self::assertSame(0, (int) $claims, 'the refused completion left its claim behind');
     }
 
     /** The same rule as `app:password`: at least twelve characters, and nothing else about its shape. */
@@ -305,6 +348,46 @@ final class SetupWizardTest extends TestCase
         $container->getByType(EntityManagerInterface::class)->clear();
         self::assertNull($container->getByType(Accounts::class)->withEmail('second@example.com'));
         self::assertCount(1, $container->getByType(EntityManagerInterface::class)->getRepository(Tenant::class)->findAll());
+    }
+
+    /**
+     * A visitor finishing while `app:account` makes an account in the same
+     * moment. Once that account is committed the installation is not empty,
+     * so the visitor has to be refused - and a check made before the claim,
+     * or a plain read after it, would have read straight past an account not
+     * yet committed. The installer reads the accounts after taking the claim,
+     * with a locking read, so it waits for the account being made and then
+     * sees it. This test is `app:account`: it has inserted the account and
+     * holds its transaction open until the visitor's process is seen waiting
+     * on that read.
+     */
+    public function testAnAccountMadeFromTheCommandLineMeanwhileRefusesTheVisitor(): void
+    {
+        $container = $this->migratedDatabase();
+        $connection = $container->getByType(Connection::class);
+        $hash = $container->getByType(Passwords::class)->hash($this->password());
+
+        $connection->beginTransaction();
+        $connection->insert('core_user', [
+            'active' => 1,
+            'email' => 'landlord@example.com',
+            'password_hash' => $hash,
+            'name' => 'Lars Landlord',
+            'created_at' => '2026-09-13 10:00:00',
+            'landlord' => 1,
+        ]);
+
+        [$met, $status, $output] = $this->finishedElsewhereOnceItWaits($connection, 'second@example.com', '%FROM core_user%FOR UPDATE%');
+
+        self::assertTrue($met, 'the visitor never waited on the account being made, so it read past it: ' . $output);
+        self::assertSame(0, $status, $output);
+        self::assertStringContainsString('outcome:refused', $output);
+
+        $entityManager = $container->getByType(EntityManagerInterface::class);
+        $entityManager->clear();
+        self::assertNull($container->getByType(Accounts::class)->withEmail('second@example.com'));
+        self::assertCount(1, $entityManager->getRepository(User::class)->findAll());
+        self::assertCount(0, $entityManager->getRepository(Tenant::class)->findAll(), 'the refused visitor made a business');
     }
 
     /**
@@ -370,7 +453,7 @@ final class SetupWizardTest extends TestCase
             return;
         }
 
-        self::fail('the wizard answered after the installation had an administrator');
+        self::fail('the wizard answered on an installation that was not empty');
     }
 
     private function emptyDatabase(): Container
@@ -467,10 +550,15 @@ final class SetupWizardTest extends TestCase
      * inserting the claim too, and so waiting on it. See
      * AccountCommandTest::committedOnceItWaits(), which this follows.
      *
+     * @param string $waitingOn the statement it is seen waiting on, as a LIKE pattern
+     *
      * @return array{bool, int, string} whether it was seen waiting, its exit code, and what it printed
      */
-    private function finishedElsewhereOnceItWaits(Connection $connection, string $email): array
-    {
+    private function finishedElsewhereOnceItWaits(
+        Connection $connection,
+        string $email,
+        string $waitingOn = 'INSERT INTO core_setup_completion%',
+    ): array {
         $code = sprintf(
             'require %s; echo "outcome:", %s::boot()->getByType(%s::class)->complete(%s, %s, %s, %s, %s, true) ? "claimed" : "refused", "\n";',
             var_export(Bootstrap::rootDirectory() . '/vendor/autoload.php', true),
@@ -499,7 +587,7 @@ final class SetupWizardTest extends TestCase
                 $waiting = $connection->fetchOne(
                     'SELECT COUNT(*) FROM information_schema.PROCESSLIST'
                     . ' WHERE ID <> CONNECTION_ID() AND DB = DATABASE() AND INFO LIKE ?',
-                    ['INSERT INTO core_setup_completion%'],
+                    [$waitingOn],
                 );
                 $met = is_numeric($waiting) && (int) $waiting > 0;
                 if (!$met) {

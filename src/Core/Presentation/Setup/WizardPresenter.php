@@ -12,32 +12,31 @@ use Nette\Forms\Controls\BaseControl;
 use Nette\Http\IResponse;
 use Trilobit\Core\Console\PasswordCommand;
 use Trilobit\Core\Domain\Tenancy\Tenant;
-use Trilobit\Core\Domain\User\User;
 use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Form\FormFactory;
-use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Setup\Installer;
 use Trilobit\Core\Setup\Progress;
 use Trilobit\Core\Setup\Step;
-use Trilobit\Core\Tenancy\HostTenants;
 
 /**
  * The setup wizard: from a freshly uploaded checkout to an installation
  * somebody can sign in to (.ai/plans/23-instalace-na-zelene-louce.md).
  *
  * It is one page drawn in whichever of three states the database is in -
- * nothing answering, tables to be made, nobody administering the installation
- * yet - and it keeps nothing of its own between requests; see
- * Trilobit\Core\Setup\Step. It ends with the installation's first
- * administrator and its first business, and then it is gone.
+ * nothing answering, tables to be made, tables with nothing in them yet - and
+ * it keeps nothing of its own between requests; see Trilobit\Core\Setup\Step.
+ * It ends with the installation's first administrator and its first business,
+ * and then it is gone.
  *
- * **Gone means not there, not refused (decision O3).** Once somebody
- * administers the installation every request here - a page, a form posted to
- * it, anything - is answered 404 before any of it is read, which is what an
+ * **It is there for an empty installation only, and gone means not there,
+ * not refused (decision O3).** Once the installation holds an account of any
+ * kind or a business, every request here - a page, a form posted to it,
+ * anything - is answered 404 before any of it is read, which is what an
  * address nobody claims is answered; 403 would tell whoever is probing that
- * there is something here worth trying. It is checked in startup(), which the
- * framework runs before any action and before any signal, so a submitted form
- * never gets as far as its handler.
+ * there is something here worth trying. An installation that already has
+ * something is finished from the command line. It is checked in startup(),
+ * which the framework runs before any action and before any signal, so a
+ * submitted form never gets as far as its handler.
  *
  * **It signs nobody in (decision O1).** It ends on the sign-in page, so that
  * an identity is only ever made in Trilobit\Core\Security\Authenticator, and so
@@ -71,8 +70,6 @@ final class WizardPresenter extends Presenter
         private readonly Installer $installer,
         private readonly FormFactory $forms,
         private readonly RememberedPreferences $remembered,
-        private readonly Accounts $accounts,
-        private readonly HostTenants $hosts,
     ) {
         parent::__construct();
     }
@@ -97,7 +94,7 @@ final class WizardPresenter extends Presenter
         }
     }
 
-    /** Where every request here starts; see the class for why a finished installation is answered 404 from here. */
+    /** Where every request here starts; see the class for why an installation that is not empty is answered 404 from here. */
     protected function startup(): void
     {
         parent::startup();
@@ -208,9 +205,12 @@ final class WizardPresenter extends Presenter
 
     /**
      * What the form's own rules cannot say. Asked only on the step it belongs
-     * to - before the tables exist there is nothing to look an address up in -
-     * and only of a form its own rules let through, whose values can be read;
-     * the rest is said on the next submission, beside whatever is left.
+     * to, and only of a form its own rules let through, whose values can be
+     * read; the rest is said on the next submission, beside whatever is left.
+     *
+     * An address already taken or a host already claimed cannot happen here:
+     * the wizard is only there while the installation holds no account and no
+     * business, and the installer asks that again with the claim held.
      */
     private function refuseWhatCannotBe(Form $form): void
     {
@@ -222,17 +222,6 @@ final class WizardPresenter extends Presenter
 
         if (strcasecmp($values['phrase'], $values['email']) === 0) {
             $this->control($form, 'password')->addError('That is the address the account signs in with, so it cannot be the password as well.');
-        }
-
-        if ($this->accounts->withEmail($values['email']) instanceof User) {
-            $this->control($form, 'email')->addError('An account already signs in with that address.');
-        }
-
-        if ($this->hosts->tenantAt($this->host()) !== null) {
-            $form->addError(sprintf(
-                'A business already answers at %s, so the setup cannot make one there. Open this page at the address the new business is to answer at.',
-                $this->host(),
-            ));
         }
     }
 
@@ -253,9 +242,10 @@ final class WizardPresenter extends Presenter
             $values['scope'] === self::BOTH,
         );
 
-        // Somebody else finished in the same moment and the claim is theirs.
-        // From here the installation has an administrator, so this request is
-        // answered as every request after it will be.
+        // Somebody else finished in the same moment, or a command made an
+        // account or a business meanwhile. Either way the installation is not
+        // empty any more, so this request is answered as every request after
+        // it will be.
         if (!$made) {
             throw new BadRequestException('No route for HTTP request.', IResponse::S404_NotFound);
         }
