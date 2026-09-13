@@ -136,23 +136,36 @@ test.describe('with the keyboard, and to a screen reader', () => {
     // folding is still on the page; this is about where it ends up.
     test.use({ reducedMotion: 'reduce' });
 
-    test('c-collapse is a named, expandable control that opens and closes by key', async ({ page }) => {
+    test('c-collapse is a named, expandable control that opens and closes by key', async ({ page, browserName }) => {
         await page.goto('/_styleguide/components/collapse');
 
         const details = specimen(page, 'default').locator('details.c-collapse');
         const summary = details.locator('summary');
         const inside = details.locator('.c-collapse__body a');
+        const fromTheTree = (): Promise<Accessible> => accessible(page, '[data-styleguide-variant="default"] .c-collapse > summary');
 
-        let tree = await accessible(page, '[data-styleguide-variant="default"] .c-collapse > summary');
-        expect(tree.ignored).toBe(false);
-        expect(tree.name).toBe('Where the specimen is kept');
-        expect(tree.expanded).toBe(false);
+        // The keys are asked of every browser. The tree is Chrome's own, read
+        // over the DevTools protocol, which only Chromium speaks; Playwright's
+        // model of it is the same script in every browser, and would ask
+        // Firefox nothing.
+        const readsTheTree = browserName === 'chromium';
+        if (!readsTheTree) {
+            test.info().annotations.push({ type: 'not asked', description: `the accessibility tree, which ${browserName} does not expose to a test` });
+        }
+
+        if (readsTheTree) {
+            const closed = await fromTheTree();
+            expect(closed.ignored).toBe(false);
+            expect(closed.name).toBe('Where the specimen is kept');
+            expect(closed.expanded).toBe(false);
+        }
 
         await summary.focus();
         await page.keyboard.press('Enter');
         await expect(details).toHaveAttribute('open', '');
-        tree = await accessible(page, '[data-styleguide-variant="default"] .c-collapse > summary');
-        expect(tree.expanded).toBe(true);
+        if (readsTheTree) {
+            expect((await fromTheTree()).expanded).toBe(true);
+        }
 
         // Tabbed on once it is drawn, the way a person tabs on once they see
         // it: a Tab in the same moment as the Enter can reach the browser
@@ -165,7 +178,9 @@ test.describe('with the keyboard, and to a screen reader', () => {
         await expect(summary).toBeFocused();
         await page.keyboard.press('Space');
         await expect(details).not.toHaveAttribute('open');
-        expect((await accessible(page, '[data-styleguide-variant="default"] .c-collapse > summary')).expanded).toBe(false);
+        if (readsTheTree) {
+            expect((await fromTheTree()).expanded).toBe(false);
+        }
 
         // Folded away, it is out of reach: the next stop is whatever follows
         // the collapse, and never the link inside it.

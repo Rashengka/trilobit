@@ -58,6 +58,28 @@ async function expandedInTheTree(page: Page, locator: Locator): Promise<boolean 
     return property === undefined ? undefined : Boolean(property.value.value);
 }
 
+/**
+ * Expects Chrome's own accessibility tree to read $locator as $expanded - in
+ * Chromium, the only browser that speaks the DevTools protocol the tree is read
+ * over. Anywhere else the claim is not made, and the test says so among its
+ * annotations rather than asking Playwright's model of the tree instead: that
+ * model is the same script in every browser, so it would ask Firefox nothing,
+ * and it gives a button that opens a popover no state at all.
+ */
+async function expectExpandedInTheTree(page: Page, locator: Locator, expanded: boolean): Promise<void> {
+    const browser = page.context().browser()?.browserType().name() ?? 'this browser';
+    if (browser !== 'chromium') {
+        const note = { type: 'not asked', description: `the accessibility tree, which ${browser} does not expose to a test` };
+        if (!test.info().annotations.some((annotation) => annotation.type === note.type)) {
+            test.info().annotations.push(note);
+        }
+
+        return;
+    }
+
+    expect(await expandedInTheTree(page, locator), `the tree does not read it as ${expanded ? 'expanded' : 'collapsed'}`).toBe(expanded);
+}
+
 /** Where the browser put $floating against $anchor, and whether it stayed in the window. */
 async function placement(anchor: Locator, floating: Locator) {
     const a = await anchor.boundingBox();
@@ -174,7 +196,7 @@ test.describe('c-dropdown', () => {
         const button = dropdown.getByRole('button', { name: 'Actions' });
 
         await expect(button).toHaveAttribute('aria-haspopup', 'menu');
-        expect(await expandedInTheTree(page, button)).toBe(false);
+        await expectExpandedInTheTree(page, button, false);
 
         await button.click();
 
@@ -185,7 +207,7 @@ test.describe('c-dropdown', () => {
               - separator
               - menuitem "Withdraw"
         `);
-        expect(await expandedInTheTree(page, button)).toBe(true);
+        await expectExpandedInTheTree(page, button, true);
     });
 
     test('is moved through with the arrow keys, Home and End, and by the first letter', async ({ page }) => {
@@ -397,7 +419,7 @@ test.describe('c-popover', () => {
         const button = page.getByTestId('sample-popover').getByRole('button', { name: 'What is a pygidium?' });
 
         await expect(page.getByRole('dialog')).toHaveCount(0);
-        expect(await expandedInTheTree(page, button)).toBe(false);
+        await expectExpandedInTheTree(page, button, false);
 
         await button.focus();
         await page.keyboard.press('Enter');
@@ -407,7 +429,7 @@ test.describe('c-popover', () => {
               - paragraph: Pygidium
               - paragraph: The tail shield of a trilobite, made of segments fused together.
         `);
-        expect(await expandedInTheTree(page, button)).toBe(true);
+        await expectExpandedInTheTree(page, button, true);
 
         await page.keyboard.press('Escape');
         await expect(page.getByRole('dialog', { name: 'Pygidium' })).toBeHidden();
