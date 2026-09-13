@@ -54,6 +54,7 @@ use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
 use Trilobit\Core\Presentation\Form\FormElementRegistry;
+use Trilobit\Core\Presentation\Form\FormFactory;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
 use Trilobit\Core\Presentation\Front\Signpost\StyleguideSignpost;
 use Trilobit\Core\Presentation\Link\Destinations;
@@ -419,6 +420,12 @@ final class CoreExtension extends CompilerExtension
         // checked the same way, by a register and gates of their own.
         $builder->addDefinition($this->prefix('formElements'))
             ->setFactory(FormElementRegistry::class);
+
+        // Where a form comes from, already laid out in an arrangement or not;
+        // in every build, because every build has forms. See
+        // Trilobit\Core\Presentation\Form\FormFactory.
+        $builder->addDefinition($this->prefix('formFactory'))
+            ->setFactory(FormFactory::class);
 
         // The pages the style guide is split into. In every build, like the
         // two registers it is made of: it is a description, and a description

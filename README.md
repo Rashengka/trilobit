@@ -639,7 +639,7 @@ at `/_styleguide/<group>/<page>`:
 |---|---|
 | Foundations | the colour tokens, the content width, and a page that insists on a width of its own |
 | Content | one for every group of native elements - reboot, typography, code, images, tables, figures |
-| Forms | one for every group of form controls - controls, checks, fieldsets, states |
+| Forms | one for every group of form controls - controls, checks, fieldsets, states - and one for the arrangements a whole form is laid out in |
 | Components | one for every component |
 
 The pages are written down once, in
@@ -650,17 +650,76 @@ Components are derived from their registers, so a component has a page, a place
 in the menu and a tile on the front page the moment it is registered; what is
 left to write is the file under
 `src/Core/Presentation/Styleguide/pages/` that shows it, and the gates will not
-pass without it. Layout gets a group when there is something to put in one.
+pass without it.
 
 The controls of a form - every kind of input, `select`, `textarea`, checkboxes
 and radio buttons, `label`, `fieldset` and `legend`, and their focused, refused
 and disabled states - are styled by their own names in `assets/base.css` and
 never through whatever is drawn around them, so a control looks the same in
 every arrangement of a form (`tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest`).
+A required field carries a mark after its label, aria-hidden because a screen
+reader already hears required off the control's own attribute, which a
+generated field carries on its own and a hand-written one only where the
+caller says it is required, with the sentence explaining the mark drawn once
+above a form's fields rather than on each of them.
 They are catalogued in `Trilobit\Core\Presentation\Form\FormElementRegistry`
 the way the elements of running text are in `ContentGroupRegistry`. The two
 sentences a browser has no element for - why an answer was refused and what a
 field is for - are drawn under the control by `c-field`.
+
+#### A form drawn in an arrangement
+
+A form does not have to be written out control by control.
+`Trilobit\Core\Presentation\Form\FormFactory`, a service injected like any
+other, makes one already laid out in one of three arrangements, named the way
+Bootstrap names them:
+
+| method | arrangement |
+|---|---|
+| `createInline()` | the fields side by side in a row, wrapping where it runs out; the labels over the controls may be out of sight (`labelsShown: false`) |
+| `createVertical()` | every label over its control, the fields one under another |
+| `createHorizontal()` | every label beside its control, the labels in one column and the controls in the next |
+
+In every one of them the buttons start under the fields. `create()` is the
+framework's own form with the framework's own renderer, for a form drawn by hand
+with `n:name`, the way the sign-in page is. Which arrangement a form is in is
+decided where it is made, so moving it to another is one word in the presenter
+and nothing in the template, which draws it with `{control}`.
+
+Each arrangement is a Latte template of its own
+(`src/Core/Presentation/Form/templates/`), and every field in it is `c-field`,
+the component a form written out by hand draws its fields with. That is why the
+arrangements are templates: the markup of one label and one control is written
+once, in one file, for both kinds of form. The framework's `DefaultFormRenderer`
+would draw the same field as a table of labels and inputs, unthemed, and a
+renderer writing its markup in PHP would be a second copy of `c-field` that
+drifts away from the first with nothing failing.
+
+What is not laying out is written once as well, in the renderer the three
+arrangements have in common (`ArrangedFormRenderer`). It hands the template
+every control joined to the sentences about it through `aria-describedby`,
+and marked `aria-invalid` where it was refused. It draws the hidden inputs
+after the arrangement and outside it, the way the framework's renderer does, so
+that a row or a grid never lays one out. And it refuses to draw a form whose
+arrangement left a control out, because a control that is not drawn is not
+sent, and nothing on the page would look wrong. A label out of sight is
+`u-visually-hidden` on the label of `c-field`: gone from the page for the eye,
+and still there to name the control for everybody else.
+
+`tests/Template/FormArrangementsDifferOnlyInTheirWrappingTest` draws one form
+with a control of every kind in every arrangement, and reads back what a person
+or the server can tell from it - which controls there are under which names,
+what each is called, the reasons and the hint and which control each is joined
+to, which are required, and where the hidden inputs went - against what the
+form holds, so that three arrangements losing the same thing cannot pass by
+agreeing with each other. They are laid out by `l-form` in `assets/base.css`, a
+layout primitive over `c-field` that never reaches a control, and shown over one
+and the same form on the Layout page of the Forms group, where
+`tests/e2e/form-layout.spec.ts` measures in both themes that every label is
+where its arrangement says and every control is still named.
+
+Every control is a field of its own, in the order of the form: controls laid
+out together on one row, and the groups `addGroup()` makes, are not drawn yet.
 
 It exists only where `trilobit.styleguide` is on - by default in the `dev` and
 `staging` modes and not in `prod` (see `TRILOBIT_ENV` below), and

@@ -1,0 +1,23 @@
+{templateType Trilobit\Core\Presentation\Form\ArrangementTemplate}
+
+{*
+ * Inline: the fields side by side in a row, wrapping where it runs out, lined
+ * up along the bottom of their controls, and the buttons starting under them.
+ *
+ * The labels over the controls may be seen or not. Not seen, they stay in the
+ * page - taken out of sight, not out of the form - so a control is named the
+ * same for somebody who cannot see it either way.
+ *}
+
+{import 'parts.latte'}
+
+<div class="l-form l-form--inline">
+    {include formErrors, errors: $errors}
+    {include formRequiredNote, shown: $requiredNoteShown}
+
+    {foreach $fields as $field}
+        {include formField, field: $field, labelHidden: !$labelsShown}
+    {/foreach}
+
+    {include formButtons, buttons: $buttons}
+</div>
