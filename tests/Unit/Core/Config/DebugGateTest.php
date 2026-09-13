@@ -66,6 +66,37 @@ final class DebugGateTest extends TestCase
         self::assertSame(32, DebugGate::SHORTEST_SECRET);
     }
 
+    /**
+     * A secret set and too short is a mistake rather than a choice, and it is
+     * named as one - with its length and the length it needs, and without
+     * itself.
+     */
+    public function testASecretTooShortIsAMisconfiguration(): void
+    {
+        $short = str_repeat('s', DebugGate::SHORTEST_SECRET - 1);
+
+        $problem = $this->gate($short, [DebugGate::COOKIE => $short])->misconfiguration();
+
+        self::assertIsString($problem);
+        self::assertStringContainsString(DebugGate::VARIABLE, $problem);
+        self::assertStringContainsString('31 characters', $problem);
+        self::assertStringContainsString('32', $problem);
+        self::assertFalse(str_contains($problem, $short), 'the message shows the secret itself');
+    }
+
+    /** No secret is how staging is closed on purpose. */
+    public function testNoSecretIsNoMisconfiguration(): void
+    {
+        self::assertNull(DebugGate::check(Environment::fromValues([]), [])->misconfiguration());
+        self::assertNull($this->gate('', [])->misconfiguration());
+    }
+
+    public function testASecretLongEnoughIsNoMisconfiguration(): void
+    {
+        self::assertNull($this->gate(self::invented(), [])->misconfiguration());
+        self::assertNull($this->gate(self::invented(), [DebugGate::COOKIE => 'wrong'])->misconfiguration());
+    }
+
     #[DataProvider('wrongCookies')]
     public function testAWrongCookieKeepsTheGateShut(string $cookie): void
     {

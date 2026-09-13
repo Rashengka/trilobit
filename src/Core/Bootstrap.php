@@ -9,6 +9,7 @@ use Nette\DI\Compiler;
 use Nette\DI\Container;
 use Nette\Utils\FileSystem;
 use Tracy\Debugger;
+use Tracy\ILogger;
 use Trilobit\Core\Config\DebugGate;
 use Trilobit\Core\Config\EditorLinks;
 use Trilobit\Core\Config\Environment;
@@ -89,8 +90,13 @@ final class Bootstrap
 
         $files = self::configurationFiles($modules);
 
+        $gate = DebugGate::check($environment, $cookies ?? $_COOKIE);
+        // Only staging reads the secret, so only there is a short one a
+        // mistake worth a word; see the onCompile handler below.
+        $misconfiguration = $mode === Mode::Staging ? $gate->misconfiguration() : null;
+
         $configurator = new Configurator();
-        $configurator->setDebugMode($mode->debugMode(DebugGate::check($environment, $cookies ?? $_COOKIE)));
+        $configurator->setDebugMode($mode->debugMode($gate));
         $configurator->enableTracy($logDirectory);
         self::pointTheEditorLinksAtThisMachine($environment, $root);
         TracyScrubber::install();
@@ -127,6 +133,13 @@ final class Bootstrap
             // cached by its static parameters, so putting the contents in one
             // makes the cache key say what it is a cache of.
             'configHash' => self::configurationHash($files),
+            // Whether staging's debug secret is set and too short, so that
+            // the warning below is written once per compiled container - and
+            // written at all when a good secret is shortened on a deployment
+            // whose container is already compiled. Without it in the cache key
+            // that deployment would be handed its old container, compile
+            // nothing and say nothing. Only the yes or no; not the secret.
+            'debugSecretTooShort' => $misconfiguration !== null,
         ]);
         // The environment is deliberately not a parameter. Nothing read it,
         // and the debug bar's container panel prints every parameter as it
@@ -150,6 +163,17 @@ final class Bootstrap
         $configurator->onCompile[] = static function (Configurator $configurator, Compiler $compiler) use ($modules): void {
             foreach ($modules->enabled() as $module) {
                 $compiler->addExtension($module->name, $module->createExtension());
+            }
+        };
+
+        // A secret too short to be taken leaves staging without its debugger,
+        // exactly as no secret does, so the browser cannot tell the mistake
+        // from the choice. The log can. It is written while the container is
+        // compiled rather than on every request, which on a busy staging would
+        // bury everything else in the file.
+        $configurator->onCompile[] = static function () use ($misconfiguration): void {
+            if ($misconfiguration !== null) {
+                Debugger::log($misconfiguration, ILogger::WARNING);
             }
         };
 

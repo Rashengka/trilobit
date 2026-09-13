@@ -1464,6 +1464,15 @@ A few settings are worth knowing about:
   `secret`, so Tracy hides the variable, the cookie and the `Cookie` header
   carrying it by the rule described in the last item of this list.
 
+  A secret that is set and shorter than 32 characters is a mistake rather
+  than a choice, and it would otherwise look exactly like one: staging runs
+  without its debugger either way. So it is written to `var/log/warning.log`,
+  with its length and without its value, once each time a container is
+  compiled with it rather than on every request. Whether the secret is too
+  short is part of what the compiled container is cached by, so shortening a
+  good one on a running deployment compiles a new container and logs the
+  warning too.
+
   Because debug mode is compiled into the container, a staging deployment
   keeps two compiled containers side by side, and the first request of each
   kind compiles its own. `bin/trilobit app:warmup` does not compile either:

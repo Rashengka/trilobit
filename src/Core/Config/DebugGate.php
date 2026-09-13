@@ -33,9 +33,11 @@ use SensitiveParameter;
  * debugger, which somebody misses and fixes, rather than one whose debugger is
  * open to anybody - the same direction Mode takes with a mode nobody named.
  *
- * Only the answer is kept. Neither the secret nor the cookie is a property
- * here, so no dump of this object has either to show, and both parameters of
- * check() are marked sensitive, so a stack trace through it shows neither.
+ * Only the answer is kept, and for a secret too short to count the sentence
+ * saying so, which names its length and not its value. Neither the secret nor
+ * the cookie is a property here, so no dump of this object has either to show,
+ * and both parameters of check() are marked sensitive, so a stack trace
+ * through it shows neither.
  */
 final readonly class DebugGate
 {
@@ -71,8 +73,17 @@ final readonly class DebugGate
      */
     public const int SHORTEST_SECRET = 32;
 
+    /**
+     * What is logged for a secret that is set and too short: its name, its
+     * length and the length it needs, and never the secret itself.
+     */
+    private const string TOO_SHORT = '%s is set but only %d characters long. The debug gate takes a secret'
+        . ' of %d characters or more, so staging runs without its debugger until it is replaced by a longer'
+        . ' one - `openssl rand -hex 32` gives 64.';
+
     private function __construct(
         private bool $open,
+        private ?string $misconfiguration,
     ) {}
 
     /**
@@ -91,15 +102,33 @@ final readonly class DebugGate
         // as for one wrong in its last, so how long an answer took says
         // nothing about how much of a guess was right. The length is checked
         // first because an empty secret would otherwise match an empty cookie.
+        $length = strlen($expected);
+
         return new self(
-            strlen($expected) >= self::SHORTEST_SECRET
+            $length >= self::SHORTEST_SECRET
             && is_string($presented)
             && hash_equals($expected, $presented),
+            $length > 0 && $length < self::SHORTEST_SECRET
+                ? sprintf(self::TOO_SHORT, self::VARIABLE, $length, self::SHORTEST_SECRET)
+                : null,
         );
     }
 
     public function isOpen(): bool
     {
         return $this->open;
+    }
+
+    /**
+     * What is wrong with the secret, when it is set and too short to be taken,
+     * or null when it is long enough or not set at all.
+     *
+     * The two shut gates are told apart because they are not the same state:
+     * no secret is how staging is closed on purpose, a short one is a mistake
+     * that looks from the browser exactly like it.
+     */
+    public function misconfiguration(): ?string
+    {
+        return $this->misconfiguration;
     }
 }
