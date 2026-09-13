@@ -608,7 +608,7 @@ Components are derived from their registers, so a component has a page, a place
 in the menu and a tile on the front page the moment it is registered; what is
 left to write is the file under
 `src/Core/Presentation/Styleguide/pages/` that shows it, and the gates will not
-pass without it. Layout gets a group when there is something to put in one.
+pass without it.
 
 The controls of a form - every kind of input, `select`, `textarea`, checkboxes
 and radio buttons, `label`, `fieldset` and `legend`, and their focused, refused
