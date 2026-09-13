@@ -75,11 +75,11 @@ final readonly class Memberships
      * of.
      *
      * Roles held by nobody are left out, and that is the tenancy of this answer.
-     * A role row is shared by the whole installation - see
-     * Trilobit\Core\Domain\User\Role - so the only thing that makes one a role
-     * *of this business* is somebody holding it here. An access list built from
-     * every row would answer about a role that means nothing here, which is one
-     * name away from answering with somebody else's rights.
+     * The roles readable here are the application's as well as this business's
+     * own - see Trilobit\Core\Domain\User\Role - so what makes one a role *in
+     * use in this business* is somebody holding it here. An access list built
+     * from every readable row would answer about a role that means nothing
+     * here, which is one name away from answering with somebody else's rights.
      *
      * A list of pairs rather than a table keyed by the code, because PHP turns
      * an array key that looks like a number into one - so a role whose code was

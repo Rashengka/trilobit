@@ -144,7 +144,8 @@ bin/trilobit app:tenant 'Your Business' localhost www.example.com
 |---|---|
 | `core_content_path`, `core_media_file`, `core_tenant_membership`, `core_domain` | the business's |
 | `core_setting` | the installation's - a setting is true of the installation, not of one business |
-| `core_user`, `core_role` | the installation's - see below |
+| `core_user` | the installation's - see below |
+| `core_role` | both - the application's roles belong to no business, a role a business composes is its own; see "Who may do what" |
 | `core_audit_entry` | the installation's, for now |
 
 An account is global and belonging to a business is a relationship:
@@ -170,6 +171,15 @@ reason, so an entity nobody thought about is one the filter cannot scope.
 `tests/Architecture/EveryTenantedEntityIsScopedTest` asks that of every mapped
 entity at build time rather than at the first query: adding an entity to `src/`
 with neither the association nor the attribute fails it by name.
+
+A table may hold the installation's rows beside each business's own, and say so
+with `#[PartlyShared(because: '...')]`. Its business column is empty on the rows
+of none. In a business the filter reads that business's rows and the rows of
+none; before a business is settled, the rows of none alone - they belong to
+nobody in particular, so there is nothing in them to leak, and refusing them
+would stop the application reading what it defines itself. Such an entity still
+needs the association, and one declaring the attribute without it is reported by
+the same test as an entity nobody thought about.
 
 Switching business also empties the object manager, because an object already
 loaded is handed back without a query - past a filter that only ever sees SQL.
@@ -883,6 +893,36 @@ a loophole in this: it is a question with no business in it at all, so it is
 asked of `Trilobit\Core\Security\Landlords` and never of these two - see "The
 administration" above.
 
+### A role is the application's or one business's
+
+A role of the application belongs to no business and may be held in any of
+them; the owner's is one. A role a business composes for itself
+(`Role::ofBusiness()`) belongs to that business, may be held there alone, and
+is read nowhere else - so two businesses may each have an `editor` and each mean
+something else by it. Its code is unique within the business, and the
+application's codes are unique among themselves.
+
+Three things keep one business's role out of another:
+
+- a membership naming a role of another business cannot be made; both ways of
+  making one refuse it,
+- a membership row written past that refusal grants nothing, because reading a
+  role in a business reads the application's and its own, and the join from the
+  membership finds nothing else,
+- a role is looked up by its code only among the application's roles
+  (`Accounts::applicationRole()`), so the command that makes an owner can never
+  be handed a business's role under the same code.
+
+A business cannot compose a role under a code the application defines, in any
+case. The whole of the application is honoured on the owner's code alone, so a
+business's `owner` would be an owner nobody made; and inside one business a code
+names one role, so the application's role and the business's under the same
+code would quietly become one of the two. The refusal is in the object, so it
+holds for the rows the application itself defines; a code somebody wrote into
+the application's rows by hand is not known to it.
+`tests/Integration/Security/PermissionsInATenantTest` asks the same question
+from both businesses' side.
+
 ### The framework's own question is the only one
 
 `$this->getUser()->isAllowed(Resource::Content, Privilege::Edit)` works, and it
@@ -1091,9 +1131,10 @@ as happily.
 
 ### What is not there yet
 
-Nobody composes a role in the administration. `bin/trilobit app:account
---tenant` makes the owner's role, which holds the whole of the application
-rather than a list of pairs - a list would go on saying what the application
+Nobody composes a role in the administration yet: a business's own role exists
+in the model and nothing makes one but the tests. `bin/trilobit app:account
+--tenant` makes the owner's role - the application's - which holds the whole of
+the application rather than a list of pairs - a list would go on saying what the application
 used to offer, and the account holding it would quietly stop being able to
 reach whatever was added afterwards. The two rules that belong beside it -
 nobody hands out more than they hold, and the last owner of a business cannot
@@ -1130,6 +1171,27 @@ alphabet would otherwise decide which module goes first - and an installation
 starting from an empty schema would try to create a module's table with a
 foreign key into one of Core's that does not exist yet. See
 `Trilobit\Core\Doctrine\ChronologicalComparator`.
+
+### A unique index over a column that may be empty
+
+MariaDB does not hold one NULL to be equal to another, so an index unique over
+a nullable column lets every row with NULL in it in twice, without a word. It
+bites wherever "none" is one of the values being kept apart: a role's code is
+unique within its business, and the application's roles have no business, so
+an index over the business and the code would let the application's `owner` in
+twice. The code is unique together with `tenant_key` instead - a virtual column
+the database works out as the business, or 0 where there is none - so the
+database holds every writer to it, including one that goes past the entity.
+It is mapped with a `columnDefinition`, which the schema comparison generates
+and then does not report as a difference. See `Trilobit\Core\Domain\User\Role`
+and `tests/Integration/Doctrine/RoleCodesTest`.
+
+An `ALTER TABLE` over an InnoDB table says how it is to run -
+`ALGORITHM=INPLACE, LOCK=NONE` - so that the server cannot quietly choose a way
+that locks the table under a running application. Where the server refuses
+that, the refusal is the information: `Version20260913063908` says which two
+statements it refused and why they run as `ALGORITHM=COPY, LOCK=NONE`, the
+online copy, instead.
 
 ### Generating a migration
 

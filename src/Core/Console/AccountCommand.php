@@ -311,7 +311,9 @@ final class AccountCommand extends Command
      *
      * Two runs at once - for two accounts of this business or of another -
      * both reach for the one owner's role, and the role is made once between
-     * them; how, is on Trilobit\Core\Security\Accounts::roleWithCodeMadeIfMissing().
+     * them; how, is on Trilobit\Core\Security\Accounts::applicationRoleMadeIfMissing().
+     * It is the application's role and not this business's, so every business
+     * the command is run for holds the same one.
      *
      * $both is what --also-installation said, and it is what chooses the way
      * the membership is made - not whether the account happens to administer
@@ -322,7 +324,7 @@ final class AccountCommand extends Command
      */
     private function administer(Tenant $tenant, User $account, bool $both): void
     {
-        $role = $this->accounts->roleWithCodeMadeIfMissing(Role::OWNER, self::ROLE_NAME);
+        $role = $this->accounts->applicationRoleMadeIfMissing(Role::OWNER, self::ROLE_NAME);
         $role->redefine([new Grant($this->structure->root(), null)->code()]);
 
         $this->entityManager->flush();
