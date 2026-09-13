@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices, type Project } from '@playwright/test';
 
 /**
  * The browser-side suite.
@@ -23,8 +23,46 @@ const baseURL = `http://127.0.0.1:${port}`;
  * that running the suite needs no download and writes nothing outside the
  * checkout. A build server has no such browser and installs Playwright's own,
  * which is what leaving the channel unset selects.
+ *
+ * Set to nothing, it asks for Playwright's own build outside CI as well - which
+ * is what bin/e2e-docker.mjs does, in an image that has no Google Chrome in it.
+ * An empty string handed on as a channel would be a name no browser has.
  */
-const channel = process.env.PLAYWRIGHT_CHANNEL ?? (process.env.CI ? undefined : 'chrome');
+const requestedChannel = process.env.PLAYWRIGHT_CHANNEL;
+const channel = requestedChannel === undefined
+    ? (process.env.CI ? undefined : 'chrome')
+    : (requestedChannel === '' ? undefined : requestedChannel);
+
+/**
+ * Chromium is the browser the application is built for and the one every run
+ * uses. Firefox is there to be asked for - `PLAYWRIGHT_BROWSERS=firefox`, or
+ * `all` for both - because it draws a design differently enough to be worth a
+ * look before a change to the frontend is merged, but not on every run: its
+ * build is not on a developer's machine, so it is run in the image
+ * bin/e2e-docker.mjs uses, and CI does not install it.
+ *
+ * An unknown name is refused rather than ignored, so that a typo cannot select
+ * no browser and have that reported as a green run.
+ */
+const browsers: Record<string, Project['use']> = {
+    chromium: { ...devices['Desktop Chrome'], channel },
+    firefox: { ...devices['Desktop Firefox'] },
+};
+
+const requestedBrowsers = (process.env.PLAYWRIGHT_BROWSERS ?? 'chromium').trim();
+const browserNames = requestedBrowsers === 'all'
+    ? Object.keys(browsers)
+    : requestedBrowsers.split(',').map((name) => name.trim()).filter((name) => name !== '');
+
+if (browserNames.length === 0) {
+    throw new Error('PLAYWRIGHT_BROWSERS names no browser.');
+}
+
+for (const name of browserNames) {
+    if (!(name in browsers)) {
+        throw new Error(`PLAYWRIGHT_BROWSERS names "${name}"; known are ${Object.keys(browsers).join(', ')} and all.`);
+    }
+}
 
 export default defineConfig({
     testDir: 'tests/e2e',
@@ -37,12 +75,7 @@ export default defineConfig({
         trace: 'retain-on-failure',
     },
 
-    projects: [
-        {
-            name: 'chromium',
-            use: { ...devices['Desktop Chrome'], channel },
-        },
-    ],
+    projects: browserNames.map((name) => ({ name, use: browsers[name] })),
 
     webServer: {
         // PHP's own server, because the claims here are about what the browser
