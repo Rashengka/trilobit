@@ -271,14 +271,37 @@ test.describe('the address of an item', () => {
 });
 
 test.describe('the motion of opening', () => {
-    test('the height unfolds over a moment for somebody who has not asked for less motion', async ({ page }) => {
+    /**
+     * Only where the browser can unfold a height to as tall as it is with no
+     * script - interpolate-size and ::details-content both - and anywhere else
+     * it is open at once, as for reduced motion (assets/base.css). Asked of the
+     * browser the way the stylesheet asks it, so that a browser learning it is
+     * asked for the motion from then on. Firefox 153 has ::details-content and
+     * not interpolate-size; Chromium has both, and is held to that, so that a
+     * browser meant to animate cannot pass here by saying it cannot.
+     */
+    test('the height unfolds over a moment for somebody who has not asked for less motion, where the browser can', async ({
+        page,
+        browserName,
+    }) => {
         await page.emulateMedia({ reducedMotion: 'no-preference' });
         await page.goto('/_styleguide/components/collapse');
+
+        const unfolds = await page.evaluate(
+            () => CSS.supports('interpolate-size', 'allow-keywords') && CSS.supports('selector(::details-content)'),
+        );
+        if (browserName === 'chromium') {
+            expect(unfolds, 'Chromium says it cannot unfold a height without a script').toBe(true);
+        }
 
         const opening = await heightsWhileOpening(specimen(page, 'default').locator('details.c-collapse'));
 
         expect(opening.open, 'the collapse did not open').toBeGreaterThan(opening.closed);
-        expect(opening.between.length, 'no height was drawn between closed and open').toBeGreaterThan(0);
+        if (unfolds) {
+            expect(opening.between.length, 'no height was drawn between closed and open').toBeGreaterThan(0);
+        } else {
+            expect(opening.between, 'a height was drawn between closed and open where the browser cannot unfold one').toEqual([]);
+        }
     });
 
     test('and is open at once for somebody who has', async ({ page }) => {
