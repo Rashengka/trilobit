@@ -6,6 +6,7 @@ namespace Trilobit\Tests\Unit\Core\Config;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Tracy\Dumper;
 use Trilobit\Core\Config\Environment;
 
 #[CoversClass(Environment::class)]
@@ -71,31 +72,26 @@ final class EnvironmentTest extends TestCase
         self::assertFalse($environment->flag('ABSENT'));
     }
 
-    public function testTheResolvedValuesTakeTheProcessOverTheFile(): void
+    /**
+     * The environment holds every value a deployment has, the passwords among
+     * them, and it is an object that ends up dumped: the debug bar's container
+     * panel shows every service a request created, and an error page shows the
+     * arguments of every frame. Neither passes through anything that could be
+     * told which of the values are secret, so none of them is shown.
+     */
+    public function testADumpNamesTheValuesWithoutShowingThem(): void
     {
         $environment = Environment::fromValues(
-            ['TRILOBIT_DB_HOST' => 'from file', 'TRILOBIT_DB_NAME' => 'untouched'],
-            ['TRILOBIT_DB_HOST' => 'from process'],
+            ['FROM_THE_FILE' => 'made-up-file-value-31d7'],
+            ['FROM_THE_PROCESS' => 'made-up-process-value-9c02'],
         );
 
-        self::assertSame(
-            ['TRILOBIT_DB_HOST' => 'from process', 'TRILOBIT_DB_NAME' => 'untouched'],
-            $environment->resolved(),
-        );
-    }
-
-    public function testTheResolvedValuesAcceptAPrefixedNameTheFileNeverMentioned(): void
-    {
-        $environment = Environment::fromValues([], ['TRILOBIT_DEBUG' => '1']);
-
-        self::assertSame(['TRILOBIT_DEBUG' => '1'], $environment->resolved());
-    }
-
-    public function testTheResolvedValuesLeaveTheRestOfTheMachineOut(): void
-    {
-        $environment = Environment::fromValues([], ['PATH' => '/somewhere', 'LANG' => 'en_US.UTF-8']);
-
-        self::assertSame([], $environment->resolved());
+        foreach ([Dumper::toText($environment), print_r($environment, true), var_export($environment, true)] as $dump) {
+            self::assertStringContainsString('FROM_THE_FILE', $dump);
+            self::assertStringContainsString('FROM_THE_PROCESS', $dump);
+            self::assertStringNotContainsString('made-up-file-value-31d7', $dump);
+            self::assertStringNotContainsString('made-up-process-value-9c02', $dump);
+        }
     }
 
     public function testAMissingFileIsNotAnError(): void

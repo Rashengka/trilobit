@@ -11,6 +11,7 @@ use Nette\Utils\FileSystem;
 use Tracy\Debugger;
 use Trilobit\Core\Config\EditorLinks;
 use Trilobit\Core\Config\Environment;
+use Trilobit\Core\Config\TracyScrubber;
 use Trilobit\Core\Module\ModuleList;
 
 /**
@@ -71,6 +72,7 @@ final class Bootstrap
         $configurator->setDebugMode($environment->flag('TRILOBIT_DEBUG'));
         $configurator->enableTracy($logDirectory);
         self::pointTheEditorLinksAtThisMachine($environment, $root);
+        TracyScrubber::install();
         $configurator->setTempDirectory($tempDirectory);
 
         $configurator->addStaticParameters([
@@ -99,9 +101,11 @@ final class Bootstrap
             // makes the cache key say what it is a cache of.
             'configHash' => self::configurationHash($files),
         ]);
-        $configurator->addDynamicParameters([
-            'env' => $environment->resolved(),
-        ]);
+        // The environment is deliberately not a parameter. Nothing read it,
+        // and the debug bar's container panel prints every parameter as it
+        // is, passwords included, with nothing in between that could hide
+        // them. Configuration asks @core.environment::value() for a setting,
+        // which also names the fallback on the same line.
 
         // A module brings its own configuration with it. A switched-off module
         // contributes no file, which is why it ends up with no services, no

@@ -1276,6 +1276,19 @@ A few settings are worth knowing about:
   `config/common.neon` names beside them, which is what `compose.yaml` starts;
   fill them in for anything else. Tests that need a database say so and skip
   when none answers, so a run without one looks different from a run with one.
+- Tracy shows no secret anywhere - not on the error page, not in the copy of
+  it written to `var/log` in every mode, and not in the debug bar. A value is
+  hidden when the name it is kept under has a word such as `password`,
+  `secret`, `token`, `auth` or `cookie` in it, or `key` as part of a longer
+  name - so `TRILOBIT_MAILER_PASSWORD` or `apiToken` is hidden the day it is
+  added, without being listed anywhere - and when the value is a URL with a
+  password in it or the current session's identifier; see
+  `Trilobit\Core\Config\Secrets`. What a rule over names cannot reach is kept
+  away from Tracy instead: the environment is not a container parameter
+  (configuration reads a setting with `@core.environment::value()`), and the
+  object holding it never shows a value in any dump. So a secret is safe in
+  `.env` under any name, and anywhere else only under a name that says what it
+  is.
 
 `config/local.neon` is optional and applies to one machine; see
 `config/local.neon.example`.
