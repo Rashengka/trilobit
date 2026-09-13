@@ -1,0 +1,567 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * How many services the DI container builds for one request, and how many of
+ * those it actually had to run.
+ *
+ * The two numbers are different things once the container makes its services
+ * lazy (`di: lazy` in config/common.neon). A lazy service is a native PHP 8.4
+ * lazy object: asking the container for it creates the object, but its
+ * constructor - and with it the whole tree of services the constructor takes -
+ * only runs when something first touches it. "Created" is every object the
+ * container holds at the end of the request; "initialised" is the part of it
+ * whose constructor has run. Counting only the first would measure nothing:
+ * with lazy services on, it stays roughly where it was, and what changes is
+ * the second.
+ *
+ * It is a tool for measuring, not a check, and it is not part of the gate: it
+ * exists so that the numbers in the commit that switched lazy services on can
+ * be taken again, on any later tree, the same way. Run it inside the php
+ * container, where the application is served from:
+ *
+ *   docker compose exec php bin/measure-services [--runs=15] [--warmup=3] [--debug=0|1] [--list]
+ *
+ * It starts its own PHP built-in server on a port inside the container, so it
+ * never measures - or disturbs - the server the stack already runs. It needs a
+ * tenant answering at "localhost" (what the installation instructions create)
+ * and it makes two things of its own in that tenant's database, both idempotent:
+ * an account to sign in with, whose generated password is used and never
+ * printed, and a published page at /measure-services to have a page of the
+ * content management to request.
+ *
+ * Every number is refused rather than printed when it would be measuring
+ * something else than it says: a request that answered with an error page, a
+ * request in another debug mode than the one asked for, and - outside debug
+ * mode - a request that compiled a script instead of taking it from opcache.
+ * In debug mode the container is compiled on every request by design, and the
+ * output says so.
+ *
+ * The same file plays three parts, which is why it has no functions of its own:
+ * run by hand it is the driver; under the built-in server it is the front
+ * controller it measures through (www/index.php plus a count at shutdown); and
+ * with --console it is bin/trilobit plus the same count.
+ */
+
+use Nette\DI\Container;
+use Trilobit\Core\Bootstrap;
+
+$root = dirname(__DIR__);
+
+/*
+ * How many scripts opcache has had to compile so far, in this process.
+ */
+$missesSoFar = static function (): int {
+    $status = function_exists('opcache_get_status') ? opcache_get_status(false) : false;
+
+    return is_array($status) ? (int) ($status['opcache_statistics']['misses'] ?? 0) : 0;
+};
+
+/*
+ * Appends one line to the file the driver reads: what the container holds at
+ * the very end of the request. It runs as a shutdown function, so that a
+ * console command that ends with exit() is counted as well, and it is
+ * registered before the application boots, so it runs before Tracy's own
+ * shutdown handler draws the debug bar - which is not part of the request a
+ * visitor makes.
+ *
+ * @param array<string, int> $at scripts compiled by each point of the request
+ */
+$record = static function (?Container $container, int $started, ?int $booted, int $misses, array $at) use ($missesSoFar): void {
+    $out = getenv('TRILOBIT_MEASURE_OUT');
+    if (!is_string($out) || $out === '') {
+        return;
+    }
+
+    $elapsed = (hrtime(true) - $started) / 1e6;
+    $peak = memory_get_peak_usage();
+    $held = memory_get_usage();
+
+    // Asked here, inside the request being measured, because whether opcache
+    // is on is decided per SAPI: the driver's own answer would be the
+    // command line's, which says nothing about the server's.
+    $opcache = function_exists('opcache_get_status') ? opcache_get_status(false) : false;
+
+    // How many scripts this request compiled rather than took from opcache,
+    // counted as misses during the request rather than asked of a file
+    // afterwards: a request that compiled a file and stored it finds it cached
+    // by the time it asks. For opcache.file_update_protection seconds after
+    // the container is compiled opcache refuses to cache it, and a request in
+    // that window pays for compiling it - which looks exactly like a slower
+    // container.
+    $compiled = $missesSoFar() - $misses;
+
+    // What it compiled, when it did: a script opcache has just stored has not
+    // been hit yet and was last used now.
+    $fresh = [];
+    if ($compiled > 0 && function_exists('opcache_get_status')) {
+        $full = opcache_get_status(true);
+        $now = is_int($_SERVER['REQUEST_TIME'] ?? null) ? $_SERVER['REQUEST_TIME'] : time();
+        foreach (is_array($full) ? ($full['scripts'] ?? []) : [] as $path => $info) {
+            if (($info['hits'] ?? 1) === 0 && ($info['last_used_timestamp'] ?? 0) >= $now) {
+                $fresh[] = $path;
+            }
+        }
+    }
+
+    $created = [];
+    $initialised = [];
+    if ($container !== null) {
+        // The container keeps what it has built in a private property of
+        // Nette\DI\Container, which the generated class extends - so the
+        // closure is scoped to that class and not to the generated one.
+        $instances = Closure::bind(static fn (Container $c): array => $c->instances, null, Container::class)($container);
+        foreach ($instances as $name => $service) {
+            $created[] = $name;
+            if (!is_object($service) || !(new ReflectionClass($service))->isUninitializedLazyObject($service)) {
+                $initialised[] = $name;
+            }
+        }
+    }
+
+    $line = [
+        'created' => count($created),
+        'initialised' => count($initialised),
+        'ms' => $elapsed,
+        'peak' => $peak,
+        'held' => $held,
+        // The peak by the time the container had been built, before the
+        // application ran: what a request costs before it does anything.
+        'booted' => $booted ?? $peak,
+        // What the application itself decided, which is not necessarily what
+        // it was asked for: an environment variable that did not arrive leaves
+        // the decision to .env.
+        'debugMode' => $container !== null ? (bool) ($container->getParameters()['debugMode'] ?? false) : null,
+        'opcache' => is_array($opcache) && ($opcache['opcache_enabled'] ?? false) === true,
+        'compiled' => $compiled,
+        'compiledBy' => $at,
+        'fresh' => $fresh,
+        'ghosts' => array_values(array_diff($created, $initialised)),
+        'services' => $initialised,
+    ];
+
+    file_put_contents($out, json_encode($line, JSON_THROW_ON_ERROR) . "\n", FILE_APPEND | LOCK_EX);
+};
+
+// ---------------------------------------------------------------------------
+// Front controller, under the built-in server.
+// ---------------------------------------------------------------------------
+if (PHP_SAPI === 'cli-server') {
+    $started = hrtime(true);
+    memory_reset_peak_usage();
+    $misses = $missesSoFar();
+    $at = [];
+
+    $path = parse_url(is_string($_SERVER['REQUEST_URI'] ?? null) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
+    if (is_string($path) && $path !== '/' && is_file($root . '/www' . $path)) {
+        return false;
+    }
+
+    require $root . '/vendor/autoload.php';
+    $at['autoload'] = $missesSoFar() - $misses;
+
+    $container = null;
+    $booted = null;
+    register_shutdown_function(static function () use (&$container, &$booted, &$at, $record, $started, $misses): void {
+        $record($container, $started, $booted, $misses, $at);
+    });
+
+    $container = Bootstrap::boot();
+    $booted = memory_get_peak_usage();
+    $at['boot'] = $missesSoFar() - $misses;
+    $container->getByType(Nette\Application\Application::class)->run();
+    $at['run'] = $missesSoFar() - $misses;
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Console, with --console: bin/trilobit plus the count.
+// ---------------------------------------------------------------------------
+$arguments = is_array($_SERVER['argv'] ?? null) ? array_values($_SERVER['argv']) : [];
+if (($arguments[1] ?? null) === '--console') {
+    $started = hrtime(true);
+    memory_reset_peak_usage();
+    $misses = $missesSoFar();
+
+    require $root . '/vendor/autoload.php';
+
+    $container = null;
+    $booted = null;
+    register_shutdown_function(static function () use (&$container, &$booted, $record, $started, $misses): void {
+        $record($container, $started, $booted, $misses, []);
+    });
+
+    $_SERVER['argv'] = [$root . '/bin/trilobit', ...array_slice($arguments, 2)];
+    $_SERVER['argc'] = count($_SERVER['argv']);
+
+    $container = Bootstrap::boot();
+    $booted = memory_get_peak_usage();
+    $container->getByType(Contributte\Console\Application::class)->run();
+
+    exit(0);
+}
+
+// ---------------------------------------------------------------------------
+// Driver.
+// ---------------------------------------------------------------------------
+$options = getopt('', ['runs:', 'warmup:', 'debug:', 'list', 'port:']);
+$runs = max(1, (int) ($options['runs'] ?? 15));
+$warmup = max(1, (int) ($options['warmup'] ?? 3));
+$port = (int) ($options['port'] ?? 18911);
+$list = isset($options['list']);
+$asked = isset($options['debug']) && is_string($options['debug']) ? $options['debug'] !== '0' : null;
+
+$environment = getenv();
+$prefix = [];
+if ($asked === true) {
+    $environment['TRILOBIT_DEBUG'] = '1';
+} elseif ($asked === false) {
+    // Off is a variable set to nothing, and proc_open() drops a variable whose
+    // value is empty: the application would find none and take .env's value
+    // instead, which on a developer's machine is on. env(1) is what can hand a
+    // process a variable set to nothing.
+    unset($environment['TRILOBIT_DEBUG']);
+    $prefix = ['env', 'TRILOBIT_DEBUG='];
+}
+
+$out = tempnam(sys_get_temp_dir(), 'measure-services-');
+$log = tempnam(sys_get_temp_dir(), 'measure-services-log-');
+if ($out === false || $log === false) {
+    fwrite(STDERR, "Could not make a temporary file.\n");
+    exit(2);
+}
+
+$environment['TRILOBIT_MEASURE_OUT'] = $out;
+
+$fail = static function (string $message) use ($log): never {
+    fwrite(STDERR, $message . "\n");
+    $tail = (string) file_get_contents($log);
+    if ($tail !== '') {
+        fwrite(STDERR, "\nWhat the server and the commands printed:\n" . substr($tail, -4000) . "\n");
+    }
+
+    exit(1);
+};
+
+$server = proc_open(
+    [...$prefix, PHP_BINARY, '-S', '127.0.0.1:' . $port, '-t', $root . '/www', __FILE__],
+    [0 => ['file', '/dev/null', 'r'], 1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']],
+    $pipes,
+    $root,
+    $environment,
+);
+if ($server === false) {
+    $fail('Could not start the built-in server.');
+}
+
+register_shutdown_function(static function () use ($server, $out, $log): void {
+    proc_terminate($server);
+    proc_close($server);
+    foreach ([$out, $log] as $file) {
+        if (is_file($file)) {
+            unlink($file);
+        }
+    }
+});
+
+$deadline = microtime(true) + 10;
+while (($socket = @fsockopen('127.0.0.1', $port, $code, $message, 0.2)) === false) {
+    if (microtime(true) > $deadline) {
+        $fail(sprintf('The built-in server did not answer on port %d.', $port));
+    }
+
+    usleep(100_000);
+}
+
+fclose($socket);
+
+/**
+ * One request. The Host header is the tenant's, because the tenant is found by
+ * the host a request arrives at; the connection itself goes to the server
+ * started above. Redirects are not followed: a redirect is an answer, and it
+ * is the answer the anonymous administration is measured by.
+ *
+ * @param array<string, string> $cookies
+ * @param array<string, string> $headers
+ * @param array<string, string>|null $form
+ * @return array{status: int, body: string, location: string|null, cookies: array<string, string>}
+ */
+$request = static function (string $path, array $cookies = [], array $headers = [], ?array $form = null) use ($port): array {
+    $lines = ['Host: localhost', 'Sec-Fetch-Site: same-origin'];
+    foreach ($headers as $name => $value) {
+        $lines[] = $name . ': ' . $value;
+    }
+
+    if ($cookies !== []) {
+        $pairs = [];
+        foreach ($cookies as $name => $value) {
+            $pairs[] = $name . '=' . $value;
+        }
+
+        $lines[] = 'Cookie: ' . implode('; ', $pairs);
+    }
+
+    $http = ['method' => 'GET', 'follow_location' => 0, 'ignore_errors' => true, 'timeout' => 30];
+    if ($form !== null) {
+        $http['method'] = 'POST';
+        $lines[] = 'Content-Type: application/x-www-form-urlencoded';
+        $http['content'] = http_build_query($form);
+    }
+
+    $http['header'] = implode("\r\n", $lines);
+    $body = file_get_contents('http://127.0.0.1:' . $port . $path, false, stream_context_create(['http' => $http]));
+    $received = http_get_last_response_headers() ?? [];
+
+    $status = 0;
+    $location = null;
+    foreach ($received as $header) {
+        if (preg_match('#^HTTP/\S+ (\d{3})#', $header, $match) === 1) {
+            $status = (int) $match[1];
+        } elseif (preg_match('#^Location:\s*(.+)$#i', $header, $match) === 1) {
+            $location = trim($match[1]);
+        } elseif (preg_match('#^Set-Cookie:\s*([^=;]+)=([^;]*)#i', $header, $match) === 1) {
+            $cookies[$match[1]] = $match[2];
+        }
+    }
+
+    return ['status' => $status, 'body' => (string) $body, 'location' => $location, 'cookies' => $cookies];
+};
+
+$command = static function (array $arguments) use ($root, $environment, $prefix, $log): string {
+    $process = proc_open(
+        [...$prefix, PHP_BINARY, ...$arguments],
+        [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['file', $log, 'a']],
+        $pipes,
+        $root,
+        $environment,
+    );
+    if ($process === false) {
+        return '';
+    }
+
+    $output = (string) stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+    proc_close($process);
+
+    return $output;
+};
+
+$counted = static fn (): array => array_map(
+    static fn (string $line): array => json_decode($line, true, 512, JSON_THROW_ON_ERROR),
+    array_values(array_filter(explode("\n", (string) file_get_contents($out)))),
+);
+
+// --- What the scenarios need, made before anything is measured. -------------
+
+$address = 'measure-services@example.com';
+$generated = $command(['bin/trilobit', 'app:account', $address, '--tenant', 'localhost', '--name', 'Measure Services']);
+if (preg_match('/^ {2}(\S+)$/m', $generated, $match) !== 1) {
+    $fail('app:account printed no password to sign in with.');
+}
+
+$password = $match[1];
+
+$signInPage = $request('/admin/sign-in');
+$signedIn = $request('/admin/sign-in?do=signIn-submit', $signInPage['cookies'], [], [
+    'email' => $address,
+    'password' => $password,
+    'send' => 'Sign in',
+]);
+if ($signedIn['status'] < 300 || $signedIn['status'] >= 400 || str_contains((string) $signedIn['location'], 'sign-in')) {
+    $fail(sprintf('Signing in answered %d rather than sending the account on.', $signedIn['status']));
+}
+
+$session = $signedIn['cookies'];
+
+$page = '/measure-services';
+if ($request($page)['status'] !== 200) {
+    $request('/admin/cms/pages/add?do=page-submit', $session, [], [
+        'title' => 'A page to measure',
+        'category' => '',
+        'segment' => 'measure-services',
+        'perex' => 'Made by bin/measure-services.',
+        'content' => 'A page of the content management, for bin/measure-services to request.',
+        'seoTitle' => '',
+        'seoDescription' => '',
+        'status' => 'published',
+        'send' => 'Save',
+    ]);
+    if ($request($page)['status'] !== 200) {
+        $fail(sprintf('%s does not answer 200 even after the page was saved.', $page));
+    }
+}
+
+// Which debug mode the application is in is what its own requests say, not
+// what this script asked for.
+$seen = $counted();
+$debug = $seen === [] ? null : end($seen)['debugMode'];
+if (!is_bool($debug)) {
+    $fail('The requests made so far left no count behind, so there is no telling which debug mode the application is in.');
+}
+
+if ($asked !== null && $asked !== $debug) {
+    $fail(sprintf('Debug mode was asked to be %s, and the application runs with it %s.', $asked ? 'on' : 'off', $debug ? 'on' : 'off'));
+}
+
+// opcache does not cache a file younger than opcache.file_update_protection
+// seconds, and warming a scenario up can write one: the container on the first
+// request, a template the first time it is drawn in this debug mode. Waiting
+// that long after the warm-up is what keeps the measured requests from
+// compiling what the warm-up wrote; the check after each scenario refuses a run
+// that did not.
+$settle = (int) ini_get('opcache.file_update_protection') + 1;
+
+// --- The scenarios. --------------------------------------------------------
+
+$ajax = ['X-Requested-With' => 'XMLHttpRequest', 'Accept' => 'application/json'];
+
+/** @var list<array{string, int, Closure(): int}> $scenarios name, expected status, one request */
+$scenarios = [
+    ['front: home page', 200, static fn (): int => $request('/')['status']],
+    ['front: CMS page', 200, static fn (): int => $request($page)['status']],
+    ['admin, signed out', 302, static fn (): int => $request('/admin')['status']],
+    ['admin, signed in', 200, static fn (): int => $request('/admin', $session)['status']],
+    ['admin: CMS pages', 200, static fn (): int => $request('/admin/cms/pages', $session)['status']],
+];
+if ($debug) {
+    $scenarios[] = ['style guide', 200, static fn (): int => $request('/_styleguide')['status']];
+    $scenarios[] = [
+        'Naja: style guide signal',
+        200,
+        static fn (): int => $request('/_styleguide/components/toast?do=sayItInAToast', [], $ajax)['status'],
+    ];
+} else {
+    // The style guide only exists in debug mode, so outside it the Naja
+    // request is the one every page answers: a navigation that asks for the
+    // snippets rather than for the document.
+    $scenarios[] = ['Naja: home page', 200, static fn (): int => $request('/', [], $ajax)['status']];
+}
+
+$scenarios[] = [
+    'console: migrations:status',
+    0,
+    static function () use ($command): int {
+        $command([__FILE__, '--console', 'migrations:status', '--no-interaction']);
+
+        return 0;
+    },
+];
+
+$median = static function (array $values): float {
+    sort($values);
+    $count = count($values);
+    $middle = intdiv($count, 2);
+
+    return $count % 2 === 1 ? (float) $values[$middle] : ($values[$middle - 1] + $values[$middle]) / 2;
+};
+
+printf(
+    "Debug mode %s, %d measured runs per scenario after %d to warm up, PHP %s. Medians.\n\n",
+    $debug ? 'on' : 'off',
+    $runs,
+    $warmup,
+    PHP_VERSION,
+);
+printf(
+    "| %-28s | %7s | %11s | %9s | %9s | %15s | %9s |\n",
+    'scenario',
+    'created',
+    'initialised',
+    'time (ms)',
+    'peak (KB)',
+    'peak, boot (KB)',
+    'held (KB)',
+);
+printf(
+    "|%s|%s|%s|%s|%s|%s|%s|\n",
+    str_repeat('-', 30),
+    str_repeat('-', 9),
+    str_repeat('-', 13),
+    str_repeat('-', 11),
+    str_repeat('-', 11),
+    str_repeat('-', 17),
+    str_repeat('-', 11),
+);
+
+$details = [];
+$opcache = [];
+foreach ($scenarios as [$name, $expected, $run]) {
+    for ($i = 0; $i < $warmup; $i++) {
+        $run();
+    }
+
+    // Until a file is old enough opcache compiles it without storing it, and
+    // the first request after that is the one that compiles and stores it -
+    // so one more request goes after the wait, before anything is counted.
+    sleep($settle);
+    $run();
+    file_put_contents($out, '');
+    for ($i = 0; $i < $runs; $i++) {
+        $status = $run();
+        if ($status !== $expected) {
+            $fail(sprintf('%s answered %d, not %d; an error page is not what is being measured.', $name, $status, $expected));
+        }
+    }
+
+    $counts = $counted();
+    if (count($counts) !== $runs) {
+        $fail(sprintf('%s: %d runs left %d counts behind; each run has to leave exactly one.', $name, $runs, count($counts)));
+    }
+
+    foreach ($counts as $count) {
+        if ($count['debugMode'] !== $debug) {
+            $fail(sprintf('%s ran in another debug mode than the requests before it.', $name));
+        }
+
+        // In debug mode Nette checks the container for changes on every
+        // request and invalidates it in opcache before including it
+        // (Nette\DI\ContainerLoader::includeFreshFile()), so every request
+        // compiles it: that is the real cost of debug mode, not a fault of the
+        // measurement, and the note below the table says so.
+        if (!$debug && $count['opcache'] && $count['compiled'] > 0) {
+            $fail(sprintf(
+                '%s compiled %d script(s) instead of taking them from opcache (by each point: %s; '
+                . 'stored by this server within the same second: %s); '
+                . 'its time and memory would be the compiler\'s, not the application\'s.',
+                $name,
+                $count['compiled'],
+                json_encode($count['compiledBy'], JSON_THROW_ON_ERROR),
+                $count['fresh'] === [] ? 'nothing' : implode(', ', $count['fresh']),
+            ));
+        }
+    }
+
+    printf(
+        "| %-28s | %7s | %11s | %9.1f | %9d | %15d | %9d |\n",
+        $name,
+        (string) $median(array_column($counts, 'created')),
+        (string) $median(array_column($counts, 'initialised')),
+        $median(array_column($counts, 'ms')),
+        (int) round($median(array_column($counts, 'peak')) / 1024),
+        (int) round($median(array_column($counts, 'booted')) / 1024),
+        (int) round($median(array_column($counts, 'held')) / 1024),
+    );
+
+    $details[$name] = end($counts);
+    $opcache[$name] = in_array(true, array_column($counts, 'opcache'), true) ? 'on' : 'off';
+}
+
+printf("\nopcache, as the measured requests saw it: %s\n", implode(', ', array_map(
+    static fn (string $name, string $state): string => $name . ' ' . $state,
+    array_keys($opcache),
+    $opcache,
+)));
+
+if ($debug) {
+    print "In debug mode every request compiles the container again (Nette's auto-rebuild invalidates it in opcache), "
+        . "and that compile is part of every number above.\n";
+}
+
+if ($list) {
+    foreach ($details as $name => $last) {
+        printf("\n%s\n  initialised (%d): %s\n  created, never run (%d): %s\n", $name, count($last['services']), implode(', ', $last['services']), count($last['ghosts']), implode(', ', $last['ghosts']));
+    }
+}
