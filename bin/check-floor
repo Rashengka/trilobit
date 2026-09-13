@@ -1,0 +1,286 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * check-floor - runs the gate on the lowest PHP this project promises to run on.
+ *
+ * composer.json's require.php names a floor, and CI runs `composer check` on it.
+ * A development container is usually a version ahead of that floor, so code that
+ * uses what only the newer PHP has passes on the developer's machine and fails
+ * in CI's floor job - or in a deployment that took composer.json at its word.
+ * This runs the same gate on the floor before the push rather than after it.
+ *
+ * It reads the floor out of require.php, builds docker/php-floor for it, and runs
+ * `composer check` in that image over this checkout - the one this script is in,
+ * uncommitted changes included - against the database of this checkout's own
+ * compose stack. Nothing it does writes to the checkout; see
+ * docker/php-floor/gate.sh for how.
+ *
+ * Usage:
+ *   bin/check-floor                 the gate, on the floor
+ *   bin/check-floor --print-floor   print the PHP version it would use, and stop
+ *
+ * Exit codes:
+ *   0    the gate passed on the floor
+ *   125  it could not be run; a line starting "check-floor:" on stderr says why
+ *        and what to do about it
+ *   anything else is the gate's own verdict, passed through unchanged
+ *
+ * It needs Docker with the compose plugin, git, and any PHP to run this file
+ * with - the floor itself comes from the image, not from the host.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Not 2, which is what it was at first: PHPUnit ends a run with errors in it
+ * with 2, Composer passes that through, and "could not run" and "ran and
+ * failed" read the same. 125 is what `docker run` answers when the container
+ * never started, and none of the gate's tools use it.
+ */
+const EXIT_CANNOT_RUN = 125;
+
+/** The floor's own compose file, next to the image it builds. */
+const FLOOR_COMPOSE_FILE = 'docker/php-floor/compose.yaml';
+
+/**
+ * The shapes of require.php whose floor is a single version, read to the minor:
+ * ">=8.4", "^8.4", "~8.4", each also with a patch number. The image is the newest
+ * patch of that minor, which is what CI's setup-php installs as well.
+ *
+ * Anything else is refused rather than guessed at. "8.4.*", a range with an upper
+ * bound, or "^8.4 || ^9.0" each has a floor too, but a reader here that got one of
+ * them wrong would test a PHP nobody promised, and report it as the floor.
+ */
+const FLOOR_PATTERN = '/^(?:>=|\^|~)(\d+)\.(\d+)(?:\.\d+)?$/';
+
+final class CannotRun extends RuntimeException
+{
+}
+
+exit(main(array_slice($argv, 1)));
+
+/**
+ * @param list<string> $args
+ */
+function main(array $args): int
+{
+    $root = dirname(__DIR__);
+
+    try {
+        if ($args === ['--print-floor']) {
+            fwrite(STDOUT, floorOf($root) . "\n");
+
+            return 0;
+        }
+
+        if ($args !== []) {
+            throw new CannotRun('usage: bin/check-floor [--print-floor]');
+        }
+
+        return runTheGateOnTheFloor($root, floorOf($root));
+    } catch (CannotRun $reason) {
+        fwrite(STDERR, 'check-floor: ' . $reason->getMessage() . "\n");
+
+        return EXIT_CANNOT_RUN;
+    }
+}
+
+function floorOf(string $root): string
+{
+    $path = $root . '/composer.json';
+    if (!is_file($path)) {
+        throw new CannotRun("there is no composer.json at {$path}");
+    }
+
+    try {
+        $composer = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $invalid) {
+        throw new CannotRun("{$path} is not valid JSON: {$invalid->getMessage()}");
+    }
+
+    $constraint = is_array($composer) && isset($composer['require']) && is_array($composer['require'])
+        ? ($composer['require']['php'] ?? null)
+        : null;
+    if (!is_string($constraint)) {
+        throw new CannotRun("{$path} has no require.php to take the floor from");
+    }
+
+    if (preg_match(FLOOR_PATTERN, $constraint, $floor) !== 1) {
+        throw new CannotRun(
+            "cannot read a floor out of require.php '{$constraint}'. It understands a single lower bound: "
+            . "'>=X.Y', '^X.Y' or '~X.Y', with or without a patch number. Teach bin/check-floor the new "
+            . 'shape rather than writing a version into it.',
+        );
+    }
+
+    return $floor[1] . '.' . $floor[2];
+}
+
+function runTheGateOnTheFloor(string $root, string $floor): int
+{
+    if (!is_dir($root . '/vendor')) {
+        throw new CannotRun("there is no vendor/ in {$root}; run composer install first");
+    }
+
+    $docker = capture(['docker', 'compose', 'version'], null);
+    if ($docker[0] !== 0) {
+        throw new CannotRun('it needs Docker with the compose plugin, and `docker compose version` did not answer');
+    }
+
+    [$gitDirectory, $commonDirectory] = gitDirectoriesOf($root);
+
+    // Explicit ones first: `+` keeps the left-hand value when a key is on both
+    // sides, so a stray variable of the same name in the shell cannot redirect a
+    // mount.
+    $environment = [
+        'TRILOBIT_FLOOR_PHP' => $floor,
+        'TRILOBIT_FLOOR_GIT_DIR' => $gitDirectory,
+        'TRILOBIT_FLOOR_GIT_COMMON_DIR' => $commonDirectory,
+        'TRILOBIT_FLOOR_LEAK_CONFIG' => leakGuardConfiguration(),
+        // The stack's own services, from files this command does not name, would
+        // otherwise be reported as orphans on every run - a warning that invites
+        // --remove-orphans, which would take the development container down.
+        'COMPOSE_IGNORE_ORPHANS' => '1',
+    ] + getenv();
+
+    // --project-directory, so that the project name and the .env are this
+    // checkout's wherever the script is started from.
+    $compose = [
+        'docker', 'compose',
+        '--project-directory', $root,
+        '--file', $root . '/compose.yaml',
+        '--file', $root . '/' . FLOOR_COMPOSE_FILE,
+        '--profile', 'floor',
+    ];
+
+    requireAHealthyDatabase($compose, $environment, $root);
+
+    fwrite(STDOUT, "check-floor: building trilobit-php-floor:{$floor}\n");
+    if (run([...$compose, 'build', 'floor'], $environment) !== 0) {
+        throw new CannotRun("the image trilobit-php-floor:{$floor} did not build; the output above says why");
+    }
+
+    return run([...$compose, 'run', '--rm', '--no-deps', 'floor'], $environment);
+}
+
+/**
+ * The suites that need a database fail rather than skip when none answers, so
+ * running without one would be a slow red for a reason that has nothing to do
+ * with the floor. Said up front instead, with what to type.
+ *
+ * @param list<string> $compose
+ * @param array<string, string> $environment
+ */
+function requireAHealthyDatabase(array $compose, array $environment, string $root): void
+{
+    [$code, $out, $err] = capture([...$compose, 'ps', '--format', '{{.Health}}', 'database'], $environment);
+    if ($code !== 0) {
+        throw new CannotRun("docker compose could not list this checkout's stack:\n" . trim($err));
+    }
+
+    $health = trim($out);
+    if ($health === '') {
+        throw new CannotRun(
+            "the database of this checkout's compose stack is not running. Start it in {$root} with\n\n"
+            . "    docker compose up -d\n\n"
+            . 'and run this again once `docker compose ps` reports it healthy.',
+        );
+    }
+
+    if ($health !== 'healthy') {
+        throw new CannotRun(
+            "the database of this checkout's compose stack is {$health}, not healthy. Run this again once "
+            . "`docker compose ps` in {$root} reports it healthy.",
+        );
+    }
+}
+
+/**
+ * Where this checkout's git data is, as the host spells it: the directory its
+ * .git points at, and the repository that directory belongs to. For a main
+ * checkout the two are the same; for a worktree the first is inside the second.
+ *
+ * @return array{0: string, 1: string}
+ */
+function gitDirectoriesOf(string $root): array
+{
+    [$code, $out, $err] = capture(
+        ['git', '-C', $root, 'rev-parse', '--path-format=absolute', '--absolute-git-dir', '--git-common-dir'],
+        null,
+    );
+    $lines = explode("\n", trim($out));
+    if ($code !== 0 || count($lines) !== 2) {
+        throw new CannotRun(
+            "{$root} is not a git checkout git can read, and the leak guard at the start of the gate needs one:\n"
+            . trim($err),
+        );
+    }
+
+    return [$lines[0], $lines[1]];
+}
+
+/**
+ * The directory the leak guard reads its private pattern list from, found the
+ * way the guard itself finds it. Only whether it exists is looked at here; what
+ * is in it is the guard's business.
+ */
+function leakGuardConfiguration(): string
+{
+    $xdg = getenv('XDG_CONFIG_HOME');
+    $home = getenv('HOME');
+    if (is_string($xdg) && $xdg !== '') {
+        $directory = rtrim($xdg, '/') . '/trilobit';
+    } elseif (is_string($home) && $home !== '') {
+        $directory = rtrim($home, '/') . '/.config/trilobit';
+    } else {
+        throw new CannotRun('cannot tell where the leak guard keeps its configuration; set HOME or XDG_CONFIG_HOME');
+    }
+
+    if (!is_dir($directory)) {
+        throw new CannotRun(
+            "the leak guard's private pattern list is not set up - {$directory} does not exist. The gate would stop at "
+            . 'its first step without it; "Working on it" in the README says how to make it.',
+        );
+    }
+
+    return $directory;
+}
+
+/**
+ * Runs a command with the terminal attached, and returns its exit code.
+ *
+ * @param list<string> $command
+ * @param array<string, string>|null $environment
+ */
+function run(array $command, ?array $environment): int
+{
+    $process = proc_open($command, [0 => STDIN, 1 => STDOUT, 2 => STDERR], $pipes, null, $environment);
+    if ($process === false) {
+        throw new CannotRun('could not start ' . $command[0]);
+    }
+
+    return proc_close($process);
+}
+
+/**
+ * Runs a command and returns its exit code, standard output and standard error.
+ *
+ * @param list<string> $command
+ * @param array<string, string>|null $environment
+ * @return array{0: int, 1: string, 2: string}
+ */
+function capture(array $command, ?array $environment): array
+{
+    $process = @proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $environment);
+    if ($process === false) {
+        return [127, '', 'could not start ' . $command[0]];
+    }
+
+    $out = (string) stream_get_contents($pipes[1]);
+    $err = (string) stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+
+    return [proc_close($process), $out, $err];
+}
