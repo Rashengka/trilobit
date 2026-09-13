@@ -27,6 +27,7 @@ use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Console\AccountCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\PasswordCommand;
+use Trilobit\Core\Console\SeedCommand;
 use Trilobit\Core\Console\TenantCommand;
 use Trilobit\Core\Console\WarmupCommand;
 use Trilobit\Core\Content\Categories;
@@ -79,17 +80,17 @@ use Trilobit\Core\Tenancy\Tenancy;
 use Trilobit\Core\Tenancy\TenantFromHost;
 
 /**
- * The always-enabled part of the application, and the five places a module
- * hands something to it.
+ * The always-enabled part of the application, and the places a module hands
+ * something to it.
  *
- * All five work the same way and for the same reason: a module registers a
+ * All of them work the same way and for the same reason: a module registers a
  * service and tags it, and Core reads the tag. Core therefore contains no list
  * of modules and no condition on one being enabled. A module that is switched
  * off registers no service at all, so every one of these collections simply
  * comes back shorter - which is what makes "switched off" measurable in the
  * container rather than only visible in the user interface.
  *
- * With no modules enabled all five collections are empty, and that is the
+ * With no modules enabled every one of the collections is empty, and that is the
  * state this class is first delivered in.
  */
 final class CoreExtension extends CompilerExtension
@@ -111,6 +112,9 @@ final class CoreExtension extends CompilerExtension
 
     /** Services tagged with this say which kinds of content they publish; see Trilobit\Core\Content\ContentTypeProvider. */
     public const string TAG_CONTENT_TYPE_PROVIDER = 'trilobit.content_type_provider';
+
+    /** Services tagged with this add what their module shows to `app:seed`; see Trilobit\Core\Seed\SeedProvider. */
+    public const string TAG_SEED_PROVIDER = 'trilobit.seed_provider';
 
     /** The console's own tag; the value is the name the command answers to. */
     private const string TAG_CONSOLE_COMMAND = 'console.command';
@@ -280,6 +284,15 @@ final class CoreExtension extends CompilerExtension
             ->setFactory(PasswordCommand::class)
             ->setAutowired(false)
             ->addTag(self::TAG_CONSOLE_COMMAND, 'app:password');
+
+        // What a working copy is filled with to be clicked through: made of
+        // the two commands above plus what each module adds, which is
+        // collected by tag in beforeCompile(). It refuses to run anywhere but
+        // on a working copy; see Trilobit\Core\Console\SeedCommand.
+        $builder->addDefinition($this->prefix('seedCommand'))
+            ->setFactory(SeedCommand::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_CONSOLE_COMMAND, 'app:seed');
 
         // Doctrine's migration generator, with the two things a build made of
         // modules has to establish first; see the class. It replaces the one
@@ -554,6 +567,7 @@ final class CoreExtension extends CompilerExtension
         $this->service('adminMenu')->setArguments([$this->taggedServices(self::TAG_ADMIN_MENU_PROVIDER)]);
         $this->service('signposts')->setArguments([$this->taggedServices(self::TAG_SIGNPOST_PROVIDER)]);
         $this->service('listeners')->setArguments([$this->taggedServices(self::TAG_EVENT_LISTENER)]);
+        $this->service('seedCommand')->setArgument('providers', $this->taggedServices(self::TAG_SEED_PROVIDER));
         $this->service('ports')->setArguments([$this->taggedPorts()]);
     }
 
