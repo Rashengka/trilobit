@@ -47,6 +47,18 @@ export async function runningOn(element: Locator): Promise<number> {
  * be read.
  */
 export async function paintedAt(element: Locator, x: number, y = 0.5): Promise<Rgb> {
+    const row = await paintedAlong(element, y);
+
+    return row[Math.min(row.length - 1, Math.floor(row.length * x))] ?? [0, 0, 0];
+}
+
+/**
+ * The colours painted along a row of $element, $y of its height down: one for
+ * every pixel from its start to its end, off a single screenshot - so that a
+ * claim about the whole of a track is made of all of it, and not of a point or
+ * two that could fall anywhere in a pattern.
+ */
+export async function paintedAlong(element: Locator, y = 0.5): Promise<Rgb[]> {
     // In the middle of the window: a screenshot scrolls an element only as far
     // as the edge, and there a theme's held banner is drawn over it.
     await element.evaluate((node) => node.scrollIntoView({ block: 'center' }));
@@ -55,7 +67,7 @@ export async function paintedAt(element: Locator, x: number, y = 0.5): Promise<R
 
     try {
         return await blank.evaluate(
-            async ([data, atX, atY]) => {
+            async ([data, atY]) => {
                 const image = new Image();
                 image.src = `data:image/png;base64,${data}`;
                 await image.decode();
@@ -69,16 +81,16 @@ export async function paintedAt(element: Locator, x: number, y = 0.5): Promise<R
                 }
 
                 context.drawImage(image, 0, 0);
-                const [r, g, b] = context.getImageData(
-                    Math.min(canvas.width - 1, Math.floor(canvas.width * atX)),
-                    Math.min(canvas.height - 1, Math.floor(canvas.height * atY)),
-                    1,
-                    1,
-                ).data;
+                const pixels = context.getImageData(0, Math.min(canvas.height - 1, Math.floor(canvas.height * atY)), canvas.width, 1).data;
 
-                return [r ?? 0, g ?? 0, b ?? 0] as [number, number, number];
+                const row: [number, number, number][] = [];
+                for (let at = 0; at < canvas.width; at++) {
+                    row.push([pixels[at * 4] ?? 0, pixels[at * 4 + 1] ?? 0, pixels[at * 4 + 2] ?? 0]);
+                }
+
+                return row;
             },
-            [shot.toString('base64'), x, y] as const,
+            [shot.toString('base64'), y] as const,
         );
     } finally {
         await blank.close();
