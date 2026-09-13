@@ -22,6 +22,9 @@ use Trilobit\Core\Domain\User\User;
  */
 final readonly class Accounts
 {
+    /** What a person reads for the owner's role; the code is Trilobit\Core\Domain\User\Role::OWNER. */
+    private const string OWNERS_ROLE_NAME = 'Owner';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
     ) {}
@@ -111,6 +114,29 @@ final readonly class Accounts
             . 'A transaction opened before it was made would see it that way; this is not meant to run inside one.',
             $code,
         ));
+    }
+
+    /**
+     * The owner's role: the application's, made when there is none yet, and
+     * saying the whole of the application - `app:*` - again whatever the row
+     * said before.
+     *
+     * One place for it, because more than one thing makes an owner -
+     * `app:account --tenant` and the setup wizard - and an owner made one way
+     * holding less than an owner made the other would look like a permission
+     * problem rather than like two definitions. Why the whole of the
+     * application and not a list of what this build offers, and why it is said
+     * again on every call, is on Trilobit\Core\Console\AccountCommand::administer().
+     *
+     * Only the role is changed here; saving it is left to whoever goes on to
+     * flush, which is also where the membership holding it is written.
+     */
+    public function ownersRole(PermissionStructure $structure): Role
+    {
+        $role = $this->applicationRoleMadeIfMissing(Role::OWNER, self::OWNERS_ROLE_NAME);
+        $role->redefine([new Grant($structure->root(), null)->code()]);
+
+        return $role;
     }
 
     /** Writes the account and, through the cascade on the association, any role created with it. */
