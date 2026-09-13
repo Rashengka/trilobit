@@ -57,6 +57,17 @@
                     {block fieldHint}As it is written on the front of the drawer.{/block}
                 {/embed}
             {/specimen}
+
+            {* Out of sight and still in the page: the control is named by it all the same. *}
+            {specimen 'with its label out of sight'}
+                {embed block field, labelHidden: true}
+                    {block fieldLabel}<label for="sg-field-search">Search the collection</label>{/block}
+
+                    {block fieldControl}
+                        <input id="sg-field-search" type="search" placeholder="A name, a period or a drawer">
+                    {/block}
+                {/embed}
+            {/specimen}
         {/block}
     {/embed}
 {/block}

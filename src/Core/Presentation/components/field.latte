@@ -19,13 +19,18 @@
  * control's aria-describedby names - the component cannot write that attribute
  * itself, because the control is the caller's element and not its own.
  *
+ * The label can be taken out of sight (labelHidden) without being taken out of
+ * the page, for a row of fields whose purpose is plain from where they stand -
+ * a filter over a table. A label that was not there at all would leave the
+ * control without a name for somebody who cannot see the row either.
+ *
  * Use it with {embed block field}, filling in fieldLabel and fieldControl, and
  * fieldError or fieldHint when there is something to say.
  *}
 
-{define field, ?string $testId = null, ?string $hintId = null, ?string $errorId = null}
+{define field, ?string $testId = null, ?string $hintId = null, ?string $errorId = null, bool $labelHidden = false}
     <div class="c-field" data-testid="{$testId}">
-        <div class="c-field__label">{block fieldLabel}{/block}</div>
+        <div n:class="'c-field__label', $labelHidden ? 'u-visually-hidden'">{block fieldLabel}{/block}</div>
 
         <div class="c-field__control">{block fieldControl}{/block}</div>
 
