@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Trilobit\Core\Bootstrap;
-use Trilobit\Core\Config\Environment;
+use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Console\SeedCommand;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
@@ -79,8 +79,16 @@ final class SeedCommandTest extends TestCase
     /** @var list<Container> */
     private array $containers = [];
 
+    /** What the mode variable held before this test set it - false when it was not set - or null while untouched. */
+    private string|false|null $modeBefore = null;
+
     protected function tearDown(): void
     {
+        if ($this->modeBefore !== null) {
+            putenv($this->modeBefore === false ? Mode::VARIABLE : Mode::VARIABLE . '=' . $this->modeBefore);
+            $this->modeBefore = null;
+        }
+
         foreach ($this->containers as $container) {
             $container->getByType(SignedIn::class)->logout(true);
         }
@@ -403,18 +411,21 @@ final class SeedCommandTest extends TestCase
      *
      * The mode is stated rather than taken from the machine: a clone has no
      * .env and would be production, a developer's machine says dev, and a
-     * suite taking either would assert one thing here and another in CI. The
-     * rest of the environment - where the database is - is the machine's.
+     * suite taking either would assert one thing here and another in CI.
+     *
+     * It is put into the process environment, which wins over .env - the way
+     * Trilobit\Tests\Database::schemaFor() names the schema - so that the
+     * build reads everything else from the machine as a deployment would, and
+     * this test reads no value of it at all.
      */
     private function installation(string $mode, string $variant = ''): Container
     {
         $this->schemas[] = Database::schemaFor(self::class, $variant);
 
-        $machine = Environment::load(Bootstrap::rootDirectory() . '/.env');
-        $container = Boot::container(
-            ModuleList::of([], Bootstrap::rootDirectory()),
-            environment: Environment::fromValues([...$machine->resolved(), 'TRILOBIT_ENV' => $mode]),
-        );
+        $this->modeBefore ??= getenv(Mode::VARIABLE);
+        putenv(Mode::VARIABLE . '=' . $mode);
+
+        $container = Boot::container(ModuleList::of([], Bootstrap::rootDirectory()));
         Migrations::run($container);
 
         // Asked for so that the security services are built the way a request

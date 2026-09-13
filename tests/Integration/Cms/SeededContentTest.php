@@ -16,7 +16,7 @@ use Trilobit\Cms\Domain\Menu\MenuItem;
 use Trilobit\Cms\Domain\Menu\MenuRepository;
 use Trilobit\Cms\Domain\Page\Page;
 use Trilobit\Core\Bootstrap;
-use Trilobit\Core\Config\Environment;
+use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Tests\Boot;
@@ -41,8 +41,16 @@ final class SeededContentTest extends TestCase
 {
     private string $schema = '';
 
+    /** What the mode variable held before this test set it - false when it was not set - or null while untouched. */
+    private string|false|null $modeBefore = null;
+
     protected function tearDown(): void
     {
+        if ($this->modeBefore !== null) {
+            putenv($this->modeBefore === false ? Mode::VARIABLE : Mode::VARIABLE . '=' . $this->modeBefore);
+            $this->modeBefore = null;
+        }
+
         if ($this->schema !== '') {
             Database::drop($this->schema);
             $this->schema = '';
@@ -136,10 +144,15 @@ final class SeededContentTest extends TestCase
     {
         $this->schema = Database::schemaFor(self::class);
 
-        $machine = Environment::load(Bootstrap::rootDirectory() . '/.env');
+        // Stated rather than taken from the machine, which is production in a
+        // clone with no .env. Only the mode is set, in the process environment
+        // that wins over .env; everything else the build reads as a deployment
+        // would, and this test reads none of it.
+        $this->modeBefore ??= getenv(Mode::VARIABLE);
+        putenv(Mode::VARIABLE . '=' . Mode::Dev->value);
+
         $container = Boot::container(
             ModuleList::of(['cms' => true, 'crm' => false, 'shop' => false], Bootstrap::rootDirectory()),
-            environment: Environment::fromValues([...$machine->resolved(), 'TRILOBIT_ENV' => 'dev']),
         );
         Migrations::run($container);
 
