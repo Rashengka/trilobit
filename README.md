@@ -1420,8 +1420,10 @@ A few settings are worth knowing about:
   password is a disclosure git keeps forever. A variable set in the process
   environment wins over the file, so a container needs no `.env` at all.
 - `TRILOBIT_ENV` says which kind of deployment this is: `dev`, `staging` or
-  `prod`. `dev` and `staging` turn on the debug bar, the detailed error page
-  and the style guide. `staging` runs over real data, so `dev` is the only mode
+  `prod`. `dev` turns on the debug bar, the detailed error page and the style
+  guide. `staging` has the style guide too, and the debugger only for a request
+  carrying the secret cookie - see `TRILOBIT_DEBUG_SECRET` below. `staging`
+  runs over real data, so `dev` is the only mode
   in which a tool may seed or delete data -
   `Trilobit\Core\Config\Mode::mayAlterData()` is the question such a tool asks.
   Empty, absent or misspelled is `prod`, so forgetting it closes the
@@ -1437,6 +1439,54 @@ A few settings are worth knowing about:
   without `TRILOBIT_ENV` it stops the application with a message saying what
   to write instead, because falling back to `prod` there would quietly take
   the debugger and the style guide away from a machine that had them.
+- `TRILOBIT_DEBUG_SECRET` opens the debugger on `staging`, for a request
+  carrying it in the cookie `trilobit-debug-secret`. Staging runs over real
+  data, and not only the debugger shows it, so the whole of a staging
+  deployment belongs behind HTTP authentication on its web server or proxy -
+  that is the deployment's business, not this repository's. The cookie is the
+  second lock, on the part that shows the most.
+
+  The secret has to be at least 32 characters (`openssl rand -hex 32` gives
+  64) and is compared in constant time. Empty, shorter, or not what the cookie
+  says, and staging runs without its debugger - the safe way round, as with an
+  unnamed mode. `dev` is always debugged and `prod` never is; neither reads
+  the secret, so a cookie that opens staging opens nothing in production.
+
+  To be given the debugger, open the staging site in the browser and run, in
+  its developer console, with the deployment's secret in place of the
+  placeholder:
+
+  ```js
+  document.cookie = 'trilobit-debug-secret=<the secret>; Secure; SameSite=Strict; path=/';
+  ```
+
+  It lasts until the browser is closed. A page script can read it - a cookie
+  set from a script cannot be `HttpOnly` - which is why it is only ever sent
+  to the staging site and never over plain HTTP.
+
+  It is a check of the application's own rather than the framework's cookie
+  detection, which does not work behind a proxy: that one matches the secret
+  together with the visitor's address, which behind a proxy is the proxy's for
+  everybody, and it lets any request from the local machine in with no secret
+  at all when no forwarding header is there. Both names carry the word
+  `secret`, so Tracy hides the variable, the cookie and the `Cookie` header
+  carrying it by the rule described in the last item of this list.
+
+  A secret that is set and shorter than 32 characters is a mistake rather
+  than a choice, and it would otherwise look exactly like one: staging runs
+  without its debugger either way. So it is written to `var/log/warning.log`,
+  with its length and without its value, once each time a container is
+  compiled with it rather than on every request. Whether the secret is too
+  short is part of what the compiled container is cached by, so shortening a
+  good one on a running deployment compiles a new container and logs the
+  warning too.
+
+  Because debug mode is compiled into the container, a staging deployment
+  keeps two compiled containers side by side, and the first request of each
+  kind compiles its own. `bin/trilobit app:warmup` does not compile either:
+  a console is built into a third container of its own, and it has no cookies
+  to present, so a command run on staging runs without the debugger - as the
+  same command will in production.
 - `TRILOBIT_EDITOR` and `TRILOBIT_EDITOR_ROOT` decide what happens when a line
   of a stack trace is clicked. The first is the URL pattern, and it defaults to
   the scheme a JetBrains editor registers. The second is where this checkout

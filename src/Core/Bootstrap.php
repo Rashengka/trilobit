@@ -9,6 +9,8 @@ use Nette\DI\Compiler;
 use Nette\DI\Container;
 use Nette\Utils\FileSystem;
 use Tracy\Debugger;
+use Tracy\ILogger;
+use Trilobit\Core\Config\DebugGate;
 use Trilobit\Core\Config\EditorLinks;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Config\Mode;
@@ -24,7 +26,10 @@ use Trilobit\Core\Module\ModuleList;
  * decided by detection: debug mode follows the mode the environment names -
  * see Trilobit\Core\Config\Mode - rather than a check on the visitor's address,
  * because an address check is unreliable in production and would mean an
- * address written down in a public repository.
+ * address written down in a public repository. The one request-dependent part
+ * is staging's, where a cookie holding a secret the environment names opens
+ * the debugger; see Trilobit\Core\Config\DebugGate for why that is a check of
+ * its own rather than the framework's.
  *
  * Two things are decided here rather than in configuration, and both for the
  * same reason: they are needed before there is a container to read a
@@ -55,9 +60,15 @@ final class Bootstrap
      *     itself; by default the .env beside the application, overlaid with the
      *     process environment. A suite passes its own to build in a mode the
      *     machine it runs on is not in.
+     * @param array<mixed>|null $cookies the request's cookies, which on
+     *     staging decide debug mode; by default $_COOKIE, which a console does
+     *     not have, so a command run on staging is built as production is.
      */
-    public static function configurator(?ModuleList $modules = null, ?Environment $environment = null): Configurator
-    {
+    public static function configurator(
+        ?ModuleList $modules = null,
+        ?Environment $environment = null,
+        ?array $cookies = null,
+    ): Configurator {
         $root = $modules?->rootDirectory() ?? self::rootDirectory();
         $modules ??= ModuleList::fromNeon($root . '/config/modules.neon', $root);
         $environment ??= Environment::load($root . '/.env');
@@ -79,8 +90,13 @@ final class Bootstrap
 
         $files = self::configurationFiles($modules);
 
+        $gate = DebugGate::check($environment, $cookies ?? $_COOKIE);
+        // Only staging reads the secret, so only there is a short one a
+        // mistake worth a word; see the onCompile handler below.
+        $misconfiguration = $mode === Mode::Staging ? $gate->misconfiguration() : null;
+
         $configurator = new Configurator();
-        $configurator->setDebugMode($mode->debugMode());
+        $configurator->setDebugMode($mode->debugMode($gate));
         $configurator->enableTracy($logDirectory);
         self::pointTheEditorLinksAtThisMachine($environment, $root);
         TracyScrubber::install();
@@ -117,6 +133,13 @@ final class Bootstrap
             // cached by its static parameters, so putting the contents in one
             // makes the cache key say what it is a cache of.
             'configHash' => self::configurationHash($files),
+            // Whether staging's debug secret is set and too short, so that
+            // the warning below is written once per compiled container - and
+            // written at all when a good secret is shortened on a deployment
+            // whose container is already compiled. Without it in the cache key
+            // that deployment would be handed its old container, compile
+            // nothing and say nothing. Only the yes or no; not the secret.
+            'debugSecretTooShort' => $misconfiguration !== null,
         ]);
         // The environment is deliberately not a parameter. Nothing read it,
         // and the debug bar's container panel prints every parameter as it
@@ -140,6 +163,17 @@ final class Bootstrap
         $configurator->onCompile[] = static function (Configurator $configurator, Compiler $compiler) use ($modules): void {
             foreach ($modules->enabled() as $module) {
                 $compiler->addExtension($module->name, $module->createExtension());
+            }
+        };
+
+        // A secret too short to be taken leaves staging without its debugger,
+        // exactly as no secret does, so the browser cannot tell the mistake
+        // from the choice. The log can. It is written while the container is
+        // compiled rather than on every request, which on a busy staging would
+        // bury everything else in the file.
+        $configurator->onCompile[] = static function () use ($misconfiguration): void {
+            if ($misconfiguration !== null) {
+                Debugger::log($misconfiguration, ILogger::WARNING);
             }
         };
 

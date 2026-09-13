@@ -32,7 +32,10 @@ enum Mode: string
     /** A working copy. */
     case Dev = 'dev';
 
-    /** Debugged like a working copy and run over real data, like production. */
+    /**
+     * Run over real data, like production, and debugged like a working copy
+     * only for a request carrying the secret - see DebugGate.
+     */
     case Staging = 'staging';
 
     /** A live deployment. */
@@ -61,10 +64,26 @@ enum Mode: string
         return self::tryFrom($value) ?? self::Prod;
     }
 
-    /** Whether the debug bar and the detailed error page are on. */
-    public function debugMode(): bool
+    /**
+     * Whether the debug bar and the detailed error page are on: always while
+     * developing, never in production, and on staging for a request $gate lets
+     * through.
+     *
+     * On staging that makes debug mode a property of the request rather than
+     * of the deployment. The compiled container is cached by it, so a staging
+     * deployment keeps two of them, one for each answer - and a console, which
+     * has no cookies to present, is built as production is.
+     *
+     * In production the gate is not asked, so a cookie that opens staging
+     * opens nothing there.
+     */
+    public function debugMode(DebugGate $gate): bool
     {
-        return $this !== self::Prod;
+        return match ($this) {
+            self::Dev => true,
+            self::Staging => $gate->isOpen(),
+            self::Prod => false,
+        };
     }
 
     /**
