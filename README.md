@@ -588,6 +588,7 @@ behaviour:
 | Scrollspy | a list of links | marking the section in view, with an `IntersectionObserver` |
 | Carousel | a `scroll-snap` track that scrolls by hand and by keyboard | the previous and next buttons |
 | Toast | a live region | dismissing |
+| Navigation | a list of links; an entry with entries under it is its link and a button beside it | opening what is under an entry, folding the navigation behind its Menu button, unfolding the way to the current page (`assets/nav.ts`) |
 
 The browser does the hard part that way - focus, `Escape`, light dismiss, the
 top layer - and does it the same on every page, including the parts nobody
@@ -609,6 +610,15 @@ Some choices behind the table, each with the reason it was made:
   newer.
 - Tabs switch as the arrow keys move, rather than on `Enter`, and the chosen
   tab is not written into the address.
+- In `c-nav`, an entry with entries under it keeps its own link, and a button
+  beside it opens what is under it. One control doing both would lose one of
+  them on a touch screen, where nothing hovers. Ledger unfolds the entries in
+  place, as deep as they go. Atrium opens them as a block over the page, two
+  levels deep. On a narrow window ledger folds the whole navigation behind a
+  Menu button and opens it as a column. Without the script it is never folded,
+  because nothing could open it again. The entries the current page is under
+  carry `aria-current="true"`. Ledger unfolds them as the page arrives, and
+  atrium only marks them, because unfolding there would cover the page.
 - A carousel never turns by itself. A carousel that moved on its own would need
   a way to stop it (WCAG 2.2.2), and nothing here needs one that moves.
 - A toast stays until it is dismissed. A notice that goes after a fixed time is

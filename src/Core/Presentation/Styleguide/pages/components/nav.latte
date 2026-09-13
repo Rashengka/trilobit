@@ -10,6 +10,16 @@
  * deep (tests/Template/StyleguideShowsANestedNavigationTest). One branch goes a
  * level further, which is where the two themes part - ledger draws it, atrium
  * stops at two.
+ *
+ * The third has the page being read two levels under an entry: ledger unfolds
+ * the way to it as the page arrives, atrium only marks it. It is drawn in a
+ * snippet with a way to redraw it, because the way to the page has to be
+ * unfolded again in whatever Naja brings back (tests/e2e/nav-fold.spec.ts).
+ *
+ * The fourth is the whole navigation folded behind its Menu button, which a
+ * page does only in ledger on a narrow window. Here it is folded at any width
+ * and in both themes, by setting on the specimen the two tokens a theme sets
+ * - the fold is those two tokens and nothing else.
  *}
 
 {import '../../templates/furniture.latte'}
@@ -24,6 +34,13 @@
         leaves it, on Escape, on a click outside it, and when the focus leaves it.
     </p>
 
+    <p class="l-measure">
+        The entries the page being read is under are marked. Ledger unfolds them as the page
+        arrives; atrium leaves them folded, because unfolding there covers the page. On a narrow
+        window ledger folds the whole navigation behind a Menu button and opens it as a column;
+        without the script it is never folded.
+    </p>
+
     {embed block sgSection, component: $components['c-nav']}
         {block sgSectionBody}
             {specimen 'default'}
@@ -32,6 +49,28 @@
 
             {specimen 'with entries nested under an entry'}
                 {include nav, items: $sampleNestedNavigation, label: 'Specimen with entries under an entry', testId: 'sample-subnav'}
+            {/specimen}
+
+            {specimen 'with the current page under an entry'}
+                <div class="l-stack">
+                    <div n:snippet="redrawnSpecimen" data-testid="sg-nav-snippet">
+                        {include nav, items: $sampleCurrentNavigation, label: 'Specimen with the current page under an entry', testId: 'sample-current'}
+                    </div>
+
+                    <div class="l-cluster">
+                        <a
+                            n:href="redrawSpecimen!"
+                            class="c-button c-button--quiet ajax"
+                            data-testid="sg-nav-redraw"
+                        >Draw it again</a>
+                    </div>
+                </div>
+            {/specimen}
+
+            {specimen 'folded behind a menu button'}
+                <div style="--layout-nav-menu-toggle: inline-flex; --layout-nav-menu-folded: none">
+                    {include nav, items: $sampleFoldedNavigation, label: 'Specimen folded behind a menu button', testId: 'sample-folded'}
+                </div>
             {/specimen}
         {/block}
     {/embed}

@@ -322,7 +322,9 @@ final class OverviewPresenter extends FrontPresenter
         $template->tableColumns = $this->sampleTableColumns();
         $template->tableRows = $this->sampleTableRows();
         $template->sampleNavigation = $this->sampleNavigation();
+        $template->sampleFoldedNavigation = $this->sampleNavigation('sample-folded');
         $template->sampleNestedNavigation = $this->sampleNestedNavigation();
+        $template->sampleCurrentNavigation = $this->sampleCurrentNavigation();
         $template->sampleSignposts = $this->sampleSignposts();
     }
 
@@ -343,6 +345,37 @@ final class OverviewPresenter extends FrontPresenter
             new NavigationItem('Overview', '#overview', true, 'sample-subnav-overview'),
             $this->sampleEntry('Collections', 'collections', $this->sampleEntry('Fossils', 'fossils', $this->sampleEntry('Trilobites', 'trilobites', $this->sampleEntry('Cambrian', 'cambrian'), $this->sampleEntry('Ordovician', 'ordovician')), $this->sampleEntry('Ammonites', 'ammonites')), $this->sampleEntry('Minerals', 'minerals', $this->sampleEntry('Quartz', 'quartz'), $this->sampleEntry('Feldspar', 'feldspar')), $this->sampleEntry('Field notes', 'field-notes')),
             $this->sampleEntry('Loans', 'loans'),
+        ];
+    }
+
+    /**
+     * The nested kind of tree, with the page being read two levels under an
+     * entry: what ledger unfolds by itself and atrium only marks
+     * (.ai/plans/10-menu-submenu-a-rozcestniky.md, M1). Named apart from the
+     * nested specimen, so that both can be on one page.
+     *
+     * @return list<NavigationItem>
+     */
+    private function sampleCurrentNavigation(): array
+    {
+        $entry = static fn(string $label, string $slug, bool $current = false, NavigationItem ...$children): NavigationItem => new NavigationItem(
+            $label,
+            '#' . $slug,
+            $current,
+            'sample-current-' . $slug,
+            array_values($children),
+        );
+
+        return [
+            $entry('Overview', 'overview'),
+            $entry(
+                'Collections',
+                'collections',
+                false,
+                $entry('Fossils', 'fossils', false, $entry('Trilobites', 'trilobites', true), $entry('Ammonites', 'ammonites')),
+                $entry('Minerals', 'minerals', false, $entry('Quartz', 'quartz')),
+            ),
+            $entry('Loans', 'loans'),
         ];
     }
 
@@ -506,14 +539,16 @@ final class OverviewPresenter extends FrontPresenter
      * catalogue whose examples change with the configuration is a catalogue two
      * people cannot talk about.
      *
+     * @param string $prefix what the testids begin with, so that the same entries can be drawn twice on one page
+     *
      * @return list<NavigationItem>
      */
-    private function sampleNavigation(): array
+    private function sampleNavigation(string $prefix = 'sample-nav'): array
     {
         return [
-            new NavigationItem('Overview', '#', true, 'sample-nav-overview'),
-            new NavigationItem('Specimens', '#', false, 'sample-nav-specimens'),
-            new NavigationItem('Tokens', '#', false, 'sample-nav-tokens'),
+            new NavigationItem('Overview', '#', true, $prefix . '-overview'),
+            new NavigationItem('Specimens', '#', false, $prefix . '-specimens'),
+            new NavigationItem('Tokens', '#', false, $prefix . '-tokens'),
         ];
     }
 

@@ -1,3 +1,5 @@
+import type { Extension } from 'naja';
+
 /**
  * The entries under an entry of c-nav, opened and closed.
  *
@@ -41,11 +43,32 @@
  *
  * Everything is listened for on the document, so an entry drawn later - a
  * snippet Naja redraws - works without being found and set up first.
+ *
+ * **The whole navigation folded behind its Menu button** is the same kind of
+ * state, one aria-expanded on the button before the list, and it is only
+ * opened and folded here. Whether it is folded at all is the theme's - ledger
+ * on a narrow window - and it is folded only once this file has marked the
+ * page with data-nav-folds: a page without the script has nobody to open it
+ * again, so there the navigation is simply whole. The mark sits on <html>,
+ * which no snippet replaces.
+ *
+ * **The entries the current page is under** are marked by the server
+ * (aria-current="true"). Where the theme unfolds entries in place, they are
+ * unfolded here as the page arrives, as a snippet Naja redraws arrives, and as
+ * the theme changes; where it opens a block over the page they are left folded,
+ * because a page that arrived with its content covered could not be read until
+ * somebody worked out how to shut it (.ai/plans/10-menu-submenu-a-rozcestniky.md,
+ * M1, decided 2026-09-13). What is unfolded is aria-expanded and nothing else,
+ * so the reader folds it again with the same button.
  */
 
 const ENTRY = '.c-nav__item';
 const BUTTON = '.c-nav__toggle';
 const LIST = '.c-nav__sub';
+const MENU = '.c-nav__menu';
+
+/** A link to an entry the current page is under; the server marks it. */
+const ON_THE_WAY = '.c-nav__link[aria-current="true"]';
 
 /** How long the mouse may be away from an open block before it closes. */
 const GRACE_MS = 250;
@@ -56,6 +79,20 @@ let lastPointer = '';
 const leaving = new Map<Element, number>();
 
 export function unfoldTheNavigation(): void {
+    // Says that somebody is here to open a folded navigation again. Before any
+    // listener, so that nothing is folded that could not be opened.
+    document.documentElement.setAttribute('data-nav-folds', '');
+
+    // A theme that unfolds in place and one that opens a block over the page
+    // treat the current branch differently, and a switch between them is made
+    // on a live page - by the switch somebody uses, or by the style guide's.
+    new MutationObserver((): void => {
+        settleTheCurrentBranchWithin(document);
+    }).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme'],
+    });
+
     document.addEventListener(
         'pointerdown',
         (event: PointerEvent): void => {
@@ -71,6 +108,13 @@ export function unfoldTheNavigation(): void {
     );
 
     document.addEventListener('click', (event: MouseEvent): void => {
+        const menu = event.target instanceof Element ? event.target.closest(MENU) : null;
+        if (menu !== null) {
+            setMenuOpen(menu, menu.getAttribute('aria-expanded') !== 'true');
+
+            return;
+        }
+
         const button = event.target instanceof Element ? event.target.closest(BUTTON) : null;
         const entry = button?.parentElement;
         if (button === null || button === undefined || entry === null || entry === undefined) {
@@ -235,6 +279,71 @@ function openBlocks(): Element[] {
     }
 
     return open;
+}
+
+/**
+ * Unfolds every entry within $root that the current page is under, where the
+ * theme unfolds entries in place; where the entry is in or on a block over the
+ * page, it is left as it is.
+ *
+ * Called once the page has arrived and once a snippet has, after
+ * naja.initialize() - so what Naja keeps of a snippet is the server's markup,
+ * folded, and the way back brings that and unfolds it again (see assets/app.ts
+ * and kb-common nette-naja/kh-0001).
+ */
+export function unfoldTheCurrentBranchWithin(root: ParentNode): void {
+    for (const entry of currentBranchIn(root)) {
+        if (blockEntryOf(entry) === null && !isOpen(entry)) {
+            setOpen(entry, true);
+        }
+    }
+}
+
+/** Registered before naja.initialize(), and doing nothing until a snippet is redrawn. */
+export const currentBranchesInSnippets: Extension = {
+    initialize(naja): void {
+        naja.snippetHandler.addEventListener('afterUpdate', (event) => {
+            unfoldTheCurrentBranchWithin(event.detail.snippet);
+        });
+    },
+};
+
+/**
+ * After a switch of theme: the current branch unfolded where the new theme
+ * unfolds in place, and folded where it opens a block - including an entry
+ * inside the block, which would otherwise show a third level atrium does not
+ * draw.
+ */
+function settleTheCurrentBranchWithin(root: ParentNode): void {
+    for (const entry of currentBranchIn(root)) {
+        setOpen(entry, blockEntryOf(entry) === null);
+    }
+}
+
+/** The entries with a button whose link the server marked as on the way to the current page, from the top down. */
+function currentBranchIn(root: ParentNode): Element[] {
+    const entries: Element[] = [];
+    for (const link of root.querySelectorAll(ON_THE_WAY)) {
+        const entry = link.parentElement;
+        if (entry !== null && childOf(entry, BUTTON) !== null) {
+            entries.push(entry);
+        }
+    }
+
+    return entries;
+}
+
+/**
+ * Opens or folds the whole navigation behind its Menu button. Folding it with
+ * the focus inside gives the focus back to the button first, as a folding
+ * entry does.
+ */
+function setMenuOpen(button: Element, open: boolean): void {
+    if (!open && button instanceof HTMLElement && button.nextElementSibling?.contains(document.activeElement) === true) {
+        button.focus();
+    }
+
+    button.setAttribute('aria-expanded', String(open));
 }
 
 function childOf(entry: Element, selector: string): Element | null {

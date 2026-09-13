@@ -34,4 +34,17 @@ final readonly class NavigationItem
         public string $testId,
         public array $children = [],
     ) {}
+
+    /**
+     * Whether the current page is somewhere under this entry, however deep.
+     *
+     * Asked of the tree rather than handed in beside it, so that the mark can
+     * never disagree with the entry that is current: whoever builds the tree
+     * says which page is being read once, on that entry, and every entry above
+     * it follows (c-nav, .ai/plans/10-menu-submenu-a-rozcestniky.md, M1).
+     */
+    public function holdsCurrent(): bool
+    {
+        return array_any($this->children, fn(NavigationItem $child): bool => $child->current || $child->holdsCurrent());
+    }
 }

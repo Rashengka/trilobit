@@ -24,6 +24,24 @@
  * testid of its entry, which every entry has and which is unique on a page the
  * way a testid has to be.
  *
+ * **The whole navigation may be folded behind a button**
+ * (.ai/plans/10-menu-submenu-a-rozcestniky.md, M1, decided 2026-09-13). Ledger
+ * on a narrow window stacks it under the banner, and an entry unfolded in that
+ * row made the row as tall as everything it held. So the navigation carries a
+ * Menu button before its list, in every theme; whether the button is shown and
+ * whether the list is folded while it says so is the theme's
+ * (--layout-nav-menu-toggle, --layout-nav-menu-folded) - and only once
+ * assets/nav.ts has marked the page, because without the script nothing could
+ * open the list again, so the navigation is then never folded. The list is
+ * named after the testid of the navigation, or after its label where it has
+ * none, so that two navigations on one page fold lists of their own.
+ *
+ * **An entry the current page is under says so** - aria-current="true", where
+ * the page itself says "page". The server says it, so the mark is there
+ * without the script. Ledger unfolds such an entry by itself, since nothing is
+ * covered when it does; atrium only marks it, because unfolding there is a
+ * block over the page (assets/nav.ts).
+ *
  * The block includes itself to draw what is under an entry, so it is one block
  * and one component rather than a second one for the entries: $depth is its own
  * bookkeeping, and a caller leaves it out.
@@ -37,8 +55,20 @@
 
 {define nav, iterable $items, string $label, ?string $testId = null, int $depth = 0}
     {if $depth === 0}
+        {var $name = $testId ?? 'nav-' . ($label|lower|replace: ' ', '-')}
         <nav class="c-nav" aria-label="{$label}" data-testid="{$testId}">
-            <ul class="c-nav__list">
+            <button
+                type="button"
+                class="c-nav__menu"
+                aria-expanded="false"
+                aria-controls="{$name}-entries"
+                data-testid="{$testId === null ? null : $testId . '-menu'}"
+            >
+                Menu
+                {include icon, name: 'chevron-down'}
+            </button>
+
+            <ul class="c-nav__list" id="{$name}-entries">
                 {include nav, items: $items, label: $label, depth: 1}
             </ul>
         </nav>
@@ -47,7 +77,7 @@
             <a
                 class="c-nav__link"
                 href="{$item->href}"
-                n:attr="aria-current: $item->current ? 'page' : null"
+                n:attr="aria-current: $item->current ? 'page' : ($item->holdsCurrent() ? 'true' : null)"
                 data-testid="{$item->testId}"
             >{$item->label}</a>
 

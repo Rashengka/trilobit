@@ -300,6 +300,15 @@
     --layout-nav-inner-folded: grid;
     --color-nav-panel: var(--color-surface);
     --color-nav-panel-line: var(--color-line);
+
+    /*
+     * Atrium never folds its navigation behind a Menu button: a row of entries
+     * wraps onto a second row on a narrow window, and what is under an entry
+     * opens as a block over the page rather than in the row, so the row stays
+     * the height of its entries.
+     */
+    --layout-nav-menu-toggle: none;
+    --layout-nav-menu-folded: flex;
 }
 
 /*

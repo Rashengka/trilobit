@@ -52,8 +52,14 @@ final class OverviewDefaultTemplate extends FrontTemplate
     /** @var list<NavigationItem> */
     public array $sampleNavigation = [];
 
+    /** @var list<NavigationItem> the same entries under names of their own, for the specimen folded behind its button */
+    public array $sampleFoldedNavigation = [];
+
     /** @var list<NavigationItem> the same kind of entries, with entries under an entry */
     public array $sampleNestedNavigation = [];
+
+    /** @var list<NavigationItem> the nested kind of entries, with the page being read two levels under an entry */
+    public array $sampleCurrentNavigation = [];
 
     /** @var list<SignpostLink> */
     public array $sampleSignposts = [];
