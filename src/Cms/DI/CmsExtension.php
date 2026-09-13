@@ -14,6 +14,7 @@ use Trilobit\Cms\Infrastructure\Doctrine\DoctrineMenuRepository;
 use Trilobit\Cms\Infrastructure\Doctrine\DoctrinePageRepository;
 use Trilobit\Cms\Presentation\Front\CmsSignpost;
 use Trilobit\Cms\Routing\CmsRoutes;
+use Trilobit\Cms\Seed\CmsSeed;
 use Trilobit\Core\DI\CoreExtension;
 
 /**
@@ -66,6 +67,13 @@ final class CmsExtension extends CompilerExtension
             ->setFactory(CmsContentTypes::class)
             ->setAutowired(false)
             ->addTag(CoreExtension::TAG_CONTENT_TYPE_PROVIDER);
+
+        // What `app:seed` gives every business it makes on a working copy:
+        // pages and a menu, written through the same services as below.
+        $builder->addDefinition($this->prefix('seed'))
+            ->setFactory(CmsSeed::class)
+            ->setAutowired(false)
+            ->addTag(CoreExtension::TAG_SEED_PROVIDER);
 
         // Where this module's rows are kept. The interface is what the rest of
         // the module names, and the implementation is the only place in it
