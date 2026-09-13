@@ -7,6 +7,7 @@ namespace Trilobit\Tests\Unit\Core\Config;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Trilobit\Core\Config\DebugGate;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Config\ModeNotNamed;
@@ -119,11 +120,27 @@ final class ModeTest extends TestCase
         );
     }
 
-    public function testDebugModeIsOnWhileDevelopingAndOnStaging(): void
+    public function testDebugModeIsAlwaysOnWhileDeveloping(): void
     {
-        self::assertTrue(Mode::Dev->debugMode());
-        self::assertTrue(Mode::Staging->debugMode());
-        self::assertFalse(Mode::Prod->debugMode());
+        self::assertTrue(Mode::Dev->debugMode($this->shutGate()));
+        self::assertTrue(Mode::Dev->debugMode($this->openGate()));
+    }
+
+    /**
+     * Staging runs over real data, so its debugger is shown only to somebody
+     * holding the secret - the gate decides there, and only there.
+     */
+    public function testOnStagingDebugModeIsWhatTheGateSays(): void
+    {
+        self::assertFalse(Mode::Staging->debugMode($this->shutGate()));
+        self::assertTrue(Mode::Staging->debugMode($this->openGate()));
+    }
+
+    /** In production the gate is not asked: a cookie that opens staging opens nothing here. */
+    public function testDebugModeIsNeverOnInProduction(): void
+    {
+        self::assertFalse(Mode::Prod->debugMode($this->shutGate()));
+        self::assertFalse(Mode::Prod->debugMode($this->openGate()));
     }
 
     public function testTheStyleGuideIsThereWhileDevelopingAndOnStaging(): void
@@ -139,5 +156,20 @@ final class ModeTest extends TestCase
         self::assertTrue(Mode::Dev->mayAlterData());
         self::assertFalse(Mode::Staging->mayAlterData());
         self::assertFalse(Mode::Prod->mayAlterData());
+    }
+
+    private function shutGate(): DebugGate
+    {
+        return DebugGate::check(Environment::fromValues([]), []);
+    }
+
+    private function openGate(): DebugGate
+    {
+        $invented = str_repeat('made-up-', 5);
+
+        return DebugGate::check(
+            Environment::fromValues([DebugGate::VARIABLE => $invented]),
+            [DebugGate::COOKIE => $invented],
+        );
     }
 }

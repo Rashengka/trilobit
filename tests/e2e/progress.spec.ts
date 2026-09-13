@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { contrast, drawIn, expectClose, modes, paintedAt, resolved, runningOn, stage, themes } from './paint';
+import { contrast, drawIn, expectClose, modes, paintedAlong, paintedAt, type Rgb, resolved, runningOn, stage, themes } from './paint';
 
 /**
  * c-progress in a real browser: the bars are in the accessibility tree under
@@ -59,9 +59,24 @@ test('a bar that does not know how far it has got moves only for whoever has not
     await page.emulateMedia({ reducedMotion: 'reduce' });
     expect(await runningOn(bar)).toBe(0);
 
-    // Standing still, it is still busy: the whole track hatched in the fill's ink.
-    expect(await bar.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain('repeating-linear-gradient');
-    expect(contrast(await paintedAt(bar, 0.3), await paintedAt(bar, 0.31))).toBeGreaterThan(1);
+    // Standing still, it is still busy: the whole track hatched in the fill's
+    // ink - the ink and the track both in every tenth of it, read off the
+    // pixels. Firefox drew the gradient the hatching was once made of as a
+    // stray hairline here and there, with the computed style saying all the
+    // while that the gradient was there.
+    expect(await bar.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain('linear-gradient');
+    const ink = await resolved(bar, 'color', '--color-accent');
+    const ground = await resolved(bar, 'color', '--color-canvas-sunken');
+    const row = await paintedAlong(bar);
+    const near = (pixel: Rgb, colour: Rgb): boolean => pixel.every((channel, index) => Math.abs(channel - (colour[index] ?? 0)) <= 3);
+    const bare: number[] = [];
+    for (let tenth = 0; tenth < 10; tenth++) {
+        const part = row.slice(Math.floor((row.length * tenth) / 10), Math.floor((row.length * (tenth + 1)) / 10));
+        if (!part.some((pixel) => near(pixel, ink)) || !part.some((pixel) => near(pixel, ground))) {
+            bare.push(tenth);
+        }
+    }
+    expect(bare, 'the tenths of the track that are not hatched in the ink over the track').toEqual([]);
 
     // The bars that know how far never move.
     for (const variant of ['under way', 'a measure']) {
@@ -105,6 +120,16 @@ for (const theme of themes) {
             const past = stage(page, 'a measure past its high bound').locator('.c-progress__bar');
             const pastFill = await paintedAt(past, 0.5);
             expectClose(pastFill, await resolved(past, 'color', '--color-danger'), `a measure past its bound in ${where}`);
+
+            // The track of a meter is the theme's, as the track of a progress bar
+            // is. Firefox gives <meter> a grey gradient of its own, which a
+            // background colour alone leaves drawn over the theme's.
+            for (const [bar, x, what] of [
+                [measure, 0.9, 'a measure'],
+                [past, 0.97, 'a measure past its bound'],
+            ] as const) {
+                expectClose(await paintedAt(bar, x), await resolved(bar, 'color', '--color-canvas-sunken'), `the track of ${what} in ${where}`);
+            }
             expect(contrast(pastFill, await paintedAt(past, 0.97)), `past its bound against the track in ${where}`)
                 .toBeGreaterThanOrEqual(3);
         });
