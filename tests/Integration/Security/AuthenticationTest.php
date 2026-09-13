@@ -129,6 +129,27 @@ final class AuthenticationTest extends TestCase
         $authenticator->authenticate('alice@example.com', $password);
     }
 
+    /**
+     * Switching an account back on lets it in again with the password it had:
+     * blocking took the account away and nothing about it was lost.
+     */
+    public function testAnAccountSwitchedBackOnSignsInAgain(): void
+    {
+        [$authenticator, $password, $accounts] = $this->accountThatCanSignIn();
+
+        $account = $accounts->withEmail('alice@example.com');
+        self::assertInstanceOf(User::class, $account);
+        $account->deactivate();
+        $accounts->save($account);
+        $account->activate();
+        $accounts->save($account);
+
+        $identity = $authenticator->authenticate('alice@example.com', $password);
+
+        self::assertInstanceOf(Identity::class, $identity);
+        self::assertSame('alice@example.com', $identity->email());
+    }
+
     public function testSigningInIsRecordedOnTheAccount(): void
     {
         [$authenticator, $password, $accounts] = $this->accountThatCanSignIn();

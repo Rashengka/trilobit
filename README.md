@@ -1342,6 +1342,17 @@ in between, because that is the only way the claim can be made: a set copied in
 at sign-in works perfectly and goes on working after the right behind it is
 gone, with nothing to look at that says so.
 
+The account is read with it, and an account that has been switched off - or no
+longer exists - is signed out on its next request, in a business or outside
+every one. Refusing the password alone would leave the browser the person is
+already in exactly as it was, still holding every role they had, because a
+membership says nothing about whether the account behind it may still sign in.
+Switching an account off is how one is taken away, rather than deleting it, so
+that what the person did stays attributable; switching it back on lets them in
+again with the password they had. The same suite switches an account off in one
+request and finds it signed out in the next, and keeps a control beside it: an
+account nobody switched off stays signed in across requests.
+
 ### A page declares what it needs
 
 `#[Needs(Resource::Content, Privilege::Edit)]` above a presenter is the floor
