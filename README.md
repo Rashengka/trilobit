@@ -31,7 +31,7 @@ application does. See "The design system" below.
 | path | what it is |
 |---|---|
 | `www/index.php` | the front controller; the document root is `www/`, nothing above it is reachable |
-| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:tenant` makes a business and the hosts it answers at, `app:account` makes somebody who can sign in - the administrator of the installation, or of one business - and `app:password` lets that somebody type a password of their own |
+| `bin/trilobit` | the console; `app:warmup` writes what this build is made of to `var/build`, `app:tenant` makes a business and the hosts it answers at, `app:account` makes somebody who can sign in - the administrator of the installation, or of one business - `app:password` lets that somebody type a password of their own, and on a working copy `app:seed` fills an empty database with two businesses, their people and content to click through |
 | `src/Core/Bootstrap.php` | turns a checkout into a compiled container |
 | `src/Core/Module/` | what a module's name implies, and which modules this build has |
 | `src/Core/DI/CoreExtension.php` | the five places a module hands something to Core |
@@ -1260,7 +1260,8 @@ as happily.
 ### What is not there yet
 
 Nobody composes a role in the administration yet: a business's own role exists
-in the model and nothing makes one but the tests. `bin/trilobit app:account
+in the model and nothing makes one but the tests and the seed of a working copy
+(`bin/trilobit app:seed`, see "Seeding a working copy"). `bin/trilobit app:account
 --tenant` makes the owner's role - the application's - which holds the whole of
 the application rather than a list of pairs - a list would go on saying what the application
 used to offer, and the account holding it would quietly stop being able to
@@ -1396,6 +1397,10 @@ under `www/build`; run `npm ci && npm run build` only once you change something
 under `assets/` or `src/*/assets/`, or once you switch a module on or off -
 `www/build` is built for the modules `config/modules.neon` names.
 
+On a working copy, `bin/trilobit app:seed` can take the place of the last three
+lines: it makes two businesses, the people of each and content to click
+through, and prints every password once; see "Seeding a working copy" below.
+
 Then serve `www/`:
 
 ```sh
@@ -1491,6 +1496,63 @@ that could end up in a commit instead. The pre-commit hook is unaffected by
 this: it skips the tool entirely when nothing is staged, because there is
 nothing there for a leak to hide in, and because that is also the shape of a
 deliberate `git commit --allow-empty`, which the hook must not block.
+
+### Seeding a working copy
+
+A database fresh from `migrations:migrate` holds nobody and nothing. On a
+working copy one command fills it with the cases clicking through the
+application stands on:
+
+```sh
+bin/trilobit app:seed
+```
+
+| what | why it is there |
+|---|---|
+| Ammonite Bikes, at `localhost` and `ammonite.localhost` | a business at two hosts - the second is an alias, which is what a second domain is |
+| Belemnite Books, at `belemnite.localhost` | a second business, so that what one holds can be seen not to reach the other |
+| `landlord@example.com` | administers the installation, and holds nothing in either business |
+| `ammonite-owner@example.com`, `belemnite-owner@example.com` | each owns their business - the owner's role, the whole of the application - and holds nothing in the other |
+| `ammonite-editor@example.com` | holds Ammonite Bikes' own `editor` role - the role in between: viewing, adding, editing, deleting and reordering the content, and nothing beside it - not purging or exporting it, not the accounts |
+| `ammonite-onlooker@example.com` | holds a role of Ammonite Bikes that grants nothing: signed in, and refused every page of the administration |
+| `belemnite-editor@example.com` | holds Belemnite Books' own `editor` role, which under the same code means something narrower: reading and correcting the content |
+| content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, and a main menu with an entry holding two others |
+
+Every password is generated and printed once, beside its address. What is
+stored is a hash, and none is written in the code.
+
+**It refuses anywhere but `TRILOBIT_ENV=dev`**, by name: staging holds real
+data, and invented businesses beside it are something somebody has to clean out
+of it. **It refuses a database that is not empty** - one holding a business or
+an account. Everything else hangs from one of those two, so a database with
+neither holds nothing anybody made. **It never deletes.** To seed again, start
+from an empty database: a worktree with a database of its own, or one you drop
+and migrate yourself.
+
+Every host is the machine itself. Chrome, Firefox and Edge resolve any
+`*.localhost` name to it without an entry anywhere, so with
+`php -S localhost:8000 -t www` the first business is at `http://localhost:8000/`
+and the second at `http://belemnite.localhost:8000/` - the same holds for
+whatever port a checkout is served on. A tool that does not resolve such names
+by itself needs `127.0.0.1 ammonite.localhost belemnite.localhost` in
+`/etc/hosts`. `127.0.0.1` is left alone on purpose: the browser suite makes a
+business of its own there, in the same database, so it runs over a seeded
+working copy as well.
+
+The integration suites do not use the seed: each test class makes the data it
+asserts about in a schema of its own, because a test standing on shared data
+breaks when that data grows for somebody else's reason. The browser suite may
+use it; today every spec still makes the account it signs in with.
+
+**The seed grows with what can be clicked through.** A change that adds
+something a person has to click through to see - a new role, a new kind of
+content - adds it to the seed in the same pull request. The businesses, their
+hosts, the installation's administrator and the owners are made by running
+`app:tenant` and `app:account`, so the seed cannot make what those commands
+would not. A module adds its part through `Trilobit\Core\Seed\SeedProvider`,
+tagged `CoreExtension::TAG_SEED_PROVIDER`, and writes it through its own
+services rather than past them, so that the seed shows only states the
+application can reach.
 
 ### The gate
 

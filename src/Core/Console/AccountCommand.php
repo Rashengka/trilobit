@@ -88,6 +88,8 @@ final class AccountCommand extends Command
      * real browser and reads the password back out of this output, and
      * Trilobit\Tests\Integration\Console\AccountCommandTest holds the format
      * still so that rewording the prose around it cannot quietly break that.
+     * Trilobit\Core\Console\SeedCommand reads it too, because it makes the
+     * installation's administrator and the owners by running this command.
      * Nothing else printed here may be two spaces and a single word.
      */
     public const string PASSWORD_LINE = '/^ {2}(\S+)$/m'; // check-leaks:allow rule=credential reason=a regular expression that finds the line, not a value that was on it
@@ -98,8 +100,13 @@ final class AccountCommand extends Command
     /** The switch that says the account administers the installation as well as the business --tenant names. */
     private const string ALSO_INSTALLATION = 'also-installation';
 
-    /** Long enough that it is not worth attacking, short enough to be typed once. */
-    private const int GENERATED_LENGTH = 24;
+    /**
+     * Long enough that it is not worth attacking, short enough to be typed
+     * once. Public so that the seed generates the passwords of the accounts
+     * it makes without this command to the same length, rather than a second
+     * number somebody has to keep in step.
+     */
+    public const int GENERATED_LENGTH = 24;
 
     /** What a person reads for the owner's role; the code is Trilobit\Core\Domain\User\Role::OWNER. */
     private const string ROLE_NAME = 'Owner';
