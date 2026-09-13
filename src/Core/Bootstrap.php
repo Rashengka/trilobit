@@ -9,6 +9,7 @@ use Nette\DI\Compiler;
 use Nette\DI\Container;
 use Nette\Utils\FileSystem;
 use Tracy\Debugger;
+use Trilobit\Core\Config\DebugGate;
 use Trilobit\Core\Config\EditorLinks;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Config\Mode;
@@ -23,7 +24,10 @@ use Trilobit\Core\Module\ModuleList;
  * decided by detection: debug mode follows the mode the environment names -
  * see Trilobit\Core\Config\Mode - rather than a check on the visitor's address,
  * because an address check is unreliable in production and would mean an
- * address written down in a public repository.
+ * address written down in a public repository. The one request-dependent part
+ * is staging's, where a cookie holding a secret the environment names opens
+ * the debugger; see Trilobit\Core\Config\DebugGate for why that is a check of
+ * its own rather than the framework's.
  *
  * Two things are decided here rather than in configuration, and both for the
  * same reason: they are needed before there is a container to read a
@@ -54,9 +58,15 @@ final class Bootstrap
      *     itself; by default the .env beside the application, overlaid with the
      *     process environment. A suite passes its own to build in a mode the
      *     machine it runs on is not in.
+     * @param array<mixed>|null $cookies the request's cookies, which on
+     *     staging decide debug mode; by default $_COOKIE, which a console does
+     *     not have, so a command run on staging is built as production is.
      */
-    public static function configurator(?ModuleList $modules = null, ?Environment $environment = null): Configurator
-    {
+    public static function configurator(
+        ?ModuleList $modules = null,
+        ?Environment $environment = null,
+        ?array $cookies = null,
+    ): Configurator {
         $root = $modules?->rootDirectory() ?? self::rootDirectory();
         $modules ??= ModuleList::fromNeon($root . '/config/modules.neon', $root);
         $environment ??= Environment::load($root . '/.env');
@@ -79,7 +89,7 @@ final class Bootstrap
         $files = self::configurationFiles($modules);
 
         $configurator = new Configurator();
-        $configurator->setDebugMode($mode->debugMode());
+        $configurator->setDebugMode($mode->debugMode(DebugGate::check($environment, $cookies ?? $_COOKIE)));
         $configurator->enableTracy($logDirectory);
         self::pointTheEditorLinksAtThisMachine($environment, $root);
         $configurator->setTempDirectory($tempDirectory);

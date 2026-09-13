@@ -82,12 +82,16 @@ final class Boot
      * @param Environment|null $environment what the build reads instead of
      *     the machine's .env and process environment, for a suite whose
      *     question is what a mode does.
+     * @param array<mixed>|null $cookies the request's cookies the build is
+     *     made for, or null for what the boot itself reads - none, in a
+     *     runner, as in any console.
      */
     public static function container(
         ?ModuleList $modules = null,
         ?bool $styleguide = false,
         array $config = [],
         ?Environment $environment = null,
+        ?array $cookies = null,
     ): Container {
         // The second door into a database, and the one that opens without
         // saying so: a built container carries a connection pointed at whatever
@@ -96,7 +100,7 @@ final class Boot
         // turned away here rather than at the socket.
         KeepingUnitTestsAwayFromTheDatabase::refuse('a built application container');
 
-        $configurator = Bootstrap::configurator($modules, $environment);
+        $configurator = Bootstrap::configurator($modules, $environment, $cookies);
         $configurator->addConfig([
             'assets' => [
                 'mapping' => [
