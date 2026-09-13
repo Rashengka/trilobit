@@ -176,6 +176,9 @@ const distance = 600;
  */
 const sixtyFourths = Array.from({ length: 64 }, (_, index) => index / 64);
 
+/** How many cases the sixty-four places of a jump are dealt out into (see the jump to an anchor, below). */
+const shares = 4;
+
 /**
  * The part of a pixel $browser keeps a length in: Chromium's layout unit is a
  * sixty-fourth, Firefox's a sixtieth. A browser this does not know is refused,
@@ -260,35 +263,49 @@ for (const size of windows) {
      * keeps positions in sixty-fourths of a pixel and the scroll position is a
      * whole one, so both edges compared here are exact and there is no error of
      * measurement to allow for.
+     *
+     * The sixty-four places are dealt out into four cases of sixteen, every
+     * fourth place to each, so that each case still reaches across the whole
+     * pixel and every place is still jumped at in one of them. One after
+     * another the sixty-four took eighteen to twenty-one seconds of a case's
+     * thirty with nothing else running, and went past the thirty with both
+     * browsers' suites running at once; dealt out, they are taken side by side.
      */
-    test(`in atrium at ${size.width}px a jump to an anchor leaves the heading whole under the smaller bands`, async ({ page }) => {
-        await open(page, size);
-        await addJumpTarget(page);
+    for (let share = 0; share < shares; share++) {
+        test(`in atrium at ${size.width}px a jump to an anchor leaves the heading whole under the smaller bands, ${share + 1} of ${shares}`, async ({ page }) => {
+            await jumpAtEveryPlace(page, size, sixtyFourths.filter((_, index) => index % shares === share));
+        });
+    }
+}
 
-        // Made smaller first, so that what is measured is the clearance of the smaller bands.
-        await wheel(page, distance);
-        expect((await measure(page)).bannerHeight).toBeLessThan((await fullHeightOf(page)) * 0.75);
-        const from = await page.evaluate(() => window.scrollY);
+/** Jumps to a heading shifted by each of $fractions of a pixel, and asks that it is never left under the smaller bands. */
+async function jumpAtEveryPlace(page: Page, size: { width: number; height: number }, fractions: number[]): Promise<void> {
+    await open(page, size);
+    await addJumpTarget(page);
 
-        const under: string[] = [];
-        for (const fraction of sixtyFourths) {
-            await shiftJumpTarget(page, fraction, from);
+    // Made smaller first, so that what is measured is the clearance of the smaller bands.
+    await wheel(page, distance);
+    expect((await measure(page)).bannerHeight).toBeLessThan((await fullHeightOf(page)) * 0.75);
+    const from = await page.evaluate(() => window.scrollY);
 
-            await page.getByTestId('chrome-jump').evaluate((link) => (link as HTMLElement).click());
-            await page.waitForFunction(() => window.location.hash === '#chrome-jump-target');
-            await steady(page);
+    const under: string[] = [];
+    for (const fraction of fractions) {
+        await shiftJumpTarget(page, fraction, from);
 
-            const landed = await landing(page);
-            expect(landed.scrolled, 'the jump did not scroll, so nothing was measured').toBeGreaterThan(distance);
-            expect(landed.navTop, 'the navigation is not held, so there is nothing to stop under').toBeCloseTo(landed.bannerBottom, 0);
-            expect(landed.heading, 'the jump stopped short of where the navigation ends').toBeLessThanOrEqual(landed.navBottom + 1);
-            if (landed.heading < landed.navBottom) {
-                under.push(`${fraction}: ${landed.navBottom - landed.heading}px`);
-            }
+        await page.getByTestId('chrome-jump').evaluate((link) => (link as HTMLElement).click());
+        await page.waitForFunction(() => window.location.hash === '#chrome-jump-target');
+        await steady(page);
+
+        const landed = await landing(page);
+        expect(landed.scrolled, 'the jump did not scroll, so nothing was measured').toBeGreaterThan(distance);
+        expect(landed.navTop, 'the navigation is not held, so there is nothing to stop under').toBeCloseTo(landed.bannerBottom, 0);
+        expect(landed.heading, 'the jump stopped short of where the navigation ends').toBeLessThanOrEqual(landed.navBottom + 1);
+        if (landed.heading < landed.navBottom) {
+            under.push(`${fraction}: ${landed.navBottom - landed.heading}px`);
         }
+    }
 
-        expect(under, 'the heading ended under the navigation, at shift: by how much').toEqual([]);
-    });
+    expect(under, 'the heading ended under the navigation, at shift: by how much').toEqual([]);
 }
 
 /**
