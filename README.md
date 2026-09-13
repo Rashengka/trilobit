@@ -369,6 +369,39 @@ Unlike `composer check`, it writes to the database this checkout is configured
 for: `tests/e2e/administration.spec.ts` brings the migrations up to date and
 makes itself an account under a reserved documentation address, because a
 password in a public repository is a disclosure git keeps forever.
+
+`npm run e2e:docker` runs the same suite on Linux, in Playwright's own image of
+the version `package-lock.json` installs, with PHP added (`docker/e2e/Dockerfile`).
+It needs only Docker and this checkout's database (`docker compose up -d
+database`): the container joins that database's network, and the server
+Playwright starts listens on the container's own loopback, so it cannot collide
+with a server another checkout left running. Run it before merging a change to
+the frontend, and once more when a plan that touched the frontend is finished -
+and with Firefox as well at those two moments, not on every run:
+
+```sh
+npm run e2e:docker                                   # Chromium
+npm run e2e:docker -- --browser=firefox              # Firefox
+npm run e2e:docker -- --browser=all --workers=2      # both; anything else goes to playwright test
+```
+
+It shows what a Mac cannot. Linux draws a classic scrollbar fifteen pixels wide
+where macOS draws one that takes no room, so a layout that forgot about the
+scrollbar is off by fifteen pixels here and right on the Mac; the fonts are
+Linux's; and Chromium is Playwright's headless build, the one CI runs. Firefox
+draws a design differently again, and supports some of what the components use
+later than Chromium or not at all - which is where a fallback turns out to work
+or not. Outside the image, `PLAYWRIGHT_BROWSERS=firefox` (or `all`) selects the
+same project, but needs Playwright's Firefox installed, and CI runs Chromium
+only.
+
+It leaves two things behind on purpose: the image `trilobit-e2e:<version>`, and
+a volume `<compose project>-e2e-node-modules` holding `node_modules` installed
+for Linux. The checkout's own `node_modules` was installed for the machine it is
+on and holds native code for it, so it is neither read nor written from the
+container; the volume is reinstalled only when the lock file changes. Traces of
+failed tests land in `test-results/` as they do on the host.
+
 `npm run test:frontend` runs what is claimed about the build itself under
 Node's own runner, because `composer test` has no Node to run it with.
 

@@ -102,7 +102,9 @@ function sample(page: Page): Locator {
     return page.getByTestId('sample-carousel');
 }
 
-test('is a region described as a carousel, and every slide a group named for its place', async ({ page }) => {
+test('is a region described as a carousel, and every slide a group named for its place', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'reads Chrome\'s own accessibility tree over the DevTools protocol, which only Chromium speaks');
+
     await page.goto('/_styleguide/components/carousel');
 
     expect(await accessible(page, '[data-testid="sample-carousel"]')).toEqual([
