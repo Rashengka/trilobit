@@ -134,6 +134,30 @@ async function untilAtRest(locator: Locator): Promise<void> {
     );
 }
 
+/**
+ * Clicks $button and waits until the script has put $floating, the popover it
+ * opens, where it belongs, and it has come to rest there.
+ *
+ * Where the browser cannot anchor, assets/anchor.ts places a popover when the
+ * browser reports it open - and the browser reports it with a toggle event,
+ * a task of its own after the click and not a part of it. Measured as soon as
+ * the click returned, the popover was measured before that whenever the
+ * measurement got in first: where the browser draws a popover it has nothing
+ * to hang from, at the top of the window and hundreds of pixels over the
+ * button. The script hears the event on its way down, at the document, so a
+ * listener on the popover itself hears it once the script is done.
+ */
+async function openedAndPlacedByTheScript(button: Locator, floating: Locator): Promise<void> {
+    await floating.evaluate((element) => {
+        (element as HTMLElement & { placed?: Promise<void> }).placed = new Promise((resolve) => {
+            element.addEventListener('toggle', () => resolve(), { once: true });
+        });
+    });
+    await button.click();
+    await floating.evaluate((element) => (element as HTMLElement & { placed?: Promise<void> }).placed);
+    await untilAtRest(floating);
+}
+
 /** Whether what is drawn at the middle of $locator belongs to it - nothing is drawn over it. */
 async function drawnOnTop(locator: Locator): Promise<boolean> {
     return locator.evaluate((element) => {
@@ -357,7 +381,7 @@ test.describe('c-dropdown', () => {
 
         const end = page.getByTestId('sample-dropdown-end');
         await scrollTo(end, 'center');
-        await end.getByRole('button').click();
+        await openedAndPlacedByTheScript(end.getByRole('button'), end.locator('.c-dropdown__menu'));
         const placed = await placement(end.getByRole('button'), page.getByRole('menu', { name: 'Sort by' }));
 
         expect(placed.gapBelow).toBeGreaterThanOrEqual(0);
