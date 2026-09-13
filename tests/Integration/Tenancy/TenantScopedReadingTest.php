@@ -14,6 +14,7 @@ use Trilobit\Core\Contract\Content\ContentRef;
 use Trilobit\Core\Domain\Media\MediaFile;
 use Trilobit\Core\Domain\Setting\Setting;
 use Trilobit\Core\Domain\Tenancy\Tenant;
+use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Tenancy\TenancyRefused;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
@@ -155,6 +156,51 @@ final class TenantScopedReadingTest extends TestCase
     }
 
     /**
+     * A table holding the application's rows beside each business's own reads
+     * both in a business - the application's because they are everybody's, its
+     * own because they are its own - and never another business's.
+     */
+    public function testARoleOfTheApplicationIsReadEverywhereAndARoleOfABusinessOnlyThere(): void
+    {
+        $container = $this->emptyDatabase();
+        $bikes = Tenants::enter($container, 'Ammonite Bikes');
+        $books = Tenants::create($container, 'Brachiopod Books');
+
+        $entityManager = $container->getByType(EntityManagerInterface::class);
+        $entityManager->persist(new Role(Role::OWNER, 'Owner', ['app:*']));
+        $entityManager->persist(Role::ofBusiness($bikes, 'editor', 'Bike editor'));
+        $entityManager->persist(Role::ofBusiness($books, 'editor', 'Book editor'));
+        $entityManager->flush();
+
+        self::assertSame(['Bike editor', 'Owner'], $this->roleNames($entityManager));
+
+        Tenants::switchTo($container, $books);
+
+        self::assertSame(['Book editor', 'Owner'], $this->roleNames($entityManager));
+    }
+
+    /**
+     * Before it is settled whose request this is, such a table answers with
+     * the rows of no business - the application's - rather than refusing.
+     * Nothing a business owns is among them, so there is nothing to leak, and
+     * the command that makes the owner's role needs to find it from outside
+     * every business as much as from inside one.
+     */
+    public function testWithoutABusinessOnlyTheApplicationsRolesAreRead(): void
+    {
+        $container = $this->emptyDatabase();
+        $bikes = Tenants::create($container, 'Ammonite Bikes');
+
+        $entityManager = $container->getByType(EntityManagerInterface::class);
+        $entityManager->persist(new Role(Role::OWNER, 'Owner', ['app:*']));
+        $entityManager->persist(Role::ofBusiness($bikes, 'editor', 'Bike editor'));
+        $entityManager->flush();
+        $entityManager->clear();
+
+        self::assertSame(['Owner'], $this->roleNames($entityManager));
+    }
+
+    /**
      * Switching tenant empties the object manager, because an object already
      * loaded is handed back without a query - past the filter, which only ever
      * sees SQL. Without that, a process serving one business and then another
@@ -190,6 +236,18 @@ final class TenantScopedReadingTest extends TestCase
         self::assertNotNull($address, 'nothing answers at ' . $path . ' in this tenant');
 
         return $address->label;
+    }
+
+    /** @return list<string> the names of the roles this business reads, sorted */
+    private function roleNames(EntityManagerInterface $entityManager): array
+    {
+        $names = array_map(
+            static fn(Role $role): string => $role->name(),
+            $entityManager->getRepository(Role::class)->findAll(),
+        );
+        sort($names);
+
+        return $names;
     }
 
     private function emptyDatabase(): Container

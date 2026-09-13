@@ -24,13 +24,14 @@
     <file>tests</file>
     <file>www</file>
     <!--
-        Both scripts in bin/ are named one by one because neither carries a .php
-        extension, so the extensions filter above never reaches them through the
-        directory. Unlike php-cs-fixer, PHPStan and Rector, this file excludes
-        nothing: the leak guard and its test are top-level scripts with no class
-        in them, and PSR-12 is content with that.
+        The PHP scripts in bin/ are named one by one because none of them carries
+        a .php extension, so the extensions filter above never reaches them
+        through the directory. Unlike php-cs-fixer, PHPStan and Rector, this file
+        excludes nothing: the leak guard and its test are top-level scripts with
+        no class in them, and PSR-12 is content with that.
     -->
     <file>bin/check-leaks</file>
+    <file>bin/measure-services</file>
     <file>bin/trilobit</file>
 
     <!--

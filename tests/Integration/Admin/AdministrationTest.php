@@ -942,7 +942,7 @@ final class AdministrationTest extends TestCase
 
         $entityManager = $container->getByType(EntityManagerInterface::class);
         $business = $entityManager->getRepository(Tenant::class)->findOneBy(['name' => 'Ammonite Bikes']);
-        $owner = $container->getByType(Accounts::class)->roleWithCode('owner');
+        $owner = $container->getByType(Accounts::class)->applicationRole('owner');
         self::assertInstanceOf(Tenant::class, $business);
         self::assertInstanceOf(Role::class, $owner);
 

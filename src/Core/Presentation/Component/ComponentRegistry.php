@@ -161,7 +161,13 @@ final class ComponentRegistry
                 'c-field',
                 'One thing a form asks for: what it is called, the control that answers it, and what there is '
                 . 'to say about the answer.',
-                ['default', 'with a control that is not a line of text', 'with a reason and a hint'],
+                [
+                    'default',
+                    'with a control that is not a line of text',
+                    'with a reason and a hint',
+                    'with its label out of sight',
+                    'required',
+                ],
             ),
             new Component(
                 'c-combobox',

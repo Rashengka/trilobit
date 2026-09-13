@@ -1,0 +1,44 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The arrangements a form made by Trilobit\Core\Presentation\Form\FormFactory
+ * comes in, drawn over one and the same form, so that what differs between the
+ * specimens is the arrangement and nothing else. Each specimen is one call of
+ * the factory, and the Latte under it is the one line a page writes to draw a
+ * form: which arrangement it is in was decided where the form was made.
+ *
+ * Every field is c-field and every control is drawn by its own name, exactly
+ * as on the other pages of this group; only where the fields go is new here.
+ *
+ * The example content is invented and has to stay invented
+ * (OverviewPresenter::sampleForm()).
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    {embed block sgLayoutSection,
+        primitive: 'l-form',
+        summary: 'Where the fields of a generated form go. The same form four times: side by side, with the labels '
+            . 'over the controls and then with them out of sight; every label over its control; every label '
+            . 'beside it. The reasons about the whole form run across the top, the buttons start under the '
+            . 'fields, and the hidden inputs are after the arrangement, where nothing lays them out.'}
+        {block sgLayoutSectionBody}
+            {specimen 'inline'}
+                {control arrangedInline}
+            {/specimen}
+
+            {specimen 'inline, with the labels out of sight'}
+                {control arrangedInlineUnlabelled}
+            {/specimen}
+
+            {specimen 'vertical'}
+                {control arrangedVertical}
+            {/specimen}
+
+            {specimen 'horizontal'}
+                {control arrangedHorizontal}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

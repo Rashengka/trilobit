@@ -7,6 +7,7 @@ namespace Trilobit\Tests;
 use Doctrine\DBAL\Connection;
 use Nette\DI\Container;
 use Trilobit\Core\Bootstrap;
+use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Tests\Runner\KeepingUnitTestsAwayFromTheDatabase;
 use WeakReference;
@@ -68,18 +69,26 @@ final class Boot
     private static array $built = [];
 
     /**
-     * @param bool $styleguide whether this build has the style guide page.
-     *     Stated rather than left to the default, because the default is
-     *     %debugMode%: on where there is a .env and off in a fresh clone, so a
-     *     suite taking it would assert one thing on a developer's machine and
-     *     another in CI.
+     * @param bool|null $styleguide whether this build has the style guide
+     *     page, or null to leave it to the mode the build is made in. Stated by
+     *     default rather than left to the mode, because the mode comes from
+     *     the machine - dev where its .env says so and prod in a fresh clone -
+     *     so a suite taking it would assert one thing on a developer's machine
+     *     and another in CI.
      * @param array<string, mixed> $config anything else this build is to be
      *     given - a service a module would have registered, say. It is the one
      *     way a suite can stand in for a module that has not been written yet
      *     without a directory under src/ pretending to be one.
+     * @param Environment|null $environment what the build reads instead of
+     *     the machine's .env and process environment, for a suite whose
+     *     question is what a mode does.
      */
-    public static function container(?ModuleList $modules = null, bool $styleguide = false, array $config = []): Container
-    {
+    public static function container(
+        ?ModuleList $modules = null,
+        ?bool $styleguide = false,
+        array $config = [],
+        ?Environment $environment = null,
+    ): Container {
         // The second door into a database, and the one that opens without
         // saying so: a built container carries a connection pointed at whatever
         // TRILOBIT_DB_NAME happens to be, which on a developer's machine is the
@@ -87,13 +96,8 @@ final class Boot
         // turned away here rather than at the socket.
         KeepingUnitTestsAwayFromTheDatabase::refuse('a built application container');
 
-        $configurator = Bootstrap::configurator($modules);
+        $configurator = Bootstrap::configurator($modules, $environment);
         $configurator->addConfig([
-            'parameters' => [
-                'trilobit' => [
-                    'styleguide' => $styleguide,
-                ],
-            ],
             'assets' => [
                 'mapping' => [
                     'vite' => [
@@ -102,6 +106,10 @@ final class Boot
                 ],
             ],
         ]);
+
+        if ($styleguide !== null) {
+            $configurator->addConfig(['parameters' => ['trilobit' => ['styleguide' => $styleguide]]]);
+        }
 
         if ($config !== []) {
             $configurator->addConfig($config);
