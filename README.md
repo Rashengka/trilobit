@@ -1567,7 +1567,7 @@ not read `.htaccess` at all.
 ## The database
 
 Every table carries the name of the module that owns it: `core_user`,
-`shop_marker`, `cms_page`. That reads like a convention and it is the mechanism
+`shop_product`, `cms_page`. That reads like a convention and it is the mechanism
 the whole idea of a switchable module rests on.
 
 A build without a module never loads that module's mapping, so nothing in it

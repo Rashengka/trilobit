@@ -6,6 +6,8 @@ namespace Trilobit\Shop\DI;
 
 use Nette\DI\CompilerExtension;
 use Trilobit\Core\DI\CoreExtension;
+use Trilobit\Shop\Domain\Product\ProductRepository;
+use Trilobit\Shop\Infrastructure\Doctrine\DoctrineProductRepository;
 use Trilobit\Shop\Presentation\Front\ShopSignpost;
 use Trilobit\Shop\Routing\ShopRoutes;
 use Trilobit\Shop\Security\ShopResources;
@@ -35,10 +37,11 @@ use Trilobit\Shop\Security\ShopResources;
  * and tagging late is the ordering that works until somebody changes the order
  * modules are registered in.
  *
- * The services are not autowired. Nothing asks for a route provider by its
- * type - Core collects them by tag - and leaving three modules offering the
+ * The tagged services are not autowired. Nothing asks for a route provider by
+ * its type - Core collects them by tag - and leaving three modules offering the
  * same interface to autowiring would only make an ambiguity for somebody to
- * trip over later.
+ * trip over later. The repository is autowired, because this module's own
+ * classes do ask for it by type.
  */
 final class ShopExtension extends CompilerExtension
 {
@@ -63,5 +66,12 @@ final class ShopExtension extends CompilerExtension
             ->setFactory(ShopResources::class)
             ->setAutowired(false)
             ->addTag(CoreExtension::TAG_RESOURCE_PROVIDER);
+
+        // Where products are kept. The interface is what the rest of the
+        // module names, and the implementation is the only place in it that
+        // knows Doctrine exists.
+        $builder->addDefinition($this->prefix('productRepository'))
+            ->setType(ProductRepository::class)
+            ->setFactory(DoctrineProductRepository::class);
     }
 }
