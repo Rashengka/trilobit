@@ -221,6 +221,89 @@ final class PathRegistryTest extends TestCase
         $registry->forget('bikes/mountain/mountain-bike-x');
     }
 
+    /**
+     * Decision Q10 of .ai/plans/30: a product filed out of a category keeps
+     * its address there, as a permanent redirect to the permalink - somebody
+     * holding the old link is taken to the product rather than told it is not
+     * there.
+     */
+    public function testRetiringAnAddressLeavesItLeadingToThePermalink(): void
+    {
+        $registry = $this->productInTwoCategories();
+        $product = new ContentRef(self::PRODUCT, '1');
+
+        $registry->retire('sale/mountain-bike-x');
+
+        self::assertSame('bikes/mountain/mountain-bike-x', $registry->find('sale/mountain-bike-x')?->movedTo);
+        self::assertSame(
+            ['bikes/mountain/mountain-bike-x'],
+            array_map(static fn(Address $address): string => $address->path, $registry->addressesOf($product)),
+        );
+    }
+
+    /** Filed back in, the product takes the address back from its own redirect. */
+    public function testARetiredAddressCanBeClaimedAgain(): void
+    {
+        $registry = $this->productInTwoCategories();
+        $product = new ContentRef(self::PRODUCT, '1');
+        $registry->retire('sale/mountain-bike-x');
+
+        $registry->register($product, 'sale/mountain-bike-x', 'Mountain bike X', 'sale');
+
+        $address = $registry->find('sale/mountain-bike-x');
+        self::assertNotNull($address);
+        self::assertFalse($address->hasMoved());
+        self::assertSame('bikes/mountain/mountain-bike-x', $address->canonicalPath);
+    }
+
+    /** The permalink is what the others lead to, so it cannot become one of them. */
+    public function testThePermalinkCannotBeRetired(): void
+    {
+        $registry = $this->productInTwoCategories();
+
+        $this->expectException(PathRefused::class);
+        $this->expectExceptionMessage('is the canonical address of its content');
+
+        $registry->retire('bikes/mountain/mountain-bike-x');
+    }
+
+    /** A redirect is out of the tree, so an address holding something cannot become one. */
+    public function testAnAddressWithSomethingFiledUnderItIsNotRetired(): void
+    {
+        $registry = $this->threeLevelCatalogue();
+        $registry->register(new ContentRef(self::CATEGORY, '2'), 'mountain', 'Mountain bikes');
+        $registry->makeCanonical(new ContentRef(self::CATEGORY, '2'), 'mountain');
+
+        $this->expectException(PathRefused::class);
+        $this->expectExceptionMessage('still has');
+
+        $registry->retire('bikes/mountain');
+    }
+
+    /**
+     * Asking before writing: whatever register() would refuse, said without
+     * anything being written - so that content saved at several addresses at
+     * once can be refused whole rather than half written.
+     */
+    public function testWhatWouldBeRefusedIsSaidBeforeAnythingIsWritten(): void
+    {
+        $registry = $this->productInTwoCategories();
+        $product = new ContentRef(self::PRODUCT, '1');
+        $other = new ContentRef(self::PRODUCT, '2');
+
+        self::assertNull($registry->refusalFor('sale/mountain-bike-x', $product), 'its own address is not taken from it');
+        self::assertNull($registry->refusalFor('clearance/mountain-bike-x', $other), 'a free address is free');
+        self::assertStringContainsString(
+            'already',
+            $registry->refusalFor('sale/mountain-bike-x', $other)?->getMessage() ?? '',
+        );
+        self::assertStringContainsString(
+            "cannot start with 'admin'",
+            $registry->refusalFor(AdminRoutes::PATH . '/x', $other)?->getMessage() ?? '',
+        );
+        self::assertNull($registry->find('clearance/mountain-bike-x'), 'asking wrote something');
+    }
+
     /** Decision R4: an address that moves keeps answering, permanently redirected. */
     public function testARenamedAddressIsLeftBehindAsAPermanentRedirect(): void
     {
