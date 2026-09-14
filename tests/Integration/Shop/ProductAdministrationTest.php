@@ -475,6 +475,61 @@ final class ProductAdministrationTest extends TestCase
     }
 
     /**
+     * The buttons taking a picture off belong to the product's own page, and
+     * a button sent to the list is not found there - before its handler, which
+     * for somebody who may only look would otherwise have been the one to
+     * refuse it.
+     */
+    public function testARemovalSentToTheListBySomebodyWhoMayOnlyLookIsNotFound(): void
+    {
+        $this->signedInHolding([new Grant(ShopResource::Catalogue, Privilege::View)->code()]);
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', '');
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit(
+            'default',
+            ['remove' => 'Take it off'],
+            [],
+            [],
+            sprintf('removePicture-%d-submit', $picture->id()),
+        )));
+        self::assertCount(1, $this->products()->picturesOf($product));
+    }
+
+    /** And for the owner, who may take any picture off: sent to the list, the button is not found either. */
+    public function testARemovalSentToTheListIsNotFoundEvenForTheOwner(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', '');
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit(
+            'default',
+            ['remove' => 'Take it off'],
+            [],
+            [],
+            sprintf('removePicture-%d-submit', $picture->id()),
+        )));
+        self::assertCount(1, $this->products()->picturesOf($product));
+    }
+
+    /** An action nobody wrote is no way into the form for pictures either. */
+    public function testThePictureFormSentToAMadeUpActionIsNotFound(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit(
+            'rewrite',
+            ['alt' => '', 'upload' => 'Add the picture'],
+            ['id' => (string) $product->id()],
+            ['picture' => $this->upload(Pictures::jpeg(40, 30), 'side.jpg')],
+            'pictures-submit',
+        )));
+        self::assertSame([], $this->products()->picturesOf($product));
+    }
+
+    /**
      * The form belongs to the actions that draw it, `add` and `edit`, and to
      * no other - asked of the owner, who may do everything, so that nothing
      * but where the form belongs can be what refuses it.

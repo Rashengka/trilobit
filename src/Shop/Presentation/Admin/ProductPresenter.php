@@ -198,6 +198,7 @@ final class ProductPresenter extends AdminPresenter
      * else. A picture sent to any other action of this presenter has no
      * product to go to, and is not found.
      */
+    #[Requires(actions: 'edit')]
     protected function createComponentPictures(): Form
     {
         if (!$this->edited instanceof Product) {
@@ -230,9 +231,12 @@ final class ProductPresenter extends AdminPresenter
     /**
      * The button taking one picture off the product, one small form each, so
      * that each button sends the picture it stands under and nothing else.
+     * They belong to the product's own page, like the form for pictures: a
+     * button sent to any other action is not found, before its handler runs.
      *
      * @return Multiplier<Form>
      */
+    #[Requires(actions: 'edit')]
     protected function createComponentRemovePicture(): Multiplier
     {
         return new Multiplier(function (string $id): Form {
