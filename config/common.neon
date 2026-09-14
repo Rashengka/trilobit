@@ -111,6 +111,14 @@ session:
 tracy:
     showBar: %debugMode%
 
+    # Tracy hands its logger the application's mailer the moment one exists,
+    # and does it while every container starts. Nothing here asks Tracy to
+    # mail an error, so that bought nothing - and it built the mailer on every
+    # request, so a mail setting the application refuses stopped the whole
+    # site at boot instead of stopping the one send that needed it. See
+    # Trilobit\Core\Mail\Mailers and tests/Integration/Config/MailerTest.
+    netteMailer: false
+
 #
 # Front-end assets, built by Vite. See .ai/plans/01b-frontend.md.
 #

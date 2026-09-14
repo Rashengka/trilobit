@@ -96,6 +96,15 @@ final class Bootstrap
         $misconfiguration = $mode === Mode::Staging ? $gate->misconfiguration() : null;
 
         $configurator = new Configurator();
+        // The framework registers a mailer of its own the moment nette/mail is
+        // installed, and it sends through PHP's mail() - which in a container
+        // with no sendmail hands the message to nothing and reports success.
+        // Core's is the one mailer, read from the environment (see
+        // Trilobit\Core\Mail\Mailers); two would also leave anything asking by
+        // type with no answer. A `mail:` section written into a configuration
+        // file is then an unknown extension, which stops the build rather than
+        // being quietly ignored.
+        unset($configurator->defaultExtensions['mail']);
         $configurator->setDebugMode($mode->debugMode($gate));
         $configurator->enableTracy($logDirectory);
         self::pointTheEditorLinksAtThisMachine($environment, $root);

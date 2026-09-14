@@ -13,6 +13,7 @@ use Nette\DI\Definitions\Reference;
 use Nette\DI\Definitions\ServiceDefinition;
 use Nette\DI\Definitions\Statement;
 use Nette\InvalidStateException;
+use Nette\Mail\Mailer;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Nette\Security\Passwords;
@@ -47,6 +48,7 @@ use Trilobit\Core\Event\AuditListener;
 use Trilobit\Core\Event\Dispatcher;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
+use Trilobit\Core\Mail\Mailers;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Navigation\HomeEntry;
 use Trilobit\Core\Navigation\Menus;
@@ -231,6 +233,19 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('authenticator'))
             ->setFactory(Authenticator::class);
+
+        // Mail, in every build: whoever is added to a business is sent the
+        // link they set their password with, and a build that could not send it
+        // would leave them no way in. Which way it leaves - a server, or files
+        // on a working copy - is the environment's to say and Mailers' to
+        // refuse; see Trilobit\Core\Mail\Mailers. The suites replace the
+        // mailer by name (Trilobit\Tests\Boot), which is why it has one.
+        $builder->addDefinition($this->prefix('mailers'))
+            ->setFactory(Mailers::class, ['mailDirectory' => $this->parameterString('rootDir') . '/var/mail']);
+
+        $builder->addDefinition($this->prefix('mailer'))
+            ->setType(Mailer::class)
+            ->setFactory('@' . $this->prefix('mailers') . '::fromEnvironment');
 
         // What may be asked about, and the one way of asking it. The structure
         // is read from a file of Core's own rather than configured, because

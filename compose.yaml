@@ -41,5 +41,25 @@ services:
             timeout: 5s
             retries: 20
 
+    # Where a working copy's mail goes: an SMTP server that delivers nothing
+    # and keeps every message, readable in its inbox at http://localhost:18200.
+    # It is what the mail settings in .env name when they are left empty -
+    # see Trilobit\Core\Mail\Mailers - so an invitation sent while clicking
+    # through the administration arrives here and not at the address typed.
+    #
+    # The image is pinned to a release rather than to latest, so that two
+    # machines running this file run the same catcher. The ports are not the
+    # standard 1025 and 8025 for the reason the database is not on 3306; the
+    # SMTP one is named in Mailers beside it, and the two have to move
+    # together. The inbox is on 18200 rather than 18025 because a further
+    # checkout of this repository serves its pages on 18000 and up, and 18025
+    # would be one of them.
+    mailpit:
+        image: axllent/mailpit:v1.31.1
+        restart: unless-stopped
+        ports:
+            - '${TRILOBIT_MAIL_PORT:-11025}:1025'
+            - '${TRILOBIT_MAILPIT_PORT:-18200}:8025'
+
 volumes:
     database:

@@ -50,7 +50,8 @@ application does. See "The design system" below.
 | `config/modules.neon` | which modules this installation is made of |
 | `config/` | `common.neon` for every environment, `services.neon` for this checkout |
 | `vite.config.ts`, `assets/` | the front-end build; see "Front-end assets" below |
-| `compose.yaml` | the database to develop and test against |
+| `compose.yaml` | the database to develop and test against, and the catcher a working copy's mail goes to |
+| `src/Core/Mail/` | which way mail leaves a deployment, read from its environment |
 | `bin/check-leaks` | the guard that keeps private content out of a public repository |
 | `tests/` | one directory per level of test, listed in `phpunit.xml` |
 
@@ -1781,6 +1782,19 @@ A few settings are worth knowing about:
   `config/common.neon` names beside them, which is what `compose.yaml` starts;
   fill them in for anything else. Tests that need a database say so and skip
   when none answers, so a run without one looks different from a run with one.
+- The mail settings, `TRILOBIT_MAIL_*`, say how mail leaves - today, the
+  invitation somebody added to a business is sent. Left empty they name the
+  catcher `compose.yaml` starts, Mailpit, whose inbox is at
+  `http://localhost:18200`: a working copy's mail stays on the machine and
+  never reaches the address that was typed. `TRILOBIT_MAIL_TRANSPORT=file`
+  writes every message to `var/mail/` instead, and only on `dev`; anywhere else
+  the application refuses to send rather than write, because a message written
+  to a file reaches nobody while whoever sent it is told it went. A transport,
+  a port or an encryption that cannot be right is refused the same way, loudly,
+  rather than read as the nearest thing it might have meant - see
+  `Trilobit\Core\Mail\Mailers`. The suites never send: every build a test makes
+  keeps its mail in memory (`Trilobit\Tests\Boot`), and the browser suite reads
+  what a working copy wrote to `var/mail/`.
 - Tracy shows no secret anywhere - not on the error page, not in the copy of
   it written to `var/log` in every mode, and not in the debug bar. A value is
   hidden when the name it is kept under has a word such as `password`,
