@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Cms\Presentation\Admin;
 
+use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Nette\Http\IResponse;
@@ -47,6 +48,10 @@ use Trilobit\Core\Security\Resource;
  * rearrange the menu, which is the opposite of what the pair is for.
  * **Exit condition:** a way of reordering that is an action of its own - which
  * is then gated on `app.administration.content:change_priority`, and this form is not.
+ *
+ * **The form exists only on the two actions that draw it**, so the gate of the
+ * action a request names is the gate of the form it submits; see
+ * Trilobit\Cms\Presentation\Admin\PagePresenter.
  */
 #[Needs(Resource::Content, Privilege::View)]
 final class MenuPresenter extends AdminPresenter
@@ -126,6 +131,7 @@ final class MenuPresenter extends AdminPresenter
         return parent::createTemplate($class ?? MenuTemplate::class);
     }
 
+    #[Requires(actions: ['add', 'edit'])]
     protected function createComponentEntry(): Form
     {
         $form = new Form();

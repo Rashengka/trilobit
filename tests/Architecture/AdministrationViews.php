@@ -145,7 +145,7 @@ final class AdministrationViews
      *
      * @return list<string> sorted, so that a report reads the same twice
      */
-    private static function viewsOf(string $file, \ReflectionClass $presenter): array
+    public static function viewsOf(string $file, \ReflectionClass $presenter): array
     {
         $views = [];
         foreach ($presenter->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Cms\Presentation\Admin;
 
+use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Nette\Http\IResponse;
@@ -39,6 +40,10 @@ use Trilobit\Core\Security\Resource;
  * content of the site, and a resource of its own is due the day a second
  * module files something into categories - until then it would be a right
  * nobody could hold without also holding the pages it is for.
+ *
+ * **The form exists only on the two actions that draw it**, so the gate of the
+ * action a request names is the gate of the form it submits; see
+ * Trilobit\Cms\Presentation\Admin\PagePresenter.
  */
 #[Needs(Resource::Content, Privilege::View)]
 final class CategoryPresenter extends AdminPresenter
@@ -77,6 +82,7 @@ final class CategoryPresenter extends AdminPresenter
     }
 
     /** The last part of an address made of the name, as the register would accept it; see PagePresenter. */
+    #[Requires(actions: ['add', 'edit'])]
     public function handleSuggestSegment(string $title = '', string $category = ''): void
     {
         try {
@@ -125,6 +131,7 @@ final class CategoryPresenter extends AdminPresenter
         return parent::createTemplate($class ?? CategoriesTemplate::class);
     }
 
+    #[Requires(actions: ['add', 'edit'])]
     protected function createComponentCategory(): Form
     {
         $form = new Form();
