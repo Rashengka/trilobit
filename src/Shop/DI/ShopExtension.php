@@ -6,6 +6,8 @@ namespace Trilobit\Shop\DI;
 
 use Nette\DI\CompilerExtension;
 use Trilobit\Core\DI\CoreExtension;
+use Trilobit\Shop\Application\Product\PriceSettings;
+use Trilobit\Shop\Application\Product\Products;
 use Trilobit\Shop\Domain\Product\ProductRepository;
 use Trilobit\Shop\Infrastructure\Doctrine\DoctrineProductRepository;
 use Trilobit\Shop\Presentation\Front\ShopSignpost;
@@ -73,5 +75,39 @@ final class ShopExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('productRepository'))
             ->setType(ProductRepository::class)
             ->setFactory(DoctrineProductRepository::class);
+
+        // What the installation says about prices, from the parameters in
+        // src/Shop/config/services.neon, which config/local.neon may override.
+        $builder->addDefinition($this->prefix('priceSettings'))
+            ->setFactory(PriceSettings::class, $this->priceParameters());
+
+        // The one place that knows a product is a row here and as many rows of
+        // Core's register as it has categories.
+        $builder->addDefinition($this->prefix('products'))
+            ->setFactory(Products::class);
+    }
+
+    /**
+     * The currency and the rate a new product starts with, as the
+     * configuration says them - refused while the container is compiled when
+     * they are not a string and a whole number, so that a mistyped parameter
+     * stops the build rather than the first product saved.
+     *
+     * @return array{string, int}
+     */
+    private function priceParameters(): array
+    {
+        $shop = $this->getContainerBuilder()->parameters['shop'] ?? null;
+        $currency = is_array($shop) ? ($shop['currency'] ?? null) : null;
+        $rate = is_array($shop) ? ($shop['vatRate'] ?? null) : null;
+
+        if (!is_string($currency) || !is_int($rate)) {
+            throw new \LogicException(
+                'shop.currency has to be the three letters of a currency and shop.vatRate a whole number of basis '
+                . 'points; see src/Shop/config/services.neon.',
+            );
+        }
+
+        return [$currency, $rate];
     }
 }

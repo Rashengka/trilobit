@@ -7,6 +7,20 @@
 # instead of resolving to a blank page.
 #
 
+parameters:
+    # What the installation says about prices; see
+    # Trilobit\Shop\Application\Product\PriceSettings. A deployment trading in
+    # another currency, or starting new products at another rate, says so in
+    # config/local.neon, which is loaded after this file and wins.
+    shop:
+        # ISO 4217. Stored with every price, so changing it later changes what
+        # new prices are set in and leaves the ones already set as they were.
+        currency: CZK
+
+        # The rate of tax a new product starts with, in basis points: 2100 is
+        # 21 %. A product keeps its own rate; this is only where it begins.
+        vatRate: 2100
+
 application:
     # Both halves are needed and both are absent from a build without this
     # module: the scan is how its presenters become services at all, and the
