@@ -10,6 +10,12 @@
 # application where the dev server is, and leaves it behind when it crashes.
 /www/build/.vite/nette.json
 
+# The published variants of uploaded pictures belong to one installation, not to
+# the project. The rules that stop anything in there from running are the
+# project's, so that one file is kept. The originals are under /var/ above.
+/www/media/*
+!/www/media/.htaccess
+
 # Browser-suite output.
 /test-results/
 /playwright-report/

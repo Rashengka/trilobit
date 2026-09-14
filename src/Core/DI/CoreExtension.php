@@ -26,6 +26,7 @@ use Trilobit\Core\Build\BuildManifest;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Console\AccountCommand;
+use Trilobit\Core\Console\MediaVariantsCommand;
 use Trilobit\Core\Console\MigrationsDiffCommand;
 use Trilobit\Core\Console\PasswordCommand;
 use Trilobit\Core\Console\SeedCommand;
@@ -47,6 +48,8 @@ use Trilobit\Core\Event\AuditListener;
 use Trilobit\Core\Event\Dispatcher;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
+use Trilobit\Core\Media\MediaLibrary;
+use Trilobit\Core\Media\MediaStorage;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Navigation\HomeEntry;
 use Trilobit\Core\Navigation\Menus;
@@ -359,6 +362,26 @@ final class CoreExtension extends CompilerExtension
         // content into them (.ai/plans/11-cms-po-prvnim-proklikani.md, C4).
         $builder->addDefinition($this->prefix('categories'))
             ->setFactory(Categories::class);
+
+        // Pictures are Core's for the same reason: one picture is shown by a
+        // product and a page at once, and neither module may know the other.
+        // The originals are kept under var/, which is never served, because a
+        // phone writes where a photo was taken into them; what the site shows
+        // are the variants under the public directory. See
+        // Trilobit\Core\Media\MediaStorage.
+        $builder->addDefinition($this->prefix('mediaStorage'))
+            ->setFactory(MediaStorage::class, [
+                'originals' => $this->parameterString('rootDir') . '/var/media',
+                'public' => $this->parameterString('wwwDir') . '/media',
+            ]);
+
+        $builder->addDefinition($this->prefix('mediaLibrary'))
+            ->setFactory(MediaLibrary::class);
+
+        $builder->addDefinition($this->prefix('mediaVariantsCommand'))
+            ->setFactory(MediaVariantsCommand::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_CONSOLE_COMMAND, 'app:media-variants');
 
         // Which kinds of content this build can draw, and the catch-all that
         // reads the register in front of them. Both are always registered:
