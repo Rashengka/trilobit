@@ -19,13 +19,15 @@ FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble
 #
 # The extensions are the ones the application needs beyond what the CLI package
 # carries: the same set the local php container adds to its base image, where
-# only pdo_mysql is missing - Debian's php image compiles mbstring and the XML
-# family in, Ubuntu's packages ship them separately.
+# pdo_mysql, gd and exif are missing - Debian's php image compiles mbstring and
+# the XML family in, Ubuntu's packages ship them separately. exif has no package
+# of its own here: it is part of php8.4-common, which php8.4-cli depends on.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends software-properties-common \
     && add-apt-repository -y ppa:ondrej/php \
     && apt-get install -y --no-install-recommends \
         php8.4-cli \
+        php8.4-gd \
         php8.4-mysql \
         php8.4-mbstring \
         php8.4-xml \

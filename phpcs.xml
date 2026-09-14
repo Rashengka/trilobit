@@ -16,6 +16,19 @@
     <arg name="basepath" value="."/>
     <arg name="extensions" value="php"/>
     <arg name="parallel" value="8"/>
+
+    <!--
+        The sniffer's own headroom, named here for the same reason phpunit.xml
+        names one for the suites and composer.json one for static analysis: a
+        limit left to whatever php.ini the machine has is a limit one runner has
+        and another does not. Measured over this tree: 128 MB at the peak, which
+        is the stock 128M exactly, and fifteen more files took it to 130 MB and
+        killed the worker that reached bin/check-leaks, the longest file here.
+        512M is four times that. It reaches the parallel workers too: they are
+        forked from the process this sets it in.
+    -->
+    <ini name="memory_limit" value="512M"/>
+
     <arg name="colors"/>
     <!-- p: progress. Warnings are not suppressed; they fail the gate like errors. -->
     <arg value="p"/>

@@ -16,9 +16,12 @@ use Trilobit\Core\Domain\Tenancy\Tenant;
  * switched off: a picture belongs to a product and to a page at the same time,
  * and neither module may know about the other.
  *
- * The row is the record, not the file. The bytes live under the public
- * directory at `path`, and the path is unique because two rows describing one
- * file would let deleting either of them break the other.
+ * The row is the record, not the file. `path` is the name the file is stored
+ * under, and the path is unique because two rows describing one file would let
+ * deleting either of them break the other. For a picture taken in through
+ * Trilobit\Core\Media\MediaLibrary it names two places: the original under
+ * var/media, which is never served, and the variants beside each other under
+ * www/media - see Trilobit\Core\Media\MediaStorage.
  *
  * Width and height are optional because not everything a shop uploads is a
  * picture: a price list is a file with a size and no dimensions.
@@ -43,7 +46,7 @@ class MediaFile
         #[ORM\ManyToOne(targetEntity: Tenant::class)]
         #[ORM\JoinColumn(nullable: false)]
         private Tenant $tenant,
-        /** Relative to the public directory, so that moving an installation does not rewrite every row. */
+        /** Relative to the media directories, so that moving an installation does not rewrite every row. */
         #[ORM\Column(length: 255, unique: true)]
         private string $path,
         #[ORM\Column(length: 255)]
