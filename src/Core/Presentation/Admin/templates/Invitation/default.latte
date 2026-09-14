@@ -1,0 +1,33 @@
+{templateType Trilobit\Core\Presentation\Admin\InvitationTemplate}
+
+{*
+ * Where a password is set with the link somebody was sent - or, for every
+ * link that does not open, the one sentence that says so, whichever way it
+ * stopped opening. See Trilobit\Core\Presentation\Admin\InvitationPresenter.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/notice.latte'}
+
+{block content}
+    <div class="l-measure l-stack l-stack--loose">
+        {include pageHeading,
+            title: $headline,
+            lead: $lead,
+            testId: 'password-headline',
+            leadTestId: 'password-lead'}
+
+        {if $refusal !== ''}
+            {include notice, message: $refusal, variant: 'danger', testId: 'password-refused'}
+        {else}
+            {embed block panel, testId: 'password-panel'}
+                {block panelTitle}Your password{/block}
+
+                {block panelBody}
+                    {control password}
+                {/block}
+            {/embed}
+        {/if}
+    </div>
+{/block}

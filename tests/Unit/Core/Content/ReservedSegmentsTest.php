@@ -11,6 +11,7 @@ use Trilobit\Core\Content\PublicPath;
 use Trilobit\Core\Content\ReservedSegments;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Routing\AdminRoutes;
+use Trilobit\Core\Routing\PasswordRoutes;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouteProvider;
 use Trilobit\Core\Routing\SessionRoutes;
@@ -112,6 +113,7 @@ final class ReservedSegmentsTest extends TestCase
 
         self::assertSame(
             [
+                PasswordRoutes::PATH,
                 PreferenceRoutes::PATH,
                 SetupRoutes::PATH,
                 StyleguideRoutes::PATH,

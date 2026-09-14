@@ -1,0 +1,39 @@
+{templateType Trilobit\Core\Presentation\Admin\PeopleTemplate}
+
+{*
+ * The form somebody new is added to this business with. The roles it offers
+ * are the ones the person reading it may give - see
+ * Trilobit\Core\Security\People::rolesOffered() - and where there is none the
+ * page says so instead of offering an empty choice.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'people-headline',
+        leadTestId: 'people-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'Back to people', href: $listUrl, variant: 'quiet', testId: 'people-back'}
+    </div>
+
+    {embed block panel, testId: 'people-addition-panel'}
+        {block panelTitle}Somebody new{/block}
+
+        {block panelBody}
+            {if $offersARole}
+                {control addition}
+            {else}
+                {include notice,
+                    message: 'There is no role here you may give, so there is nobody you can add.',
+                    testId: 'people-nothing-to-give'}
+            {/if}
+        {/block}
+    {/embed}
+{/block}

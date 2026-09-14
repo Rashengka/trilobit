@@ -50,7 +50,8 @@ application does. See "The design system" below.
 | `config/modules.neon` | which modules this installation is made of |
 | `config/` | `common.neon` for every environment, `services.neon` for this checkout |
 | `vite.config.ts`, `assets/` | the front-end build; see "Front-end assets" below |
-| `compose.yaml` | the database to develop and test against |
+| `compose.yaml` | the database to develop and test against, and the catcher a working copy's mail goes to |
+| `src/Core/Mail/` | which way mail leaves a deployment, read from its environment |
 | `bin/check-leaks` | the guard that keeps private content out of a public repository |
 | `tests/` | one directory per level of test, listed in `phpunit.xml` |
 
@@ -1206,6 +1207,63 @@ signal - the request has to come from this site, read off the browser's
 keep in step. `tests/e2e/administration.spec.ts` signs in through a real browser,
 which is the only place that check can be seen working.
 
+### The people of a business
+
+`/admin/people` lists everybody who belongs to the business the request is in -
+every account holding a role there - filtered by name and address and paged by
+the same `Listing` control as the list of pages. The page about one person shows
+what they hold here; from it a role is taken away, another is given, and an
+invitation is sent again.
+
+**Adding somebody** asks for an address, a name and a role. An address nobody
+has gets an account with no password, and the person is sent a link to set one;
+an address that has an account already - in another business - is given the
+role and nothing else, and the page says the account existed. That tells
+whoever added them the address belongs to somebody, which is accepted. The
+installation's administrator is not added this way: giving that account a role
+in a business is `app:account --also-installation`.
+
+**The link** is `/_password/<token>`. It opens once, for seven days, and only
+while it is the newest one sent to that account; what is kept is a SHA-256 of
+the token and never the token (`Trilobit\Core\Security\PasswordLinks`), and
+spending it is one statement only one request can win. Every link that does not
+open - never given, used, replaced, past its week - is the same page, with
+status 404 and one sentence, so trying links teaches nothing about them. The
+password follows `app:password`'s rule, and the page sends
+`Referrer-Policy: no-referrer`, because its address carries the token. Until
+the password is set the account cannot be signed in to, and is refused in the
+words a wrong password is.
+
+**Mail that did not go is said.** The person is added either way; the page they
+are then shown says, as a refusal, that the invitation did not go, and offers
+to send it again - a new link, which stops the old one opening. Why it failed
+goes to the log. How mail leaves is the environment's to say; see
+`TRILOBIT_MAIL_*` under Installation.
+
+**Every rule is in one service**, `Trilobit\Core\Security\People`, which every
+page, form and signal goes through and which trusts none of them to have asked
+first:
+
+- each act asks for its own privilege on `app.administration.account`: `view`
+  to see the people, `add` to add somebody or send the invitation again, `edit`
+  to give a role, `delete` to take one away;
+- nobody gives a role that lets its holder do anything they may not do
+  themselves, worked out the way the access list is - doors and wholes
+  included - and nobody takes away a role they could not have given, so a role
+  that may manage people can neither give the owner's nor remove it;
+- nobody changes their own membership;
+- a business keeps an owner. No single request can remove the last one - only
+  an owner can take an owner's role away, and not their own - but two owners
+  removing each other at the same moment could, so the owners are read with a
+  locking read inside the transaction that removes: the second waits for the
+  first, and then sees the one owner it was about to remove.
+
+Taking a role away deletes the membership; the account stays, and nothing
+records yet who removed whom. A page offers only what the service would allow,
+and says why where it offers nothing - but a form posted without a button, with
+a role it never offered, for a role it drew no button for, or to another page,
+ends where the service says, as a sentence on the screen.
+
 ## Who may do what
 
 Every page of the administration is behind a declaration saying who may open
@@ -1515,7 +1573,9 @@ the application rather than a list of pairs - a list would go on saying what the
 used to offer, and the account holding it would quietly stop being able to
 reach whatever was added afterwards. The two rules that belong beside it -
 nobody hands out more than they hold, and the last owner of a business cannot
-be removed - arrive with the first screen that edits roles or memberships.
+be removed - hold where memberships are changed, in
+`Trilobit\Core\Security\People` (see "The people of a business"); a screen
+composing roles will have to hold whoever edits one to the first the same way.
 
 There is no way to write down a permission being taken away. A role carries the
 pieces it was assembled from and nothing else, so somebody holding two roles is
@@ -1850,6 +1910,19 @@ A few settings are worth knowing about:
   `config/common.neon` names beside them, which is what `compose.yaml` starts;
   fill them in for anything else. Tests that need a database say so and skip
   when none answers, so a run without one looks different from a run with one.
+- The mail settings, `TRILOBIT_MAIL_*`, say how mail leaves - today, the
+  invitation somebody added to a business is sent. Left empty they name the
+  catcher `compose.yaml` starts, Mailpit, whose inbox is at
+  `http://localhost:18200`: a working copy's mail stays on the machine and
+  never reaches the address that was typed. `TRILOBIT_MAIL_TRANSPORT=file`
+  writes every message to `var/mail/` instead, and only on `dev`; anywhere else
+  the application refuses to send rather than write, because a message written
+  to a file reaches nobody while whoever sent it is told it went. A transport,
+  a port or an encryption that cannot be right is refused the same way, loudly,
+  rather than read as the nearest thing it might have meant - see
+  `Trilobit\Core\Mail\Mailers`. The suites never send: every build a test makes
+  keeps its mail in memory (`Trilobit\Tests\Boot`), and the browser suite reads
+  what a working copy wrote to `var/mail/`.
 - Tracy shows no secret anywhere - not on the error page, not in the copy of
   it written to `var/log` in every mode, and not in the debug bar. A value is
   hidden when the name it is kept under has a word such as `password`,
@@ -1916,11 +1989,15 @@ bin/trilobit app:seed
 | `ammonite-owner@example.com`, `belemnite-owner@example.com` | each owns their business - the owner's role, the whole of the application - and holds nothing in the other |
 | `ammonite-editor@example.com` | holds Ammonite Bikes' own `editor` role - the role in between: viewing, adding, editing, deleting and reordering the content, and nothing beside it - not purging or exporting it, not the accounts |
 | `ammonite-onlooker@example.com` | holds a role of Ammonite Bikes that grants nothing: signed in, and refused every page of the administration |
+| `ammonite-people@example.com` | holds Ammonite Bikes' own `people` role - seeing, adding, changing and removing its people, and nothing else - so the people page shows what it may give and what it may not: roles holding no more than that, never the owner's |
+| `ammonite-invited@example.com` | added to Ammonite Bikes as an onlooker and not signed in yet: no password, and the link that sets one printed under Invitations - nothing is sent |
 | `belemnite-editor@example.com` | holds Belemnite Books' own `editor` role, which under the same code means something narrower: reading and correcting the content |
 | content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, a main menu with an entry holding two others, and enough further pages that the list of pages runs past its first page |
 
 Every password is generated and printed once, beside its address. What is
-stored is a hash, and none is written in the code.
+stored is a hash, and none is written in the code. The invitation is printed as
+the path of its link, which opens at a host of Ammonite Bikes, once, for seven
+days.
 
 **It refuses anywhere but `TRILOBIT_ENV=dev`**, by name: staging holds real
 data, and invented businesses beside it are something somebody has to clean out

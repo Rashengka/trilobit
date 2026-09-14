@@ -1,0 +1,46 @@
+{templateType Trilobit\Core\Presentation\Listing\ListingTemplate}
+
+{*
+ * The columns of the list of people and one row of it, drawn by
+ * Trilobit\Core\Presentation\Listing\Listing inside c-table - see
+ * Trilobit\Core\Presentation\Admin\PeopleListing.
+ *
+ * The state says in words whether somebody signs in, is still waiting for the
+ * link they were sent, or was switched off - the one thing about a person the
+ * roles beside it do not say.
+ *}
+
+{import '../../components/button.latte'}
+{import '../../components/badge.latte'}
+
+{define listingHead}
+    <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Address</th>
+        <th scope="col">Holds here</th>
+        <th scope="col">State</th>
+    </tr>
+{/define}
+
+{define listingRow, Trilobit\Core\Presentation\Admin\PersonSummary $row}
+    <tr data-testid="people-row-{$row->id}">
+        <th scope="row">
+            {include button,
+                label: $row->isYou ? $row->name . ' (you)' : $row->name,
+                href: $row->personUrl,
+                variant: 'quiet',
+                testId: 'people-open-' . $row->id}
+        </th>
+
+        <td data-testid="people-email-{$row->id}">{$row->email}</td>
+
+        <td data-testid="people-roles-{$row->id}">{implode(', ', $row->roles)}</td>
+
+        <td>
+            {include badge,
+                label: $row->state,
+                variant: $row->state === Trilobit\Core\Presentation\Admin\PersonSummary::ACTIVE ? 'accent' : 'plain',
+                testId: 'people-state-' . $row->id}
+        </td>
+    </tr>
+{/define}

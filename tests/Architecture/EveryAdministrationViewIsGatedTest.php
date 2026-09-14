@@ -137,7 +137,14 @@ final class EveryAdministrationViewIsGatedTest extends TestCase
                 'Cms/Presentation/Admin/PagePresenter.php: edit',
                 'Cms/Presentation/Admin/SignpostPresenter.php: default',
                 'Core/Presentation/Admin/DashboardPresenter.php: default',
+                // Where somebody added to a business sets their password with
+                // the link they were sent - open, like signing in, because
+                // whoever opens it has no password yet.
+                'Core/Presentation/Admin/InvitationPresenter.php: default',
                 'Core/Presentation/Admin/NavigationPresenter.php: default',
+                'Core/Presentation/Admin/PeoplePresenter.php: add',
+                'Core/Presentation/Admin/PeoplePresenter.php: default',
+                'Core/Presentation/Admin/PeoplePresenter.php: person',
                 // Coming in and nothing else. Ending a session is not a page of
                 // the administration at all - one identity, one session, one
                 // act, whoever is doing it - so it lives at
