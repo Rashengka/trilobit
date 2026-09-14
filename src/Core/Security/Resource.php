@@ -22,14 +22,19 @@ namespace Trilobit\Core\Security;
  * without anybody looking at a role, and the roles would quietly start
  * meaning something else.
  *
- * **This enum is the complete list, and that is load-bearing.** Nette refuses a
- * resource it has not been given: Permission::checkResource() throws
+ * **This enum is the complete list of Core's resources, and no more.** Core
+ * may not name a module, so a module's resources are in an enum of the
+ * module's own, implementing Trilobit\Core\Security\ResourceName and brought
+ * through Trilobit\Core\Security\ResourceProvider. The complete list of a
+ * build is Trilobit\Core\Security\PermissionStructure::resources(), put
+ * together from this enum and those - and that is load-bearing. Nette refuses
+ * a resource it has not been given: Permission::checkResource() throws
  * "Resource 'x' does not exist" rather than answering false, and isAllowed()
  * calls it on the way in. So a question about a resource nobody registered is
  * not a denial, it is an exception - a person locked out rather than turned
- * away. Registration therefore reads Resource::cases() and never a list
- * written beside it; two lists would part company, and the day they did, the
- * one that lost would take a user's whole session with it.
+ * away. Registration therefore walks the structure's resources and never a
+ * list written beside them; two lists would part company, and the day they
+ * did, the one that lost would take a user's whole session with it.
  *
  * **The value carries no tenant.** It was tempting to make it - `tenant-7.app`
  * would let a rule be written for one business and nothing else, and the tree
@@ -42,7 +47,7 @@ namespace Trilobit\Core\Security;
  * its own is roles - which of these pairs they are made of - and that needs no
  * tenant in here.
  */
-enum Resource: string
+enum Resource: string implements ResourceName
 {
     /**
      * The application inside one business, and what everything else falls

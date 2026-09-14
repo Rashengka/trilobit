@@ -6,7 +6,7 @@ namespace Trilobit\Tests\Double\Security;
 
 use Nette\Security\Authorizator;
 use Trilobit\Core\Security\Privilege;
-use Trilobit\Core\Security\Resource;
+use Trilobit\Core\Security\ResourceName;
 
 /**
  * An authorizator that admits everybody, for a suite whose claim is not about
@@ -34,7 +34,7 @@ final class StandInAuthorizator implements Authorizator
 {
     public function isAllowed(
         ?string $role,
-        string|Resource|null $resource,
+        string|ResourceName|null $resource,
         string|Privilege|null $privilege,
     ): bool {
         return true;

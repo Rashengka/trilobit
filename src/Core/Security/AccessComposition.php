@@ -82,10 +82,11 @@ final readonly class AccessComposition
 
         $reach = [];
         $above = [];
-        foreach (Resource::cases() as $resource) {
-            $access->addResource($resource->value);
-            $reach[$resource->value] = [$resource, ...$this->structure->descendantsOf($resource)];
-            $above[$resource->value] = $this->structure->ancestorsOf($resource);
+        foreach ($this->structure->resources() as $resource) {
+            $name = PermissionStructure::nameOf($resource);
+            $access->addResource($name);
+            $reach[$name] = [$resource, ...$this->structure->descendantsOf($resource)];
+            $above[$name] = $this->structure->ancestorsOf($resource);
         }
 
         foreach ($roles as $role) {
@@ -102,17 +103,23 @@ final readonly class AccessComposition
             $held = array_diff_key($this->pairsOf($granted, $reach, wholeNeedsABundle: true), $denied);
 
             foreach ($held as [$resource]) {
-                foreach ($above[$resource->value] as $ancestor) {
-                    $held[$ancestor->value . ':' . Privilege::View->value] = [$ancestor, Privilege::View];
+                foreach ($above[PermissionStructure::nameOf($resource)] as $ancestor) {
+                    $held[$this->keyOf($ancestor, Privilege::View)] = [$ancestor, Privilege::View];
                 }
             }
 
             foreach (array_diff_key($held, $denied) as [$resource, $privilege]) {
-                $access->allow($code, $resource->value, $privilege->value);
+                $access->allow($code, PermissionStructure::nameOf($resource), $privilege->value);
             }
         }
 
         return $access;
+    }
+
+    /** The key a pair is kept under in the sets below: the way a role writes it down. */
+    private function keyOf(ResourceName $resource, Privilege $privilege): string
+    {
+        return new Grant($resource, $privilege)->code();
     }
 
     /**
@@ -133,10 +140,11 @@ final readonly class AccessComposition
      */
     private function withoutTheWholeApplication(array $written): array
     {
-        $application = $this->structure->root();
+        $structure = $this->structure;
+        $application = $structure->root();
 
-        return array_values(array_filter($written, static function (string $piece) use ($application): bool {
-            $grant = Grant::parse($piece);
+        return array_values(array_filter($written, static function (string $piece) use ($structure, $application): bool {
+            $grant = Grant::parse($piece, $structure);
 
             return !$grant instanceof Grant || !$grant->isWhole() || $grant->resource !== $application;
         }));
@@ -147,17 +155,21 @@ final readonly class AccessComposition
      * pair met twice is one pair and a difference of two sets is a
      * difference of keys.
      *
-     * @param list<string> $written
-     * @param array<string, non-empty-list<Resource>> $reach each resource and
-     *     everything under it, by the resource's own value
+     * A piece naming a resource this build does not have - an earlier build's,
+     * or one a module brings that this build is made without - reads back as
+     * nothing and is left out; see Trilobit\Core\Security\Grant::parse().
      *
-     * @return array<string, array{Resource, Privilege}>
+     * @param list<string> $written
+     * @param array<string, non-empty-list<ResourceName>> $reach each resource
+     *     and everything under it, by the resource's name
+     *
+     * @return array<string, array{ResourceName, Privilege}>
      */
     private function pairsOf(array $written, array $reach, bool $wholeNeedsABundle): array
     {
         $pairs = [];
         foreach ($written as $piece) {
-            $grant = Grant::parse($piece);
+            $grant = Grant::parse($piece, $this->structure);
             if (!$grant instanceof Grant) {
                 continue;
             }
@@ -165,7 +177,7 @@ final readonly class AccessComposition
             $privilege = $grant->privilege;
             if ($privilege instanceof Privilege) {
                 if ($this->structure->offers($grant->resource, $privilege)) {
-                    $pairs[$grant->resource->value . ':' . $privilege->value] = [$grant->resource, $privilege];
+                    $pairs[$this->keyOf($grant->resource, $privilege)] = [$grant->resource, $privilege];
                 }
 
                 continue;
@@ -175,9 +187,9 @@ final readonly class AccessComposition
                 continue;
             }
 
-            foreach ($reach[$grant->resource->value] as $resource) {
+            foreach ($reach[PermissionStructure::nameOf($grant->resource)] as $resource) {
                 foreach ($this->structure->privilegesOf($resource) as $offered) {
-                    $pairs[$resource->value . ':' . $offered->value] = [$resource, $offered];
+                    $pairs[$this->keyOf($resource, $offered)] = [$resource, $offered];
                 }
             }
         }

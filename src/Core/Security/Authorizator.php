@@ -82,8 +82,10 @@ final class Authorizator implements NetteAuthorizator
     ) {}
 
     /**
-     * @param Resource|string|null $resource what is being asked about; anything
-     *     but Trilobit\Core\Security\Resource is refused
+     * @param ResourceName|string|null $resource what is being asked about;
+     *     anything but a case of Trilobit\Core\Security\Resource or of a
+     *     module's enum implementing Trilobit\Core\Security\ResourceName is
+     *     refused
      * @param Privilege|string|null $privilege what is being asked of it;
      *     anything but Trilobit\Core\Security\Privilege is refused
      *
@@ -92,13 +94,14 @@ final class Authorizator implements NetteAuthorizator
      */
     public function isAllowed(
         ?string $role,
-        string|Resource|null $resource,
+        string|ResourceName|null $resource,
         string|Privilege|null $privilege,
     ): bool {
-        if (!$resource instanceof Resource || !$privilege instanceof Privilege) {
+        if (!$resource instanceof ResourceName || !$privilege instanceof Privilege) {
             throw new \LogicException(sprintf(
                 'A permission question is asked with the two enums and nothing else; this one was asked with '
-                    . "%s and %s. Write it as '%s::Something, %s::Something', so that a reader and "
+                    . "%s and %s. Write it as '%s::Something, %s::Something' - or with a module's own enum of "
+                    . 'resources in place of the first - so that a reader and '
                     . 'tests/Architecture/EveryPermissionQuestionIsPredefinedTest can both tell which pair it is.',
                 get_debug_type($resource),
                 get_debug_type($privilege),
@@ -109,11 +112,10 @@ final class Authorizator implements NetteAuthorizator
 
         if (!$this->structure->offers($resource, $privilege)) {
             throw new \LogicException(sprintf(
-                "Nothing may be answered about '%s' of '%s': %s does not offer that pair, so no role can hold it "
-                    . 'and the answer would be no for everybody, for ever.',
+                "Nothing may be answered about '%s' of '%s': this build's structure does not offer that pair, so "
+                    . 'no role can hold it and the answer would be no for everybody, for ever.',
                 $privilege->value,
-                $resource->value,
-                PermissionStructure::FILE,
+                PermissionStructure::nameOf($resource),
             ));
         }
 
@@ -124,7 +126,7 @@ final class Authorizator implements NetteAuthorizator
         $access = $this->inThisTenant($this->tenancy->current());
 
         return $access->hasRole($role)
-            && $access->isAllowed($role, $resource->value, $privilege->value);
+            && $access->isAllowed($role, PermissionStructure::nameOf($resource), $privilege->value);
     }
 
     /**

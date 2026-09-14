@@ -65,7 +65,10 @@ final class NoPermissionQuestionInTheInstallationSectionTest extends TestCase
 
     public function testTheSectionAsksNoPermissionQuestion(): void
     {
-        self::assertSame([], InstallationSection::permissionQuestionsIn($this->section()));
+        self::assertSame([], InstallationSection::permissionQuestionsIn(
+            $this->section(),
+            WidestBuild::permissionStructure()->resources(),
+        ));
     }
 
     public function testNoTemplateOfTheSectionAsksOneEither(): void
@@ -117,7 +120,7 @@ final class NoPermissionQuestionInTheInstallationSectionTest extends TestCase
                 // surrounds them, which is what makes it worth having.
                 'GatedTheOtherWayPresenter.php:20: app.administration.content, view',
             ],
-            InstallationSection::permissionQuestionsIn($this->fixtures()),
+            InstallationSection::permissionQuestionsIn($this->fixtures(), WidestBuild::permissionStructure()->resources()),
         );
     }
 
