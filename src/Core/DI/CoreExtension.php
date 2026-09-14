@@ -50,6 +50,7 @@ use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
 use Trilobit\Core\Media\MediaLibrary;
 use Trilobit\Core\Media\MediaStorage;
+use Trilobit\Core\Media\UploadLimit;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Navigation\HomeEntry;
 use Trilobit\Core\Navigation\Menus;
@@ -377,6 +378,12 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('mediaLibrary'))
             ->setFactory(MediaLibrary::class);
+
+        // How large a file a form on this server can take - the library's own
+        // limit or PHP's, whichever is smaller - read from the PHP serving the
+        // request. See Trilobit\Core\Media\UploadLimit.
+        $builder->addDefinition($this->prefix('uploadLimit'))
+            ->setFactory(UploadLimit::class . '::ofThisServer');
 
         $builder->addDefinition($this->prefix('mediaVariantsCommand'))
             ->setFactory(MediaVariantsCommand::class)
