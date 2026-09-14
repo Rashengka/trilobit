@@ -15,6 +15,7 @@ use Trilobit\Shop\Presentation\Admin\ProductListingFactory;
 use Trilobit\Shop\Presentation\Front\ShopSignpost;
 use Trilobit\Shop\Routing\ShopRoutes;
 use Trilobit\Shop\Security\ShopResources;
+use Trilobit\Shop\Seed\ShopSeed;
 
 /**
  * Everything the Shop module puts into the container.
@@ -93,6 +94,13 @@ final class ShopExtension extends CompilerExtension
         // for everything the list is made of.
         $builder->addFactoryDefinition($this->prefix('productListing'))
             ->setImplement(ProductListingFactory::class);
+
+        // What `app:seed` gives every business it makes on a working copy: a
+        // catalogue, and somebody who keeps it and may not change a price.
+        $builder->addDefinition($this->prefix('seed'))
+            ->setFactory(ShopSeed::class)
+            ->setAutowired(false)
+            ->addTag(CoreExtension::TAG_SEED_PROVIDER);
     }
 
     /**
