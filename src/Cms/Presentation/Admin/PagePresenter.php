@@ -125,6 +125,7 @@ final class PagePresenter extends AdminPresenter
      * Whatever cannot be answered comes back as a sentence beside an empty
      * suggestion, so that pressing the button is never met with nothing.
      */
+    #[Requires(actions: ['add', 'edit'])]
     public function handleSuggestSegment(string $title = '', string $category = ''): void
     {
         try {
@@ -189,6 +190,7 @@ final class PagePresenter extends AdminPresenter
     }
 
     /** Every page, filtered and paged from the address; see PageListing. */
+    #[Requires(actions: 'default')]
     protected function createComponentPages(): PageListing
     {
         return $this->listings->create();

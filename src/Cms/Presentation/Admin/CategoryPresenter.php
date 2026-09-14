@@ -82,6 +82,7 @@ final class CategoryPresenter extends AdminPresenter
     }
 
     /** The last part of an address made of the name, as the register would accept it; see PagePresenter. */
+    #[Requires(actions: ['add', 'edit'])]
     public function handleSuggestSegment(string $title = '', string $category = ''): void
     {
         try {
