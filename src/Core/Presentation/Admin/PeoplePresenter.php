@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Admin;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Multiplier;
 use Nette\Application\UI\Template;
@@ -43,6 +44,13 @@ use Trilobit\Core\Tenancy\Tenancy;
  * through processSignal(), which asks nothing of any method, the floor is
  * also what stands in front of every form here besides the service. The form
  * for somebody new is narrower and says so above its action.
+ *
+ * **A form exists only on the page that draws it.** Each factory names that
+ * action with Nette's own Requires(actions), and posted to any other action of
+ * this presenter - the list, a person's page, one nobody wrote - the form is
+ * not made and the answer is 404. Without it a form is handled under the gate
+ * of whichever action it was posted to, and the list's gate is the widest
+ * here. It says where, not what: the service still decides what may be done.
  *
  * **Mail that did not go is said, and never taken for mail that went.** The
  * person is added whether or not their invitation leaves, because they were:
@@ -152,12 +160,14 @@ final class PeoplePresenter extends AdminPresenter
     }
 
     /** Everybody who belongs here, filtered and paged from the address; see PeopleListing. */
+    #[Requires(actions: ['default'])]
     protected function createComponentPeople(): PeopleListing
     {
         return $this->listings->create();
     }
 
     /** Somebody added to this business, holding one of the roles the person adding them may give. */
+    #[Requires(actions: ['add'])]
     protected function createComponentAddition(): Form
     {
         $form = $this->forms->createVertical();
@@ -184,6 +194,7 @@ final class PeoplePresenter extends AdminPresenter
     }
 
     /** Another role for the person shown, of those the person reading may give and they do not hold. */
+    #[Requires(actions: ['person'])]
     protected function createComponentRole(): Form
     {
         $form = $this->forms->createInline();
@@ -201,6 +212,7 @@ final class PeoplePresenter extends AdminPresenter
     }
 
     /** The invitation, sent again as a new link; the earlier one stops opening. */
+    #[Requires(actions: ['person'])]
     protected function createComponentResend(): Form
     {
         $form = $this->forms->create();
@@ -219,6 +231,7 @@ final class PeoplePresenter extends AdminPresenter
      *
      * @return Multiplier<Form>
      */
+    #[Requires(actions: ['person'])]
     protected function createComponentRemoval(): Multiplier
     {
         return new Multiplier(function (string $membership): Form {

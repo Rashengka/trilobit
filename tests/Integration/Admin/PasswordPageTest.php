@@ -7,6 +7,7 @@ namespace Trilobit\Tests\Integration\Admin;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Dom\HTMLDocument;
+use Nette\Application\BadRequestException;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Request;
 use Nette\Application\Response;
@@ -140,6 +141,31 @@ final class PasswordPageTest extends TestCase
 
         $this->expectException(AuthenticationException::class);
         $this->container()->getByType(SignedIn::class)->login('ivo@example.com', $second);
+    }
+
+    /**
+     * The form exists on the page the link opens and nowhere else: posted to
+     * an action nobody wrote, with a link that opens, it is not made, and the
+     * link still opens afterwards.
+     */
+    public function testTheFormIsTakenOnlyOnThePageTheLinkOpens(): void
+    {
+        $token = $this->links()->issue($this->invited());
+        $chosen = Random::generate(16);
+
+        try {
+            $this->serve(new Request(
+                self::PAGE,
+                'POST',
+                ['action' => 'invented', 'token' => $token, 'do' => 'password-submit'],
+                ['password' => $chosen, 'passwordAgain' => $chosen, 'set' => 'Set the password'],
+            ));
+            self::fail('the form answered on an action nobody wrote');
+        } catch (BadRequestException $notFound) {
+            self::assertSame(404, $notFound->getHttpCode());
+        }
+
+        self::assertNotNull($this->links()->holderOf($token), 'the link was spent from another page');
     }
 
     public function testAPasswordShorterThanTwelveCharactersIsRefused(): void

@@ -245,19 +245,86 @@ final class PeopleAdministrationTest extends TestCase
         self::assertSame([], $this->mailer()->sent);
     }
 
-    /** The form for somebody new, posted to a page that is not the form's, is still asked who may. */
-    public function testTheFormForSomebodyNewPostedFromAnotherPageIsAskedAllTheSame(): void
+    /**
+     * The form for somebody new exists on the page that draws it and nowhere
+     * else. Posted to another action of the same presenter - the list, a
+     * person's page, one nobody wrote - it would otherwise pass that action's
+     * gate instead of its own: the list is open to whoever may see who belongs
+     * here, and the form is for whoever may add them. So it is not made there
+     * at all, and the answer is the one an address nobody claims gets.
+     */
+    public function testTheFormForSomebodyNewIsTakenOnlyOnThePageThatDrawsIt(): void
     {
-        $this->signIn('vera-viewer@example.com');
+        $this->signIn('alice@example.com');
+        $person = (string) $this->personId('nora@example.com');
 
-        $this->request('default', ['do' => 'addition-submit'], [
-            'email' => 'nell@example.org',
-            'name' => 'Nell Newt',
-            'role' => (string) $this->roleId('onlooker'),
-            'add' => 'Add',
-        ]);
+        foreach ([['default', []], ['person', ['id' => $person]], ['invented', []]] as [$action, $parameters]) {
+            $this->assertNotFound(fn(): Response => $this->request($action, ['do' => 'addition-submit', ...$parameters], [
+                'email' => 'nell-' . $action . '@example.org',
+                'name' => 'Nell Newt',
+                'role' => (string) $this->roleId('onlooker'),
+                'add' => 'Add',
+            ]), $action);
 
-        self::assertNull($this->accounts()->withEmail('nell@example.org'));
+            self::assertNull($this->accounts()->withEmail('nell-' . $action . '@example.org'), 'the form was taken on ' . $action);
+        }
+
+        self::assertSame([], $this->mailer()->sent);
+    }
+
+    public function testTheListIsAnsweredOnlyOnTheList(): void
+    {
+        $this->signIn('alice@example.com');
+
+        $this->assertNotFound(fn(): Response => $this->request('person', [
+            'id' => (string) $this->personId('nora@example.com'),
+            'do' => 'people-filter-submit',
+            'people-name' => 'Nautilus',
+        ]), 'person');
+    }
+
+    public function testAnotherRoleIsGivenOnlyOnThePersonsPage(): void
+    {
+        $this->signIn('alice@example.com');
+        $nora = (string) $this->personId('nora@example.com');
+
+        foreach (['default', 'add', 'invented'] as $action) {
+            $this->assertNotFound(fn(): Response => $this->request($action, ['id' => $nora, 'do' => 'role-submit'], [
+                'role' => (string) $this->roleId('editor'),
+                'give' => 'Give',
+            ]), $action);
+        }
+
+        self::assertSame(0, $this->membershipsHeld('nora@example.com', 'editor'), 'a role was given from another page');
+    }
+
+    public function testTheInvitationIsSentAgainOnlyFromThePersonsPage(): void
+    {
+        $this->signIn('alice@example.com');
+        $ivo = (string) $this->personId('ivo@example.com');
+
+        foreach (['default', 'add', 'invented'] as $action) {
+            $this->assertNotFound(fn(): Response => $this->request($action, ['id' => $ivo, 'do' => 'resend-submit'], [
+                'send' => 'Send the invitation again',
+            ]), $action);
+        }
+
+        self::assertSame([], $this->mailer()->sent);
+    }
+
+    public function testARoleIsTakenAwayOnlyOnThePersonsPage(): void
+    {
+        $this->signIn('alice@example.com');
+        $nora = (string) $this->personId('nora@example.com');
+        $held = $this->membershipId('nora@example.com', 'onlooker');
+
+        foreach (['default', 'add', 'invented'] as $action) {
+            $this->assertNotFound(fn(): Response => $this->request($action, ['id' => $nora, 'do' => 'removal-' . $held . '-submit'], [
+                'remove' => 'Remove',
+            ]), $action);
+        }
+
+        self::assertSame(1, $this->membershipCount($held), 'the role was taken away from another page');
     }
 
     public function testRemovingIsASubmitAndTakesTheMembershipAway(): void
@@ -347,6 +414,31 @@ final class PeopleAdministrationTest extends TestCase
     private function remove(int $person, int $membership): Response
     {
         return $this->request('person', ['id' => (string) $person, 'do' => 'removal-' . $membership . '-submit'], ['remove' => 'Remove']);
+    }
+
+    /** @param callable(): Response $request */
+    private function assertNotFound(callable $request, string $action): void
+    {
+        try {
+            $request();
+        } catch (BadRequestException $notFound) {
+            self::assertSame(404, $notFound->getHttpCode(), $action);
+
+            return;
+        }
+
+        self::fail('the form answered on ' . $action);
+    }
+
+    private function membershipsHeld(string $email, string $code): int
+    {
+        $count = $this->connection()->fetchOne(
+            'SELECT COUNT(*) FROM core_tenant_membership m JOIN core_role r ON r.id = m.role_id'
+            . ' JOIN core_user u ON u.id = m.user_id WHERE u.email = ? AND r.code = ?',
+            [$email, $code],
+        );
+
+        return is_numeric($count) ? (int) $count : self::fail('the memberships could not be counted');
     }
 
     private function assertRefusedByTheGate(Response $response): void
