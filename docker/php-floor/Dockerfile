@@ -8,10 +8,17 @@
 ARG PHP_VERSION
 FROM php:${PHP_VERSION}-cli
 
-# The same extensions CI asks setup-php for: pdo_mysql, which the base image
-# does not carry. Everything else composer.json's dependencies need is already
-# compiled in.
-RUN docker-php-ext-install -j"$(nproc)" pdo_mysql
+# The same extensions CI asks setup-php for: pdo_mysql, gd and exif, which the
+# base image does not carry. Everything else composer.json's dependencies need
+# is already compiled in. gd makes the variants of an uploaded picture and has
+# to be built against the libraries of the three formats the media library
+# accepts; exif reads which way up a phone photo was taken.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libjpeg62-turbo-dev libpng-dev libwebp-dev libfreetype6-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+    && docker-php-ext-install -j"$(nproc)" pdo_mysql gd exif \
+    && rm -rf /var/lib/apt/lists/*
 
 # git, because the leak guard at the start of the gate asks git which files
 # could be committed. Nothing is installed here, so no unzip.

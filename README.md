@@ -1606,6 +1606,9 @@ knows nothing about it. `migrations:diff` excludes it and is the tool of record.
 ## Requirements
 
 - PHP 8.4 or newer. Both 8.4 and 8.5 run in CI.
+- The PHP extensions `pdo_mysql`, `gd` and `exif`. `gd` has to be built with
+  JPEG and WebP support (PNG it always has): it makes the variants of an
+  uploaded picture. `exif` reads which way up a phone photo was taken.
 - Composer.
 - MariaDB 11 LTS. It is the only tested target: the generated DDL differs
   between dialects, so "MySQL or MariaDB" would mean neither of them verified.
