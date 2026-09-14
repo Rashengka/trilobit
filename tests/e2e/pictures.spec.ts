@@ -36,7 +36,10 @@ let email = '';
 let generated = '';
 
 test.beforeAll(() => {
-    email = addressFor('e2e-pictures@example.com');
+    // An account for each browser: the browsers run this file side by side,
+    // and app:account run again for an address gives it a new password - so a
+    // shared address would sign one browser out of the password it just read.
+    email = addressFor(`e2e-pictures-${test.info().project.name}@example.com`);
 
     const output = execFileSync(
         'php',
@@ -105,7 +108,10 @@ test('a picture added on the product\'s page is served from its variants, and ta
     await expect(image).toBeVisible();
     await expect(image).toHaveAttribute('src', /-thumb\.jpg$/);
     // Loaded, not merely drawn: the variant is served from the public
-    // directory, while the original never is.
+    // directory, while the original never is. Looked at first - the picture
+    // is loaded lazily and sits below the form, and Firefox, unlike Chromium,
+    // does not fetch a lazy picture that far outside the window.
+    await image.scrollIntoViewIfNeeded();
     await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(64);
 
     await page.getByRole('button', { name: 'Take it off' }).click();
