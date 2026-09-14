@@ -73,7 +73,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
-          extensions: pdo_mysql
+          extensions: pdo_mysql, gd, exif
           ini-values: zend.assertions=1
 
       - uses: ramsey/composer-install@v3

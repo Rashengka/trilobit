@@ -1,0 +1,24 @@
+# The published variants of uploaded pictures, served as files and nothing else.
+#
+# Trilobit\Core\Media\MediaStorage never writes anything here that is not a
+# JPEG, PNG or WebP under a random name, so these rules are the second wall:
+# for the day something else manages to put a file here, it is refused rather
+# than run. A server other than Apache needs the same said in its own
+# configuration - see the README.
+
+Options -ExecCGI -Indexes
+
+# mod_php: nothing in this directory is PHP, whatever it is called.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+# PHP-FPM and every other handler: a script is neither handed over nor served.
+<FilesMatch "\.(?i:php[0-9]?|phtml|phar|pht|phps|cgi|pl|py|sh)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    # A browser takes each file for the type it is sent as, and does not guess.
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

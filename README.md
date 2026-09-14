@@ -1582,6 +1582,48 @@ pieces it was assembled from and nothing else, so somebody holding two roles is
 allowed whatever either of them allows, and there is no precedence between two
 roles to decide.
 
+## Pictures
+
+A picture a business uploads is Core's, because one picture can be shown by a
+product and a page at once and neither module may know the other. A module
+holds a `Trilobit\Core\Domain\Media\MediaFile` and asks
+`Trilobit\Core\Media\MediaLibrary` for the addresses to draw it with -
+`url($file, Variant::Card)`, or `srcset($file, $basePath)` for all of them.
+
+Only JPEG, PNG and WebP are taken, and which of them a file is, is read from
+its content, never from its name or from the type the browser sent. SVG is
+refused, because it can carry script. The file is stored under a random name
+with the extension of the type it really is.
+
+Two copies are kept:
+
+| where | what | served |
+|---|---|---|
+| `var/media/ab/<name>.jpg` | the original, byte for byte | never - a phone writes where a photo was taken into it |
+| `www/media/ab/<name>-thumb.jpg`, `-card`, `-large` | 240, 800 and 1600 px on the longest side | yes |
+
+The variants are made when the file is uploaded, by decoding the original and
+encoding it again, which leaves its EXIF behind - position included. A photo
+taken on its side is turned the right way up first. Nothing is enlarged: a
+picture smaller than a variant has that variant at its own size.
+
+What is refused is refused before anything is written, and before the picture
+is decoded: more than 20 MiB, or more than 4096 × 4096 pixels by what its
+header says - the second one is what stops a small file that decodes into
+gigabytes. An upload is the files and the row together or neither: a variant
+that cannot be written, or a row the database refuses, takes back everything
+written before it, and the error says which.
+
+`bin/trilobit app:media-variants` makes every variant again from the
+originals - after the sizes change, or when `www/media` was lost. A picture it
+cannot make is named, the others are made anyway, and the run fails.
+
+`www/media/.htaccess` stops Apache from running or serving a script in that
+directory. The library never writes one there; the rule is for the day
+something else does. Another server needs the same rule in its own
+configuration, and PHP's built-in server - the one the local stack runs - does
+not read `.htaccess` at all.
+
 ## The database
 
 Every table carries the name of the module that owns it: `core_user`,
@@ -1666,6 +1708,9 @@ knows nothing about it. `migrations:diff` excludes it and is the tool of record.
 ## Requirements
 
 - PHP 8.4 or newer. Both 8.4 and 8.5 run in CI.
+- The PHP extensions `pdo_mysql`, `gd` and `exif`. `gd` has to be built with
+  JPEG and WebP support (PNG it always has): it makes the variants of an
+  uploaded picture. `exif` reads which way up a phone photo was taken.
 - Composer.
 - MariaDB 11 LTS. It is the only tested target: the generated DDL differs
   between dialects, so "MySQL or MariaDB" would mean neither of them verified.
