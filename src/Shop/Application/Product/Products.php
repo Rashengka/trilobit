@@ -11,10 +11,15 @@ use Trilobit\Core\Content\Categories;
 use Trilobit\Core\Content\PathRefused;
 use Trilobit\Core\Content\PathRegistry;
 use Trilobit\Core\Contract\Content\ContentRef;
+use Trilobit\Core\Media\MediaLibrary;
+use Trilobit\Core\Media\MediaNotStored;
+use Trilobit\Core\Media\UploadRefused;
 use Trilobit\Core\Tenancy\Tenancy;
 use Trilobit\Shop\Domain\Price\Money;
 use Trilobit\Shop\Domain\Price\VatRate;
 use Trilobit\Shop\Domain\Product\Product;
+use Trilobit\Shop\Domain\Product\ProductImage;
+use Trilobit\Shop\Domain\Product\ProductImageRepository;
 use Trilobit\Shop\Domain\Product\ProductRepository;
 
 /**
@@ -56,6 +61,8 @@ final readonly class Products
         private Categories $categories,
         private Tenancy $tenancy,
         private PriceSettings $prices,
+        private ProductImageRepository $pictures,
+        private MediaLibrary $library,
     ) {}
 
     public function find(int $id): ?Product
@@ -252,11 +259,66 @@ final readonly class Products
      */
     public function delete(Product $product): void
     {
+        // Its pictures are taken off first; the files stay in the library
+        // (see ProductImage).
+        foreach ($this->pictures->of($product) as $picture) {
+            $this->pictures->remove($picture);
+        }
+
         foreach (array_reverse($this->addressesOf($product)) as $address) {
             $this->addresses->forget($address->path);
         }
 
         $this->products->remove($product);
+    }
+
+    /** @return list<ProductImage> the pictures of $product, the first one first */
+    public function picturesOf(Product $product): array
+    {
+        return $this->pictures->of($product);
+    }
+
+    /**
+     * The picture $id of $product, or null when it is not one of its - a
+     * number sent by a form is reached through the product it was sent for
+     * and no other.
+     */
+    public function pictureOf(Product $product, int $id): ?ProductImage
+    {
+        $picture = $this->pictures->find($id);
+
+        return $picture instanceof ProductImage && $picture->product()->id() === $product->id() ? $picture : null;
+    }
+
+    /**
+     * Takes the picture at $file into the media library and puts it after the
+     * product's other pictures.
+     *
+     * The library writes the files and the row or neither; the binding is
+     * written after it, and a binding that could not be written leaves a
+     * picture in the library that nothing shows - which is what taking a
+     * picture off a product leaves as well, until plan 16 gives the library a
+     * bin.
+     *
+     * @throws UploadRefused when the file is not a picture the library takes
+     * @throws MediaNotStored when it is, and it could not be kept
+     */
+    public function addPicture(Product $product, string $file, string $originalName, string $alt): ProductImage
+    {
+        $media = $this->library->upload($file, $originalName, $alt);
+        $picture = new ProductImage($this->tenancy->tenant(), $product, $media, $this->pictures->nextPosition($product));
+        $this->pictures->save($picture);
+
+        return $picture;
+    }
+
+    /** Takes the picture $id off $product, and only the binding: the file stays in the library. */
+    public function removePicture(Product $product, int $id): void
+    {
+        $picture = $this->pictureOf($product, $id);
+        if ($picture instanceof ProductImage) {
+            $this->pictures->remove($picture);
+        }
     }
 
     /** @return list<Address> every address the product answers at, the permalink first */

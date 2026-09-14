@@ -478,7 +478,9 @@ started by hand to watch its log:
 ```sh
 # From the checkout's directory. The path is absolute on purpose: PHP's server
 # resolves a relative one against www/ on every request.
-TRILOBIT_ENV=dev php -d auto_prepend_file="$PWD/tests/e2e/checkout-identity.php" -S 127.0.0.1:18100 -t www
+TRILOBIT_ENV=dev php -d auto_prepend_file="$PWD/tests/e2e/checkout-identity.php" \
+    -d upload_max_filesize=20M -d post_max_size=24M -d display_errors=0 -d log_errors=1 \
+    -S 127.0.0.1:18100 -t www
 ```
 
 It is taken over only when it proves to be this checkout's.
@@ -1564,6 +1566,40 @@ something else does. Another server needs the same rule in its own
 configuration, and PHP's built-in server - the one the local stack runs - does
 not read `.htaccess` at all.
 
+### What a form can send
+
+A picture reaches the library through PHP, which has two limits of its own and
+sets both below the library's 20 MiB as it comes: `upload_max_filesize` (2M) for
+one file, and `post_max_size` (8M) for the whole request. A server of this
+application sets them to take what the library takes, with room in the request
+for the fields beside the file:
+
+```ini
+upload_max_filesize = 20M
+post_max_size = 24M
+```
+
+The browser suite's server is started with those two, and the lines under
+"Installation" start a local one with them. The form states the largest file
+it takes - the smallest of the three limits, read from the server serving it
+(`Trilobit\Core\Media\UploadLimit`) - and says which limit turned a file away:
+
+| the file | what PHP does | what the page says |
+|---|---|---|
+| over `upload_max_filesize` | hands it over with an error in it | beside the field: larger than the server takes, and how large a file may be |
+| over `post_max_size` | throws the whole request away before the application runs - no fields, no file, no sign that a form was sent | at the top of the page, with status 413: nothing arrived and nothing was saved |
+| over 20 MiB, where PHP takes more | hands it over | beside the field, the library's own refusal |
+
+The second row is the one that fails silently when nothing looks for it: the
+page is simply drawn again, as if nobody had pressed anything. PHP also reports
+it as a warning before the application starts, and with `display_errors` on
+that warning is printed into the page ahead of it - after which no header can
+be sent, so the page cannot say anything about it either. A development server
+therefore keeps PHP's own errors out of the page and in its output with
+`display_errors=0` and `log_errors=1`. Measured on PHP's built-in server:
+`display_errors=stderr` still prints the warning into the page. The
+application's own errors are Tracy's either way.
+
 ## The database
 
 Every table carries the name of the module that owns it: `core_user`,
@@ -1697,8 +1733,11 @@ through, and prints every password once; see "Seeding a working copy" below.
 Then serve `www/`:
 
 ```sh
-php -S localhost:8000 -t www
+php -d upload_max_filesize=20M -d post_max_size=24M -d display_errors=0 -d log_errors=1 -S localhost:8000 -t www
 ```
+
+The three settings are for pictures: without them PHP takes no file over 2M
+and no form over 8M, below what the media library takes; see "Pictures".
 
 `http://localhost:8000/` answers with the homepage and
 `http://localhost:8000/admin` with the sign-in page; the last line above printed
@@ -1919,7 +1958,7 @@ bin/trilobit app:seed
 | `belemnite-editor@example.com` | holds Belemnite Books' own `editor` role, which under the same code means something narrower: reading and correcting the content |
 | content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, a main menu with an entry holding two others, and enough further pages that the list of pages runs past its first page |
 | `ammonite-cataloguer@example.com`, `belemnite-cataloguer@example.com`, with `Shop` switched on | each holds the business's own `catalogue` role - the catalogue's role in between: viewing, adding, editing and deleting products, and not changing what any of them costs, which the form shows them without letting them change it |
-| catalogue, with `Shop` switched on | in each business: the categories Bikes - with Mountain, Road and Gravel bikes under it - Parts and accessories, and Sale; 24 products carrying the business's name, enough that the list of products runs past its first page; one filed in two categories with its permalink in the first, one with its permalink in the second; a draft; prices at 21 %, 12 % and no tax, and one product without an SKU |
+| catalogue, with `Shop` switched on | in each business: the categories Bikes - with Mountain, Road and Gravel bikes under it - Parts and accessories, and Sale; 24 products carrying the business's name, enough that the list of products runs past its first page; one filed in two categories with its permalink in the first, one with its permalink in the second; a draft; prices at 21 %, 12 % and no tax, and one product without an SKU; pictures drawn by the seed on five bikes, two on Ridge 29, taken in through the media library |
 
 Every password is generated and printed once, beside its address. What is
 stored is a hash, and none is written in the code.

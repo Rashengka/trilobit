@@ -17,6 +17,8 @@ use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Console\SeedCommand;
 use Trilobit\Core\Content\Address;
 use Trilobit\Core\Domain\Tenancy\Tenant;
+use Trilobit\Core\Media\MediaStorage;
+use Trilobit\Core\Media\Variant;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Presentation\Listing\Listing;
 use Trilobit\Core\Security\Permissions;
@@ -27,6 +29,7 @@ use Trilobit\Shop\Domain\Product\Product;
 use Trilobit\Shop\Security\ShopResource;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
+use Trilobit\Tests\MediaDirectories;
 use Trilobit\Tests\Migrations;
 use Trilobit\Tests\Tenants;
 
@@ -52,6 +55,9 @@ final class SeededCatalogueTest extends TestCase
 
     private string $schema = '';
 
+    /** Where the seed's pictures are kept instead of the checkout's media directories; see MediaDirectories. */
+    private string $directory = '';
+
     private ?Container $container = null;
 
     /** What the mode variable held before this test set it - false when it was not set - or null while untouched. */
@@ -61,6 +67,8 @@ final class SeededCatalogueTest extends TestCase
     {
         $this->container?->getByType(SignedIn::class)->logout(true);
         $this->container = null;
+        MediaDirectories::delete($this->directory);
+        $this->directory = '';
 
         if ($this->modeBefore !== null) {
             putenv($this->modeBefore === false ? Mode::VARIABLE : Mode::VARIABLE . '=' . $this->modeBefore);
@@ -71,6 +79,29 @@ final class SeededCatalogueTest extends TestCase
             Database::drop($this->schema);
             $this->schema = '';
         }
+    }
+
+    /**
+     * Pictures to click through, drawn for the seed rather than taken from
+     * anywhere: one product with two, so that their order can be seen, and
+     * products with none, so that a product without a picture can be too.
+     * They go through the media library like any upload, so their variants are
+     * on disk and nothing but the variants is published.
+     */
+    public function testSomeProductsHavePicturesDrawnForTheSeed(): void
+    {
+        $container = $this->seeded();
+        $this->enter($container, 'Ammonite Bikes');
+
+        $pictures = $this->products($container)->picturesOf($this->named($container, 'Ammonite Ridge 29'));
+        self::assertCount(2, $pictures);
+        foreach ($pictures as $picture) {
+            self::assertStringContainsString('Ammonite Ridge 29', $picture->file()->alt());
+            self::assertSame('image/jpeg', $picture->file()->mime());
+            self::assertFileExists($this->directory . '/public/' . MediaStorage::variantPath($picture->file()->path(), Variant::Card));
+        }
+
+        self::assertSame([], $this->products($container)->picturesOf($this->named($container, 'Ammonite Gift card')));
     }
 
     /** More than a page of the list, so that it is paged and a filter taking somebody back to its first page can be tried. */
@@ -201,6 +232,7 @@ final class SeededCatalogueTest extends TestCase
         $container = Boot::container(
             ModuleList::of(['cms' => false, 'crm' => false, 'shop' => true], Bootstrap::rootDirectory()),
         );
+        $this->directory = MediaDirectories::temporaryFor($container);
         Migrations::run($container);
 
         $tester = new CommandTester($container->getByType(Application::class)->find('app:seed'));

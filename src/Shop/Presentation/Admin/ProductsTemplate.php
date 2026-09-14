@@ -35,4 +35,17 @@ final class ProductsTemplate extends AdminTemplate
 
     /** What it costs with tax, as it is shown; '' while a new product is being written. */
     public string $priceWithVat = '';
+
+    /** @var list<PictureSummary> the pictures of the product, the first one first */
+    public array $pictures = [];
+
+    /**
+     * Whether PHP threw the body of the request away for being larger than the
+     * server takes - which arrives as a page drawn as if nothing had been
+     * sent, unless it is said; see Trilobit\Core\Media\UploadLimit.
+     */
+    public bool $bodyDropped = false;
+
+    /** The largest file a form on this server takes, as it is said: `20 MB`. */
+    public string $largestFile = '';
 }
