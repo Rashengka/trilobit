@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace Trilobit\Shop\Presentation\Admin;
 
 use Nette\Application\UI\Form;
+use Nette\Application\UI\Multiplier;
 use Nette\Application\UI\Template;
 use Nette\Forms\Controls\BaseControl;
+use Nette\Http\FileUpload;
 use Trilobit\Core\Content\Categories;
 use Trilobit\Core\Content\PathRefused;
+use Trilobit\Core\Media\MediaLibrary;
+use Trilobit\Core\Media\UploadLimit;
+use Trilobit\Core\Media\UploadRefused;
 use Trilobit\Core\Presentation\Admin\AdminPresenter;
 use Trilobit\Core\Presentation\Error\RefusalPresenter;
 use Trilobit\Core\Presentation\Form\FormFactory;
@@ -21,6 +26,7 @@ use Trilobit\Shop\Domain\Price\Money;
 use Trilobit\Shop\Domain\Price\PriceRefused;
 use Trilobit\Shop\Domain\Price\VatRate;
 use Trilobit\Shop\Domain\Product\Product;
+use Trilobit\Shop\Domain\Product\ProductImage;
 use Trilobit\Shop\Domain\Product\ProductStatus;
 use Trilobit\Shop\Security\ShopResource;
 
@@ -56,6 +62,16 @@ use Trilobit\Shop\Security\ShopResource;
  * button that deletes, and the price for the price. A refusal there is the
  * refusal page every gate forwards to, not an error.
  *
+ * **Pictures are added and taken off on the product's own page** (decision Q4).
+ * A picture goes into Core's media library, and taking it off removes only
+ * the binding. PHP turns a file away before the application sees it in two
+ * ways - over `upload_max_filesize` with an error code, over `post_max_size`
+ * by throwing the whole body away - and both are said in a sentence: the first
+ * beside the field, the second at the top of the page, which would otherwise
+ * be drawn again as if nothing had been sent (Trilobit\Core\Media\UploadLimit).
+ * Adding and taking off ask for editing the product, in their handlers too,
+ * and a picture is reached only through the product it is of.
+ *
  * **Deleting is a submit and never a link**, for the reason a page's is; and it
  * takes the product and every address it had, hard, until
  * .ai/plans/16-soft-delete.md gives the catalogue a bin.
@@ -70,11 +86,16 @@ final class ProductPresenter extends AdminPresenter
 
     private ?Product $edited = null;
 
+    /** Whether PHP threw away the body of this request for its size; see UploadLimit::droppedBody(). */
+    private bool $bodyDropped = false;
+
     public function __construct(
         private readonly Products $products,
         private readonly Categories $categories,
         private readonly FormFactory $forms,
         private readonly ProductListingFactory $listings,
+        private readonly MediaLibrary $library,
+        private readonly UploadLimit $uploadLimit,
     ) {
         parent::__construct();
     }
@@ -95,6 +116,20 @@ final class ProductPresenter extends AdminPresenter
         }
 
         $this->edited = $product;
+
+        // A picture too large for the server arrives as a request with nothing
+        // in it, which reads like a page opened rather than a form sent; it is
+        // told apart here and said on the page, with the status that means it.
+        $request = $this->getRequest();
+        $this->bodyDropped = $this->uploadLimit->droppedBody(
+            $request->isMethod('POST'),
+            $request->getPost() === [] && $request->getFiles() === [],
+            $this->contentLength(),
+        );
+        if ($this->bodyDropped) {
+            $this->getHttpResponse()->setCode(413);
+        }
+
         $filing = $this->products->filingOf($product);
         $this->form()->setDefaults([
             'name' => $product->name(),
@@ -139,12 +174,77 @@ final class ProductPresenter extends AdminPresenter
         $template->noCategory = $this->categories->all() === [];
         $template->addresses = $product instanceof Product ? $this->products->addressesOf($product) : [];
         $template->priceWithVat = $product instanceof Product ? $product->priceWithVat()->format() : '';
+
+        $basePath = $this->getHttpRequest()->getUrl()->getBasePath();
+        $template->pictures = $product instanceof Product
+            ? array_map(
+                fn(ProductImage $picture): PictureSummary => PictureSummary::of($picture, $this->library, $basePath),
+                $this->products->picturesOf($product),
+            )
+            : [];
+        $template->bodyDropped = $this->bodyDropped;
+        $template->largestFile = $this->uploadLimit->describe();
     }
 
     /** See Trilobit\Core\Presentation\Admin\AdminPresenter::createTemplate(). */
     protected function createTemplate(?string $class = null): Template
     {
         return parent::createTemplate($class ?? ProductsTemplate::class);
+    }
+
+    /**
+     * The form a picture is added in - on the page of a product and nowhere
+     * else. A picture sent to any other action of this presenter has no
+     * product to go to, and is not found.
+     */
+    protected function createComponentPictures(): Form
+    {
+        if (!$this->edited instanceof Product) {
+            $this->error('Pictures belong to a product, and no product is open.');
+        }
+
+        $form = $this->forms->createVertical();
+        $form->getElementPrototype()->setAttribute('data-testid', 'shop-product-pictures-form');
+
+        $picture = $form->addUpload('picture', 'Picture');
+        // The control's own rules answer a file PHP turned away with a
+        // sentence saying only that it is not valid; addPicture() says which
+        // of the two it was, and how large a file may be.
+        $picture->getRules()->reset();
+        $picture->setRequired('Choose a picture to add.')
+            ->setOption('description', sprintf('JPEG, PNG or WebP, at most %s.', $this->uploadLimit->describe()))
+            ->setHtmlAttribute('accept', 'image/jpeg,image/png,image/webp')
+            ->setHtmlAttribute('data-testid', 'shop-product-picture-input');
+        $form->addText('alt', 'What it shows')
+            ->setMaxLength(255)
+            ->setOption('description', 'Said instead of the picture to somebody who cannot see it. Left empty, the picture is taken for decoration.')
+            ->setHtmlAttribute('data-testid', 'shop-product-picture-alt');
+
+        $form->addSubmit('upload', 'Add the picture')->setHtmlAttribute('data-testid', 'shop-product-picture-add');
+        $form->onSuccess[] = $this->addPicture(...);
+
+        return $form;
+    }
+
+    /**
+     * The button taking one picture off the product, one small form each, so
+     * that each button sends the picture it stands under and nothing else.
+     *
+     * @return Multiplier<Form>
+     */
+    protected function createComponentRemovePicture(): Multiplier
+    {
+        return new Multiplier(function (string $id): Form {
+            $form = $this->forms->createInline(labelsShown: false);
+            $remove = $form->addSubmit('remove', 'Take it off');
+            $remove->setHtmlAttribute('class', 'c-button--danger');
+            $remove->setHtmlAttribute('data-testid', 'shop-product-picture-remove-' . $id);
+            $form->onSuccess[] = function () use ($id): void {
+                $this->removePicture((int) $id);
+            };
+
+            return $form;
+        });
     }
 
     /** Every product, filtered and paged from the address; see ProductListing. */
@@ -310,6 +410,82 @@ final class ProductPresenter extends AdminPresenter
 
         $this->products->delete($product);
         $this->redirect('default');
+    }
+
+    /**
+     * Takes the picture into the library and puts it on the product, or says
+     * beside the field why not: PHP turned it away for its size, it did not
+     * arrive whole, or the library does not take it. A picture that could not
+     * be kept for the server's reasons is not said here but raised, because
+     * it is the server's to fix and its log's to say.
+     */
+    private function addPicture(Form $form): void
+    {
+        if (!$this->getUser()->isAllowed(ShopResource::Catalogue, Privilege::Edit)) {
+            $this->forward(RefusalPresenter::DESTINATION);
+        }
+
+        $product = $this->edited
+            ?? throw new \LogicException('The form for pictures is only made while a product is open.');
+        $control = $form->getComponent('picture');
+        $upload = $control instanceof BaseControl ? $control->getValue() : null;
+        if (!$control instanceof BaseControl || !$upload instanceof FileUpload) {
+            throw new \LogicException('The picture control holds one file.');
+        }
+
+        if (!$upload->isOk()) {
+            $control->addError($this->uploadLimit->refusedForItsSize($upload->getError())
+                ? sprintf('The file is larger than this server takes: a picture may have at most %s.', $this->uploadLimit->describe())
+                : 'The file did not arrive whole. Send it again.');
+
+            return;
+        }
+
+        $alt = $form->getComponent('alt');
+        $written = $alt instanceof BaseControl ? $alt->getValue() : '';
+
+        try {
+            $this->products->addPicture(
+                $product,
+                $upload->getTemporaryFile(),
+                $upload->getUntrustedName(),
+                is_string($written) ? trim($written) : '',
+            );
+        } catch (UploadRefused $refused) {
+            $control->addError($refused->getMessage());
+
+            return;
+        }
+
+        $this->redirect('this');
+    }
+
+    /**
+     * Takes picture $id off the product open on this page, and only the
+     * binding. A number naming a picture of another product - or sent where
+     * no product is open - is not found, whatever the form said.
+     */
+    private function removePicture(int $id): void
+    {
+        if (!$this->getUser()->isAllowed(ShopResource::Catalogue, Privilege::Edit)) {
+            $this->forward(RefusalPresenter::DESTINATION);
+        }
+
+        $product = $this->edited;
+        if (!$product instanceof Product || !$this->products->pictureOf($product, $id) instanceof ProductImage) {
+            $this->error('This product has no such picture.');
+        }
+
+        $this->products->removePicture($product, $id);
+        $this->redirect('this');
+    }
+
+    /** How long the request said its body was, or null where it said nothing that is a length. */
+    private function contentLength(): ?int
+    {
+        $length = $this->getHttpRequest()->getHeader('Content-Length');
+
+        return $length !== null && ctype_digit($length) ? (int) $length : null;
     }
 
     /** Whether the person making this request may change what a product costs and the rate of tax on it. */

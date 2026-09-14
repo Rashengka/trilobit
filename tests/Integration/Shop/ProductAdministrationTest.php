@@ -7,6 +7,7 @@ namespace Trilobit\Tests\Integration\Shop;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Dom\HTMLDocument;
+use Nette\Application\BadRequestException;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Request;
 use Nette\Application\Response;
@@ -15,8 +16,13 @@ use Nette\Application\Responses\RedirectResponse;
 use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Presenter;
 use Nette\DI\Container;
+use Nette\Http\FileUpload;
+use Nette\Http\IRequest;
+use Nette\Http\Request as HttpRequest;
+use Nette\Http\UrlScript;
 use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
+use Nette\Utils\FileSystem;
 use Nette\Utils\Random;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
@@ -24,9 +30,11 @@ use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Content\Address;
 use Trilobit\Core\Content\Categories;
 use Trilobit\Core\Content\PathRegistry;
+use Trilobit\Core\Domain\Media\MediaFile;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
+use Trilobit\Core\Media\UploadLimit;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Grant;
@@ -40,7 +48,9 @@ use Trilobit\Shop\Domain\Product\Product;
 use Trilobit\Shop\Security\ShopResource;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
+use Trilobit\Tests\MediaDirectories;
 use Trilobit\Tests\Migrations;
+use Trilobit\Tests\Pictures;
 use Trilobit\Tests\Tenants;
 
 /**
@@ -74,6 +84,9 @@ final class ProductAdministrationTest extends TestCase
 
     private string $schema = '';
 
+    /** Where the pictures a test uploads are kept; see Trilobit\Tests\MediaDirectories. */
+    private string $directory = '';
+
     private ?Container $container = null;
 
     private ?string $fetchSite = null;
@@ -100,6 +113,8 @@ final class ProductAdministrationTest extends TestCase
         $this->container?->getByType(SignedIn::class)->logout(true);
         $this->container = null;
         $this->category = [];
+        MediaDirectories::delete($this->directory);
+        $this->directory = '';
 
         if ($this->schema !== '') {
             Database::drop($this->schema);
@@ -310,6 +325,156 @@ final class ProductAdministrationTest extends TestCase
         self::assertSame([], $this->products()->all());
     }
 
+    public function testAPictureIsAddedFromTheEditPageWithWhatItShows(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+
+        $response = $this->sendPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg'), 'The Ridge 29 from the side');
+
+        self::assertInstanceOf(RedirectResponse::class, $response, $this->saidIn($response));
+        $pictures = $this->products()->picturesOf($product);
+        self::assertCount(1, $pictures);
+        self::assertSame('The Ridge 29 from the side', $pictures[0]->file()->alt());
+    }
+
+    /** Every picture is drawn from its published variants, never from the original, which is not served. */
+    public function testTheEditPageShowsEachPictureInItsVariants(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', 'From the side');
+
+        $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()]));
+
+        $image = $document->querySelector(sprintf('[data-testid="shop-product-picture-image-%d"]', $picture->id()));
+        self::assertNotNull($image, 'the picture is not drawn on the product\'s page');
+        self::assertStringEndsWith('-thumb.jpg', (string) $image->getAttribute('src'));
+        self::assertStringContainsString(' 40w', (string) $image->getAttribute('srcset'));
+        self::assertSame('From the side', $image->getAttribute('alt'));
+    }
+
+    public function testTheListShowsTheFirstPictureOfAProduct(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', '');
+
+        $document = $this->pageOf($this->submit('default', []));
+
+        $thumb = $document->querySelector(sprintf('[data-testid="shop-product-thumb-%d"]', $product->id()));
+        self::assertNotNull($thumb, 'the list shows no picture of the product');
+        self::assertStringEndsWith('-thumb.jpg', (string) $thumb->getAttribute('src'));
+    }
+
+    /** PHP turned the file away before the application saw it; the form says so, and how large a file may be. */
+    public function testAFileLargerThanTheServerTakesIsRefusedWithASentence(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $refused = new FileUpload(['name' => 'huge.jpg', 'size' => 0, 'tmp_name' => '', 'error' => UPLOAD_ERR_INI_SIZE]);
+
+        $document = $this->pageOf($this->sendPicture($product, $refused, ''));
+
+        self::assertSame('true', $document->querySelector('#frm-pictures-picture')?->getAttribute('aria-invalid'));
+        self::assertStringContainsString('larger than this server takes', $this->textOf($document));
+        self::assertSame([], $this->products()->picturesOf($product));
+    }
+
+    public function testAFileThatIsNotAPictureIsRefusedBesideTheField(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+
+        $document = $this->pageOf($this->sendPicture($product, $this->upload('<svg xmlns="http://www.w3.org/2000/svg"/>', 'logo.svg'), ''));
+
+        self::assertSame('true', $document->querySelector('#frm-pictures-picture')?->getAttribute('aria-invalid'));
+        self::assertStringContainsString('is not a JPEG, PNG or WebP picture', $this->textOf($document));
+        self::assertSame([], $this->products()->picturesOf($product));
+    }
+
+    /**
+     * A request larger than post_max_size arrives with its body thrown away -
+     * no fields, no file, and no signal saying a form was sent - and without
+     * this the page would simply be drawn again as if nothing had been pressed.
+     */
+    public function testABodyTheServerThrewAwayIsSaidOnThePage(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $this->arrivingWith((string) (8 * 1024 * 1024 * 1024));
+
+        $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()], method: 'POST'));
+
+        self::assertStringContainsString('larger than this server takes at once', $this->testIdText($document, 'shop-product-body-dropped'));
+    }
+
+    /** An empty form sent within the limit is not mistaken for one the server threw away. */
+    public function testAnEmptyFormIsNotMistakenForOneThrownAway(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $this->arrivingWith('120');
+
+        $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()], method: 'POST'));
+
+        self::assertNull($document->querySelector('[data-testid="shop-product-body-dropped"]'));
+    }
+
+    public function testPicturesAreRefusedToSomebodyWhoMayOnlyLook(): void
+    {
+        $this->signedInHolding([new Grant(ShopResource::Catalogue, Privilege::View)->code()]);
+        $product = $this->ridge();
+
+        $response = $this->sendPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg'), '');
+
+        self::assertInstanceOf(ForwardResponse::class, $response, 'the picture was not refused');
+        self::assertSame([], $this->products()->picturesOf($product));
+    }
+
+    /** The pictures are a product's; a picture form sent to the list has no product to go to. */
+    public function testAPictureFormSentToTheListIsNotFound(): void
+    {
+        $this->signedInHolding($this->writer());
+        $this->ridge();
+
+        $this->expectException(BadRequestException::class);
+
+        $this->submit('default', ['alt' => '', 'upload' => 'Add the picture'], [], ['picture' => $this->upload(Pictures::jpeg(40, 30), 'side.jpg')], 'pictures-submit');
+    }
+
+    /** Decision Q4: taking a picture off a product takes the binding and leaves the file. */
+    public function testRemovingAPictureTakesItOffAndLeavesTheFile(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', '');
+
+        $response = $this->removePicture($product, (int) $picture->id());
+
+        self::assertInstanceOf(RedirectResponse::class, $response, $this->saidIn($response));
+        self::assertSame([], $this->products()->picturesOf($product));
+        self::assertCount(1, $this->container()->getByType(EntityManagerInterface::class)->getRepository(MediaFile::class)->findAll());
+    }
+
+    /** A number sent by a form reaches a picture only through the product it is of. */
+    public function testAPictureOfAnotherProductIsNotRemovedThroughThisOne(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $ridge = $this->ridge();
+        $picture = $this->products()->addPicture($ridge, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', '');
+        $scree = $this->products()->create('Scree 27', new Filing($this->category['mountain'], [], 'scree-27'), new Money(1999000, 'CZK'), new VatRate(2100));
+
+        try {
+            $this->removePicture($scree, (int) $picture->id());
+            self::fail('a picture of another product was reached');
+        } catch (BadRequestException $notFound) {
+            self::assertSame(404, $notFound->getHttpCode());
+        }
+
+        self::assertCount(1, $this->products()->picturesOf($ridge));
+    }
+
     /** @return list<string> the role in between: writes the catalogue, changes no price, deletes nothing */
     private function writer(): array
     {
@@ -359,19 +524,89 @@ final class ProductAdministrationTest extends TestCase
     /**
      * @param array<string, string|list<string>> $post
      * @param array<string, string> $parameters
+     * @param array<string, FileUpload> $files
+     * @param string|null $method a request's own method, for one whose body did not arrive
      */
-    private function submit(string $action, array $post, array $parameters = []): Response
-    {
+    private function submit(
+        string $action,
+        array $post,
+        array $parameters = [],
+        array $files = [],
+        string $signal = self::SUBMIT,
+        ?string $method = null,
+    ): Response {
         $presenter = $this->container()->getByType(IPresenterFactory::class)->createPresenter(self::PRESENTER);
         self::assertInstanceOf(Presenter::class, $presenter);
         $presenter->autoCanonicalize = false;
 
+        $sent = $post !== [] || $files !== [];
+
         return $presenter->run(new Request(
             self::PRESENTER,
-            $post === [] ? 'GET' : 'POST',
-            ['action' => $action, ...($post === [] ? [] : ['do' => self::SUBMIT]), ...$parameters],
+            $method ?? ($sent ? 'POST' : 'GET'),
+            ['action' => $action, ...($sent ? ['do' => $signal] : []), ...$parameters],
             $post,
+            $files,
         ));
+    }
+
+    /** The form for pictures of $product, sent with $upload in it. */
+    private function sendPicture(Product $product, FileUpload $upload, string $alt): Response
+    {
+        return $this->submit(
+            'edit',
+            ['alt' => $alt, 'upload' => 'Add the picture'],
+            ['id' => (string) $product->id()],
+            ['picture' => $upload],
+            'pictures-submit',
+        );
+    }
+
+    /** The button taking picture $id off $product. */
+    private function removePicture(Product $product, int $id): Response
+    {
+        return $this->submit(
+            'edit',
+            ['remove' => 'Take it off'],
+            ['id' => (string) $product->id()],
+            [],
+            sprintf('removePicture-%d-submit', $id),
+        );
+    }
+
+    /** A file holding $bytes, as an upload arrives: under a temporary name, with the name it came with beside it. */
+    private function upload(string $bytes, string $name): FileUpload
+    {
+        $file = $this->directory . '/uploads/' . bin2hex(random_bytes(6));
+        FileSystem::write($file, $bytes);
+
+        return new FileUpload(['name' => $name, 'size' => strlen($bytes), 'tmp_name' => $file, 'error' => UPLOAD_ERR_OK]);
+    }
+
+    /**
+     * The request the next page is drawn for, as a server with a 2 MB limit on
+     * a file and 8 MB on a request received it: sent, saying it carried
+     * $length bytes, and with nothing of them in it - which is what PHP leaves
+     * of a body it threw away.
+     *
+     * The limits are stated rather than read from the PHP running the suite,
+     * which may have none, and then no body is ever too long for it.
+     */
+    private function arrivingWith(string $length): void
+    {
+        $container = $this->container();
+
+        $request = $container->findByType(IRequest::class)[0] ?? self::fail('the build has no HTTP request');
+        $container->removeService($request);
+        $container->addService($request, new HttpRequest(
+            new UrlScript('http://localhost/admin/shop/products'),
+            headers: ['Content-Length' => $length],
+            method: 'POST',
+        ));
+
+        $limit = $container->findByType(UploadLimit::class)[0] ?? self::fail('the build has no upload limit');
+        $container->removeService($limit);
+        $container->addService($limit, new UploadLimit(2 * 1024 * 1024, 8 * 1024 * 1024));
     }
 
     private function pageOf(Response $response): HTMLDocument
@@ -454,6 +689,7 @@ final class ProductAdministrationTest extends TestCase
             ['cms' => false, 'crm' => false, 'shop' => true],
             Bootstrap::rootDirectory(),
         ));
+        $this->directory = MediaDirectories::temporaryFor($container);
         Migrations::run($container);
         Tenants::enter($container, 'Ammonite Bikes', Tenants::HOST);
         $this->container = $container;
