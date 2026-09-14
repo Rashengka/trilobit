@@ -1567,7 +1567,7 @@ not read `.htaccess` at all.
 ## The database
 
 Every table carries the name of the module that owns it: `core_user`,
-`shop_marker`, `cms_page`. That reads like a convention and it is the mechanism
+`shop_product`, `cms_page`. That reads like a convention and it is the mechanism
 the whole idea of a switchable module rests on.
 
 A build without a module never loads that module's mapping, so nothing in it
@@ -1918,6 +1918,8 @@ bin/trilobit app:seed
 | `ammonite-onlooker@example.com` | holds a role of Ammonite Bikes that grants nothing: signed in, and refused every page of the administration |
 | `belemnite-editor@example.com` | holds Belemnite Books' own `editor` role, which under the same code means something narrower: reading and correcting the content |
 | content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, a main menu with an entry holding two others, and enough further pages that the list of pages runs past its first page |
+| `ammonite-cataloguer@example.com`, `belemnite-cataloguer@example.com`, with `Shop` switched on | each holds the business's own `catalogue` role - the catalogue's role in between: viewing, adding, editing and deleting products, and not changing what any of them costs, which the form shows them without letting them change it |
+| catalogue, with `Shop` switched on | in each business: the categories Bikes - with Mountain, Road and Gravel bikes under it - Parts and accessories, and Sale; 24 products carrying the business's name, enough that the list of products runs past its first page; one filed in two categories with its permalink in the first, one with its permalink in the second; a draft; prices at 21 %, 12 % and no tax, and one product without an SKU |
 
 Every password is generated and printed once, beside its address. What is
 stored is a hash, and none is written in the code.
@@ -1953,7 +1955,10 @@ hosts, the installation's administrator and the owners are made by running
 would not. A module adds its part through `Trilobit\Core\Seed\SeedProvider`,
 tagged `CoreExtension::TAG_SEED_PROVIDER`, and writes it through its own
 services rather than past them, so that the seed shows only states the
-application can reach.
+application can reach. A role made of a module's own resources is the
+module's to seed, because Core may not name them: the same service implements
+`Trilobit\Core\Seed\SeedsMembers` and says who to make and what the role is
+made of, and the seed makes the account and prints its password with the rest.
 
 ### The gate
 

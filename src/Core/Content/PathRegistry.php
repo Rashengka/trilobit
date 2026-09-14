@@ -83,7 +83,7 @@ final readonly class PathRegistry implements PathLookup
      */
     public function register(ContentRef $ref, string $path, string $label, ?string $parentPath = null): Address
     {
-        $refusal = $this->refusalOf($path, null);
+        $refusal = $this->refusalFor($path);
         if ($refusal instanceof PathRefused) {
             throw $refusal;
         }
@@ -162,7 +162,7 @@ final readonly class PathRegistry implements PathLookup
                 continue;
             }
 
-            if (!$this->refusalOf(PublicPath::join($parentPath, $segment), $for) instanceof PathRefused) {
+            if (!$this->refusalFor(PublicPath::join($parentPath, $segment), $for) instanceof PathRefused) {
                 return $segment;
             }
         }
@@ -327,7 +327,53 @@ final readonly class PathRegistry implements PathLookup
             throw PathRefused::stillTheCanonicalAddress($path);
         }
 
+        // What leads here goes with it, and goes where Doctrine can see it.
+        // The database would delete it anyway - that foreign key cascades too
+        // - but a redirect this request already holds, left by a rename or by
+        // retire(), would then point at a row that is gone, and the next
+        // write of any kind would fail on it.
+        foreach ($this->rows()->findBy(['movedTo' => $row]) as $redirect) {
+            $this->entityManager->remove($redirect);
+        }
+
         $this->entityManager->remove($row);
+        $this->entityManager->flush();
+    }
+
+    /**
+     * Gives up an address and leaves it behind as a permanent redirect to the
+     * permalink of the same content - what filing a product out of a category
+     * does (.ai/plans/30-obchod-katalog-t09.md, Q10), so that a link somebody
+     * was sent still reaches the product rather than nothing.
+     *
+     * The permalink itself is refused, because it is what the others lead to;
+     * so is an address with something filed under it, because a redirect is
+     * out of the tree and what is under it would be left under nothing. Filing
+     * the content back in takes the address back from its redirect, the way
+     * register() takes any redirect's address.
+     */
+    public function retire(string $path): void
+    {
+        $row = $this->rowAt($path);
+        if (!$row instanceof ContentPath || $row->movedTo() instanceof ContentPath) {
+            throw PathRefused::notRegistered($path);
+        }
+
+        $children = $this->rows()->count(['parent' => $row]);
+        if ($children > 0) {
+            throw PathRefused::stillHasChildren($path, $children);
+        }
+
+        $canonical = $this->canonicalRowOf(new ContentRef($row->type(), $row->contentId()));
+        if ($canonical === $row) {
+            throw PathRefused::stillTheCanonicalAddress($path);
+        }
+
+        if (!$canonical instanceof ContentPath) {
+            throw new \LogicException(sprintf('%s answers for content that has no permalink to lead to.', $path));
+        }
+
+        $row->moveTo($canonical);
         $this->entityManager->flush();
     }
 
@@ -359,14 +405,19 @@ final readonly class PathRegistry implements PathLookup
     }
 
     /**
-     * Why $path cannot be claimed by $for, or null when it can.
+     * Why $path cannot be claimed by $for, or null when it can - asked without
+     * anything being written.
      *
      * One question for register() and for suggest() alike, so that a
      * suggestion is by construction something saving accepts. An address
      * $for already holds is its own and not taken; one left behind as a
      * redirect is free, because a live address outranks one.
+     *
+     * It is public for content saved at several addresses at once - a product
+     * filed into three categories - which has to be refused whole before the
+     * first address is written, rather than left with two of the three.
      */
-    private function refusalOf(string $path, ?ContentRef $for): ?PathRefused
+    public function refusalFor(string $path, ?ContentRef $for = null): ?PathRefused
     {
         $unusable = $this->unusable($path);
         if ($unusable instanceof PathRefused) {

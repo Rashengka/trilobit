@@ -1,0 +1,57 @@
+{templateType Trilobit\Core\Presentation\Listing\ListingTemplate}
+
+{*
+ * The columns of the list of products and one row of it, drawn by
+ * Trilobit\Core\Presentation\Listing\Listing inside c-table - see
+ * Trilobit\Shop\Presentation\Admin\ProductListing.
+ *
+ * Both prices are shown, because the one kept is the one without tax and the
+ * one a customer reads is the other; neither is complete without the other
+ * beside it. The address is the permalink - the one in the main category -
+ * and a product with none says so rather than showing nothing.
+ *}
+
+{import '../../../../Core/Presentation/components/button.latte'}
+{import '../../../../Core/Presentation/components/badge.latte'}
+
+{define listingHead}
+    <tr>
+        <th scope="col">Name</th>
+        <th scope="col">SKU</th>
+        <th scope="col">Before tax</th>
+        <th scope="col">With tax</th>
+        <th scope="col">State</th>
+        <th scope="col">Permalink</th>
+    </tr>
+{/define}
+
+{define listingRow, Trilobit\Shop\Presentation\Admin\ProductSummary $row}
+    <tr data-testid="shop-product-{$row->id}">
+        <th scope="row">
+            {include button,
+                label: $row->name,
+                href: $row->editUrl,
+                variant: 'quiet',
+                testId: 'shop-product-open-' . $row->id}
+        </th>
+
+        <td data-testid="shop-product-sku-{$row->id}">{$row->sku}</td>
+
+        <td data-testid="shop-product-price-{$row->id}">{$row->price}</td>
+
+        <td data-testid="shop-product-gross-{$row->id}">{$row->priceWithVat}</td>
+
+        <td>
+            {include badge,
+                label: $row->status,
+                variant: $row->isPublished ? 'accent' : 'plain',
+                testId: 'shop-product-status-' . $row->id}
+        </td>
+
+        <td>
+            {include badge,
+                label: $row->address,
+                testId: 'shop-product-address-' . $row->id}
+        </td>
+    </tr>
+{/define}

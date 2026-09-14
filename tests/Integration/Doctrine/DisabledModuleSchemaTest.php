@@ -128,7 +128,7 @@ final class DisabledModuleSchemaTest extends TestCase
             'core_tenant_membership',
             'core_user',
             'core_user_role',
-            'shop_marker',
+            'shop_product',
         ], $tables);
     }
 

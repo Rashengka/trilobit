@@ -10,17 +10,30 @@ use Trilobit\Core\Routing\RouteProvider;
 /**
  * Where the Shop module answers.
  *
- * One route while the module is empty, and it earns its place: it is the only
- * way to tell a build without this module from a build with it by asking the
- * router. A switched-off module registers no provider, so /shop is claimed by
- * nobody and the router says so - there is no catch-all route to answer in its
- * place.
+ * /shop is the way to tell a build without this module from a build with it
+ * by asking the router: a switched-off module registers no provider, so the
+ * address is claimed by nobody and the router says so - there is no catch-all
+ * route to answer in its place. The same holds for the catalogue under the
+ * administration.
+ *
+ * A product answers at no route of this module: its addresses are rows of
+ * Core's register, one per category it is filed in (decision R12).
  */
 final class ShopRoutes implements RouteProvider
 {
+    /** Where this module's section of the administration begins. */
+    public const string ADMIN_PATH = 'admin/shop';
+
     public function provide(RouteList $routes): void
     {
         $routes->addRoute('shop', 'Shop:Front:Status:default');
+
+        // The form for a new product comes before the one that takes an
+        // identifier: the other way round, `add` would be read as the
+        // identifier of a product and refused for not being a number.
+        $routes->addRoute(self::ADMIN_PATH . '/products', 'Shop:Admin:Product:default');
+        $routes->addRoute(self::ADMIN_PATH . '/products/add', 'Shop:Admin:Product:add');
+        $routes->addRoute(self::ADMIN_PATH . '/products/<id>', 'Shop:Admin:Product:edit');
     }
 
     /**

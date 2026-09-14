@@ -151,6 +151,9 @@ final class EveryAdministrationViewIsGatedTest extends TestCase
                 // are about that place.
                 'Core/Presentation/Installation/BusinessesPresenter.php: default',
                 'Core/Presentation/Installation/SignpostPresenter.php: default',
+                'Shop/Presentation/Admin/ProductPresenter.php: add',
+                'Shop/Presentation/Admin/ProductPresenter.php: default',
+                'Shop/Presentation/Admin/ProductPresenter.php: edit',
             ],
             $drawn,
         );
