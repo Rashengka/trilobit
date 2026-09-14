@@ -121,6 +121,7 @@ final class DisabledModuleSchemaTest extends TestCase
             'core_media_file',
             'core_menu',
             'core_migration',
+            'core_password_link',
             'core_role',
             'core_setting',
             'core_setup_completion',
