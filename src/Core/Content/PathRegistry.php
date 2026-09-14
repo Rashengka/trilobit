@@ -327,6 +327,15 @@ final readonly class PathRegistry implements PathLookup
             throw PathRefused::stillTheCanonicalAddress($path);
         }
 
+        // What leads here goes with it, and goes where Doctrine can see it.
+        // The database would delete it anyway - that foreign key cascades too
+        // - but a redirect this request already holds, left by a rename or by
+        // retire(), would then point at a row that is gone, and the next
+        // write of any kind would fail on it.
+        foreach ($this->rows()->findBy(['movedTo' => $row]) as $redirect) {
+            $this->entityManager->remove($redirect);
+        }
+
         $this->entityManager->remove($row);
         $this->entityManager->flush();
     }

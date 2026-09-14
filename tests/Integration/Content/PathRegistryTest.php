@@ -256,6 +256,37 @@ final class PathRegistryTest extends TestCase
         self::assertSame('bikes/mountain/mountain-bike-x', $address->canonicalPath);
     }
 
+    /**
+     * An address that is given up takes the redirects leading to it along,
+     * and it does so where Doctrine can see it. The database would delete them
+     * anyway - the foreign key cascades - but a redirect this request already
+     * holds would then point at a row that is gone, and the next write of any
+     * kind would fail on it.
+     */
+    public function testForgettingAnAddressTakesTheRedirectsLeadingToItWithIt(): void
+    {
+        $registry = $this->productInTwoCategories();
+        $registry->retire('sale/mountain-bike-x');
+
+        $registry->forget('bikes/mountain/mountain-bike-x');
+        $registry->register(new ContentRef(self::PRODUCT, '2'), 'clearance/scree-27', 'Scree 27', 'clearance');
+
+        self::assertNull($registry->find('sale/mountain-bike-x'), 'a redirect outlived the address it led to');
+        self::assertNotNull($registry->find('clearance/scree-27'));
+    }
+
+    /** The same for the trail a rename leaves behind. */
+    public function testForgettingARenamedAddressTakesItsTrailWithIt(): void
+    {
+        $registry = $this->productInTwoCategories();
+        $registry->rename('sale/mountain-bike-x', 'sale/mountain-bike-x-pro');
+
+        $registry->forget('sale/mountain-bike-x-pro');
+        $registry->register(new ContentRef(self::PRODUCT, '2'), 'clearance/scree-27', 'Scree 27', 'clearance');
+
+        self::assertNull($registry->find('sale/mountain-bike-x'), 'the trail outlived the address it led to');
+    }
+
     /** The permalink is what the others lead to, so it cannot become one of them. */
     public function testThePermalinkCannotBeRetired(): void
     {
