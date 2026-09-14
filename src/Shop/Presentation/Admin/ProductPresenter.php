@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Shop\Presentation\Admin;
 
+use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Multiplier;
 use Nette\Application\UI\Template;
@@ -247,12 +248,23 @@ final class ProductPresenter extends AdminPresenter
         });
     }
 
-    /** Every product, filtered and paged from the address; see ProductListing. */
+    /**
+     * Every product, filtered and paged from the address; see ProductListing.
+     * It belongs to the list, the one view that draws it.
+     */
+    #[Requires(actions: 'default')]
     protected function createComponentProducts(): ProductListing
     {
         return $this->listings->create();
     }
 
+    /**
+     * The form a product is written in. It belongs to the two views that draw
+     * it - a new product and an existing one - and a form sent to any other
+     * action is not found, before its handler runs. Where it belongs is not
+     * who may send it: the handler still asks for that itself.
+     */
+    #[Requires(actions: ['add', 'edit'])]
     protected function createComponentProduct(): Form
     {
         $form = $this->forms->createVertical();

@@ -284,16 +284,17 @@ final class ProductAdministrationTest extends TestCase
         self::assertSame(2100, $this->onlyProduct()->vatRate()->basisPoints());
     }
 
-    /** The same form, sent to the action that lists: the handler asks for itself, because no action above it does. */
-    public function testAFormSentToTheListByTheRoleInBetweenDoesNotReachThePriceEither(): void
+    /**
+     * The same form, sent to the action that lists: the form belongs to the
+     * actions that draw it, so it is not found there at all - and the handler
+     * would still ask for itself if it were.
+     */
+    public function testAFormSentToTheListByTheRoleInBetweenIsNotFound(): void
     {
         $this->signedInHolding($this->writer());
 
-        $this->submit('default', $this->values(['price' => '1.00', 'vatRate' => '0']));
-
-        foreach ($this->products()->all() as $product) {
-            self::assertSame(0, $product->price()->amount());
-        }
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit('default', $this->values(['price' => '1.00', 'vatRate' => '0']))));
+        self::assertSame([], $this->products()->all(), 'a product was written through a form sent to the list');
     }
 
     public function testDeletingIsRefusedToTheRoleInBetween(): void
@@ -314,14 +315,12 @@ final class ProductAdministrationTest extends TestCase
         self::assertInstanceOf(ForwardResponse::class, $this->submit('add', []));
     }
 
-    /** A form sent to the list by somebody who may only look writes nothing. */
-    public function testAFormSentToTheListBySomebodyWhoMayOnlyLookIsRefused(): void
+    /** A form sent to the list by somebody who may only look is not found, and writes nothing. */
+    public function testAFormSentToTheListBySomebodyWhoMayOnlyLookIsNotFound(): void
     {
         $this->signedInHolding([new Grant(ShopResource::Catalogue, Privilege::View)->code()]);
 
-        $response = $this->submit('default', $this->values());
-
-        self::assertInstanceOf(ForwardResponse::class, $response, 'the form was not refused');
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit('default', $this->values())));
         self::assertSame([], $this->products()->all());
     }
 
@@ -473,6 +472,53 @@ final class ProductAdministrationTest extends TestCase
         }
 
         self::assertCount(1, $this->products()->picturesOf($ridge));
+    }
+
+    /**
+     * The form belongs to the actions that draw it, `add` and `edit`, and to
+     * no other - asked of the owner, who may do everything, so that nothing
+     * but where the form belongs can be what refuses it.
+     */
+    public function testTheProductFormSentToTheListIsNotFoundEvenForTheOwner(): void
+    {
+        $this->signedInHolding(['app:*']);
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit('default', $this->values())));
+        self::assertSame([], $this->products()->all(), 'a product was written through a form sent to the list');
+    }
+
+    /** An action nobody wrote is no way into the form either, and a product it names stays as it was. */
+    public function testTheProductFormSentToAMadeUpActionIsNotFound(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit(
+            'rewrite',
+            $this->values(['name' => 'Ridge 29, rewritten', 'price' => '1.00']),
+            ['id' => (string) $product->id()],
+        )));
+
+        $read = $this->onlyProduct();
+        self::assertSame('Ridge 29', $read->name());
+        self::assertSame(2499000, $read->price()->amount());
+    }
+
+    /**
+     * The HTTP code a request was refused with by raising - a page that is not
+     * there - rather than answered; failing when it was answered.
+     *
+     * @param \Closure(): Response $request
+     */
+    private function refusalOf(\Closure $request): int
+    {
+        try {
+            $response = $request();
+        } catch (BadRequestException $refused) {
+            return $refused->getHttpCode();
+        }
+
+        self::fail('the request was answered, not refused: ' . $this->saidIn($response));
     }
 
     /** @return list<string> the role in between: writes the catalogue, changes no price, deletes nothing */
