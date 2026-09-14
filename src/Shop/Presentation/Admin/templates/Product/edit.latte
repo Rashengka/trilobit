@@ -1,0 +1,70 @@
+{templateType Trilobit\Shop\Presentation\Admin\ProductsTemplate}
+
+{*
+ * One product, written.
+ *
+ * The form is drawn by the design system's vertical arrangement
+ * (Trilobit\Core\Presentation\Form\FormFactory::createVertical()), so every
+ * field, its hint and whatever was refused about it come out of c-field the
+ * way they do on every other generated form. The price and the rate are drawn
+ * for everybody and written in only by somebody who may change prices; the
+ * form says so under each of them.
+ *
+ * Where the product answers is drawn beside the form for a product that has
+ * been saved: every address, the permalink marked - the addresses are rows of
+ * Core's register, and this is the one place in the administration they are
+ * all shown together.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/panel.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+{import '../../../../../Core/Presentation/components/badge.latte'}
+{import '../../../../../Core/Presentation/components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'shop-product-headline',
+        leadTestId: 'shop-product-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'All products', href: $listUrl, variant: 'quiet', testId: 'shop-product-back'}
+    </div>
+
+    {if $noCategory}
+        {include notice,
+            message: 'There is no category to file a product in yet. A product is filed in at least one, and categories are arranged by somebody who arranges the content of the site.',
+            testId: 'shop-product-no-category'}
+    {/if}
+
+    {embed block panel, testId: 'shop-product-panel'}
+        {block panelTitle}The product{/block}
+
+        {block panelBody}
+            {control product}
+        {/block}
+    {/embed}
+
+    {if !$isNew}
+        {embed block panel, testId: 'shop-product-where'}
+            {block panelTitle}Where it answers, and what it costs with tax{/block}
+
+            {block panelBody}
+                <div class="l-stack">
+                    <p>With tax it costs <strong data-testid="shop-product-gross">{$priceWithVat}</strong>.</p>
+
+                    <div class="l-cluster">
+                        {foreach $addresses as $address}
+                            {include badge,
+                                label: '/' . $address->path . ($address->isCanonical() ? ' (permalink)' : ''),
+                                variant: $address->isCanonical() ? 'accent' : 'plain',
+                                testId: 'shop-product-address'}
+                        {/foreach}
+                    </div>
+                </div>
+            {/block}
+        {/embed}
+    {/if}
+{/block}
