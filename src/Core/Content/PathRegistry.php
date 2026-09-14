@@ -83,7 +83,7 @@ final readonly class PathRegistry implements PathLookup
      */
     public function register(ContentRef $ref, string $path, string $label, ?string $parentPath = null): Address
     {
-        $refusal = $this->refusalFor($path, null);
+        $refusal = $this->refusalFor($path);
         if ($refusal instanceof PathRefused) {
             throw $refusal;
         }

@@ -73,10 +73,6 @@ class Product
     #[ORM\Column(type: Types::TEXT)]
     private string $description = '';
 
-    /** Before tax. */
-    #[ORM\Embedded(class: Money::class, columnPrefix: 'price_')]
-    private Money $price;
-
     /** In basis points; see Trilobit\Shop\Domain\Price\VatRate. */
     #[ORM\Column]
     private int $vatRate;
@@ -88,12 +84,13 @@ class Product
         private Tenant $tenant,
         #[ORM\Column(length: self::MAX_NAME_LENGTH)]
         private string $name,
-        Money $price,
+        /** Before tax. */
+        #[ORM\Embedded(class: Money::class, columnPrefix: 'price_')]
+        private Money $price,
         VatRate $vatRate,
         #[ORM\Column]
         private DateTimeImmutable $updatedAt,
     ) {
-        $this->price = $price;
         $this->vatRate = $vatRate->basisPoints();
     }
 
