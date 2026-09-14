@@ -149,6 +149,22 @@ final class MailersTest extends TestCase
         $this->mailers([Mailers::ENCRYPTION => 'starttls'], Mode::Prod)->fromEnvironment();
     }
 
+    /**
+     * The sender a deployment gets when it says nothing has to be an address a
+     * message takes. The mail library refuses a From that is not one before
+     * anything is sent, and then no invitation could be made at all - on
+     * every deployment that forgot the setting. It is under .invalid, which no
+     * server delivers to, so a forgotten setting still shows itself as mail a
+     * real server refuses rather than as mail sent in somebody's name.
+     */
+    public function testTheSenderNothingSaidIsAnAddressAMessageTakes(): void
+    {
+        $message = new Message()->setFrom($this->mailers([], Mode::Prod)->from());
+
+        self::assertSame([Mailers::DEFAULT_FROM => null], $message->getFrom());
+        self::assertStringEndsWith('.invalid', Mailers::DEFAULT_FROM);
+    }
+
     public function testMailIsFromTheAddressTheDeploymentNames(): void
     {
         self::assertSame(Mailers::DEFAULT_FROM, $this->mailers([], Mode::Prod)->from());

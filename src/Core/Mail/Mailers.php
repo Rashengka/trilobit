@@ -79,11 +79,14 @@ final readonly class Mailers
     public const int DEFAULT_PORT = 11025;
 
     /**
-     * Where mail is from when the deployment does not say. An SMTP server that
-     * delivers anywhere real will refuse it, loudly - which is the right way
-     * for a forgotten setting to show itself.
+     * Where mail is from when the deployment does not say. It has to be an
+     * address - the mail library refuses to make a message from anything else,
+     * and then nothing could be sent at all - and it is under .invalid, a name
+     * reserved never to resolve (RFC 2606), so an SMTP server that delivers
+     * anywhere real refuses it, loudly: the right way for a forgotten setting
+     * to show itself.
      */
-    public const string DEFAULT_FROM = 'trilobit@localhost';
+    public const string DEFAULT_FROM = 'trilobit@localhost.invalid';
 
     private const string SMTP = 'smtp';
 
