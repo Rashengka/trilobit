@@ -21,6 +21,7 @@ use Nette\Security\User as SignedIn;
 use Trilobit\Core\Admin\Menu\InstallationMenu;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Admin\Menu\NavigationMenu;
+use Trilobit\Core\Admin\Menu\PeopleMenu;
 use Trilobit\Core\Admin\Menu\ReachableMenu;
 use Trilobit\Core\Asset\VersionedViteMapper;
 use Trilobit\Core\Build\BuildManifest;
@@ -48,6 +49,7 @@ use Trilobit\Core\Event\AuditListener;
 use Trilobit\Core\Event\Dispatcher;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
+use Trilobit\Core\Mail\Invitations;
 use Trilobit\Core\Mail\Mailers;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Navigation\HomeEntry;
@@ -58,6 +60,7 @@ use Trilobit\Core\Port\PortRegistry;
 use Trilobit\Core\Preference\PreferenceCatalogue;
 use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Admin\Landing;
+use Trilobit\Core\Presentation\Admin\PeopleListingFactory;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
@@ -69,6 +72,7 @@ use Trilobit\Core\Presentation\Link\Destinations;
 use Trilobit\Core\Presentation\Styleguide\StyleguidePages;
 use Trilobit\Core\Routing\AdminRoutes;
 use Trilobit\Core\Routing\ContentRouter;
+use Trilobit\Core\Routing\PasswordRoutes;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouterFactory;
 use Trilobit\Core\Routing\SessionRoutes;
@@ -80,6 +84,8 @@ use Trilobit\Core\Security\Authorizator;
 use Trilobit\Core\Security\Doorkeeper;
 use Trilobit\Core\Security\Landlords;
 use Trilobit\Core\Security\Memberships;
+use Trilobit\Core\Security\PasswordLinks;
+use Trilobit\Core\Security\People;
 use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Setup\Installer;
@@ -233,6 +239,20 @@ final class CoreExtension extends CompilerExtension
         // there is one place accounts are kept.
         $builder->addDefinition($this->prefix('accounts'))
             ->setFactory(Accounts::class);
+
+        // The links a password is set with, sent to whoever is added to a
+        // business without one; see Trilobit\Core\Security\PasswordLinks.
+        $builder->addDefinition($this->prefix('passwordLinks'))
+            ->setFactory(PasswordLinks::class);
+
+        // Who belongs to a business, changed through the one service that
+        // guards it - see Trilobit\Core\Security\People - and the message
+        // whoever is added is sent (Trilobit\Core\Mail\Invitations).
+        $builder->addDefinition($this->prefix('people'))
+            ->setFactory(People::class);
+
+        $builder->addDefinition($this->prefix('invitations'))
+            ->setFactory(Invitations::class);
 
         $builder->addDefinition($this->prefix('authenticator'))
             ->setFactory(Authenticator::class);
@@ -422,6 +442,13 @@ final class CoreExtension extends CompilerExtension
             ->setAutowired(false)
             ->addTag(self::TAG_ROUTE_PROVIDER);
 
+        // Where a password is set with the link somebody was sent, in every
+        // build - see Trilobit\Core\Routing\PasswordRoutes.
+        $builder->addDefinition($this->prefix('passwordRoutes'))
+            ->setFactory(PasswordRoutes::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ROUTE_PROVIDER);
+
         // How far the setup has got, and whether a database that cannot be
         // reached may be described: in debug mode only, the mode in which the
         // framework's own error page already describes it. See
@@ -453,6 +480,18 @@ final class CoreExtension extends CompilerExtension
             ->setFactory(NavigationMenu::class)
             ->setAutowired(false)
             ->addTag(self::TAG_ADMIN_MENU_PROVIDER);
+
+        // And the people of a business - who belongs to it and what each of
+        // them holds there - which is a business's own section too; see
+        // Trilobit\Core\Presentation\Admin\PeoplePresenter. The list is made
+        // by a factory the container writes, as the list of pages is.
+        $builder->addDefinition($this->prefix('peopleMenu'))
+            ->setFactory(PeopleMenu::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ADMIN_MENU_PROVIDER);
+
+        $builder->addFactoryDefinition($this->prefix('peopleListing'))
+            ->setImplement(PeopleListingFactory::class);
 
         // The menu as the person reading it may use it. Both the bar and a
         // section's signpost are drawn through this one service, because they

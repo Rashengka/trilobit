@@ -6,6 +6,7 @@ namespace Trilobit\Core\Content;
 
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Routing\AdminRoutes;
+use Trilobit\Core\Routing\PasswordRoutes;
 use Trilobit\Core\Routing\PreferenceRoutes;
 use Trilobit\Core\Routing\RouteProvider;
 use Trilobit\Core\Routing\SessionRoutes;
@@ -64,6 +65,9 @@ final readonly class ReservedSegments
         // the installation holds nothing - see
         // Trilobit\Core\Routing\SetupRoutes.
         SetupRoutes::PATH,
+        // Reserved for good as well: a link sent last week has to keep leading
+        // to where a password is set - see Trilobit\Core\Routing\PasswordRoutes.
+        PasswordRoutes::PATH,
         StyleguideRoutes::PATH,
     ];
 
