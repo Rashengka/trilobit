@@ -1393,6 +1393,59 @@ and calls none of those. A presenter whose declarations all sit on `render*()`
 methods therefore has its forms guarded by nothing, because `render*()` runs
 after the form has already been handled.
 
+### A form asks through the actions it belongs to
+
+A form cannot carry a gate of its own, for the reason above: nothing is asked
+of it, of its factory or of its handler when it is submitted. What stands in
+front of it is the gate on the class and the gate on the action the request
+names, and the request names whichever action its sender chose. A form drawn on
+the `edit` page but able to exist on the list is therefore answered behind the
+list's gate. That was measured: an account that could only read the pages
+wrote a published one by posting the page form to the list.
+
+So every component factory and every signal of an administration page says
+which actions it belongs to, with the framework's own attribute:
+
+```php
+#[Needs(Resource::Content, Privilege::View)]
+final class PagePresenter extends AdminPresenter
+{
+    #[Needs(Resource::Content, Privilege::Add)]
+    public function actionAdd(): void { /* ... */ }
+
+    #[Needs(Resource::Content, Privilege::Edit)]
+    public function actionEdit(int $id): void { /* ... */ }
+
+    #[Requires(actions: ['add', 'edit'])]
+    protected function createComponentPage(): Form { /* ... */ }
+}
+```
+
+Nette refuses to make the component on any other action (404), so posted
+anywhere else the form is not there to be submitted. On `add` and `edit` it
+exists only after the gate above that action has admitted the person, which
+makes that gate the form's gate. The same attribute above a signal of the
+presenter itself (`handle*()`) does the same for the signal.
+
+It is not a rule to remember. `AdminPresenter` raises a `LogicException` when a
+factory or a `handle*()` of the presenter names no action, and it raises when a
+signal is addressed to a component that did not come from a factory at all - a
+form added in `startup()`, say - because nothing says where such a component
+belongs. A form inside another component, such as the forms of a `Multiplier`,
+belongs where the component the factory made belongs.
+`tests/Architecture/EveryAdministrationComponentSaysWhereItBelongsTest` asks
+the same of the whole build and lists every component and signal the
+administration has. `tests/Integration/Admin/ComponentsBelongToTheirActionsTest`
+posts to pages built to be posted to, including those shapes.
+
+**What it does not decide is what the form does once it is there.** A form
+that does more than its page admits somebody to - the delete button on the form
+of an editor, or a press that rearranges the navigation on a page a reader may
+open - still asks in the handler that does it (`isAllowed()`, refused with
+403). Where a form belongs is a question about the request. Whether this person
+may press this button is a question about the act, and only the handler knows
+which button was pressed.
+
 Being open is a declaration too, and it carries its reason:
 `#[OpenToEverybody(because: '...')]` is how the sign-in page - the one page
 that has to answer a stranger - says so about itself. It is the same shape
