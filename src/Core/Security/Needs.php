@@ -27,13 +27,18 @@ namespace Trilobit\Core\Security;
  * opened by fewer people than the presenter is the case worth writing, and an
  * action open to more of them than the presenter would be a hole in the floor.
  *
- * **The floor is where forms are guarded, and that is a measurement rather
- * than a preference.** A submitted form arrives through
+ * **A form is guarded by the gates of the actions it belongs to, and by
+ * nothing written above it.** A submitted form arrives through
  * Nette\Application\UI\Presenter::processSignal(), which asks nothing of any
  * method - what ran before it is the check made for the class, and the action
- * method of the same request. A presenter whose declarations all sit on
- * render*() methods therefore has its forms guarded by nothing, because
- * render*() is called after the form has already been handled.
+ * method of the same request. So a declaration cannot be written above a form
+ * or its handler; what can be written is where the form may be made, with
+ * Nette's own `#[Requires(actions: ...)]` above its factory, and then the only
+ * requests that reach it are the ones its actions' gates admitted.
+ * Trilobit\Core\Presentation\Admin\AdminPresenter refuses a factory or a
+ * signal that does not say. A presenter whose declarations all sit on
+ * render*() methods still has its forms guarded by nothing, because render*()
+ * is called after the form has already been handled.
  */
 #[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD | \Attribute::IS_REPEATABLE)]
 final readonly class Needs implements Gate

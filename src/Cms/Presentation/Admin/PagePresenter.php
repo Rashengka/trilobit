@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Cms\Presentation\Admin;
 
+use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Nette\Http\IResponse;
@@ -52,11 +53,16 @@ use Trilobit\Core\Security\Resource;
  *
  * **What each of those needs is declared where it is done.** Reading the list
  * is the floor for the whole presenter; writing a new page and rewriting an
- * existing one are narrower and say so above their own actions. The class-level
- * pair is not decoration beside them: a submitted form arrives through
- * processSignal(), which asks nothing of any method, so the floor and the
- * action of the same request are the two things standing in front of every
- * form on this page - and in front of the suggestion, which is a signal too.
+ * existing one are narrower and say so above their own actions. **The form
+ * exists on those two actions and nowhere else**, and that is what carries
+ * their declarations over to it. A submitted form arrives through
+ * processSignal(), which asks nothing of any method: what stands in front of
+ * it is the floor and the action the request names. A form that could be made
+ * on the list was therefore answered there, behind nothing but the floor - and
+ * somebody who could only read the pages wrote a published one that way.
+ * `#[Requires(actions: ...)]` above createComponentPage() is Nette's own
+ * declaration of where a component may be made; posted anywhere else, the form
+ * is not there to be submitted.
  *
  * **Deleting is asked about in the handler**, because it is not a view. It is
  * a second button on the form of a page somebody may already edit, and an
@@ -119,6 +125,7 @@ final class PagePresenter extends AdminPresenter
      * Whatever cannot be answered comes back as a sentence beside an empty
      * suggestion, so that pressing the button is never met with nothing.
      */
+    #[Requires(actions: ['add', 'edit'])]
     public function handleSuggestSegment(string $title = '', string $category = ''): void
     {
         try {
@@ -183,11 +190,13 @@ final class PagePresenter extends AdminPresenter
     }
 
     /** Every page, filtered and paged from the address; see PageListing. */
+    #[Requires(actions: 'default')]
     protected function createComponentPages(): PageListing
     {
         return $this->listings->create();
     }
 
+    #[Requires(actions: ['add', 'edit'])]
     protected function createComponentPage(): Form
     {
         $form = new Form();

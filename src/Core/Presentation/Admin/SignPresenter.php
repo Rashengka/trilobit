@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Admin;
 
+use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Nette\Security\AuthenticationException;
@@ -71,6 +72,7 @@ final class SignPresenter extends AdminPresenter
         return parent::createTemplate($class ?? SignInTemplate::class);
     }
 
+    #[Requires(actions: 'in')]
     protected function createComponentSignIn(): Form
     {
         $form = new Form();
