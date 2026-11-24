@@ -125,6 +125,7 @@ final class EveryTenantedEntityIsScopedTest extends TestCase
                 'core_menu',
                 'core_role',
                 'core_tenant_membership',
+                'shop_product',
             ],
             $scoped,
         );

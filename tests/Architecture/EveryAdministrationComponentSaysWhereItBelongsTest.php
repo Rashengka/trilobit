@@ -108,6 +108,8 @@ final class EveryAdministrationComponentSaysWhereItBelongsTest extends TestCase
                 'Core/Presentation/Admin/PeoplePresenter.php: createComponentResend()',
                 'Core/Presentation/Admin/PeoplePresenter.php: createComponentRole()',
                 'Core/Presentation/Admin/SignPresenter.php: createComponentSignIn()',
+                'Shop/Presentation/Admin/ProductPresenter.php: createComponentProduct()',
+                'Shop/Presentation/Admin/ProductPresenter.php: createComponentProducts()',
             ],
             $this->receiversIn(Bootstrap::rootDirectory() . '/src', 'Trilobit\\'),
         );
