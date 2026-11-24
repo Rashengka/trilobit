@@ -189,7 +189,7 @@
         {block tableBody}
             <tr n:foreach="$tokens as $token => $role" class="sg-token-row">
                 <th scope="row"><code data-testid="token-{$token}">{$token}</code></th>
-                <td>
+                <td class="sg-token-row__specimen">
                     {if in_array($kind, ['family', 'code', 'weight', 'tracking'], true)}
                         <span class="sg-token sg-token--{$kind}" style="--sg-value: var({$token})">Seven segments</span>
                     {elseif $kind === 'leading'}

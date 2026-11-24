@@ -3521,8 +3521,20 @@
        name and what it is for level with the specimen between them. Set on
        their baselines, a cell beside a specimen taller than its line
        pushes its text below its own bottom edge. */
+    /* And a word in any cell may break where it has to: how wide a line of
+       text is depends on the faces a machine has, and a table drawn wider
+       than its frame on one machine would scroll there. A word only breaks
+       when the table has no other way to fit. */
     .sg-token-row > :is(th, td) {
+        overflow-wrap: anywhere;
         vertical-align: middle;
+    }
+
+    /* The cell the specimen is drawn in takes half the table, whatever the
+       cells beside it hold, so a bar or a track has a width to be measured
+       against that does not hang on how long the words next to it are. */
+    .sg-token-row__specimen {
+        inline-size: 50%;
     }
 
     .sg-token--family {
@@ -3554,7 +3566,6 @@
         background-color: var(--color-accent-surface);
         font-size: var(--sg-value);
         line-height: var(--sg-leading);
-        white-space: nowrap;
     }
 
     .sg-token--bar {
@@ -3622,8 +3633,7 @@
         background-color: var(--color-canvas-sunken);
         block-size: var(--space-md);
         border-radius: var(--radius-pill);
-        inline-size: var(--layout-card-min);
-        max-inline-size: 100%;
+        inline-size: min(var(--layout-card-min), 100%);
         overflow: hidden;
         vertical-align: middle;
     }

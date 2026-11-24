@@ -37,8 +37,8 @@
             <tr n:foreach="$typeSteps as $step => $use" class="sg-token-row">
                 <th scope="row"><code data-testid="token---text-{$step}">--text-{$step}</code></th>
                 <td><code data-testid="token---leading-{$step}">--leading-{$step}</code></td>
-                <td>
-                    <span class="sg-token sg-token--step" style="--sg-value: var(--text-{$step}); --sg-leading: var(--leading-{$step})">Seven segments<br>and a head shield</span>
+                <td class="sg-token-row__specimen">
+                    <span class="sg-token sg-token--step" style="--sg-value: var(--text-{$step}); --sg-leading: var(--leading-{$step})">Head shield<br>and tail</span>
                 </td>
                 <td>{$use}</td>
             </tr>

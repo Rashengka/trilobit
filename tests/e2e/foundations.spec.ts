@@ -109,30 +109,41 @@ test.describe('the tables of specimens', () => {
     /**
      * A table scrolls inside its own frame when it is wider than the room it
      * has, and only then. A specimen - a tile with its deepest shadow, a bar,
-     * a dot on its track - has to fit inside its cell, so that the frame grows
-     * to hold it rather than offering a scroll bar over a few pixels of it.
-     * Measured in every theme, because each draws its elevation differently.
+     * a dot on its track, a line of text at the largest step - has to fit
+     * inside its cell, so that the frame grows to hold it rather than offering
+     * a scroll bar over a few pixels of it. Measured in every theme, because
+     * each draws its elevation differently.
+     *
+     * And measured a second time with every letter in the tables set wider:
+     * how wide a line of text is depends on the faces the machine has, so a
+     * table that fits only with the faces of one machine does not fit. The
+     * spacing stands in for a wider face, which no machine is asked to have.
      */
-    test('grow to hold their specimens rather than scroll', async ({ page }) => {
-        for (const slug of SPECIMEN_PAGES) {
-            await page.goto(`/_styleguide/foundations/${slug}`);
+    for (const metrics of ['as the machine draws them', 'with wider letters'] as const) {
+        test(`grow to hold their specimens rather than scroll, ${metrics}`, async ({ page }) => {
+            for (const slug of SPECIMEN_PAGES) {
+                await page.goto(`/_styleguide/foundations/${slug}`);
+                if (metrics === 'with wider letters') {
+                    await page.addStyleTag({ content: '.c-table__viewport { letter-spacing: 0.3em; }' });
+                }
 
-            for (const theme of themes) {
-                await drawIn(page, theme, 'light');
+                for (const theme of themes) {
+                    await drawIn(page, theme, 'light');
 
-                const scrolling = await page.evaluate(() =>
-                    [...document.querySelectorAll('.c-table__viewport')]
-                        .filter((viewport) =>
-                            viewport.scrollHeight > viewport.clientHeight
-                            || viewport.scrollWidth > viewport.clientWidth)
-                        .map((viewport) => `${viewport.getAttribute('aria-label') ?? '?'}: `
-                            + `${viewport.scrollWidth}x${viewport.scrollHeight} in ${viewport.clientWidth}x${viewport.clientHeight}`),
-                );
+                    const scrolling = await page.evaluate(() =>
+                        [...document.querySelectorAll('.c-table__viewport')]
+                            .filter((viewport) =>
+                                viewport.scrollHeight > viewport.clientHeight
+                                || viewport.scrollWidth > viewport.clientWidth)
+                            .map((viewport) => `${viewport.getAttribute('aria-label') ?? '?'}: `
+                                + `${viewport.scrollWidth}x${viewport.scrollHeight} in ${viewport.clientWidth}x${viewport.clientHeight}`),
+                    );
 
-                expect(scrolling, `${slug}, ${theme}: tables that scroll`).toEqual([]);
+                    expect(scrolling, `${slug}, ${theme}: tables that scroll`).toEqual([]);
+                }
             }
-        }
-    });
+        });
+    }
 });
 
 test.describe('motion', () => {
