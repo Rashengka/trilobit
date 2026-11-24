@@ -1,0 +1,34 @@
+{templateType Trilobit\Core\Presentation\Admin\PeopleTemplate}
+
+{*
+ * Everybody who belongs to this business - filtered and paged from the
+ * address by Trilobit\Core\Presentation\Admin\PeopleListing, whose rows are
+ * drawn by ../PeopleListing.latte.
+ *
+ * The way to add somebody is drawn only for whoever may; the form behind it
+ * asks again all the same.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/button.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'people-headline',
+        leadTestId: 'people-lead'}
+
+    <div n:if="$addUrl !== ''" class="l-cluster">
+        {include button, label: 'Add somebody', href: $addUrl, testId: 'people-add'}
+    </div>
+
+    {embed block panel, testId: 'people-panel'}
+        {block panelTitle}People{/block}
+
+        {block panelBody}
+            {control people}
+        {/block}
+    {/embed}
+{/block}

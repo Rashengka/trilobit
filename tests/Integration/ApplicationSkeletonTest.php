@@ -93,7 +93,7 @@ final class ApplicationSkeletonTest extends TestCase
         $items = $this->container()->getByType(Menu::class)->items();
 
         self::assertSame(
-            ['Core:Installation:Businesses:default', 'Core:Admin:Navigation:default'],
+            ['Core:Installation:Businesses:default', 'Core:Admin:Navigation:default', 'Core:Admin:People:default'],
             array_column($items, 'destination'),
         );
     }

@@ -129,7 +129,14 @@ export default defineConfig({
         reuseExistingServer: process.env.CI === undefined,
         // Stated rather than taken from .env, so that the style guide is on
         // whatever mode the machine running this happens to be in.
-        env: { TRILOBIT_ENV: 'dev' },
+        //
+        // Mail is written to var/mail/ rather than sent, which a working copy
+        // may do and nothing else may (Trilobit\Core\Mail\Mailers): the
+        // people spec reads the invitation it made out of that directory, and
+        // a build server has no catcher to send it to. A server started by
+        // hand and taken over below writes mail wherever its own setting says,
+        // and that spec says so when it finds nothing.
+        env: { TRILOBIT_ENV: 'dev', TRILOBIT_MAIL_TRANSPORT: 'file' },
         stdout: 'pipe',
         stderr: 'pipe',
     },

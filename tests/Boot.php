@@ -14,6 +14,7 @@ use SplFileInfo;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Tests\Double\Mail\CapturingMailer;
 use Trilobit\Tests\Runner\KeepingUnitTestsAwayFromTheDatabase;
 use WeakReference;
 
@@ -100,6 +101,12 @@ final class Boot
      *     of var/tmp, for a suite whose question is what happens while a
      *     container is compiled - which in var/tmp happens once per build and
      *     then never again on that machine.
+     * @param bool $capturingMail whether the build keeps its mail in a
+     *     Trilobit\Tests\Double\Mail\CapturingMailer rather than sending it -
+     *     true for every build but the one a suite makes to ask which mailer
+     *     the environment would have given it. A test sending real mail would
+     *     send it from a developer's machine to whoever the fixture names, or,
+     *     with nothing listening, fail for a reason it is not about.
      */
     public static function container(
         ?ModuleList $modules = null,
@@ -108,6 +115,7 @@ final class Boot
         ?Environment $environment = null,
         ?array $cookies = null,
         ?string $tempDirectory = null,
+        bool $capturingMail = true,
     ): Container {
         // The second door into a database, and the one that opens without
         // saying so: a built container carries a connection pointed at whatever
@@ -137,6 +145,14 @@ final class Boot
 
         if ($styleguide !== null) {
             $configurator->addConfig(['parameters' => ['trilobit' => ['styleguide' => $styleguide]]]);
+        }
+
+        // Before the suite's own config, so that a suite may still say
+        // something else about it. The services section is read after every
+        // extension has registered its own, so this changes how Core's mailer
+        // is made rather than adding a second one beside it.
+        if ($capturingMail) {
+            $configurator->addConfig(['services' => ['core.mailer' => ['create' => CapturingMailer::class]]]);
         }
 
         if ($config !== []) {

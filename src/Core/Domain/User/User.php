@@ -33,6 +33,9 @@ use Trilobit\Core\Tenancy\Shared;
 #[Shared(because: 'an account is global and belonging to a tenant is a relationship; see Trilobit\Core\Domain\Tenancy\Membership')]
 class User
 {
+    /** What an account holds in place of a password until it sets one; see invited(). */
+    private const string NO_PASSWORD = '';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -134,9 +137,28 @@ class User
         return $this->email;
     }
 
+    /**
+     * An account for somebody added to a business, who sets their password
+     * with the link they are sent - Trilobit\Core\Security\PasswordLinks.
+     *
+     * Until then it has no password at all rather than one nobody knows: the
+     * empty value matches nothing a person can type, and it is what tells an
+     * account waiting for its link from one that has signed in before.
+     */
+    public static function invited(string $email, string $name, DateTimeImmutable $createdAt): self
+    {
+        return new self($email, self::NO_PASSWORD, $name, $createdAt);
+    }
+
     public function passwordHash(): string
     {
         return $this->passwordHash;
+    }
+
+    /** Whether a password has been set - false for an account still waiting for the link it was sent. */
+    public function hasPassword(): bool
+    {
+        return $this->passwordHash !== self::NO_PASSWORD;
     }
 
     public function changePassword(string $passwordHash): void

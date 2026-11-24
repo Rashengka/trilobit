@@ -22,8 +22,10 @@ use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
+use Trilobit\Core\Routing\PasswordRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Grant;
+use Trilobit\Core\Security\PasswordLinks;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
 use Trilobit\Core\Seed\SeedProvider;
@@ -61,11 +63,17 @@ use Trilobit\Core\Tenancy\Tenancy;
  * hosts, the installation's administrator and the owners are made by running
  * `app:tenant` and `app:account`, the commands a person would type, so the
  * seed cannot make a business or an owner those commands would not - and
- * follows them when they change. A business's own roles and the people holding
- * them have no command yet, so they are made here out of the same entities,
- * whose constructors refuse what the domain refuses. **Exit condition:** the
- * first command or administration screen that composes a business's role or
- * gives somebody one - the seed then goes through that instead.
+ * follows them when they change. A business's own roles have no command or
+ * screen yet, so they are made here out of the same entities, whose
+ * constructors refuse what the domain refuses. **Exit condition:** the first
+ * command or screen that composes a business's role. The people holding them
+ * do have a screen now - Trilobit\Core\Security\People, behind the people
+ * of the administration - but it acts as whoever is signed in, and a console
+ * has nobody signed in; so they are made out of the same entities too, and
+ * the one waiting for their link is given it by
+ * Trilobit\Core\Security\PasswordLinks, as the screen gives it. **Exit
+ * condition:** a way for a command to act as a named person, at which point
+ * the seed adds its people through People and is held to its guards.
  *
  * **Every password is generated and printed once**, like `app:account`'s, and
  * what is stored is a hash. None is written in the code, so a seeded database
@@ -98,9 +106,18 @@ final class SeedCommand extends Command
      * A constant because it is a contract - Trilobit\Tests\Integration\Console\
      * SeedCommandTest signs in with what it reads out of the output, so
      * rewording the rest cannot quietly break reading the passwords back.
-     * Nothing else printed here holds an address.
+     * Nothing else printed here holds an address and a password; an
+     * invitation is printed in the shape of INVITATION_LINE, whose second
+     * column is a path and so never reads as a password.
      */
     public const string ACCOUNT_LINE = '/^ {2}(\S+@\S+) +([A-Za-z0-9]+) {2}(\S.*)$/m';
+
+    /**
+     * How somebody waiting for the link they were sent appears: two spaces,
+     * the address, the path of the link that sets their password, and what
+     * the account is for. A contract for the same reason as ACCOUNT_LINE.
+     */
+    public const string INVITATION_LINE = '/^ {2}(\S+@\S+) +(\/' . PasswordRoutes::PATH . '\/[A-Za-z0-9_-]+) {2}(\S.*)$/m';
 
     private const string AMMONITE = 'Ammonite Bikes';
 
@@ -122,6 +139,7 @@ final class SeedCommand extends Command
         private readonly Passwords $passwords,
         private readonly HostTenants $hosts,
         private readonly Tenancy $tenancy,
+        private readonly PasswordLinks $links,
         private readonly array $providers = [],
     ) {
         parent::__construct();
@@ -188,13 +206,40 @@ final class SeedCommand extends Command
             ]),
             'keeps the content of ' . self::AMMONITE . ' and nothing else',
         );
+        $onlooker = $this->roleOf($ammonite, 'onlooker', 'Onlooker', []);
         $accounts[] = $this->member(
             $ammonite,
             'ammonite-onlooker@example.com',
             'Nora Nautilus',
-            $this->roleOf($ammonite, 'onlooker', 'Onlooker', []),
+            $onlooker,
             'belongs to ' . self::AMMONITE . ' and may do nothing there',
         );
+
+        // The role in between for people: who belongs to the business and
+        // what each of them holds, and nothing beside it - so what it may give
+        // is a role holding no more than that (H5), and the owner's is not one.
+        $accounts[] = $this->member(
+            $ammonite,
+            'ammonite-people@example.com',
+            'Gil Graptolite',
+            $this->roleOf($ammonite, 'people', 'People manager', [
+                new Grant(Resource::Account, Privilege::View),
+                new Grant(Resource::Account, Privilege::Add),
+                new Grant(Resource::Account, Privilege::Edit),
+                new Grant(Resource::Account, Privilege::Delete),
+            ]),
+            'manages the people of ' . self::AMMONITE . ', giving nobody more than that, and nothing else',
+        );
+
+        // Somebody added and not signed in yet: no password, and the link that
+        // sets one printed instead - a seed sends nothing.
+        $invitations = [$this->invited(
+            $ammonite,
+            'ammonite-invited@example.com',
+            'Ivo Isopod',
+            $onlooker,
+            'added to ' . self::AMMONITE . ' and waiting: the link sets their password',
+        )];
         $content[self::AMMONITE] = $this->contentOf($ammonite);
 
         $belemnite = $this->enter(self::BELEMNITE_HOSTS[0]);
@@ -210,7 +255,7 @@ final class SeedCommand extends Command
         );
         $content[self::BELEMNITE] = $this->contentOf($belemnite);
 
-        $this->report($style, $accounts, $content);
+        $this->report($style, $accounts, $invitations, $content);
 
         return self::SUCCESS;
     }
@@ -342,6 +387,25 @@ final class SeedCommand extends Command
         return [$email, $password, $description];
     }
 
+    /**
+     * Somebody added to $business holding $role and waiting for the link they
+     * were sent: an account with no password, and the path of the link that
+     * sets one - made by Trilobit\Core\Security\PasswordLinks, as the
+     * administration makes it. Nothing is sent.
+     *
+     * @return array{string, string, string} the address, the path of the link and what the account is for
+     */
+    private function invited(Tenant $business, string $email, string $name, Role $role, string $description): array
+    {
+        $account = User::invited($email, $name, new DateTimeImmutable());
+        $this->accounts->save($account);
+
+        $this->entityManager->persist(new Membership($business, $account, $role));
+        $this->entityManager->flush();
+
+        return [$email, '/' . PasswordRoutes::PATH . '/' . $this->links->issue($account), $description];
+    }
+
     /** @return list<string> what the modules of this build made in $business, which the process is inside */
     private function contentOf(Tenant $business): array
     {
@@ -357,11 +421,16 @@ final class SeedCommand extends Command
 
     /**
      * @param list<array{string, string, string}> $accounts
+     * @param list<array{string, string, string}> $invitations the address, the path of the link and what the account is for
      * @param array<string, list<string>> $content by the business's name
      */
-    private function report(SymfonyStyle $style, array $accounts, array $content): void
+    private function report(SymfonyStyle $style, array $accounts, array $invitations, array $content): void
     {
-        $style->success(sprintf('Seeded two businesses and %d accounts.', count($accounts)));
+        $style->success(sprintf(
+            'Seeded two businesses and %d accounts, %d of them waiting for the link they were sent.',
+            count($accounts) + count($invitations),
+            count($invitations),
+        ));
 
         $style->section('Businesses');
         $style->writeln(sprintf('  %s answers at %s', self::AMMONITE, implode(', ', self::AMMONITE_HOSTS)));
@@ -374,6 +443,16 @@ final class SeedCommand extends Command
         $style->writeln('');
         foreach ($accounts as [$email, $password, $description]) {
             $style->writeln(sprintf('  %-32s  %s  %s', $email, $password, $description));
+        }
+
+        $style->section('Invitations');
+        $style->writeln(sprintf(
+            'Nothing was sent. Each link opens once, for %d days, at a host of its business.',
+            PasswordLinks::DAYS,
+        ));
+        $style->writeln('');
+        foreach ($invitations as [$email, $path, $description]) {
+            $style->writeln(sprintf('  %-32s  %s  %s', $email, $path, $description));
         }
 
         $style->section('Content');
