@@ -38,13 +38,13 @@ final class Build
      * Of those, the ones that have an administration to put on the bar.
      *
      * A module contributes a menu entry when it has an administration page to
-     * contribute one for, and two of the three have none yet - they used to
-     * put their own public page on the bar, which was an entry leading out of
-     * the administration and is gone. The list is written here rather than
+     * contribute one for, and one of the three has none yet - it used to put
+     * its own public page on the bar, which was an entry leading out of the
+     * administration and is gone. The list is written here rather than
      * derived, because deriving it from the menu would make every claim below
      * agree with whatever the menu happens to hold.
      */
-    public const array WITH_AN_ADMINISTRATION = ['cms'];
+    public const array WITH_AN_ADMINISTRATION = ['cms', 'shop'];
 
     /** @var array<string, Container> */
     private static array $containers = [];

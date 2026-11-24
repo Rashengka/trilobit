@@ -1,0 +1,32 @@
+{templateType Trilobit\Shop\Presentation\Admin\ProductsTemplate}
+
+{*
+ * Every product of this business, whether or not a visitor may see it -
+ * filtered and paged from the address by
+ * Trilobit\Shop\Presentation\Admin\ProductListing, whose rows are drawn by
+ * ../ProductListing.latte.
+ *}
+
+{import '../../../../../Core/Presentation/components/page-heading.latte'}
+{import '../../../../../Core/Presentation/components/panel.latte'}
+{import '../../../../../Core/Presentation/components/button.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'shop-products-headline',
+        leadTestId: 'shop-products-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'Add a product', href: $addUrl, testId: 'shop-products-add'}
+    </div>
+
+    {embed block panel, testId: 'shop-products-panel'}
+        {block panelTitle}Products{/block}
+
+        {block panelBody}
+            {control products}
+        {/block}
+    {/embed}
+{/block}

@@ -29,6 +29,7 @@ use Trilobit\Core\Security\PasswordLinks;
 use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
 use Trilobit\Core\Seed\SeedProvider;
+use Trilobit\Core\Seed\SeedsMembers;
 use Trilobit\Core\Tenancy\HostTenants;
 use Trilobit\Core\Tenancy\Tenancy;
 
@@ -65,8 +66,11 @@ use Trilobit\Core\Tenancy\Tenancy;
  * seed cannot make a business or an owner those commands would not - and
  * follows them when they change. A business's own roles have no command or
  * screen yet, so they are made here out of the same entities, whose
- * constructors refuse what the domain refuses. **Exit condition:** the first
- * command or screen that composes a business's role. The people holding them
+ * constructors refuse what the domain refuses - and so are the ones a module
+ * names through Trilobit\Core\Seed\SeedsMembers, whose roles are made of the
+ * module's own resources and therefore cannot be written here by name.
+ * **Exit condition:** the first command or screen that composes a business's
+ * role - the seed then goes through that instead. The people holding them
  * do have a screen now - Trilobit\Core\Security\People, behind the people
  * of the administration - but it acts as whoever is signed in, and a console
  * has nobody signed in; so they are made out of the same entities too, and
@@ -240,6 +244,7 @@ final class SeedCommand extends Command
             $onlooker,
             'added to ' . self::AMMONITE . ' and waiting: the link sets their password',
         )];
+        $accounts = [...$accounts, ...$this->membersFromModules($ammonite)];
         $content[self::AMMONITE] = $this->contentOf($ammonite);
 
         $belemnite = $this->enter(self::BELEMNITE_HOSTS[0]);
@@ -253,6 +258,7 @@ final class SeedCommand extends Command
             ]),
             'reads and corrects the content of ' . self::BELEMNITE . ' - its own editor, under the same code',
         );
+        $accounts = [...$accounts, ...$this->membersFromModules($belemnite)];
         $content[self::BELEMNITE] = $this->contentOf($belemnite);
 
         $this->report($style, $accounts, $invitations, $content);
@@ -385,6 +391,37 @@ final class SeedCommand extends Command
         $this->entityManager->flush();
 
         return [$email, $password, $description];
+    }
+
+    /**
+     * The people the modules of this build want in $business, made the way
+     * member() makes the seed's own, at an address beginning with the
+     * business's first word - see Trilobit\Core\Seed\SeedsMembers.
+     *
+     * @return list<array{string, string, string}> the address, the password and what the account is for
+     */
+    private function membersFromModules(Tenant $business): array
+    {
+        $prefix = strtolower(explode(' ', $business->name())[0]);
+
+        $made = [];
+        foreach ($this->providers as $provider) {
+            if (!$provider instanceof SeedsMembers) {
+                continue;
+            }
+
+            foreach ($provider->members($business) as $member) {
+                $made[] = $this->member(
+                    $business,
+                    sprintf('%s-%s@example.com', $prefix, $member->mailbox),
+                    $member->name,
+                    $this->roleOf($business, $member->roleCode, $member->roleName, $member->grants),
+                    $member->description,
+                );
+            }
+        }
+
+        return $made;
     }
 
     /**
