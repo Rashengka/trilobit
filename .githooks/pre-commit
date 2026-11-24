@@ -23,4 +23,134 @@ if git diff --cached --quiet; then
     exit 0
 fi
 
-exec "$root/bin/check-leaks" --staged
+# The exit code for "the check could not be run", the one bin/check-leaks
+# uses for a tool error. Never 0: a hook that could not look has not looked,
+# and a commit it let through would read exactly like one it had checked.
+cannot_run=2
+
+fail() {
+    printf 'pre-commit: %s\n' "$@" >&2
+    exit "$cannot_run"
+}
+
+# bin/check-leaks is written for the PHP composer.json promises, and the
+# project runs in Docker rather than on whatever PHP the host happens to have.
+# A host PHP below that floor does not fail politely: it stops on a parse
+# error, which blocks every commit made from the host. So the floor decides
+# where the check runs - on the host when its PHP is new enough, in the
+# project's php container otherwise.
+#
+# The floor is read with sed, not with PHP, because the PHP that would read it
+# is the one in question. Only a single lower bound is understood (">=X.Y",
+# "^X.Y" or "~X.Y", with or without a patch number), the shapes bin/check-floor
+# accepts; anything else, no composer.json, or no PHP on the host at all, goes
+# to the container.
+# A misreading cannot let a commit through unchecked: a floor read too low
+# sends the check to a host PHP that then fails on the script, out loud, and
+# one read too high only sends it to the container.
+host_php_is_enough() {
+    [ -f "$root/composer.json" ] || return 1
+    constraint=$(sed -n 's/^[[:space:]]*"php"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$root/composer.json" | sed -n 1p)
+    case $constraint in
+        '>='*) floor=${constraint#>=} ;;
+        '^'* | '~'*) floor=${constraint#?} ;;
+        *) return 1 ;;
+    esac
+    case $floor in
+        [0-9]*.[0-9]*) ;;
+        *) return 1 ;;
+    esac
+    case $floor in
+        *[!0-9.]*) return 1 ;;
+    esac
+    floor_major=${floor%%.*}
+    floor_minor=${floor#*.}
+    floor_minor=${floor_minor%%.*}
+
+    command -v php >/dev/null 2>&1 || return 1
+    # Anything the probe does not answer with two numbers - a PHP too old or
+    # too broken to run it - counts as not enough.
+    host=$(php -r 'echo PHP_MAJOR_VERSION, " ", PHP_MINOR_VERSION;' 2>/dev/null) || return 1
+    case $host in
+        [0-9]*' '[0-9]*) ;;
+        *) return 1 ;;
+    esac
+    case $host in
+        *[!0-9\ ]*) return 1 ;;
+    esac
+    host_major=${host% *}
+    host_minor=${host#* }
+
+    [ "$host_major" -gt "$floor_major" ] \
+        || { [ "$host_major" -eq "$floor_major" ] && [ "$host_minor" -ge "$floor_minor" ]; }
+}
+
+if host_php_is_enough; then
+    exec "$root/bin/check-leaks" --staged
+fi
+
+# From here on the check runs in the php container of this checkout's own
+# compose stack. Compose is started from the checkout's root so that it reads
+# that checkout's .env, which names the stack: the main checkout and every
+# worktree have one each, each with its own checkout mounted at /app.
+too_old="the host's PHP is older than composer.json's require.php, so bin/check-leaks has to run in the project's php container"
+here=$(pwd -P)
+cd "$root"
+
+command -v docker >/dev/null 2>&1 \
+    || fail "$too_old, and there is no docker on this machine." \
+        "Install Docker, then start the stack from $root: docker compose up -d"
+
+running=$(docker compose ps --status running --services) \
+    || fail "$too_old, and docker compose could not say whether that container runs." \
+        "Start Docker, then the stack from $root: docker compose up -d"
+printf '%s\n' "$running" | grep -qx php \
+    || fail "$too_old, and that container is not running." \
+        "Start it from $root: docker compose up -d"
+
+# docker compose exec passes none of the host's environment on its own, which
+# is what keeps git's hook variables - GIT_DIR, GIT_EXEC_PATH and the rest, all
+# host paths - out of the container. The one that matters is passed on
+# purpose: for `git commit -- <paths>` and `git commit -a` git builds a
+# temporary index and names it in GIT_INDEX_FILE, and that index, not the
+# ordinary one, is what the commit records. It may be relative to the hook's
+# directory, which is the checkout's root. Under the root it becomes a path
+# under /app; anywhere else - a worktree's index lives in the main checkout's
+# git directory - it is passed unchanged, because the stack mounts that
+# directory at the same path.
+index_option=
+if [ -n "${GIT_INDEX_FILE:-}" ]; then
+    case $GIT_INDEX_FILE in
+        /*) index=$GIT_INDEX_FILE ;;
+        *) index=$here/$GIT_INDEX_FILE ;;
+    esac
+    case $index in
+        "$root"/*) index=/app/${index#"$root"/} ;;
+        "$here"/*) index=/app/${index#"$here"/} ;;
+    esac
+    index_option="GIT_INDEX_FILE=$index"
+fi
+
+# A container that read a different index - a path that does not exist in it,
+# another checkout's stack - would see a different stage, possibly an empty
+# one, and could report it clean. So the container first proves that it sees
+# the stage the host sees: both sides fingerprint the same diff, and a
+# mismatch stops the commit instead of scanning something else. hash-object
+# without -w only hashes; it writes no object.
+expected=$(git diff --cached --raw -z --no-renames --no-abbrev | git hash-object --stdin)
+
+# shellcheck disable=SC2016 # expanded in the container, not here
+in_container='
+seen=$(git diff --cached --raw -z --no-renames --no-abbrev | git hash-object --stdin)
+if [ "$seen" != "$1" ]; then
+    printf "pre-commit: the php container does not see the stage this commit records, so it cannot check it.\n" >&2
+    printf "pre-commit: index it read: %s\n" "${GIT_INDEX_FILE:-the default one}" >&2
+    exit 2
+fi
+exec bin/check-leaks --staged
+'
+
+if [ -n "$index_option" ]; then
+    exec docker compose exec -T -e "$index_option" php sh -c "$in_container" sh "$expected"
+fi
+exec docker compose exec -T php sh -c "$in_container" sh "$expected"
