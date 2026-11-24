@@ -27,11 +27,30 @@ use PHPUnit\Framework\TestCase;
  * or, where a case needs the whole path, runs the command on the real PHP as
  * the container would - only /app does not exist here, so those cases keep
  * the index outside the checkout.
+ *
+ * Neither stand-in may meet a real one. A CI runner carries a real docker in
+ * /usr/bin, and often a real php beside it, so the rest of the PATH is not
+ * the system's directories but one of the sandbox's own, holding links to
+ * the few tools the hook, bin/check-leaks and the stand-ins call - and never
+ * to a php or a docker.
  */
 #[CoversNothing]
 final class PreCommitHookTest extends TestCase
 {
     private const string FLOOR = '>=8.4';
+
+    /**
+     * Everything the hook, bin/check-leaks and the stand-ins run by name.
+     * bin/check-leaks starts git through /bin/sh, and its shebang finds php
+     * through /usr/bin/env; both are absolute, but the commands they look up
+     * are not.
+     */
+    private const array TOOLS = ['sh', 'env', 'git', 'sed', 'grep'];
+
+    /**
+     * Where a tool from TOOLS is looked for on the machine running the test.
+     */
+    private const array SYSTEM_DIRECTORIES = ['/usr/bin', '/bin'];
 
     private string $sandbox;
 
@@ -41,6 +60,10 @@ final class PreCommitHookTest extends TestCase
 
     private string $bin;
 
+    private string $tools;
+
+    private string $containerBin;
+
     private string $dockerLog;
 
     protected function setUp(): void
@@ -49,10 +72,13 @@ final class PreCommitHookTest extends TestCase
         $this->repo = $this->sandbox . '/repo';
         $this->home = $this->sandbox . '/home';
         $this->bin = $this->sandbox . '/bin';
+        $this->tools = $this->sandbox . '/tools';
+        $this->containerBin = $this->sandbox . '/container-bin';
         $this->dockerLog = $this->sandbox . '/docker.log';
 
         FileSystem::createDir($this->repo);
         FileSystem::createDir($this->bin);
+        $this->linkTools();
         FileSystem::write($this->home . '/.config/trilobit/check-leaks.local', 'zzz-marker-pre-commit' . "\n");
 
         foreach (['.githooks/pre-commit', 'bin/check-leaks', '.check-leaks.yaml'] as $file) {
@@ -316,7 +342,7 @@ final class PreCommitHookTest extends TestCase
         $services = $running ? 'database\nphp\n' : 'database\n';
         $run = $runInContainer ? '1' : '0';
         $index = $containerIndex === null ? '' : 'GIT_INDEX_FILE=' . $containerIndex;
-        $containerPath = dirname($this->realPhp()) . ':' . $this->systemPath();
+        $containerPath = $this->containerBin . ':' . $this->systemPath();
         $this->script('docker', <<<SH
             #!/bin/sh
             { for argument in "\$@"; do printf '%s\\n' "\$argument"; done; printf '%s\\n' '----'; } >> '{$this->dockerLog}'
@@ -422,12 +448,54 @@ final class PreCommitHookTest extends TestCase
     }
 
     /**
-     * Where git, sh and sed live, and nothing that could carry a php or a
-     * docker of its own.
+     * Links every tool from TOOLS into the sandbox, from the first system
+     * directory that has it, and the real PHP alone into the directory the
+     * docker stand-in gives the container.
+     *
+     * A tool that is missing stops the test by name rather than leaving it
+     * out: the hook would then fail for a reason no case is about, and a case
+     * that expects a failure would pass on it. And the PATH is checked once it
+     * is built, so that a php or a docker added to TOOLS one day cannot bring
+     * back the machine's own - the very thing this directory is here to keep
+     * out.
+     */
+    private function linkTools(): void
+    {
+        FileSystem::createDir($this->tools);
+        foreach (self::TOOLS as $tool) {
+            $found = null;
+            foreach (self::SYSTEM_DIRECTORIES as $directory) {
+                if (is_file($directory . '/' . $tool) && is_executable($directory . '/' . $tool)) {
+                    $found = $directory . '/' . $tool;
+                    break;
+                }
+            }
+            if ($found === null) {
+                self::fail(sprintf('The hook needs `%s`, and none of %s has it.', $tool, implode(', ', self::SYSTEM_DIRECTORIES)));
+            }
+            self::assertTrue(symlink($found, $this->tools . '/' . $tool), 'could not link ' . $found);
+        }
+
+        FileSystem::createDir($this->containerBin);
+        self::assertTrue(symlink($this->realPhp(), $this->containerBin . '/php'), 'could not link ' . $this->realPhp());
+
+        foreach (['php', 'docker'] as $intruder) {
+            self::assertFileDoesNotExist(
+                $this->tools . '/' . $intruder,
+                "a real {$intruder} on the hook's PATH would answer in place of the stand-in",
+            );
+        }
+        self::assertFileDoesNotExist($this->containerBin . '/docker', 'the container has no docker either');
+    }
+
+    /**
+     * The sandbox's own directory of links to the tools in TOOLS, and nothing
+     * else: no php and no docker but the stand-ins in $bin, wherever the
+     * machine running the test keeps real ones.
      */
     private function systemPath(): string
     {
-        return '/usr/bin:/bin';
+        return $this->tools;
     }
 
     private function realPhp(): string
