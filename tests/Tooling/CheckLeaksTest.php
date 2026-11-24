@@ -427,7 +427,7 @@ function checkStagedModeAndHook(array &$failures): void
         // Before the first commit there is nothing to clone; copy instead.
         mkdir($repo, 0777, true);
         execute(['git', 'init', '--quiet'], $repo, $home);
-        foreach (['bin/check-leaks', '.githooks/pre-commit', '.check-leaks.yaml'] as $file) {
+        foreach (['bin/check-leaks', '.githooks/pre-commit', '.check-leaks.yaml', 'composer.json'] as $file) {
             @mkdir($repo . '/' . dirname($file), 0777, true);
             copy(ROOT . '/' . $file, $repo . '/' . $file);
             chmod($repo . '/' . $file, 0755);
@@ -538,7 +538,7 @@ function checkHookAllowsPathspecCommitsAndAllowEmpty(array &$failures): void
 
     mkdir($repo, 0777, true);
     execute(['git', 'init', '--quiet'], $repo, $home);
-    foreach (['bin/check-leaks', '.githooks/pre-commit', '.check-leaks.yaml'] as $file) {
+    foreach (['bin/check-leaks', '.githooks/pre-commit', '.check-leaks.yaml', 'composer.json'] as $file) {
         @mkdir($repo . '/' . dirname($file), 0777, true);
         copy(ROOT . '/' . $file, $repo . '/' . $file);
         chmod($repo . '/' . $file, 0755);
