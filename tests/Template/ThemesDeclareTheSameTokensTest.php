@@ -7,7 +7,7 @@ namespace Trilobit\Tests\Template;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Trilobit\Core\Presentation\Styleguide\OverviewPresenter;
+use Trilobit\Core\Presentation\Styleguide\FoundationTokens;
 use Trilobit\Tests\Architecture\BaseCssHoldsNoLiteralsTest;
 
 /**
@@ -65,7 +65,7 @@ final class ThemesDeclareTheSameTokensTest extends TestCase
     /**
      * Every token the guide lists as a colour swatch has to be declared by
      * every theme, not merely by whichever one somebody had open while typing
-     * OverviewPresenter::COLOUR_TOKENS. A typo or a renamed token still passes
+     * FoundationTokens::COLOURS. A typo or a renamed token still passes
      * PHP - it is just a string - and the guide would draw it as a swatch with
      * nothing in it rather than fail anywhere.
      */
@@ -78,7 +78,7 @@ final class ThemesDeclareTheSameTokensTest extends TestCase
             self::assertContains(
                 $token,
                 $declared,
-                sprintf('%s lists %s as a swatch and the theme %s does not declare it', OverviewPresenter::class, $token, $name),
+                sprintf('%s lists %s as a swatch and the theme %s does not declare it', FoundationTokens::class, $token, $name),
             );
         }
     }
@@ -126,12 +126,11 @@ final class ThemesDeclareTheSameTokensTest extends TestCase
      * The tokens the guide shows, read from where the guide keeps them rather
      * than written out a second time here.
      *
-     * @return array<mixed>
+     * @return array<string, string>
      */
     private function colourTokens(): array
     {
-        $tokens = new \ReflectionClassConstant(OverviewPresenter::class, 'COLOUR_TOKENS')->getValue();
-        self::assertIsArray($tokens);
+        $tokens = FoundationTokens::colours();
         self::assertNotSame([], $tokens);
 
         return $tokens;

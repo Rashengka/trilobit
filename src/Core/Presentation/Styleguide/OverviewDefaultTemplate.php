@@ -34,8 +34,26 @@ final class OverviewDefaultTemplate extends FrontTemplate
     /** @var array<string, FormElementGroup> keyed by name, the way the template asks for them */
     public array $formElements = [];
 
-    /** @var array<string, string> token name => what it is for */
-    public array $colourTokens = [];
+    /** @var array<string, array<string, string>> heading => token name => what it is for */
+    public array $colourGroups = [];
+
+    /** @var list<string> the tones a page reports with, each a family of colour tokens */
+    public array $tones = [];
+
+    /** @var array<string, string> step of the type scale => what it is set at */
+    public array $typeSteps = [];
+
+    /** @var array<string, array{kind: string, tokens: array<string, string>}> heading => how its specimens are drawn, and its tokens */
+    public array $typeGroups = [];
+
+    /** @var array<string, array{kind: string, tokens: array<string, string>}> heading => how its specimens are drawn, and its tokens */
+    public array $sizeGroups = [];
+
+    /** @var array<string, array{kind: string, tokens: array<string, string>}> heading => how its specimens are drawn, and its tokens */
+    public array $shapeGroups = [];
+
+    /** @var array<string, array{kind: string, tokens: array<string, string>}> heading => how its specimens are drawn, and its tokens */
+    public array $motionGroups = [];
 
     /** @var array<string, string> token name => what it decides */
     public array $chromeTokens = [];

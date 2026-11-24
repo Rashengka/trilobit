@@ -43,28 +43,6 @@ use Trilobit\Core\Presentation\Front\Navigation\NavigationItem;
 final class OverviewPresenter extends FrontPresenter
 {
     /**
-     * The tokens shown as swatches, and what each is for.
-     *
-     * A hand-written list, and checked against the theme files rather than
-     * trusted: tests/Template/ThemesDeclareTheSameTokensTest fails when one of
-     * these is missing from a theme, and when the two themes stop declaring the
-     * same set.
-     *
-     * @var array<string, string>
-     */
-    private const array COLOUR_TOKENS = [
-        '--color-canvas' => 'the page itself',
-        '--color-surface' => 'anything raised off the page',
-        '--color-ink' => 'body text',
-        '--color-ink-muted' => 'text that supports other text',
-        '--color-line' => 'borders and rules',
-        '--color-accent' => 'the action a page is about',
-        '--color-danger' => 'something the page had to refuse',
-        '--color-nav' => 'behind the navigation',
-        '--color-backdrop' => 'laid over the page behind an open dialog, thin enough to show it through',
-    ];
-
-    /**
      * The tokens that decide what stays in view while the page scrolls, and
      * what each decides.
      *
@@ -95,7 +73,11 @@ final class OverviewPresenter extends FrontPresenter
         '--layout-z-menu' => 'the layer the entries a navigation opens as a block over the page are drawn '
             . 'in, above what stays in view - and the list a combobox opens',
         '--layout-z-toast' => 'the layer the toasts held in a corner of the window are drawn in, above '
-            . 'everything else named here',
+            . 'everything named here but an overlay',
+        '--layout-z-pinned' => 'the layer what is pinned inside a region scrolling under it is drawn in - the '
+            . 'first column of a wide table - above what scrolls past it and below whatever stays in view',
+        '--layout-z-overlay' => 'the layer an overlay laid over the whole page is drawn in, where the browser\'s '
+            . 'own top layer cannot be used: above everything else named here, toasts included',
         '--layout-nav-overflow' => 'whether the band the navigation is held in scrolls a menu longer than the '
             . 'window (auto) or lets a block it opens hang out of it (visible)',
         '--layout-chrome-offset' => 'how much of the top of the window the held bands cover, and half a pixel '
@@ -326,7 +308,13 @@ final class OverviewPresenter extends FrontPresenter
         $template->components = $this->byName($this->components);
         $template->contentGroups = $this->groupsByName($this->contentGroups);
         $template->formElements = $this->formElementsByName($this->formElements);
-        $template->colourTokens = self::COLOUR_TOKENS;
+        $template->colourGroups = FoundationTokens::COLOURS;
+        $template->tones = FoundationTokens::TONES;
+        $template->typeSteps = FoundationTokens::TYPE_STEPS;
+        $template->typeGroups = FoundationTokens::TYPOGRAPHY;
+        $template->sizeGroups = FoundationTokens::SIZES;
+        $template->shapeGroups = FoundationTokens::SHAPE;
+        $template->motionGroups = FoundationTokens::MOTION;
         $template->chromeTokens = self::CHROME_TOKENS;
         $template->statements = self::SAMPLE_STATEMENTS;
         $template->tableColumns = $this->sampleTableColumns();

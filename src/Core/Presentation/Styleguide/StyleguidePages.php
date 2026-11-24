@@ -69,7 +69,35 @@ final class StyleguidePages
                         'foundations',
                         'colours',
                         'Colours',
-                        'Every colour token, drawn as the colour it produces in the theme and the mode that are on.',
+                        'Every colour token, drawn as the colour it produces in the theme and the mode that are on, '
+                            . 'and the tones a page reports with.',
+                    ),
+                    new StyleguidePage(
+                        'foundations',
+                        'typography',
+                        'Typography',
+                        'The steps of the type scale with the line height each is set at, and the families, weights '
+                            . 'and letter spacing text is set in.',
+                    ),
+                    new StyleguidePage(
+                        'foundations',
+                        'sizes',
+                        'Spacing and sizes',
+                        'The steps of space, the one axis of sizes controls and their icons share, and the widths a '
+                            . 'layout is measured in.',
+                    ),
+                    new StyleguidePage(
+                        'foundations',
+                        'shape',
+                        'Shape and depth',
+                        'The corners, the four steps of elevation and the rules a theme draws its surfaces with.',
+                    ),
+                    new StyleguidePage(
+                        'foundations',
+                        'motion',
+                        'Motion',
+                        'How long things take, the curves they move along and the loops a waiting page plays - none '
+                            . 'of it for somebody who asked for reduced motion.',
                     ),
                     new StyleguidePage(
                         'foundations',

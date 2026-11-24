@@ -1,0 +1,38 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * How long things take, the curves they move along, and the loops a waiting
+ * page plays. The list is FoundationTokens::MOTION.
+ *
+ * Nothing on this page moves for somebody who asked for reduced motion: the
+ * rules in assets/base.css that animate the specimens are written inside
+ * `prefers-reduced-motion: no-preference`, like every other movement of the
+ * design system. Without them the dots jump, and the loops stand still.
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        A duration is a token with its curve; a component asks for what kind of change it is making - a
+        hover, a disclosure unfolding, a layer coming in - and the theme decides how long that takes.
+        Tick the box to move the dots, once along each duration and once along each curve; untick it to
+        move them back.
+    </p>
+
+    <p class="l-measure">
+        For somebody who asked for reduced motion, nothing here moves: the dots jump to the other end,
+        and the loops stand still. That is how every movement of the design system is written.
+    </p>
+
+    <div class="sg-motion l-stack" data-testid="styleguide-motion">
+        <label class="l-cluster">
+            <input type="checkbox" class="sg-motion__toggle" data-testid="styleguide-motion-toggle">
+            Move the dots
+        </label>
+
+        {foreach $motionGroups as $heading => $group}
+            {include sgTokenTable, heading: $heading, kind: $group['kind'], tokens: $group['tokens']}
+        {/foreach}
+    </div>
+{/block}
