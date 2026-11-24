@@ -44,10 +44,19 @@ final class AdminRoutes implements RouteProvider
     /** Where a business arranges its site's navigation (.ai/plans/10-menu-submenu-a-rozcestniky.md, M3). */
     public const string NAVIGATION_PATH = 'admin/navigation';
 
+    /** Who belongs to a business, and what each of them holds there. */
+    public const string PEOPLE_PATH = 'admin/people';
+
     public function provide(RouteList $routes): void
     {
         $routes->addRoute(self::SIGN_IN_PATH, 'Core:Admin:Sign:in');
         $routes->addRoute(self::NAVIGATION_PATH, 'Core:Admin:Navigation:default');
+        // The form for somebody new comes before the page that takes an
+        // identifier: the other way round, `add` would be read as the
+        // identifier of a person and refused for not being a number.
+        $routes->addRoute(self::PEOPLE_PATH, 'Core:Admin:People:default');
+        $routes->addRoute(self::PEOPLE_PATH . '/add', 'Core:Admin:People:add');
+        $routes->addRoute(self::PEOPLE_PATH . '/<id \d+>', 'Core:Admin:People:person');
         $routes->addRoute(self::INSTALLATION_PATH, 'Core:Installation:Signpost:default');
         $routes->addRoute(self::INSTALLATION_PATH . '/businesses', 'Core:Installation:Businesses:default');
         $routes->addRoute(self::PATH, 'Core:Admin:Dashboard:default');

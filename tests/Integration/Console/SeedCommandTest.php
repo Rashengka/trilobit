@@ -27,6 +27,7 @@ use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Grant;
 use Trilobit\Core\Security\Identity;
 use Trilobit\Core\Security\Landlords;
+use Trilobit\Core\Security\PasswordLinks;
 use Trilobit\Core\Security\Permissions;
 use Trilobit\Core\Security\PermissionStructure;
 use Trilobit\Core\Security\Privilege;
@@ -68,6 +69,10 @@ final class SeedCommandTest extends TestCase
     private const string AMMONITE_EDITOR = 'ammonite-editor@example.com';
 
     private const string AMMONITE_ONLOOKER = 'ammonite-onlooker@example.com';
+
+    private const string AMMONITE_PEOPLE = 'ammonite-people@example.com';
+
+    private const string AMMONITE_INVITED = 'ammonite-invited@example.com';
 
     private const string BELEMNITE_OWNER = 'belemnite-owner@example.com';
 
@@ -149,6 +154,7 @@ final class SeedCommandTest extends TestCase
                 self::AMMONITE_EDITOR,
                 self::AMMONITE_ONLOOKER,
                 self::AMMONITE_OWNER,
+                self::AMMONITE_PEOPLE,
                 self::BELEMNITE_EDITOR,
                 self::BELEMNITE_OWNER,
                 self::LANDLORD,
@@ -297,6 +303,62 @@ final class SeedCommandTest extends TestCase
         self::assertSame($ammonite->id(), $role->business()?->id());
         self::assertSame([], $role->permissions());
         self::assertSame([], $this->allowedPairs($container));
+    }
+
+    /**
+     * The role in between for people: who belongs to the business and what
+     * each of them holds - adding, changing and removing them - and nothing
+     * else. It opens the administration they are in, and no content.
+     */
+    public function testThePeopleManagerManagesPeopleAndNothingElse(): void
+    {
+        $container = $this->seeded($output);
+        $ammonite = $this->businessCalled($container, 'Ammonite Bikes');
+
+        $this->signIn($container, self::AMMONITE_PEOPLE, $this->passwordsIn($output));
+        Tenants::switchTo($container, $ammonite);
+
+        $role = $this->roleHeldBy($container, self::AMMONITE_PEOPLE);
+        self::assertSame('people', $role->code());
+        self::assertSame($ammonite->id(), $role->business()?->id(), 'the role is the business\'s own');
+        $managing = [
+            new Grant(Resource::Account, Privilege::View),
+            new Grant(Resource::Account, Privilege::Add),
+            new Grant(Resource::Account, Privilege::Edit),
+            new Grant(Resource::Account, Privilege::Delete),
+        ];
+        self::assertSame($this->pairs($managing), $this->sorted($role->permissions()));
+        self::assertSame(
+            $this->pairs([
+                new Grant(Resource::App, Privilege::View),
+                new Grant(Resource::Administration, Privilege::View),
+                ...$managing,
+            ]),
+            $this->allowedPairs($container),
+        );
+    }
+
+    /**
+     * Somebody added and still waiting for the link they were sent: no
+     * password, a link printed for them in place of one, and the link opens.
+     * They belong to the business already, holding its onlooker's role.
+     */
+    public function testSomebodyInvitedIsWaitingForTheLinkPrintedForThem(): void
+    {
+        $container = $this->seeded($output);
+
+        self::assertSame(1, preg_match_all(SeedCommand::INVITATION_LINE, $output, $lines, PREG_SET_ORDER), "no invitation line in the output:\n" . $output);
+        $line = $lines[0] ?? [];
+        self::assertSame(self::AMMONITE_INVITED, $line[1] ?? null);
+
+        $account = $container->getByType(Accounts::class)->withEmail(self::AMMONITE_INVITED);
+        self::assertInstanceOf(User::class, $account);
+        self::assertFalse($account->hasPassword());
+        self::assertSame(1, preg_match('~^/_password/([A-Za-z0-9_-]+)$~', $line[2], $token));
+        self::assertSame(self::AMMONITE_INVITED, $container->getByType(PasswordLinks::class)->holderOf($token[1] ?? '')?->email());
+
+        Tenants::switchTo($container, $this->businessCalled($container, 'Ammonite Bikes'));
+        self::assertSame(['onlooker'], $this->membershipsOf($container, self::AMMONITE_INVITED));
     }
 
     /**

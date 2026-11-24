@@ -5,10 +5,16 @@ declare(strict_types=1);
 namespace Trilobit\Tests;
 
 use Doctrine\DBAL\Connection;
+use FilesystemIterator;
 use Nette\DI\Container;
+use Nette\Utils\FileSystem;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Config\Environment;
 use Trilobit\Core\Module\ModuleList;
+use Trilobit\Tests\Double\Mail\CapturingMailer;
 use Trilobit\Tests\Runner\KeepingUnitTestsAwayFromTheDatabase;
 use WeakReference;
 
@@ -57,6 +63,12 @@ final class Boot
     private static bool $handlersTaken = false;
 
     /**
+     * What the source this process runs said when the process started; see
+     * takeTheSourceAsItIsNow().
+     */
+    private static ?string $sourceHash = null;
+
+    /**
      * Every build this class has handed out and that somebody still holds.
      *
      * Weak on purpose: a reference kept here would be the one thing stopping a
@@ -89,6 +101,12 @@ final class Boot
      *     of var/tmp, for a suite whose question is what happens while a
      *     container is compiled - which in var/tmp happens once per build and
      *     then never again on that machine.
+     * @param bool $capturingMail whether the build keeps its mail in a
+     *     Trilobit\Tests\Double\Mail\CapturingMailer rather than sending it -
+     *     true for every build but the one a suite makes to ask which mailer
+     *     the environment would have given it. A test sending real mail would
+     *     send it from a developer's machine to whoever the fixture names, or,
+     *     with nothing listening, fail for a reason it is not about.
      */
     public static function container(
         ?ModuleList $modules = null,
@@ -97,6 +115,7 @@ final class Boot
         ?Environment $environment = null,
         ?array $cookies = null,
         ?string $tempDirectory = null,
+        bool $capturingMail = true,
     ): Container {
         // The second door into a database, and the one that opens without
         // saying so: a built container carries a connection pointed at whatever
@@ -106,6 +125,11 @@ final class Boot
         KeepingUnitTestsAwayFromTheDatabase::refuse('a built application container');
 
         $configurator = Bootstrap::configurator($modules, $environment, $cookies);
+        // A build is cached by its static parameters, so this one makes the
+        // cache key say which code the container was compiled from as well as
+        // which configuration; see takeTheSourceAsItIsNow() for why the
+        // framework's own check is not enough on a working copy.
+        $configurator->addStaticParameters(['sourceHash' => self::takeTheSourceAsItIsNow()]);
         if ($tempDirectory !== null) {
             $configurator->setTempDirectory($tempDirectory);
         }
@@ -123,6 +147,14 @@ final class Boot
             $configurator->addConfig(['parameters' => ['trilobit' => ['styleguide' => $styleguide]]]);
         }
 
+        // Before the suite's own config, so that a suite may still say
+        // something else about it. The services section is read after every
+        // extension has registered its own, so this changes how Core's mailer
+        // is made rather than adding a second one beside it.
+        if ($capturingMail) {
+            $configurator->addConfig(['services' => ['core.mailer' => ['create' => CapturingMailer::class]]]);
+        }
+
         if ($config !== []) {
             $configurator->addConfig($config);
         }
@@ -137,6 +169,64 @@ final class Boot
         self::$built[] = WeakReference::create($container);
 
         return $container;
+    }
+
+    /**
+     * Reads what the application's source says, once per process, and from
+     * then on answers with that.
+     *
+     * A working copy keeps its compiled containers in var/tmp from one run to
+     * the next, and the framework compiles one again in two cases only.
+     * Outside debug mode never - right on a server, which is deployed with an
+     * empty cache, and on a working copy the reason a production-mode build
+     * goes on serving a constructor that has since changed. In debug mode when
+     * the modification time of a file the compilation used has moved - but the
+     * times are taken after compiling, and what was compiled is the code the
+     * process had loaded, perhaps before the files changed. A suite running
+     * across a merge therefore writes a container of the old code beside the
+     * new times, and every later run takes it as current. Both fail loudly,
+     * and both read as a fault in the code under test rather than in a cache.
+     *
+     * So the suite keys its builds by the contents of src/ as well. It is
+     * taken once, when the process starts - tests/bootstrap.php calls this
+     * before any test has loaded anything - because that is the code this
+     * process compiles from; a value taken again at each build would be the
+     * code on disk, which is the very thing a long run cannot be assumed to
+     * have loaded. Contents rather than times, so that a checkout of the same
+     * code finds the containers it compiled before.
+     *
+     * This lives in the suite rather than in Trilobit\Core\Bootstrap on
+     * purpose. Production compiles once into an empty cache and must not read
+     * its whole source on every request to learn something it already knows.
+     *
+     * The directory read is the one the application's classes are loaded
+     * from, which is Trilobit\Core\Bootstrap's own checkout.
+     */
+    public static function takeTheSourceAsItIsNow(): string
+    {
+        if (self::$sourceHash !== null) {
+            return self::$sourceHash;
+        }
+
+        $source = Bootstrap::rootDirectory() . '/src';
+        $files = [];
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS));
+        foreach ($iterator as $file) {
+            if ($file instanceof SplFileInfo && $file->isFile()) {
+                $files[] = $file->getPathname();
+            }
+        }
+
+        // The order a directory is listed in is the filesystem's, and two
+        // listings of the same tree are not promised to agree.
+        sort($files);
+
+        $contents = '';
+        foreach ($files as $file) {
+            $contents .= substr($file, strlen($source)) . "\0" . FileSystem::read($file) . "\0";
+        }
+
+        return self::$sourceHash = hash('xxh128', $contents);
     }
 
     /** The build the application is in when no optional module is switched on. */

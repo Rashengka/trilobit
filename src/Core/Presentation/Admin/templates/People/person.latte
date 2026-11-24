@@ -1,0 +1,97 @@
+{templateType Trilobit\Core\Presentation\Admin\PeopleTemplate}
+
+{*
+ * One person of this business: what they hold here, and what the person
+ * reading may change about it.
+ *
+ * Every button here is drawn only where the act behind it would be allowed,
+ * and each says why not once, above, where nothing is offered - see
+ * Trilobit\Core\Security\People. A button not drawn is a courtesy; the service
+ * refuses the same act posted without one.
+ *
+ * Taking a role away is a form of its own for each role, and its button is
+ * the danger variant: it cannot be undone from here, other than by giving the
+ * role again. The forms are written out with n:name rather than rendered, so
+ * that the button carries the component's class as written - see the comment
+ * beside the delete button in the CMS templates.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/badge.latte'}
+{import '../../../components/notice.latte'}
+{import '../../../components/table.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'people-headline',
+        leadTestId: 'people-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'Back to people', href: $listUrl, variant: 'quiet', testId: 'people-back'}
+        {include badge, label: $personState, testId: 'people-person-state'}
+    </div>
+
+    {if $unchangeable !== null}
+        {include notice, message: $unchangeable, testId: 'people-unchangeable'}
+    {/if}
+
+    {embed block panel, testId: 'people-held-panel'}
+        {block panelTitle}What they hold here{/block}
+
+        {block panelBody}
+            {embed block table, caption: 'The roles this person holds in this business', testId: 'people-held'}
+                {block tableHead}
+                    <tr>
+                        <th scope="col">Role</th>
+                        <th scope="col" class="c-table__actions">
+                            <span class="u-visually-hidden">Actions</span>
+                        </th>
+                    </tr>
+                {/block}
+
+                {block tableBody}
+                    <tr n:foreach="$held as $role" data-testid="people-held-{$role->membership}">
+                        <th scope="row">{$role->name}</th>
+
+                        <td class="c-table__actions">
+                            {if $role->refusal === null}
+                                {var $removal = 'removal-' . $role->membership}
+                                <form n:name="$removal" data-testid="people-remove-{$role->membership}">
+                                    <button n:name="remove" class="c-button c-button--danger" data-testid="people-remove-submit-{$role->membership}">Remove {$role->name}</button>
+                                </form>
+                            {/if}
+                        </td>
+                    </tr>
+                {/block}
+            {/embed}
+        {/block}
+    {/embed}
+
+    {if $mayGive}
+        {embed block panel, testId: 'people-role-panel'}
+            {block panelTitle}Give another role{/block}
+
+            {block panelBody}
+                {control role}
+            {/block}
+        {/embed}
+    {/if}
+
+    {if $mayResend}
+        {embed block panel, testId: 'people-resend-panel'}
+            {block panelTitle}The invitation{/block}
+
+            {block panelBody}
+                <p>{$personEmail} has not set a password yet. Sending the invitation again sends a new link, and the one sent before stops opening.</p>
+
+                <form n:name="resend" data-testid="people-resend">
+                    <button n:name="send" class="c-button" data-testid="people-resend-submit">Send the invitation again</button>
+                </form>
+            {/block}
+        {/embed}
+    {/if}
+{/block}

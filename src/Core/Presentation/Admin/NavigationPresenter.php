@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Admin;
 
+use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Nette\Http\IResponse;
@@ -102,6 +103,7 @@ final class NavigationPresenter extends AdminPresenter
         return parent::createTemplate($class ?? NavigationDefaultTemplate::class);
     }
 
+    #[Requires(actions: 'default')]
     protected function createComponentArrangement(): Form
     {
         $form = new Form();
