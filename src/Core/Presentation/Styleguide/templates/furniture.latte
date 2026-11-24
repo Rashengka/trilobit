@@ -1,6 +1,8 @@
 {templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
 
 {import '../../components/tabs.latte'}
+{import '../../components/table.latte'}
+{import '../../components/icon.latte'}
 
 {*
  * The style guide's own furniture: the frames the specimens are drawn in, on
@@ -160,4 +162,48 @@
 
         <pre><code class="language-{$language}">{$code}</code></pre>
     </div>
+{/define}
+
+{*
+ * One group of the tokens of a scale, as a table: the name of each token,
+ * a specimen drawn out of it, and what it is for.
+ *
+ * The specimen is the token read out of the cascade (--sg-value, set on the
+ * specimen itself), and $kind says how it is drawn - which is a modifier of
+ * sg-token in assets/base.css. Every name carries the mark
+ * tests/Template/StyleguideFoundationsTest looks for, so a step of a scale the
+ * themes declare and no table names fails the build.
+ *
+ * @param array<string, string> $tokens name => what it is for
+ *}
+{define sgTokenTable, string $heading, string $kind, array $tokens}
+    {embed block table, caption: $heading, captionVisible: true, testId: 'tokens-' . strtolower(str_replace(' ', '-', $heading))}
+        {block tableHead}
+            <tr>
+                <th scope="col">Token</th>
+                <th scope="col">Specimen</th>
+                <th scope="col">What it is for</th>
+            </tr>
+        {/block}
+
+        {block tableBody}
+            <tr n:foreach="$tokens as $token => $role" class="sg-token-row">
+                <th scope="row"><code data-testid="token-{$token}">{$token}</code></th>
+                <td>
+                    {if in_array($kind, ['family', 'code', 'weight', 'tracking'], true)}
+                        <span class="sg-token sg-token--{$kind}" style="--sg-value: var({$token})">Seven segments</span>
+                    {elseif $kind === 'leading'}
+                        <span class="sg-token sg-token--leading" style="--sg-value: var({$token})">Seven segments<br>and a head shield</span>
+                    {elseif $kind === 'icon'}
+                        <span class="sg-token sg-token--icon" style="--sg-value: var({$token})">{include icon, name: 'close'}</span>
+                    {elseif in_array($kind, ['transition', 'easing', 'animation'], true)}
+                        <span class="sg-token sg-token--{$kind}" style="--sg-value: var({$token})" aria-hidden="true"><span class="sg-token__mark"></span></span>
+                    {else}
+                        <span class="sg-token sg-token--{$kind}" style="--sg-value: var({$token})" aria-hidden="true"></span>
+                    {/if}
+                </td>
+                <td>{$role}</td>
+            </tr>
+        {/block}
+    {/embed}
 {/define}

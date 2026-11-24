@@ -3494,6 +3494,197 @@
     }
 
     /*
+     * ==== Specimens of the scales =========================================
+     *
+     * One token of a scale, drawn out of the theme that is on: the specimen
+     * carries the token as --sg-value (set on the element itself, as
+     * var(--the-token)), and the modifier says what to draw with it. The
+     * foundation pages of the guide draw a table of these, one modifier per
+     * kind of scale; the kinds are named in
+     * Trilobit\Core\Presentation\Styleguide\FoundationTokens.
+     *
+     * The bars are as long as the token and no longer than their cell: the
+     * length is min()-ed with the cell, which leaves a table no wider for the
+     * widest of them.
+     */
+    /* Inline-level and set in the middle of its line, never on its
+       baseline: a specimen whose last line is set tight, or that has no line
+       at all, would hang below its cell on the baseline and make the table
+       around it scroll. */
+    .sg-token {
+        --sg-value: initial;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    /* The row of a table of specimens: every cell set in the middle, the
+       name and what it is for level with the specimen between them. Set on
+       their baselines, a cell beside a specimen taller than its line
+       pushes its text below its own bottom edge. */
+    .sg-token-row > :is(th, td) {
+        vertical-align: middle;
+    }
+
+    .sg-token--family {
+        font-family: var(--sg-value);
+    }
+
+    .sg-token--code {
+        font-family: var(--font-mono);
+        font-size: var(--sg-value);
+    }
+
+    .sg-token--weight {
+        font-weight: var(--sg-value);
+    }
+
+    .sg-token--tracking {
+        letter-spacing: var(--sg-value);
+    }
+
+    /* The line boxes are washed, so the room between two lines is seen. */
+    .sg-token--leading {
+        background-color: var(--color-accent-surface);
+        line-height: var(--sg-value);
+    }
+
+    /* A step of the type scale: the size, and the line height it is set at. */
+    .sg-token--step {
+        --sg-leading: initial;
+        background-color: var(--color-accent-surface);
+        font-size: var(--sg-value);
+        line-height: var(--sg-leading);
+        white-space: nowrap;
+    }
+
+    .sg-token--bar {
+        background-color: var(--color-accent);
+        block-size: var(--space-xs);
+        border-radius: var(--radius-xs);
+        display: block;
+        inline-size: min(var(--sg-value), 100%);
+    }
+
+    .sg-token--height {
+        background-color: var(--color-accent-surface);
+        block-size: var(--sg-value);
+        border: var(--border-hairline) solid var(--color-accent);
+        border-radius: var(--radius-xs);
+        inline-size: var(--space-2xl);
+        vertical-align: middle;
+    }
+
+    /* The icon reads its size from --icon-size, so the specimen gives it the
+       token under that name - on the icon, not on the specimen, which reads
+       --icon-size itself when the token is --icon-size. */
+    .sg-token--icon > * {
+        --icon-size: var(--sg-value);
+    }
+
+    .sg-token--radius,
+    .sg-token--shadow,
+    .sg-token--border {
+        background-color: var(--color-surface);
+        block-size: var(--space-xl);
+        border: var(--border-hairline) solid var(--color-line);
+        inline-size: var(--space-2xl);
+        margin-block: var(--space-xs);
+        vertical-align: middle;
+    }
+
+    .sg-token--radius {
+        border-radius: var(--sg-value);
+    }
+
+    /* Room around the tile for the whole of its shadow, the deepest step
+       included, inside the cell: a cell is part of a table that scrolls,
+       and a shadow cut off at its edge would not be the shadow. */
+    .sg-token--shadow {
+        border-color: transparent;
+        box-shadow: var(--sg-value);
+        margin: var(--space-lg);
+        margin-block-end: var(--space-xl);
+    }
+
+    .sg-token--border {
+        border-block-start: var(--sg-value) solid var(--color-ink);
+    }
+
+    /*
+     * A dot on a track. The durations and the curves move it to the other end
+     * of the track while the box on their page is ticked; the loops play on
+     * it. All of it only inside `prefers-reduced-motion: no-preference`:
+     * without that, the dot jumps and the loops stand still.
+     */
+    .sg-token--transition,
+    .sg-token--easing,
+    .sg-token--animation {
+        background-color: var(--color-canvas-sunken);
+        block-size: var(--space-md);
+        border-radius: var(--radius-pill);
+        inline-size: var(--layout-card-min);
+        max-inline-size: 100%;
+        overflow: hidden;
+        vertical-align: middle;
+    }
+
+    .sg-token__mark {
+        background-color: var(--color-accent);
+        block-size: var(--space-md);
+        border-radius: var(--radius-pill);
+        display: block;
+        inline-size: var(--space-md);
+    }
+
+    .sg-motion:has(.sg-motion__toggle:checked) .sg-token--transition .sg-token__mark,
+    .sg-motion:has(.sg-motion__toggle:checked) .sg-token--easing .sg-token__mark {
+        margin-inline-start: calc(100% - var(--space-md));
+    }
+
+    .sg-token--animation {
+        block-size: var(--space-xl);
+        display: inline-grid;
+        place-items: center;
+    }
+
+    .sg-token--animation .sg-token__mark {
+        background-color: transparent;
+        border: var(--border-marker) solid var(--color-accent-surface-hover);
+        border-block-start-color: var(--color-accent);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .sg-token--transition .sg-token__mark {
+            transition: margin-inline-start var(--sg-value);
+        }
+
+        .sg-token--easing .sg-token__mark {
+            transition: margin-inline-start var(--motion-loop) var(--sg-value);
+        }
+
+        .sg-token--animation .sg-token__mark {
+            animation: var(--sg-value);
+        }
+    }
+
+    /*
+     * A tone drawn the way a component uses it: a ground, the text set on it
+     * and the rule around it, each a token of the tone's family, set on the
+     * sample itself.
+     */
+    .sg-tone {
+        --sg-tone-ground: initial;
+        --sg-tone-ink: initial;
+        --sg-tone-line: initial;
+        background-color: var(--sg-tone-ground);
+        border: var(--border-hairline) solid var(--sg-tone-line);
+        border-radius: var(--radius-sm);
+        color: var(--sg-tone-ink);
+        font-size: var(--text-sm);
+        padding: var(--space-2xs) var(--space-sm);
+    }
+
+    /*
      * ==== Highlighted code ================================================
      *
      * The classes are Prism's (assets/styleguide/prism.ts): it wraps every
@@ -3581,5 +3772,43 @@
         overflow: hidden;
         position: absolute;
         white-space: nowrap;
+    }
+
+    /*
+     * The loops a theme plays (--animate-spin, --animate-ping, --animate-pulse
+     * and --animate-sweep in assets/themes/): a turn, a ring spreading out from
+     * a point and fading, a fade, and a run across. Only the shape of each is
+     * here; how long it takes, along which curve and whether it comes back is
+     * the theme's. A rule playing one plays it inside
+     * `prefers-reduced-motion: no-preference`.
+     */
+    @keyframes u-spin {
+        to {
+            rotate: 1turn;
+        }
+    }
+
+    @keyframes u-ping {
+        75%,
+        100% {
+            opacity: 0;
+            scale: 2;
+        }
+    }
+
+    @keyframes u-pulse {
+        to {
+            opacity: 0.4;
+        }
+    }
+
+    @keyframes u-sweep {
+        from {
+            translate: -100% 0;
+        }
+
+        to {
+            translate: 100% 0;
+        }
     }
 }

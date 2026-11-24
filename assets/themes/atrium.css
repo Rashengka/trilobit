@@ -42,6 +42,24 @@
     --text-2xl: 1.75rem;
     --text-3xl: 2.5rem;
 
+    /* The ends of the scale: the smallest print a page sets (a count beside a
+       label, a note under a figure) and a figure or a title that is the whole
+       point of the place it stands in. */
+    --text-xs: 0.75rem;
+    --text-4xl: 3.25rem;
+
+    /* The line height each step is set at: looser for the small steps, where
+       the eye needs room between lines, tighter for the large ones, where the
+       same proportion would leave a gap wider than a line. */
+    --leading-xs: 1.5;
+    --leading-sm: 1.5;
+    --leading-base: 1.6;
+    --leading-lg: 1.5;
+    --leading-xl: 1.35;
+    --leading-2xl: 1.25;
+    --leading-3xl: 1.15;
+    --leading-4xl: 1.1;
+
     /* Not a step on the scale above. Which size the monospaced face has to be
        set at to sit level with the body face depends on the two faces this
        theme picked, so it is a value the theme owes base.css rather than a
@@ -49,9 +67,23 @@
     --text-code: 0.9375rem;
 
     --leading-tight: 1.15;
+    --leading-snug: 1.35;
     --leading-normal: 1.6;
     --tracking-display: -0.015em;
     --font-weight-display: 650;
+
+    /* The weights a component may ask for by what it means, the display
+       weight above being the one titles are set in. */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Letter spacing: tight for large type, which looks loose at its size;
+       wide for a short label set in small capitals or at a small size. */
+    --tracking-tight: -0.02em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0.04em;
 
     /* Emphasis inside running text, kept apart from the display weight: a
        theme that wanted quieter headings should not thereby get quieter
@@ -69,15 +101,74 @@
     --color-ink-muted: light-dark(oklch(0.51 0.019 255), oklch(0.74 0.014 245));
     --color-line: light-dark(oklch(0.89 0.012 245), oklch(0.33 0.018 255));
 
+    /* Text a reader may pass over - a placeholder, a count, the part of a
+       label that repeats what is beside it - still at 4.5:1 on the page and on
+       a surface. The edge of a control, where --color-line would be too faint
+       to find it by: 3:1 on both. */
+    --color-ink-subtle: light-dark(oklch(0.55 0.017 255), oklch(0.67 0.014 245));
+    --color-line-strong: light-dark(oklch(0.62 0.02 250), oklch(0.53 0.02 255));
+
+    /* A surface over another surface (a menu, a popover, a card lifted off a
+       card), and the one under a pressed or chosen entry. */
+    --color-surface-raised: light-dark(oklch(1 0 0), oklch(0.27 0.016 255));
+    --color-surface-active: light-dark(oklch(0.91 0.018 245), oklch(0.32 0.02 255));
+
+    /* A link in running text, and under the pointer. */
+    --color-link: light-dark(oklch(0.48 0.11 230), oklch(0.8 0.11 225));
+    --color-link-hover: light-dark(oklch(0.4 0.12 230), oklch(0.87 0.09 225));
+
     --color-accent: light-dark(oklch(0.58 0.13 215), oklch(0.72 0.12 215));
     --color-accent-hover: light-dark(oklch(0.5 0.14 215), oklch(0.79 0.11 215));
     --color-accent-ink: light-dark(oklch(0.99 0.01 215), oklch(0.18 0.03 215));
     --color-focus: light-dark(oklch(0.58 0.13 215), oklch(0.78 0.12 215));
 
+    /* The accent while it is pressed; a quiet wash of it, for something chosen
+       or current, and that wash under the pointer; and text set in the accent,
+       readable on the page, on a surface and on the wash. */
+    --color-accent-active: light-dark(oklch(0.44 0.11 215), oklch(0.84 0.1 215));
+    --color-accent-surface: light-dark(oklch(0.96 0.025 215), oklch(0.26 0.035 215));
+    --color-accent-surface-hover: light-dark(oklch(0.92 0.045 215), oklch(0.3 0.05 215));
+    --color-accent-text: light-dark(oklch(0.47 0.1 215), oklch(0.8 0.11 215));
+
     /* What a page says when it has to refuse something. */
     --color-danger: light-dark(oklch(0.55 0.17 27), oklch(0.7 0.15 27));
     --color-danger-ink: light-dark(oklch(0.33 0.11 27), oklch(0.93 0.04 27));
     --color-danger-surface: light-dark(oklch(0.96 0.03 27), oklch(0.27 0.05 27));
+    --color-danger-hover: light-dark(oklch(0.49 0.18 27), oklch(0.77 0.13 27));
+    --color-danger-on: light-dark(oklch(0.98 0.01 27), oklch(0.2 0.05 27));
+    --color-danger-line: light-dark(oklch(0.82 0.08 27), oklch(0.45 0.09 27));
+
+    /*
+     * The other tones a page reports with, each one family of the same six:
+     * the tone itself, which fills a control or a badge; that fill under the
+     * pointer; the text set on the fill (-on); a quiet wash of the tone, for a
+     * notice; the text set on the wash, and on the page (-ink); and the rule
+     * around the wash (-line). Danger, above, is the fourth family. Every text
+     * of a family holds 4.5:1 on the grounds it is meant for, in both modes,
+     * measured by tests/Template/ThemesDeclareTheFoundationsTest.
+     */
+    --color-success: light-dark(oklch(0.52 0.13 150), oklch(0.74 0.15 150));
+    --color-success-hover: light-dark(oklch(0.46 0.13 150), oklch(0.8 0.14 150));
+    --color-success-on: light-dark(oklch(0.99 0.01 150), oklch(0.2 0.04 150));
+    --color-success-surface: light-dark(oklch(0.96 0.035 150), oklch(0.26 0.04 150));
+    --color-success-ink: light-dark(oklch(0.38 0.09 150), oklch(0.88 0.08 150));
+    --color-success-line: light-dark(oklch(0.82 0.07 150), oklch(0.42 0.07 150));
+
+    /* A warning fills with a light amber in both modes, so its text is dark
+       in both. */
+    --color-warning: light-dark(oklch(0.78 0.15 75), oklch(0.8 0.14 80));
+    --color-warning-hover: light-dark(oklch(0.72 0.15 70), oklch(0.86 0.12 85));
+    --color-warning-on: light-dark(oklch(0.25 0.06 60), oklch(0.2 0.04 60));
+    --color-warning-surface: light-dark(oklch(0.96 0.045 85), oklch(0.27 0.04 75));
+    --color-warning-ink: light-dark(oklch(0.43 0.1 60), oklch(0.88 0.09 85));
+    --color-warning-line: light-dark(oklch(0.82 0.1 80), oklch(0.45 0.07 75));
+
+    --color-info: light-dark(oklch(0.53 0.14 255), oklch(0.74 0.11 250));
+    --color-info-hover: light-dark(oklch(0.47 0.15 255), oklch(0.8 0.1 250));
+    --color-info-on: light-dark(oklch(0.98 0.01 255), oklch(0.19 0.04 255));
+    --color-info-surface: light-dark(oklch(0.96 0.02 255), oklch(0.26 0.04 255));
+    --color-info-ink: light-dark(oklch(0.4 0.12 255), oklch(0.88 0.06 250));
+    --color-info-line: light-dark(oklch(0.84 0.06 255), oklch(0.43 0.07 255));
 
     /* Behind a <mark>. A browser's own highlight is one fixed yellow in every
        theme and both modes, and base.css may not name a colour to replace it,
@@ -128,9 +219,11 @@
 
     /* ---- Shape and depth ---------------------------------------------- */
 
+    --radius-xs: 0.25rem;
     --radius-sm: 0.375rem;
     --radius-md: 0.625rem;
     --radius-lg: 0.875rem;
+    --radius-xl: 1.25rem;
     --radius-pill: 9999px;
 
     --border-hairline: 1px;
@@ -141,6 +234,28 @@
        their line. */
     --icon-size: 1.125em;
 
+    /* Icons in three sizes, in em for the same reason: smaller than the
+       letters beside them, as tall as they are (the size above), and larger,
+       for an icon that stands for a whole place on its own. */
+    --icon-size-sm: 0.875em;
+    --icon-size-md: var(--icon-size);
+    --icon-size-lg: 1.5em;
+
+    /*
+     * One axis of sizes for everything a reader clicks or types into: a
+     * button, a field and a select of the same size are the same height, so a
+     * row of them lines up without a rule of its own. The icon inside a
+     * control of each size is on the same axis.
+     */
+    --control-size-xs: 1.75rem;
+    --control-size-sm: 2.25rem;
+    --control-size-md: 2.75rem;
+    --control-size-lg: 3.25rem;
+    --control-icon-xs: 0.875rem;
+    --control-icon-sm: 1rem;
+    --control-icon-md: 1.25rem;
+    --control-icon-lg: 1.5rem;
+
     /* The thickness of a c-progress bar, and the size of a c-spinner standing
        for a whole region that is loading. The small spinner is --icon-size. */
     --progress-size: 0.5rem;
@@ -149,7 +264,31 @@
     --shadow-raised: 0 1px 2px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
         0 8px 24px light-dark(oklch(0.24 0.02 255 / 0.07), oklch(0 0 0 / 0.35));
 
+    /*
+     * Four steps of elevation, from something barely lifted off the page (a
+     * card at rest) to something laid over it (a dialog). Each step is further
+     * off the page than the one before, and the shadow is the ink of the page,
+     * thinned, so it is the same colour as everything else the page draws.
+     */
+    --shadow-xs: 0 1px 2px light-dark(oklch(0.24 0.02 255 / 0.08), oklch(0 0 0 / 0.4));
+    --shadow-sm: 0 1px 2px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
+        0 3px 8px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.3));
+    --shadow-md: 0 2px 4px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
+        0 8px 20px light-dark(oklch(0.24 0.02 255 / 0.08), oklch(0 0 0 / 0.35));
+    --shadow-lg: 0 4px 8px light-dark(oklch(0.24 0.02 255 / 0.06), oklch(0 0 0 / 0.4)),
+        0 20px 48px light-dark(oklch(0.24 0.02 255 / 0.12), oklch(0 0 0 / 0.45));
+
     --motion-fast: 120ms ease;
+
+    /* The curves a movement is drawn along: standard for something moving
+       from one place on the page to another, out for something arriving,
+       which starts quickly and settles. */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* What most changes of state take: longer than a hover, shorter than a
+       layer coming in. */
+    --motion-base: 180ms var(--ease-standard);
 
     /* How long a dialog takes to come in over the page and go again; nothing
        moves for somebody who asked for reduced motion (assets/base.css). */
@@ -159,6 +298,19 @@
        placeholder's pulse, the run of a bar that does not know how far it has
        got. Nobody who asked for reduced motion sees any of them move. */
     --motion-loop: 1s;
+
+    /*
+     * The loops themselves, each one turn of --motion-loop: a turn, a ring
+     * spreading out from a point and fading, a fade in and out, and a run
+     * across and back. The keyframes are assets/base.css's; which of them a
+     * theme plays, and how, is these. Nothing loops for somebody who asked
+     * for reduced motion: a rule playing one of them plays it inside
+     * `prefers-reduced-motion: no-preference`.
+     */
+    --animate-spin: u-spin var(--motion-loop) linear infinite;
+    --animate-ping: u-ping var(--motion-loop) var(--ease-out) infinite;
+    --animate-pulse: u-pulse var(--motion-loop) var(--ease-standard) infinite alternate;
+    --animate-sweep: u-sweep var(--motion-loop) var(--ease-standard) infinite alternate;
 
     /* What a disclosure takes to open or close: long enough to be seen to
        unfold, the way this theme takes its time. */
@@ -198,6 +350,31 @@
 
     --layout-measure: 46rem;
     --layout-gutter: 1.5rem;
+
+    /*
+     * The widths a window is told apart at. A media query cannot read a
+     * custom property, so a query in a theme file writes the number out - md
+     * is the 52rem the narrow-window queries of both themes are written at -
+     * and these say which numbers those are, to a script reading them and to
+     * the style guide.
+     */
+    --layout-breakpoint-sm: 36rem;
+    --layout-breakpoint-md: 52rem;
+    --layout-breakpoint-lg: 72rem;
+
+    /* Columns narrower than the content, for something that reads best at a
+       width of its own: a form on its own, a dialog's body, a page of
+       settings. */
+    --layout-container-xs: 24rem;
+    --layout-container-sm: 36rem;
+    --layout-container-md: 48rem;
+    --layout-container-lg: 64rem;
+    --layout-container-xl: 80rem;
+
+    /* The column beside the content (an aside), and the card a page holding
+       nothing but a sign-in form is drawn in. */
+    --layout-aside-size: 18rem;
+    --layout-auth-card-width: 26rem;
 
     --layout-card-min: 17rem;
     --layout-card-media-ratio: 16 / 9;
@@ -276,10 +453,19 @@
      * The toasts held in a corner of the window (c-toast) are over all of it:
      * they report what came of something just done, which is worth more than
      * whatever they happen to cover, and they are put away with a button.
+     *
+     * Two layers sit at the ends. What is pinned inside a region that scrolls
+     * under it - the first column of a wide table - is above the cells
+     * scrolling past it and below everything held over the page. An overlay
+     * laid over the whole page where the browser's top layer cannot be used is
+     * above everything, toasts included: what it covers is not to be reached
+     * until it is gone.
      */
+    --layout-z-pinned: 0;
     --layout-z-chrome: 1;
     --layout-z-menu: 2;
     --layout-z-toast: 3;
+    --layout-z-overlay: 4;
 
     /*
      * The entries under an entry of the navigation (c-nav).

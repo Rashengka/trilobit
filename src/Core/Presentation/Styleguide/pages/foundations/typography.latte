@@ -1,0 +1,51 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * The type scale and what text is set in.
+ *
+ * Every line below is set in the tokens it names, read out of the theme that is
+ * on, so the page is the scale rather than a picture of it. The lists are
+ * FoundationTokens::TYPE_STEPS and FoundationTokens::TYPOGRAPHY, and every step
+ * the themes declare has to be named on some page of the guide
+ * (tests/Template/StyleguideFoundationsTest).
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/table.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        Each step of the scale is a size and the line height it is set at, as a pair: the small steps
+        are set loose, where the eye needs room between lines, and the large ones tight, where the same
+        proportion would leave a gap wider than a line. A theme changes both, and a component asks for
+        the step rather than for either number.
+    </p>
+
+    {embed block table, caption: 'The type scale', captionVisible: true, testId: 'tokens-type-scale'}
+        {block tableHead}
+            <tr>
+                <th scope="col">Size</th>
+                <th scope="col">Line height</th>
+                <th scope="col">Specimen</th>
+                <th scope="col">What it is set at</th>
+            </tr>
+        {/block}
+
+        {block tableBody}
+            <tr n:foreach="$typeSteps as $step => $use" class="sg-token-row">
+                <th scope="row"><code data-testid="token---text-{$step}">--text-{$step}</code></th>
+                <td><code data-testid="token---leading-{$step}">--leading-{$step}</code></td>
+                <td>
+                    <span class="sg-token sg-token--step" style="--sg-value: var(--text-{$step}); --sg-leading: var(--leading-{$step})">Seven segments<br>and a head shield</span>
+                </td>
+                <td>{$use}</td>
+            </tr>
+        {/block}
+    {/embed}
+
+    {foreach $typeGroups as $heading => $group}
+        {include sgTokenTable, heading: $heading, kind: $group['kind'], tokens: $group['tokens']}
+    {/foreach}
+{/block}
