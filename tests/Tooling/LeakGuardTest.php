@@ -22,7 +22,7 @@ final class LeakGuardTest extends TestCase
 {
     public function testTheGuardPassesItsOwnTest(): void
     {
-        [$code, $output] = $this->runGuard(dirname(__DIR__) . '/Tooling/CheckLeaksTest.php');
+        [$code, $output] = $this->runGuard(__DIR__ . '/../Tooling/CheckLeaksTest.php');
 
         self::assertSame(0, $code, $output);
     }
