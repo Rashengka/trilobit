@@ -150,10 +150,12 @@ final class SpecimenTagTest extends TestCase
     /**
      * What a reader sees in the element: the text, not the way it had to be
      * escaped to get there - Latte writes a brace as an entity in text so that
-     * a browser never mistakes it for anything, and that is its business.
+     * a browser never mistakes it for anything, and that is its business. Since
+     * 3.1.10 it also puts an empty comment in front of a brace that opens the
+     * text, which a browser does not show either.
      */
     private function text(string $output, string $element): string
     {
-        return html_entity_decode($this->between($output, $element), ENT_QUOTES | ENT_HTML5);
+        return html_entity_decode(str_replace('<!-- -->', '', $this->between($output, $element)), ENT_QUOTES | ENT_HTML5);
     }
 }
