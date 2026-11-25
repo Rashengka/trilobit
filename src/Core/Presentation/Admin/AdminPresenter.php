@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Admin;
 
+use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Presenter;
 use Nette\Application\UI\Template;
+use Nette\ComponentModel\IComponent;
 use Trilobit\Core\Admin\Menu\MenuItem;
 use Trilobit\Core\Admin\Menu\ReachableMenu;
 use Trilobit\Core\Preference\RememberedPreferences;
@@ -92,6 +94,14 @@ abstract class AdminPresenter extends Presenter
 
     private Doorkeeper $doorkeeper;
 
+    /**
+     * The components of this page made by a factory that named the actions
+     * they belong to, by name; see createComponent().
+     *
+     * @var array<string, true>
+     */
+    private array $placed = [];
+
     public function injectAdministration(
         RememberedPreferences $remembered,
         /**
@@ -132,7 +142,11 @@ abstract class AdminPresenter extends Presenter
      *
      * Nette calls this for the presenter class before startup() and again for
      * every action*(), render*() and handle*() it goes on to call, so one
-     * override covers a page, its signals and the forms posted to it. Where it
+     * override covers a page and its own signals. Forms are not among them:
+     * a form is reached through processSignal(), which calls none of these,
+     * and it is covered by existing only on the actions it names - see
+     * createComponent(). A handle*() of the presenter that names no action is
+     * raised here, before Nette's own #[Requires] is read. Where it
      * runs is also the trap: it runs *before* startup(), which is where being
      * sent to the sign-in page used to live, so a gate that asked what
      * somebody may do before asking who they are would answer 403 to a visitor
@@ -154,6 +168,18 @@ abstract class AdminPresenter extends Presenter
      */
     public function checkRequirements(\ReflectionClass|\ReflectionMethod $element): void
     {
+        if ($element instanceof \ReflectionMethod && $this->isSignalOfThePresenter($element) && $this->placesNamedOn($element) === []) {
+            throw new \LogicException(sprintf(
+                '%s::%s() is a signal of a page of the administration and does not say which actions it may be sent '
+                    . 'to. Write #[%s(actions: [...])] above it, naming the actions that draw whatever sends it; the '
+                    . 'gates above those actions are then the gates in front of it.',
+                static::class,
+                $element->getName(),
+                Requires::class,
+            ));
+        }
+
+        // Nette's own #[Requires], including the actions a signal names.
         parent::checkRequirements($element);
 
         $gates = $this->gatesOn($element);
@@ -199,6 +225,89 @@ abstract class AdminPresenter extends Presenter
                 $this->forward(RefusalPresenter::DESTINATION);
             }
         }
+    }
+
+    /**
+     * A component of this page, made only by a factory that names the actions
+     * it belongs to.
+     *
+     * **This is where a form is guarded, because nowhere closer to it can
+     * be.** A submitted form is a signal of the form, answered on whatever
+     * action the request names, and processSignal() asks nothing of the form,
+     * its factory or its handler: the gates in front of it are the class's and
+     * that action's. A form of the `edit` page that could be made on the list
+     * was answered behind the list's gate - which is how a page of the content
+     * administration was once written by somebody who could only read it.
+     * Naming the actions with Nette's own `#[Requires(actions: ...)]` above the
+     * factory - which the framework checks when it calls it - means the form is
+     * not there to be submitted anywhere else, and the gates of the actions it
+     * is drawn on are the gates of the form.
+     *
+     * A factory that names none raises rather than making the component: it is
+     * a mistake in the source, like a page carrying no gate, and a quiet
+     * default would be exactly the hole this closes. Whatever else a form does
+     * that its page does not - a delete button on the form of an editor, a
+     * press rearranging what a reader is shown - is still asked about in the
+     * handler that does it, because that is not a question of where.
+     */
+    protected function createComponent(string $name): ?IComponent
+    {
+        $factory = 'createComponent' . ucfirst($name);
+        if (!method_exists($this, $factory)) {
+            return parent::createComponent($name);
+        }
+
+        if ($this->placesNamedOn(new \ReflectionMethod($this, $factory)) === []) {
+            throw new \LogicException(sprintf(
+                '%s::%s() makes a component of a page of the administration and does not say which actions it '
+                    . 'belongs to. Write #[%s(actions: [...])] above it, naming the actions that draw it; a form '
+                    . 'posted to any other action is then not there to be submitted, and the gates above those '
+                    . 'actions are the gates in front of it.',
+                static::class,
+                $factory,
+                Requires::class,
+            ));
+        }
+
+        $component = parent::createComponent($name);
+        $this->placed[$name] = true;
+
+        return $component;
+    }
+
+    /**
+     * A signal reaches only a component made by a factory that named its
+     * actions.
+     *
+     * The factory is where the actions are written, so a component that did
+     * not come from one - added in startup() or in an action method - has
+     * nothing saying where it belongs, and on every action is where it would
+     * be. It is raised as a mistake before the signal is delivered. The
+     * component a signal is addressed to may be deep inside another - a form
+     * of a Multiplier, a control's own form - and what is asked about is the
+     * component of this page it is inside, because that is the one a factory
+     * of this page made.
+     */
+    public function processSignal(): void
+    {
+        $signal = $this->getSignal();
+        if ($signal !== null && $signal[0] !== '') {
+            $outermost = explode(self::NameSeparator, $signal[0], 2)[0];
+            if ($this->getComponent($outermost, throw: false) instanceof IComponent && !isset($this->placed[$outermost])) {
+                throw new \LogicException(sprintf(
+                    'The signal %s of %s is addressed to the component %s, which comes from no createComponent%s() '
+                        . 'and so says nothing about which actions it belongs to. Make it in a factory with '
+                        . '#[%s(actions: [...])] above it rather than adding it to the page by hand.',
+                    $signal[1],
+                    static::class,
+                    $outermost,
+                    ucfirst($outermost),
+                    Requires::class,
+                ));
+            }
+        }
+
+        parent::processSignal();
     }
 
     /**
@@ -481,6 +590,35 @@ abstract class AdminPresenter extends Presenter
         }
 
         return $gates;
+    }
+
+    /**
+     * Whether $method is a signal of this presenter itself - a handle*()
+     * Nette calls for `?do=...` addressed to the page rather than to one of
+     * its components. A component's own signals are its business and belong
+     * where the component does.
+     */
+    private function isSignalOfThePresenter(\ReflectionMethod $method): bool
+    {
+        $prefix = self::formatSignalMethod('');
+
+        return strlen($method->getName()) > strlen($prefix) && stripos($method->getName(), $prefix) === 0;
+    }
+
+    /**
+     * The actions named above $method by Nette's own #[Requires], which the
+     * framework enforces; read here only to know that somebody said.
+     *
+     * @return list<string>
+     */
+    private function placesNamedOn(\ReflectionMethod $method): array
+    {
+        $actions = [];
+        foreach ($method->getAttributes(Requires::class, \ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
+            $actions = [...$actions, ...($attribute->newInstance()->actions ?? [])];
+        }
+
+        return $actions;
     }
 
     /**

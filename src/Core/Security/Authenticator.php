@@ -74,6 +74,17 @@ final readonly class Authenticator implements NetteAuthenticator, IdentityHandle
             throw new AuthenticationException(self::REFUSAL, self::IdentityNotFound);
         }
 
+        // An account still waiting for the link it was sent has no password,
+        // and checking against none takes no time at all - which would tell
+        // somebody timing the page which addresses were invited and have not
+        // answered. It costs a hash like an unknown address does instead - of
+        // something, since the hasher refuses to hash nothing.
+        if (!$account->hasPassword()) {
+            $this->passwords->hash($password !== '' ? $password : self::REFUSAL);
+
+            throw new AuthenticationException(self::REFUSAL, self::InvalidCredential);
+        }
+
         if (!$this->passwords->verify($password, $account->passwordHash())) {
             throw new AuthenticationException(self::REFUSAL, self::InvalidCredential);
         }
