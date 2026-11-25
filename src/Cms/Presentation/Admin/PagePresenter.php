@@ -235,7 +235,7 @@ final class PagePresenter extends AdminPresenter
 
     private function save(Form $form): void
     {
-        $values = $form->getValues('array');
+        $values = iterator_to_array($form->getValues());
 
         $title = $this->text($values, 'title');
         $category = $this->choice($values, 'category');
@@ -374,7 +374,7 @@ final class PagePresenter extends AdminPresenter
      * page whose title had quietly become the word "Array" is the kind of
      * thing nobody notices until it is published.
      *
-     * @param array<string, mixed> $values
+     * @param array<mixed> $values
      */
     private function text(array $values, string $field): string
     {
@@ -389,7 +389,7 @@ final class PagePresenter extends AdminPresenter
      * An identifier made of digits alone comes back from the array the choices
      * are kept in as a number, so it is turned back into the string it is.
      *
-     * @param array<string, mixed> $values
+     * @param array<mixed> $values
      */
     private function choice(array $values, string $field): ?string
     {

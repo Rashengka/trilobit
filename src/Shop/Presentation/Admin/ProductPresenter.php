@@ -244,7 +244,7 @@ final class ProductPresenter extends AdminPresenter
             $this->forward(RefusalPresenter::DESTINATION);
         }
 
-        $values = $form->getValues('array');
+        $values = iterator_to_array($form->getValues());
         $name = $this->text($values, 'name');
         $sku = $this->text($values, 'sku');
         $main = $this->choice($values, 'category') ?? '';
@@ -406,7 +406,7 @@ final class ProductPresenter extends AdminPresenter
      * Trilobit\Cms\Presentation\Admin\PagePresenter::text() for why it is
      * not taken on trust.
      *
-     * @param array<string, mixed> $values
+     * @param array<mixed> $values
      */
     private function text(array $values, string $field): string
     {
@@ -420,7 +420,7 @@ final class ProductPresenter extends AdminPresenter
      * identifier made of digits alone comes back as a number, and is turned
      * back into the string it is.
      *
-     * @param array<string, mixed> $values
+     * @param array<mixed> $values
      */
     private function choice(array $values, string $field): ?string
     {
@@ -432,7 +432,7 @@ final class ProductPresenter extends AdminPresenter
     /**
      * What was ticked in a list of boxes, as strings; see choice().
      *
-     * @param array<string, mixed> $values
+     * @param array<mixed> $values
      *
      * @return list<string>
      */

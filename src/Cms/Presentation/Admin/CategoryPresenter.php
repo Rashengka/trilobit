@@ -157,7 +157,7 @@ final class CategoryPresenter extends AdminPresenter
 
     private function save(Form $form): void
     {
-        $values = $form->getValues('array');
+        $values = iterator_to_array($form->getValues());
 
         $name = $this->text($values, 'name');
         $parent = $this->choice($values, 'parent');
@@ -265,7 +265,7 @@ final class CategoryPresenter extends AdminPresenter
         return $template;
     }
 
-    /** @param array<string, mixed> $values */
+    /** @param array<mixed> $values */
     private function text(array $values, string $field): string
     {
         $value = $values[$field] ?? '';
@@ -277,7 +277,7 @@ final class CategoryPresenter extends AdminPresenter
      * What was chosen in a select with a prompt, or null for the prompt; see
      * PagePresenter::choice().
      *
-     * @param array<string, mixed> $values
+     * @param array<mixed> $values
      */
     private function choice(array $values, string $field): ?string
     {

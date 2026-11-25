@@ -275,7 +275,7 @@ abstract class Listing extends Control
     private function filterBy(Form $form): void
     {
         $asked = [];
-        foreach ($form->getValues('array') as $name => $value) {
+        foreach (iterator_to_array($form->getValues()) as $name => $value) {
             if (is_string($value) || is_int($value)) {
                 $asked[$name] = (string) $value;
             }

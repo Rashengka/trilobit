@@ -262,7 +262,7 @@ final class WizardPresenter extends Presenter
      */
     private function valuesOf(Form $form): array
     {
-        $values = $form->getValues('array');
+        $values = iterator_to_array($form->getValues());
         $text = static fn(string $key): string => isset($values[$key]) && is_string($values[$key]) ? $values[$key] : '';
 
         return [

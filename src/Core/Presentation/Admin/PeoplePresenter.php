@@ -245,7 +245,7 @@ final class PeoplePresenter extends AdminPresenter
 
     private function add(Form $form): void
     {
-        $values = $form->getValues('array');
+        $values = iterator_to_array($form->getValues());
 
         try {
             $added = $this->people->add(
@@ -274,7 +274,7 @@ final class PeoplePresenter extends AdminPresenter
     private function give(Form $form): void
     {
         $person = $this->personShown();
-        $values = $form->getValues('array');
+        $values = iterator_to_array($form->getValues());
 
         try {
             $this->people->give($person->id() ?? 0, is_numeric($values['role'] ?? null) ? (int) $values['role'] : 0);

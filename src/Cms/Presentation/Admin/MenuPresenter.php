@@ -172,7 +172,7 @@ final class MenuPresenter extends AdminPresenter
 
     private function save(Form $form): void
     {
-        $values = $form->getValues('array');
+        $values = iterator_to_array($form->getValues());
 
         $kind = MenuTarget::tryFrom($this->text($values, 'targetType'));
         if ($kind === null) {
@@ -230,7 +230,7 @@ final class MenuPresenter extends AdminPresenter
         $this->redirect('default');
     }
 
-    /** @param array<string, mixed> $values */
+    /** @param array<mixed> $values */
     private function newEntry(array $values, MenuTarget $kind, ?Page $page, string $target): MenuItem
     {
         $menu = $this->menus->namedOrNew($this->text($values, 'menu'));
@@ -266,14 +266,14 @@ final class MenuPresenter extends AdminPresenter
         $entry->pointAtRoute($target);
     }
 
-    /** @param array<string, mixed> $values */
+    /** @param array<mixed> $values */
     private function fileUnder(MenuItem $entry, array $values): void
     {
         $parent = $values['parent'] ?? null;
         $entry->fileUnder(is_numeric($parent) ? $this->entries->find((int) $parent) : null);
     }
 
-    /** @param array<string, mixed> $values */
+    /** @param array<mixed> $values */
     private function pageOf(array $values): ?Page
     {
         $chosen = $values['page'] ?? null;
@@ -384,7 +384,7 @@ final class MenuPresenter extends AdminPresenter
         return $template;
     }
 
-    /** @param array<string, mixed> $values */
+    /** @param array<mixed> $values */
     private function text(array $values, string $field): string
     {
         $value = $values[$field] ?? '';
@@ -392,7 +392,7 @@ final class MenuPresenter extends AdminPresenter
         return is_string($value) ? trim($value) : '';
     }
 
-    /** @param array<string, mixed> $values */
+    /** @param array<mixed> $values */
     private function number(array $values, string $field): int
     {
         $value = $values[$field] ?? 0;
@@ -400,7 +400,7 @@ final class MenuPresenter extends AdminPresenter
         return is_numeric($value) ? (int) $value : 0;
     }
 
-    /** @param array<string, mixed> $values */
+    /** @param array<mixed> $values */
     private function flag(array $values, string $field): bool
     {
         return ($values[$field] ?? false) === true;

@@ -97,7 +97,7 @@ final class SignPresenter extends AdminPresenter
      */
     private function signIn(Form $form): void
     {
-        $values = $form->getValues('array');
+        $values = iterator_to_array($form->getValues());
         $address = isset($values['email']) && is_string($values['email']) ? $values['email'] : '';
         $secret = isset($values['password']) && is_string($values['password']) ? $values['password'] : '';
 
