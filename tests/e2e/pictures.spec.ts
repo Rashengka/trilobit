@@ -36,10 +36,7 @@ let email = '';
 let generated = '';
 
 test.beforeAll(() => {
-    // An account for each browser: the browsers run this file side by side,
-    // and app:account run again for an address gives it a new password - so a
-    // shared address would sign one browser out of the password it just read.
-    email = addressFor(`e2e-pictures-${test.info().project.name}@example.com`);
+    email = addressFor('e2e-pictures@example.com');
 
     const output = execFileSync(
         'php',
