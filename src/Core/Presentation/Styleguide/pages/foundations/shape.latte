@@ -1,0 +1,22 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Corners, elevation and rules, each drawn on a tile out of the theme that is
+ * on. The list is FoundationTokens::SHAPE.
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        A theme chooses how round a corner is and how a surface is lifted off the page, and it may
+        choose neither: one theme squares its corners and draws a raised surface as a rule around it,
+        and an offset rule under it for the two highest steps, instead of a shadow - with nothing but
+        the values of these tokens, and no rule of a component changed. Switch the theme above to see
+        it.
+    </p>
+
+    {foreach $shapeGroups as $heading => $group}
+        {include sgTokenTable, heading: $heading, kind: $group['kind'], tokens: $group['tokens']}
+    {/foreach}
+{/block}

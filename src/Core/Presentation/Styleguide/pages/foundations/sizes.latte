@@ -1,0 +1,28 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * Space, the axis of sizes controls and their icons share, and the widths a
+ * layout is measured in - each drawn as long or as tall as it is, out of the
+ * theme that is on. The list is FoundationTokens::SIZES.
+ *}
+
+{import '../../templates/furniture.latte'}
+
+{block sgPage}
+    <p class="l-measure">
+        Space comes in steps rather than in lengths: a component asks for the room between the parts
+        of one control, or between sections, and the theme decides how much that is. Controls share
+        one axis of heights - a button, a field and a select of the same size line up in a row without
+        a rule of their own - and the icon inside a control of each size is on the same axis.
+    </p>
+
+    <p class="l-measure">
+        The widths of a window are numbers a media query has to write out, because a query cannot read
+        a custom property; the tokens say which numbers those are. The widest bars below stop at the
+        edge of their cell.
+    </p>
+
+    {foreach $sizeGroups as $heading => $group}
+        {include sgTokenTable, heading: $heading, kind: $group['kind'], tokens: $group['tokens']}
+    {/foreach}
+{/block}

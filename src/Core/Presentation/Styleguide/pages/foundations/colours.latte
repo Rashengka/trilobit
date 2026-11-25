@@ -2,27 +2,74 @@
 
 {*
  * The colour tokens, each drawn as the colour it produces beside the name it is
- * asked for by.
+ * asked for by, and the tones a page reports with drawn the way a component
+ * uses them.
  *
  * Every swatch reads its token out of the theme the page is drawn in, so
  * switching the theme or the mode above repaints this whole page, and a token
  * one theme forgot would show here as a swatch with nothing in it. The list of
- * tokens is OverviewPresenter::COLOUR_TOKENS, together with what each is for.
+ * tokens is FoundationTokens::COLOURS, together with what each is for, and it
+ * has to hold every colour the themes declare
+ * (tests/Template/StyleguideFoundationsTest).
  *}
 
 {import '../../../components/panel.latte'}
 {import '../../../components/swatch.latte'}
 
 {block sgPage}
-    {embed block panel, testId: 'styleguide-tokens'}
-        {block panelTitle}Colour tokens{/block}
+    <div class="l-stack" data-testid="styleguide-tokens">
+        {foreach $colourGroups as $heading => $tokens}
+            {embed block panel}
+                {block panelTitle}{$heading}{/block}
 
-        {block panelBody}
-            <div class="l-grid">
-                {foreach $colourTokens as $token => $role}
-                    {include swatch, name: $token, role: $role, testId: 'swatch-' . $token}
-                {/foreach}
-            </div>
-        {/block}
-    {/embed}
+                {block panelBody}
+                    <div class="l-grid">
+                        {foreach $tokens as $token => $role}
+                            {include swatch, name: $token, role: $role, testId: 'swatch-' . $token}
+                        {/foreach}
+                    </div>
+                {/block}
+            {/embed}
+        {/foreach}
+
+        {embed block panel, testId: 'styleguide-tones'}
+            {block panelTitle}Tones{/block}
+
+            {block panelBody}
+                <p class="l-measure">
+                    Each tone is one family of six colours, used the same way by every component: the tone
+                    fills a control or a badge and its <code>-on</code> text is set on the fill, under the
+                    pointer the fill turns <code>-hover</code>, a notice is a quiet <code>-surface</code> wash
+                    with <code>-ink</code> text and a <code>-line</code> rule around it, and <code>-ink</code>
+                    is also what the tone is written in on the page. Every text below holds 4.5:1 on its ground
+                    in both themes and both modes.
+                </p>
+
+                <div class="l-stack">
+                    <div n:foreach="$tones as $tone" class="l-cluster" data-testid="tone-{$tone}">
+                        <span
+                            class="sg-tone"
+                            style="--sg-tone-ground: var(--color-{$tone}); --sg-tone-ink: var(--color-{$tone}-on); --sg-tone-line: var(--color-{$tone})"
+                            data-sg-tone-sample
+                        >{ucfirst($tone)}, filled</span>
+                        <span
+                            class="sg-tone"
+                            style="--sg-tone-ground: var(--color-{$tone}-hover); --sg-tone-ink: var(--color-{$tone}-on); --sg-tone-line: var(--color-{$tone}-hover)"
+                            data-sg-tone-sample
+                        >under the pointer</span>
+                        <span
+                            class="sg-tone"
+                            style="--sg-tone-ground: var(--color-{$tone}-surface); --sg-tone-ink: var(--color-{$tone}-ink); --sg-tone-line: var(--color-{$tone}-line)"
+                            data-sg-tone-sample
+                        >on its wash</span>
+                        <span
+                            class="sg-tone"
+                            style="--sg-tone-ground: var(--color-canvas); --sg-tone-ink: var(--color-{$tone}-ink); --sg-tone-line: var(--color-line)"
+                            data-sg-tone-sample
+                        >on the page</span>
+                    </div>
+                </div>
+            {/block}
+        {/embed}
+    </div>
 {/block}

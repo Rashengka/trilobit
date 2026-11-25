@@ -7,7 +7,7 @@ namespace Trilobit\Tests\Template;
 use Dom\Element;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
-use Trilobit\Core\Presentation\Styleguide\OverviewPresenter;
+use Trilobit\Core\Presentation\Styleguide\FoundationTokens;
 use Trilobit\Core\Presentation\Styleguide\StyleguidePage;
 use Trilobit\Core\Routing\StyleguideRoutes;
 use Trilobit\Tests\Architecture\BaseCssHoldsNoLiteralsTest;
@@ -28,6 +28,15 @@ use Trilobit\Tests\Architecture\BaseCssHoldsNoLiteralsTest;
 #[CoversNothing]
 final class StyleguideFoundationsTest extends TestCase
 {
+    /** The families of tokens that are scales, by the beginning of their names. */
+    private const array SCALES = [
+        '--font', '--text', '--leading', '--tracking',
+        '--spacing', '--space', '--control', '--icon', '--progress', '--spinner',
+        '--radius', '--border', '--shadow',
+        '--motion', '--ease', '--animate',
+        '--layout-breakpoint', '--layout-container', '--layout-aside', '--layout-auth',
+    ];
+
     /** Every token the guide lists as a swatch is drawn, once, on some page of it. */
     public function testEveryColourTokenIsDrawnOnceSomewhereInTheGuide(): void
     {
@@ -95,6 +104,72 @@ final class StyleguideFoundationsTest extends TestCase
     }
 
     /**
+     * Every colour a theme declares is drawn as a swatch, once, on some page of
+     * the guide - read from the theme files rather than from the list the
+     * guide keeps, so a colour added to the themes and to nothing else fails
+     * here, and the page saying it draws every colour token stays true.
+     */
+    public function testEveryColourTheThemesDeclareIsListedAsASwatch(): void
+    {
+        $declared = [];
+        foreach (BaseCssHoldsNoLiteralsTest::themeFiles() as $source) {
+            $declared = [...$declared, ...ThemeColours::of($source)->tokens()];
+        }
+
+        $declared = array_values(array_unique($declared));
+        sort($declared);
+
+        $listed = array_keys($this->colourTokens());
+        sort($listed);
+
+        self::assertSame($declared, $listed, 'the colours the themes declare and the swatches the guide lists differ');
+    }
+
+    /**
+     * Every step of the scales a component is drawn with - type, space, size,
+     * shape, depth and motion - is named, once, on some page of the guide.
+     *
+     * The steps are read from the theme files by the families they belong to,
+     * so a step added to a scale is a step the guide has to show before the
+     * build passes. The layout tokens the shell and the components keep for
+     * themselves are not a scale and are not asked for here; the layers are
+     * asked for above.
+     */
+    public function testEveryStepOfTheFoundationScalesIsNamedOnceSomewhereInTheGuide(): void
+    {
+        $steps = [];
+        foreach (BaseCssHoldsNoLiteralsTest::themeFiles() as $source) {
+            preg_match_all('/^\s*(--[a-z0-9-]+)\s*:/mi', $source, $matches);
+            foreach ($matches[1] as $token) {
+                foreach (self::SCALES as $family) {
+                    if ($token === $family || str_starts_with($token, $family . '-')) {
+                        $steps[] = $token;
+                    }
+                }
+            }
+        }
+
+        $steps = array_values(array_unique($steps));
+        self::assertNotSame([], $steps, 'no theme declares a step of any scale, so there is nothing to look for');
+
+        $wrong = [];
+        foreach ($steps as $step) {
+            $namedOn = [];
+            foreach (StyleguideSpecimens::everyPage() as $path => $page) {
+                foreach ($page->querySelectorAll(sprintf('[data-testid="token-%s"]', $step)) as $name) {
+                    $namedOn[] = $path . ' (' . $name->tagName . ')';
+                }
+            }
+
+            if (count($namedOn) !== 1) {
+                $wrong[] = sprintf('%s is named %d times: %s', $step, count($namedOn), implode(', ', $namedOn));
+            }
+        }
+
+        self::assertSame([], $wrong, 'every step of a scale has to be named exactly once in the style guide');
+    }
+
+    /**
      * The page that insists on a width is pointed at from what a page of the
      * guide says, and not only from the menu: it is the one specimen that is a
      * whole page, and it is only worth anything next to the words saying what
@@ -139,12 +214,11 @@ final class StyleguideFoundationsTest extends TestCase
      * The tokens the guide shows, read from where the guide keeps them rather
      * than written out a second time here.
      *
-     * @return array<mixed>
+     * @return array<string, string>
      */
     private function colourTokens(): array
     {
-        $tokens = new \ReflectionClassConstant(OverviewPresenter::class, 'COLOUR_TOKENS')->getValue();
-        self::assertIsArray($tokens);
+        $tokens = FoundationTokens::colours();
         self::assertNotSame([], $tokens);
 
         return $tokens;
