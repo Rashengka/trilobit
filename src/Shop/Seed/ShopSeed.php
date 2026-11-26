@@ -15,6 +15,7 @@ use Trilobit\Shop\Application\Product\Filing;
 use Trilobit\Shop\Application\Product\Products;
 use Trilobit\Shop\Domain\Price\Money;
 use Trilobit\Shop\Domain\Price\VatRate;
+use Trilobit\Shop\Domain\Product\Product;
 use Trilobit\Shop\Security\ShopResource;
 
 /**
@@ -78,6 +79,24 @@ final readonly class ShopSeed implements SeedProvider, SeedsMembers
     /** The product that has no SKU, to show that one is optional. */
     private const string WITHOUT_SKU = 'gift-card';
 
+    /**
+     * How many pictures a product gets, by the last part of its address; the
+     * others get none, so that a product without a picture is there to be
+     * seen too. Two on the first, so that their order is.
+     */
+    private const array PICTURED = [
+        'ridge-29' => 2,
+        'scree-trail' => 1,
+        'basalt-sprint' => 1,
+        'esker-all-road' => 1,
+        'tor-steel' => 1,
+    ];
+
+    /** The size of a drawn picture: large enough that every variant of it is made smaller. */
+    private const int PICTURE_WIDTH = 1800;
+
+    private const int PICTURE_HEIGHT = 1200;
+
     public function __construct(
         private Products $products,
         private Categories $categories,
@@ -135,6 +154,10 @@ final readonly class ShopSeed implements SeedProvider, SeedsMembers
             if ($published) {
                 $this->products->publish($product);
             }
+
+            for ($view = 1; $view <= $this->viewsOf($segment); $view++) {
+                $this->picture($product, $name, $view);
+            }
         }
 
         return [
@@ -149,7 +172,66 @@ final readonly class ShopSeed implements SeedProvider, SeedsMembers
                 $brand,
             ),
             sprintf('a draft, %s Cirque Junior', $brand),
+            sprintf(
+                'pictures drawn for the seed on %d bikes, two of them on %s Ridge 29, taken in through the media library',
+                count(self::PICTURED),
+                $brand,
+            ),
             'prices before tax at the standard rate of 21 per cent, a trail map at 12 and a gift card, without an SKU, at none',
         ];
+    }
+
+    /** How many pictures the product at $segment gets; none unless PICTURED names it. */
+    private function viewsOf(string $segment): int
+    {
+        return self::PICTURED[$segment] ?? 0;
+    }
+
+    /**
+     * A picture of $name drawn for the seed - a bicycle in outline on a colour
+     * of its own, the second view the first one turned round - put on $product
+     * through the media library like any upload, so that its variants are made
+     * and published the way a person's would be.
+     */
+    private function picture(Product $product, string $name, int $view): void
+    {
+        $image = imagecreatetruecolor(self::PICTURE_WIDTH, self::PICTURE_HEIGHT);
+        $hash = crc32($name);
+        $background = imagecolorallocate($image, 150 + ($hash & 0x3F), 150 + (($hash >> 6) & 0x3F), 150 + (($hash >> 12) & 0x3F));
+        $ink = imagecolorallocate($image, 40, 40, 48);
+        if ($background === false || $ink === false) {
+            throw new \RuntimeException('GD could not allocate the colours of a picture for the seed.');
+        }
+
+        imagefilledrectangle($image, 0, 0, self::PICTURE_WIDTH - 1, self::PICTURE_HEIGHT - 1, $background);
+        imagesetthickness($image, 24);
+        foreach ([[520, 780], [1280, 780]] as [$x, $y]) {
+            imagefilledellipse($image, $x, $y, 560, 560, $ink);
+            imagefilledellipse($image, $x, $y, 500, 500, $background);
+        }
+
+        foreach ([[520, 780, 860, 420], [860, 420, 1280, 780], [860, 420, 900, 780], [520, 780, 900, 780], [860, 420, 820, 300]] as [$x1, $y1, $x2, $y2]) {
+            imageline($image, $x1, $y1, $x2, $y2, $ink);
+        }
+
+        if ($view > 1) {
+            imageflip($image, IMG_FLIP_HORIZONTAL);
+        }
+
+        $file = tempnam(sys_get_temp_dir(), 'trilobit-seed-');
+        if ($file === false || !imagejpeg($image, $file, 85)) {
+            throw new \RuntimeException('The seed could not write down a picture it drew.');
+        }
+
+        try {
+            $this->products->addPicture(
+                $product,
+                $file,
+                sprintf('%s-%d.jpg', strtolower(str_replace(' ', '-', $name)), $view),
+                sprintf('%s, view %d, drawn by the seed', $name, $view),
+            );
+        } finally {
+            unlink($file);
+        }
     }
 }

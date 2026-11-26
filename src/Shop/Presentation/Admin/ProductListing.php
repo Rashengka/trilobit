@@ -6,6 +6,7 @@ namespace Trilobit\Shop\Presentation\Admin;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
+use Trilobit\Core\Media\MediaLibrary;
 use Trilobit\Core\Presentation\Form\FormFactory;
 use Trilobit\Core\Presentation\Listing\Comparison;
 use Trilobit\Core\Presentation\Listing\Filters;
@@ -34,6 +35,7 @@ final class ProductListing extends Listing
         FormFactory $forms,
         private readonly EntityManagerInterface $entityManager,
         private readonly Products $products,
+        private readonly MediaLibrary $library,
     ) {
         parent::__construct($forms);
     }
@@ -68,6 +70,7 @@ final class ProductListing extends Listing
     protected function rows(array $items): array
     {
         $presenter = $this->getPresenter();
+        $basePath = $presenter->getHttpRequest()->getUrl()->getBasePath();
 
         $summaries = [];
         foreach ($items as $product) {
@@ -77,6 +80,7 @@ final class ProductListing extends Listing
             }
 
             $permalink = $this->products->permalinkOf($product);
+            $pictures = $this->products->picturesOf($product);
 
             $summaries[] = new ProductSummary(
                 $id,
@@ -90,6 +94,7 @@ final class ProductListing extends Listing
                 // product would read as a product at the root of the site.
                 $permalink === null ? 'no address yet' : '/' . $permalink,
                 $presenter->link('edit', ['id' => $id]),
+                $pictures === [] ? null : PictureSummary::of($pictures[0], $this->library, $basePath),
             );
         }
 

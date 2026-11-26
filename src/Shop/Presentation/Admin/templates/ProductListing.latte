@@ -28,11 +28,24 @@
 {define listingRow, Trilobit\Shop\Presentation\Admin\ProductSummary $row}
     <tr data-testid="shop-product-{$row->id}">
         <th scope="row">
-            {include button,
-                label: $row->name,
-                href: $row->editUrl,
-                variant: 'quiet',
-                testId: 'shop-product-open-' . $row->id}
+            <div class="l-cluster">
+                {* Decoration beside the name, which already says what it is. *}
+                <img n:if="$row->thumbnail !== null"
+                    src="{$row->thumbnail->src}"
+                    srcset="{$row->thumbnail->srcset}"
+                    sizes="48px"
+                    width="{$row->thumbnail->widthWithin(48)}"
+                    height="{$row->thumbnail->heightWithin(48)}"
+                    alt=""
+                    loading="lazy"
+                    data-testid="shop-product-thumb-{$row->id}">
+
+                {include button,
+                    label: $row->name,
+                    href: $row->editUrl,
+                    variant: 'quiet',
+                    testId: 'shop-product-open-' . $row->id}
+            </div>
         </th>
 
         <td data-testid="shop-product-sku-{$row->id}">{$row->sku}</td>
