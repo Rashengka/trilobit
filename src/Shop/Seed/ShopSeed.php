@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Trilobit\Shop\Seed;
 
 use Trilobit\Core\Content\Categories;
+use Trilobit\Core\Domain\Finance\Money;
+use Trilobit\Core\Domain\Finance\VatRate;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Security\Grant;
 use Trilobit\Core\Security\Privilege;
@@ -13,8 +15,6 @@ use Trilobit\Core\Seed\SeedProvider;
 use Trilobit\Core\Seed\SeedsMembers;
 use Trilobit\Shop\Application\Product\Filing;
 use Trilobit\Shop\Application\Product\Products;
-use Trilobit\Shop\Domain\Price\Money;
-use Trilobit\Shop\Domain\Price\VatRate;
 use Trilobit\Shop\Domain\Product\Product;
 use Trilobit\Shop\Security\ShopResource;
 

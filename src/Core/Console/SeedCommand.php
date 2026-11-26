@@ -18,6 +18,9 @@ use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Trilobit\Core\Config\Mode;
+use Trilobit\Core\Domain\Finance\TaxRate;
+use Trilobit\Core\Domain\Finance\TaxRateKind;
+use Trilobit\Core\Domain\Finance\VatRate;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
@@ -189,6 +192,7 @@ final class SeedCommand extends Command
         $content = [];
 
         $ammonite = $this->enter(self::AMMONITE_HOSTS[0]);
+        $this->taxRatesOf($ammonite);
 
         // The role in between: what an editor does with the content, and
         // neither what cannot be undone nor what takes it out of the
@@ -235,6 +239,22 @@ final class SeedCommand extends Command
             'manages the people of ' . self::AMMONITE . ', giving nobody more than that, and nothing else',
         );
 
+        // The role in between for the money matters: the rates of tax, which
+        // are no bundle, given by name - and nothing beside them, so the bar
+        // shows the section and nothing of the content or the people.
+        $accounts[] = $this->member(
+            $ammonite,
+            'ammonite-finance@example.com',
+            'Fay Foraminifera',
+            $this->roleOf($ammonite, 'finance', 'Finance manager', [
+                new Grant(Resource::TaxRate, Privilege::View),
+                new Grant(Resource::TaxRate, Privilege::Add),
+                new Grant(Resource::TaxRate, Privilege::Edit),
+                new Grant(Resource::TaxRate, Privilege::Delete),
+            ]),
+            'keeps the rates of tax of ' . self::AMMONITE . ' and nothing else',
+        );
+
         // Somebody added and not signed in yet: no password, and the link that
         // sets one printed instead - a seed sends nothing.
         $invitations = [$this->invited(
@@ -248,6 +268,7 @@ final class SeedCommand extends Command
         $content[self::AMMONITE] = $this->contentOf($ammonite);
 
         $belemnite = $this->enter(self::BELEMNITE_HOSTS[0]);
+        $this->taxRatesOf($belemnite);
         $accounts[] = $this->member(
             $belemnite,
             'belemnite-editor@example.com',
@@ -285,6 +306,29 @@ final class SeedCommand extends Command
             $accounts,
             $accounts === 1 ? 'account' : 'accounts',
         );
+    }
+
+    /**
+     * The rates of tax $business charges: the Czech standard rate, its
+     * default, and the reduced one - invented businesses, so the rates of the
+     * country the seed's hosts happen to be read in.
+     *
+     * Made out of the entity rather than through Trilobit\Core\Finance\
+     * TaxRates, for the reason the people are: the service acts as whoever is
+     * signed in, and a console has nobody. What the service would hold of the
+     * two is held here by hand - the first is the default, and there is one.
+     * **Exit condition:** the templates of rates by country, at which point
+     * the seed takes them from the Czech one instead.
+     */
+    private function taxRatesOf(Tenant $business): void
+    {
+        $now = new DateTimeImmutable();
+
+        $standard = new TaxRate($business, 'Standard rate', VatRate::ofPercent('21'), 'CZ', TaxRateKind::Standard, 1, $now);
+        $standard->makeDefault($now);
+        $this->entityManager->persist($standard);
+        $this->entityManager->persist(new TaxRate($business, 'Reduced rate', VatRate::ofPercent('12'), 'CZ', TaxRateKind::Reduced, 2, $now));
+        $this->entityManager->flush();
     }
 
     /**
@@ -472,6 +516,8 @@ final class SeedCommand extends Command
         $style->section('Businesses');
         $style->writeln(sprintf('  %s answers at %s', self::AMMONITE, implode(', ', self::AMMONITE_HOSTS)));
         $style->writeln(sprintf('  %s answers at %s', self::BELEMNITE, implode(', ', self::BELEMNITE_HOSTS)));
+        $style->writeln('');
+        $style->writeln('Each charges the Czech rates of tax: 21 % standard, its default, and 12 % reduced.');
         $style->writeln('');
         $style->writeln('Open them at the port this checkout is served on; see "Seeding a working copy" in README.md.');
 

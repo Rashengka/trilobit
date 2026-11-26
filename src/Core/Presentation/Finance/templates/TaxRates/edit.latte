@@ -1,0 +1,101 @@
+{templateType Trilobit\Core\Presentation\Finance\TaxRatesTemplate}
+
+{*
+ * One rate of tax, added or changed - and, once it exists, made the default,
+ * archived or restored.
+ *
+ * The form that changes the rate, and each of the three acts, is a form of
+ * its own, drawn only where the act behind it would be allowed - for the
+ * right that act asks, so somebody who may see the rates and not change them
+ * is shown the rate as it is and no form; Trilobit\Core\Finance\TaxRates
+ * refuses the same act posted without a button. A rate shown without the form
+ * - archived, or not the reader's to change - is shown by its facts, a missing
+ * one said as missing. That the rate is the default is said once, with how to
+ * archive it only to somebody who may; the panel of the acts is drawn only
+ * when it holds something. The forms are written out with n:name rather than rendered, so
+ * that each button carries the component's class as written - see the comment
+ * beside the delete button in the CMS templates.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/badge.latte'}
+{import '../../../components/notice.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'tax-rate-headline',
+        leadTestId: 'tax-rate-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'All tax rates', href: $listUrl, variant: 'quiet', testId: 'tax-rate-back'}
+
+        {if $isDefault}
+            {include badge, label: 'Default', variant: 'accent', testId: 'tax-rate-state'}
+        {elseif $isArchived}
+            {include badge, label: 'Archived', testId: 'tax-rate-state'}
+        {elseif !$isNew}
+            {include badge, label: 'Offered', testId: 'tax-rate-state'}
+        {/if}
+    </div>
+
+    {embed block panel, testId: 'tax-rate-panel'}
+        {block panelTitle}The rate{/block}
+
+        {block panelBody}
+            {if $isNew || $mayEdit}
+                {control rate}
+            {else}
+                <div class="l-stack">
+                    {include notice, message: $kept, testId: 'tax-rate-kept'}
+
+                    <dl data-testid="tax-rate-facts">
+                        <dt>Country</dt>
+                        <dd>{$country ?: 'No country'}</dd>
+                        <dt>Kind</dt>
+                        <dd>{$kind ?: 'No kind'}</dd>
+                    </dl>
+                </div>
+            {/if}
+        {/block}
+    {/embed}
+
+    {if $defaultNote !== '' || $mayMakeDefault || $mayArchive || $mayRestore}
+        {embed block panel, testId: 'tax-rate-state-panel'}
+            {block panelTitle}Where it is offered{/block}
+
+            {block panelBody}
+                <div class="l-stack">
+                    {if $defaultNote !== ''}
+                        <p data-testid="tax-rate-default-note">{$defaultNote}</p>
+                    {/if}
+
+                    {if $mayMakeDefault || $mayArchive || $mayRestore}
+                        <div class="l-cluster">
+                            {if $mayMakeDefault}
+                                <form n:name="default" data-testid="tax-rate-default">
+                                    <button n:name="choose" class="c-button" data-testid="tax-rate-default-submit">Make it the default</button>
+                                </form>
+                            {/if}
+
+                            {if $mayArchive}
+                                <form n:name="archive" data-testid="tax-rate-archive">
+                                    <button n:name="archive" class="c-button c-button--quiet" data-testid="tax-rate-archive-submit">Archive</button>
+                                </form>
+                            {/if}
+
+                            {if $mayRestore}
+                                <form n:name="restore" data-testid="tax-rate-restore">
+                                    <button n:name="restore" class="c-button" data-testid="tax-rate-restore-submit">Restore</button>
+                                </form>
+                            {/if}
+                        </div>
+                    {/if}
+                </div>
+            {/block}
+        {/embed}
+    {/if}
+{/block}

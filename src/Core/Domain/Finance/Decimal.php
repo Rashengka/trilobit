@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Trilobit\Shop\Domain\Price;
+namespace Trilobit\Core\Domain\Finance;
 
 /**
  * A number somebody typed with decimal places, read as the whole number of

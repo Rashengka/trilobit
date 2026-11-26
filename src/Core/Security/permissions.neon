@@ -101,6 +101,30 @@ app.administration.content:
     bundle: true
     privileges: [view, add, edit, delete, purge, export, change_priority]
 
+# The business's money matters: its rates of tax today, and what joins them
+# later - how its documents are numbered, the currencies it takes. Viewing it is
+# the only thing asked of it, and nobody needs to be given that by name: any
+# right below opens it, and the section's signpost asks for no more.
+#
+# A bundle, because whoever looks after a business's finances is meant to look
+# after what the section grows, the rates of tax included - which is a
+# decision about the section, as the whole administration reaching them is a
+# decision about the administration.
+app.administration.finance:
+    bundle: true
+    privileges: [view]
+
+# The rates of tax the business charges. Deleting is archiving: a rate is kept
+# for whatever is priced at it and only stops being offered, and the
+# application undertakes to restore it.
+#
+# No bundle: changing a rate changes what everything priced at it costs with
+# tax, as sensitive as the price itself, so the rates are not something a
+# role is given the whole of on their own - each privilege is given by name,
+# or comes with the whole of the section they are in.
+app.administration.finance.tax_rate:
+    privileges: [view, add, edit, delete]
+
 # Where a visitor is sent. Under the application, so that the whole of the
 # application reaches it; not under the administration, because it is a
 # decision inside a page that answers to the public rather than a section of
