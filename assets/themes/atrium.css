@@ -251,6 +251,17 @@
     --control-size-sm: 2.25rem;
     --control-size-md: 2.75rem;
     --control-size-lg: 3.25rem;
+
+    /*
+     * The height of a control that holds one line of text, at the size its
+     * text is set in: the line, the padding above and under it, and its edge.
+     * In lh, so it is measured on the control and not on the page. Every line
+     * of text, a list of one answer and a combobox are drawn to it
+     * (assets/base.css) - without it a browser draws a native select, and in
+     * places a date, to a height of its own, and a row of a filter stops
+     * lining up.
+     */
+    --control-size-text: calc(1lh + 2 * var(--space-xs) + 2 * var(--border-hairline));
     --control-icon-xs: 0.875rem;
     --control-icon-sm: 1rem;
     --control-icon-md: 1.25rem;

@@ -625,6 +625,12 @@ Every page of the style guide is the same action of one presenter, and
 list of the guide's pages says so, and the class behind it does not know which
 page it is drawing until the route tells it.
 
+The administration overrules it on every page, to `full`, in
+`Trilobit\Core\Presentation\Admin\AdminPresenter`: its pages are mostly
+tables of records, and a table in a reading column wraps every cell. The public
+side is left to the reader's setting. `tests/e2e/administration-layout.spec.ts`
+measures both in the same window, in both themes.
+
 Nothing is written down when a page overrules. The reader's setting is untouched,
 the switch goes on showing it, and the next page is drawn at it again -
 `Trilobit\Core\Preference\Preferences` keeps "what this page is drawn at", "what
@@ -809,6 +815,12 @@ of these is an error page, which would take the list from somebody who only
 followed a link. None of them is dropped without a word either, which would
 leave a list that looks filtered and is not.
 
+A list longer than one page is paged above its rows as well as under them,
+under the filter: the same row of pages twice, named apart ("Pages, above the
+list" and "Pages, under the list") because two navigation landmarks of one
+name are one landmark to somebody moving between them. Neither is drawn for a
+list of one page.
+
 A list is in one of three states, and `c-listing` draws each differently.
 It has rows. It has nothing and nothing filters it ("Nothing has been written
 yet."). Or it has something and nothing matches the filters: that one has a
@@ -829,7 +841,8 @@ what is in it, so the region is in the page before its text changes, which is
 when a screen reader announces it. The third is the rows. The filter and the
 rows are marked `data-keep-focus` (`assets/listing.ts`): after a redraw the
 focus is back on the button that was pressed or the page that was chosen,
-rather than at the top of the document. The address Naja puts into the history
+rather than at the top of the document - in the row of pages it was chosen
+from, above the rows or under them. The address Naja puts into the history
 after a filter is the list's own (`postGet`), so going back returns to the list
 as it was. The presenter makes the list before its template is drawn, because
 Naja's answer holds the snippets of controls that already exist.
@@ -871,6 +884,12 @@ and radio buttons, `label`, `fieldset` and `legend`, and their focused, refused
 and disabled states - are styled by their own names in `assets/base.css` and
 never through whatever is drawn around them, so a control looks the same in
 every arrangement of a form (`tests/Architecture/FormControlsLookTheSameWhereverTheyAreTest`).
+Every control of one line - any kind of input, a file among them, a `select`
+of one answer and `c-combobox` - is drawn to one height, the theme's
+`--control-size-text` (the line, its padding and its edge), so a row of a
+filter lines up; a browser would otherwise draw a native select to a height of
+its own. A `select` of several answers and a `textarea` keep the height of
+what they show.
 A required field carries a mark after its label, aria-hidden because a screen
 reader already hears required off the control's own attribute, which a
 generated field carries on its own and a hand-written one only where the

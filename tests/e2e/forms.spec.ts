@@ -32,6 +32,7 @@ const lines = [
     'forms-control-number',
     'forms-control-search',
     'forms-control-date',
+    'forms-control-file',
     'forms-control-textarea',
     'forms-control-select',
     'forms-control-select-multiple',
@@ -228,6 +229,67 @@ for (const theme of themes) {
             await expectFromToken(control, 'outline-color', '--color-focus', `the focused control in ${where}`);
             await expectFromToken(control, 'outline-width', '--border-marker', `the focused control in ${where}`);
             await expectFromToken(control, 'border-top-color', '--color-accent', `the focused control in ${where}`);
+        });
+    }
+}
+
+/** The controls that hold one line, on the Controls page: every kind of input, and a list of one answer. */
+const oneLine = [
+    'forms-control-text',
+    'forms-control-email',
+    'forms-control-password',
+    'forms-control-number',
+    'forms-control-search',
+    'forms-control-date',
+    'forms-control-file',
+    'forms-control-select',
+    'forms-control-alone',
+] as const;
+
+async function heightOf(element: Locator): Promise<number> {
+    return element.evaluate((node) => node.getBoundingClientRect().height);
+}
+
+for (const theme of themes) {
+    for (const mode of modes) {
+        const where = `${theme}, ${mode}`;
+
+        /*
+         * A row of a filter puts a line of text, a list and a combobox side by
+         * side, and a native select is drawn by the browser to a height of its
+         * own whatever its padding says - so the heights are read off the
+         * boxes the browser drew, every kind against a line of text.
+         */
+        test(`every control of one line is as tall as a line of text in ${where}`, async ({ page: browserPage }) => {
+            await browserPage.goto(page('controls'));
+            await drawIn(browserPage, theme, mode);
+
+            const text = await heightOf(browserPage.getByTestId('forms-control-text'));
+            for (const testId of oneLine) {
+                expect(await heightOf(browserPage.getByTestId(testId)), `${testId} in ${where}`).toBeCloseTo(text, 0);
+            }
+
+            // Several lines and several answers are not one line, and keep
+            // the height of what they hold.
+            expect(await heightOf(browserPage.getByTestId('forms-control-textarea'))).toBeGreaterThan(text * 1.5);
+            expect(await heightOf(browserPage.getByTestId('forms-control-select-multiple'))).toBeGreaterThan(text * 1.5);
+
+            // A combobox is a select drawn by a script, and is measured
+            // against a line of text put beside it on its own page.
+            await browserPage.goto('/_styleguide/components/combobox');
+            await drawIn(browserPage, theme, mode);
+            const combobox = browserPage.locator('.c-combobox__control').first();
+            await expect(combobox).toBeVisible();
+            const beside = await combobox.evaluate((node) => {
+                const probe = document.createElement('input');
+                probe.type = 'text';
+                node.closest('.c-combobox')?.parentElement?.append(probe);
+                const height = probe.getBoundingClientRect().height;
+                probe.remove();
+
+                return height;
+            });
+            expect(await heightOf(combobox), `c-combobox in ${where}`).toBeCloseTo(beside, 0);
         });
     }
 }

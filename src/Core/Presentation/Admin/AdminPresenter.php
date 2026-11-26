@@ -10,6 +10,7 @@ use Nette\Application\UI\Template;
 use Nette\ComponentModel\IComponent;
 use Trilobit\Core\Admin\Menu\MenuItem;
 use Trilobit\Core\Admin\Menu\ReachableMenu;
+use Trilobit\Core\Preference\PreferenceCatalogue;
 use Trilobit\Core\Preference\RememberedPreferences;
 use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Error\RefusalPresenter;
@@ -85,6 +86,13 @@ abstract class AdminPresenter extends Presenter
      * small lie told on every page.
      */
     private const string WAY_BACK = 'Administration';
+
+    /**
+     * How wide every page of the administration is drawn: the whole of the
+     * region the shell gives its content. One of the three widths a reader can
+     * choose, and the theme says what it measures (--layout-width-full).
+     */
+    private const string CONTENT_WIDTH = 'full';
 
     private RememberedPreferences $remembered;
 
@@ -366,7 +374,14 @@ abstract class AdminPresenter extends Presenter
 
         $identity = $this->getUser()->getIdentity();
 
-        $template->preferences = $this->remembered->forThisRequest();
+        // The administration is drawn as wide as the shell lets it, whatever
+        // width the person reads the site at. Its pages are mostly tables of
+        // records, and a table squeezed into a reading column wraps every
+        // cell; overruled rather than chosen, so the setting is left as it
+        // was, the switch goes on showing it and the site is drawn at it -
+        // see Trilobit\Core\Preference\Preferences.
+        $template->preferences = $this->remembered->forThisRequest()
+            ->overruledWith(PreferenceCatalogue::CONTENT_WIDTH, self::CONTENT_WIDTH);
         $template->preferenceUrl = $this->link(':Core:Preference:Choice:remember');
         // The mark in the banner is the way back, and where back is depends on
         // which administration this person has: sending the installation's

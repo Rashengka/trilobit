@@ -30,9 +30,9 @@ namespace Trilobit\Core\Presentation\Form;
 final class FormElementRegistry
 {
     /**
-     * Every kind of input somebody types into, which is every kind but the
-     * ones that are a box to tick, a button, a picker of their own or nothing
-     * at all. Written as what it is not rather than as a list of what it is,
+     * Every kind of input somebody types into or picks a file with, which is
+     * every kind but the ones that are a box to tick, a button, a picker of
+     * their own or nothing at all. Written as what it is not rather than as a list of what it is,
      * so that an input with no type - a line of text, to a browser - is one of
      * them, and so is a kind a browser adds after this was written.
      *
@@ -40,8 +40,14 @@ final class FormElementRegistry
      * every state below outweighs it rather than depending on coming later.
      */
     public const string LINES_OF_TEXT = "input:where(:not([type='checkbox'], [type='radio'], [type='range'], "
-        . "[type='color'], [type='file'], [type='submit'], [type='reset'], [type='button'], [type='image'], "
-        . "[type='hidden']))";
+        . "[type='color'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden']))";
+
+    /**
+     * A list of one answer, drawn as one line: neither a list of several nor
+     * one showing several rows at once. It is drawn to the height of a line of
+     * text, which a browser would otherwise not do for a native select.
+     */
+    public const string LIST_OF_ONE_LINE = 'select:where(:not([multiple], [size]))';
 
     /** @var non-empty-list<FormElementGroup>|null */
     private ?array $groups = null;
@@ -52,10 +58,18 @@ final class FormElementRegistry
         return $this->groups ??= [
             new FormElementGroup(
                 'controls',
-                'The controls somebody types into or picks from: a line of text of any kind, several lines, a '
-                . 'list. One rule draws all of them, so a password and a date are the same box as a name, and '
-                . 'each fills the place it is put in - how wide that place is belongs to the form around it.',
-                [self::LINES_OF_TEXT, 'select', 'textarea', ':is(input, textarea)::placeholder'],
+                'The controls somebody types into or picks from: a line of text of any kind, a file, several '
+                . 'lines, a list. One rule draws all of them, so a password and a date are the same box as a '
+                . 'name, every one of one line is as tall as the next, and each fills the place it is put in - '
+                . 'how wide that place is belongs to the form around it.',
+                [
+                    self::LINES_OF_TEXT,
+                    'select',
+                    'textarea',
+                    self::LIST_OF_ONE_LINE,
+                    ':is(input, textarea)::placeholder',
+                    "input[type='file']::file-selector-button",
+                ],
                 [
                     'a line of text',
                     'lines of other kinds',

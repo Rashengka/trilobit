@@ -109,6 +109,11 @@ function pageLink(page: Page, label: string) {
     return page.getByTestId('cms-page-list-pagination').getByRole('link', { name: label, exact: true });
 }
 
+/** The same row of pages, drawn above the list rather than under it. */
+function pageLinkAbove(page: Page, label: string) {
+    return page.getByTestId('cms-page-list-pagination-above').getByRole('link', { name: label, exact: true });
+}
+
 /** Set on the window; still there afterwards only if the page was never loaded again. */
 async function markTheDocument(page: Page): Promise<void> {
     await page.evaluate(() => {
@@ -175,6 +180,40 @@ for (const theme of themes) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
 }
+
+/**
+ * The list is paged above its rows as well as under them, and the two rows of
+ * pages are the same links - so a step taken from one of them has to leave the
+ * focus on that one. Found again by what it is called alone, the focus of a
+ * step taken under the list would land on the link of the same name above it,
+ * a page's height away from where the person was.
+ */
+test('the row of pages above the list redraws it, and each row keeps the focus on itself', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/admin/cms/pages?pages-title=Ride+${run}`);
+    await markTheDocument(page);
+
+    const above = page.getByTestId('cms-page-list-pagination-above');
+    const table = page.getByTestId('cms-page-list-table');
+    const aboveBox = await above.boundingBox();
+    const tableBox = await table.boundingBox();
+    expect(aboveBox, 'there is no row of pages above the list').not.toBeNull();
+    expect((aboveBox?.y ?? 0) + (aboveBox?.height ?? 0)).toBeLessThanOrEqual(tableBox?.y ?? 0);
+
+    await pageLinkAbove(page, 'Page 2').click();
+
+    await expect(page).toHaveURL(/pages-page=2/);
+    await expect(rows(page)).toHaveCount(3);
+    await expect(pageLinkAbove(page, 'Page 2'), 'the focus left the row of pages above the list').toBeFocused();
+
+    await pageLink(page, 'Page 1').click();
+
+    await expect(page).not.toHaveURL(/pages-page/);
+    await expect(rows(page)).toHaveCount(20);
+    await expect(pageLink(page, 'Page 1'), 'the focus moved to the row of pages above the list').toBeFocused();
+
+    expect(await documentStayed(page), 'a step loaded the page rather than redrawing the list').toBe(true);
+});
 
 test('a filter that finds nothing says so, and clearing it brings the list back', async ({ page }) => {
     await signIn(page);

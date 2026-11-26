@@ -200,6 +200,7 @@ final class FoundationTokens
                 '--control-size-sm' => 'a small control: a toolbar, a filter',
                 '--control-size-md' => 'every control a size was not chosen for',
                 '--control-size-lg' => 'the control a page is about',
+                '--control-size-text' => 'a control holding one line of text: the line, its padding and its edge',
             ],
         ],
         'Icons in a control' => [

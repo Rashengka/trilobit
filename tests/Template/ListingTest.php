@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Tests\Template;
 
+use Dom\Element;
 use Dom\HTMLDocument;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +31,42 @@ final class ListingTest extends TestCase
         self::assertNotNull($document->querySelector('[data-testid="sample-pagination"]'));
         self::assertNull($document->querySelector('[data-testid="sample-empty"]'));
         self::assertNull($document->querySelector('[data-testid="sample-no-match"]'));
+    }
+
+    /**
+     * A list longer than one page is paged above its rows as well as under
+     * them: somebody looking for the next page should not have to scroll past
+     * a whole page of rows to find the way to it. The two rows of pages are
+     * the same way through, and they are named apart, because two landmarks
+     * of one name are one landmark to somebody moving between them.
+     */
+    public function testTheWayThroughIsDrawnAboveTheRowsAsWellAsUnderThem(): void
+    {
+        $document = $this->draw("state: 'rows', pagination: \$pagination");
+
+        $order = [];
+        foreach ($document->querySelectorAll('[data-testid="sample-pagination-above"], [data-testid="sample-rows"], [data-testid="sample-pagination"]') as $element) {
+            $order[] = $element->getAttribute('data-testid');
+        }
+
+        self::assertSame(['sample-pagination-above', 'sample-rows', 'sample-pagination'], $order);
+
+        $above = $document->querySelector('[data-testid="sample-pagination-above"]');
+        $under = $document->querySelector('[data-testid="sample-pagination"]');
+        self::assertNotNull($above);
+        self::assertNotNull($under);
+        self::assertSame($this->hrefs($under), $this->hrefs($above), 'the row above leads elsewhere than the row under');
+        self::assertNotSame($under->getAttribute('aria-label'), $above->getAttribute('aria-label'));
+    }
+
+    /** One page is nothing to move between, at either end of it. */
+    public function testOnePageIsPagedNeitherAboveNorUnder(): void
+    {
+        $document = $this->draw("state: 'rows', pagination: \$pagination", new Pagination(1, 1, static fn(int $page): string => '#p' . $page));
+
+        self::assertNotNull($document->querySelector('[data-testid="sample-rows"]'));
+        self::assertNull($document->querySelector('[data-testid="sample-pagination-above"]'));
+        self::assertNull($document->querySelector('[data-testid="sample-pagination"]'));
     }
 
     public function testNothingYetIsNotNothingMatching(): void
@@ -109,7 +146,18 @@ final class ListingTest extends TestCase
         $this->draw("state: 'loading'");
     }
 
-    private function draw(string $arguments): HTMLDocument
+    /** @return list<string> */
+    private function hrefs(Element $navigation): array
+    {
+        $hrefs = [];
+        foreach ($navigation->querySelectorAll('a') as $link) {
+            $hrefs[] = (string) $link->getAttribute('href');
+        }
+
+        return $hrefs;
+    }
+
+    private function draw(string $arguments, ?Pagination $pagination = null): HTMLDocument
     {
         return ComponentRendering::render(
             'listing.latte',
@@ -117,7 +165,7 @@ final class ListingTest extends TestCase
                 "{embed block listing, %s, testId: 'sample'}{block listingTable}<table data-testid=\"sample-rows\"></table>{/block}{/embed}",
                 $arguments,
             ),
-            ['pagination' => new Pagination(2, 3, static fn(int $page): string => '#p' . $page)],
+            ['pagination' => $pagination ?? new Pagination(2, 3, static fn(int $page): string => '#p' . $page)],
         );
     }
 }
