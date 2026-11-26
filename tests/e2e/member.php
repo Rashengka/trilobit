@@ -20,16 +20,18 @@ declare(strict_types=1);
  *
  * `app:account` makes the owner of a business and nobody else, and no command
  * or screen composes a role of a business yet, so this is made out of the
- * entities, the way the seed makes its people. It runs on a working copy only
- * (Trilobit\Core\Config\Mode::mayAlterData()), as the seed does, and the
- * addresses the suite passes are the reserved documentation domain.
+ * entities, the way the seed makes its people. It makes nobody but somebody at
+ * example.com, the reserved documentation domain the suite's addresses are
+ * at, and refuses any other address. It does not ask the mode as the seed
+ * does: the suite runs on CI over an application in production mode, where
+ * `app:account` makes its owners too, and an address nobody can hold is what
+ * keeps this from reaching a real account.
  */
 
 use Doctrine\ORM\EntityManagerInterface;
 use Nette\Security\Passwords;
 use Nette\Utils\Random;
 use Trilobit\Core\Bootstrap;
-use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
@@ -52,12 +54,13 @@ if ($trilobitE2eHost === '' || $trilobitE2eEmail === '' || $trilobitE2eName === 
     exit(2);
 }
 
-$trilobitE2eContainer = Bootstrap::boot();
-if (!$trilobitE2eContainer->getByType(Mode::class)->mayAlterData()) {
-    fwrite(STDERR, "tests/e2e/member.php runs on a working copy only.\n");
+if (preg_match('/^[a-z0-9.+-]+@example\.com$/', $trilobitE2eEmail) !== 1) {
+    fwrite(STDERR, "tests/e2e/member.php makes nobody but somebody at example.com.\n");
 
     exit(1);
 }
+
+$trilobitE2eContainer = Bootstrap::boot();
 
 $trilobitE2eBusiness = $trilobitE2eContainer->getByType(HostTenants::class)->tenantAt($trilobitE2eHost);
 if ($trilobitE2eBusiness === null) {
