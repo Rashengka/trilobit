@@ -124,6 +124,7 @@ final class EveryTenantedEntityIsScopedTest extends TestCase
                 'core_media_file',
                 'core_menu',
                 'core_role',
+                'core_tax_rate',
                 'core_tenant_membership',
                 'shop_product',
                 'shop_product_image',

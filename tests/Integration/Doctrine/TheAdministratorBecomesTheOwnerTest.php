@@ -145,13 +145,18 @@ final class TheAdministratorBecomesTheOwnerTest extends TestCase
     {
         $written = json_decode(self::EVERY_PAIR_BEFORE, true, flags: JSON_THROW_ON_ERROR);
 
-        self::assertSame(
+        // The structure has grown since: the money matters of a business came
+        // after the migration, so what that build offered is what this one
+        // offers without them.
+        $offeredThen = array_values(array_filter(
             array_map(
                 static fn(Grant $pair): string => $pair->code(),
                 PermissionStructure::of(Bootstrap::rootDirectory(), [])->everyPair(),
             ),
-            $written,
-        );
+            static fn(string $pair): bool => !str_starts_with($pair, 'app.administration.finance'),
+        ));
+
+        self::assertSame($offeredThen, $written);
     }
 
     /**

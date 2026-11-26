@@ -9,22 +9,22 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * An amount in the smallest unit of its currency - the hundredths of a crown,
- * cents - and the currency it is in (.ai/plans/30-obchod-katalog-t09.md, Q1).
+ * cents - and the currency it is in.
  *
  * **Whole numbers, and the currency with every amount.** An amount is kept as
  * an integer so that adding tax to it is arithmetic rather than an estimate,
  * and the currency is kept beside it rather than assumed, so that the day an
- * installation changes its currency the prices it already has still say what
+ * installation changes its currency the amounts it already has still say what
  * they were set in.
  *
- * **Every currency has two decimal places here**, which is true of every one a
- * shop in this project has been set up with. **Exit condition:** the first
- * installation in a currency with another number of them - at which point the
- * number belongs beside the currency rather than in a constant.
+ * **Every currency has two decimal places here**, which is true of every one
+ * Trilobit has been set up with. **Exit condition:** the first installation in
+ * a currency with another number of them - at which point the number belongs
+ * beside the currency rather than in a constant.
  *
- * It is embedded in the entity that has a price, as two columns of that entity's
- * table: a price is part of what it is the price of, and a table of prices would
- * be a second place to look for it.
+ * It is embedded in the entity that has an amount, as two columns of that
+ * entity's table: a price is part of what it is the price of, and a table of
+ * amounts would be a second place to look for it.
  */
 #[ORM\Embeddable]
 final class Money

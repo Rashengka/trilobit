@@ -1,0 +1,38 @@
+{templateType Trilobit\Core\Presentation\Finance\TaxRatesTemplate}
+
+{*
+ * The rates of tax of this business - filtered and paged from the address by
+ * Trilobit\Core\Presentation\Finance\TaxRateListing, whose rows are drawn by
+ * ../TaxRateListing.latte.
+ *
+ * The way to add a rate is drawn only for whoever may; the form behind it
+ * asks again all the same.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/button.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'tax-rates-headline',
+        leadTestId: 'tax-rates-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'Back to finance', href: $sectionUrl, variant: 'quiet', testId: 'tax-rates-section'}
+
+        {if $addUrl !== ''}
+            {include button, label: 'Add a rate', href: $addUrl, testId: 'tax-rates-add'}
+        {/if}
+    </div>
+
+    {embed block panel, testId: 'tax-rates-panel'}
+        {block panelTitle}Tax rates{/block}
+
+        {block panelBody}
+            {control rates}
+        {/block}
+    {/embed}
+{/block}

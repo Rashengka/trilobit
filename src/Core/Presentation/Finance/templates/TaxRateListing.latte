@@ -1,0 +1,51 @@
+{templateType Trilobit\Core\Presentation\Listing\ListingTemplate}
+
+{*
+ * The columns of the list of rates of tax and one row of it, drawn by
+ * Trilobit\Core\Presentation\Listing\Listing inside c-table - see
+ * Trilobit\Core\Presentation\Finance\TaxRateListing.
+ *
+ * The name leads to the rate's own page, which anybody who sees the list may
+ * open; what it offers there depends on what they may do.
+ *}
+
+{import '../../components/button.latte'}
+{import '../../components/badge.latte'}
+
+{define listingHead}
+    <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Rate</th>
+        <th scope="col">Country</th>
+        <th scope="col">Kind</th>
+        <th scope="col">State</th>
+    </tr>
+{/define}
+
+{define listingRow, Trilobit\Core\Presentation\Finance\TaxRateSummary $row}
+    <tr data-testid="tax-rate-row-{$row->id}">
+        <th scope="row">
+            {include button,
+                label: $row->name,
+                href: $row->pageUrl,
+                variant: 'quiet',
+                testId: 'tax-rate-open-' . $row->id}
+        </th>
+
+        <td data-testid="tax-rate-percent-{$row->id}">{$row->percent}</td>
+
+        <td data-testid="tax-rate-country-{$row->id}">{$row->country}</td>
+
+        <td data-testid="tax-rate-kind-{$row->id}">{$row->kind}</td>
+
+        <td>
+            {if $row->isDefault}
+                {include badge, label: 'Default', variant: 'accent', testId: 'tax-rate-state-' . $row->id}
+            {elseif $row->isArchived}
+                {include badge, label: 'Archived', testId: 'tax-rate-state-' . $row->id}
+            {else}
+                {include badge, label: 'Offered', testId: 'tax-rate-state-' . $row->id}
+            {/if}
+        </td>
+    </tr>
+{/define}

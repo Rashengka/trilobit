@@ -90,4 +90,11 @@ final class VatRateTest extends TestCase
         self::assertSame($percent, $rate->percent());
         self::assertSame($basisPoints, VatRate::ofPercent($rate->percent())->basisPoints());
     }
+
+    /** For a page, the sign is held to the number by a no-break space, so a narrow column never parts them. */
+    public function testARateIsWrittenForAPageWithTheSignHeldToTheNumber(): void
+    {
+        self::assertSame("21\u{a0}%", new VatRate(2100)->written());
+        self::assertSame("12.5\u{a0}%", new VatRate(1250)->written());
+    }
 }

@@ -47,6 +47,9 @@ final class AdminRoutes implements RouteProvider
     /** Who belongs to a business, and what each of them holds there. */
     public const string PEOPLE_PATH = 'admin/people';
 
+    /** Where a business's money matters begin: its rates of tax, and what joins them. */
+    public const string FINANCE_PATH = 'admin/finance';
+
     public function provide(RouteList $routes): void
     {
         $routes->addRoute(self::SIGN_IN_PATH, 'Core:Admin:Sign:in');
@@ -57,6 +60,12 @@ final class AdminRoutes implements RouteProvider
         $routes->addRoute(self::PEOPLE_PATH, 'Core:Admin:People:default');
         $routes->addRoute(self::PEOPLE_PATH . '/add', 'Core:Admin:People:add');
         $routes->addRoute(self::PEOPLE_PATH . '/<id \d+>', 'Core:Admin:People:person');
+        // The section's signpost, and its rates of tax - the form for a new
+        // one before the page that takes an identifier, as above.
+        $routes->addRoute(self::FINANCE_PATH, 'Core:Finance:Signpost:default');
+        $routes->addRoute(self::FINANCE_PATH . '/tax-rates', 'Core:Finance:TaxRates:default');
+        $routes->addRoute(self::FINANCE_PATH . '/tax-rates/add', 'Core:Finance:TaxRates:add');
+        $routes->addRoute(self::FINANCE_PATH . '/tax-rates/<id \d+>', 'Core:Finance:TaxRates:edit');
         $routes->addRoute(self::INSTALLATION_PATH, 'Core:Installation:Signpost:default');
         $routes->addRoute(self::INSTALLATION_PATH . '/businesses', 'Core:Installation:Businesses:default');
         $routes->addRoute(self::PATH, 'Core:Admin:Dashboard:default');

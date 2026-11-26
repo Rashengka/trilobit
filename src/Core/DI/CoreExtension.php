@@ -18,6 +18,7 @@ use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
+use Trilobit\Core\Admin\Menu\FinanceMenu;
 use Trilobit\Core\Admin\Menu\InstallationMenu;
 use Trilobit\Core\Admin\Menu\Menu;
 use Trilobit\Core\Admin\Menu\NavigationMenu;
@@ -50,6 +51,7 @@ use Trilobit\Core\Event\AuditListener;
 use Trilobit\Core\Event\Dispatcher;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
+use Trilobit\Core\Finance\TaxRates;
 use Trilobit\Core\Mail\Invitations;
 use Trilobit\Core\Mail\Mailers;
 use Trilobit\Core\Media\MediaLibrary;
@@ -68,6 +70,7 @@ use Trilobit\Core\Presentation\Admin\PeopleListingFactory;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
 use Trilobit\Core\Presentation\Design\DesignSystem;
+use Trilobit\Core\Presentation\Finance\TaxRateListingFactory;
 use Trilobit\Core\Presentation\Form\FormElementRegistry;
 use Trilobit\Core\Presentation\Form\FormFactory;
 use Trilobit\Core\Presentation\Front\Signpost\SignpostList;
@@ -257,6 +260,14 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addDefinition($this->prefix('invitations'))
             ->setFactory(Invitations::class);
+
+        // A business's rates of tax, changed through the one service that
+        // guards them - see Trilobit\Core\Finance\TaxRates. It writes a change
+        // of a rate to the audit trail, so it is handed Core's dispatcher by
+        // name: the dispatcher is not autowired, for the reason given where it
+        // is registered.
+        $builder->addDefinition($this->prefix('taxRates'))
+            ->setFactory(TaxRates::class, ['dispatcher' => '@' . $this->prefix('dispatcher')]);
 
         $builder->addDefinition($this->prefix('authenticator'))
             ->setFactory(Authenticator::class);
@@ -522,6 +533,17 @@ final class CoreExtension extends CompilerExtension
 
         $builder->addFactoryDefinition($this->prefix('peopleListing'))
             ->setImplement(PeopleListingFactory::class);
+
+        // And a business's money matters - its rates of tax today - a
+        // business's own section with a signpost of its own; see
+        // Trilobit\Core\Presentation\Finance\SignpostPresenter.
+        $builder->addDefinition($this->prefix('financeMenu'))
+            ->setFactory(FinanceMenu::class)
+            ->setAutowired(false)
+            ->addTag(self::TAG_ADMIN_MENU_PROVIDER);
+
+        $builder->addFactoryDefinition($this->prefix('taxRateListing'))
+            ->setImplement(TaxRateListingFactory::class);
 
         // The menu as the person reading it may use it. Both the bar and a
         // section's signpost are drawn through this one service, because they
