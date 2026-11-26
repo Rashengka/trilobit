@@ -44,10 +44,11 @@ final class FormElementRegistry
 
     /**
      * A list of one answer, drawn as one line: neither a list of several nor
-     * one showing several rows at once. It is drawn to the height of a line of
+     * one showing several rows at once - size="1" shows one row, as no size
+     * does, and is one line too. It is drawn to the height of a line of
      * text, which a browser would otherwise not do for a native select.
      */
-    public const string LIST_OF_ONE_LINE = 'select:where(:not([multiple], [size]))';
+    public const string LIST_OF_ONE_LINE = "select:where(:not([multiple], [size]:not([size='1'])))";
 
     /** @var non-empty-list<FormElementGroup>|null */
     private ?array $groups = null;

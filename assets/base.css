@@ -472,10 +472,12 @@
      * (--control-size-text). c-combobox draws its control to the same one.
      *
      * A list of several answers, or one showing several rows, is not one line
-     * and keeps the height of what it shows; so does textarea.
+     * and keeps the height of what it shows; so does textarea. A list that
+     * says size="1" shows one row, as one that says no size does, and is one
+     * line.
      */
     input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
-    select:where(:not([multiple], [size])) {
+    select:where(:not([multiple], [size]:not([size='1']))) {
         block-size: var(--control-size-text);
     }
 

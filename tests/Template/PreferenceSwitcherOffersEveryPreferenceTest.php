@@ -112,6 +112,21 @@ final class PreferenceSwitcherOffersEveryPreferenceTest extends TestCase
         self::assertNotNull($drawn->querySelector($this->control('theme', 'ledger')));
     }
 
+    /**
+     * A page that insists on every preference leaves nothing to switch, and
+     * the switch is then not drawn at all - not as an empty box in the menu.
+     */
+    public function testItIsNotDrawnWhenThePageInsistsOnEveryPreference(): void
+    {
+        $preferences = self::catalogue()->reconcile([]);
+        foreach (self::catalogue()->all() as $name => $preference) {
+            $preferences = $preferences->overruledWith($name, $preference->default);
+        }
+
+        self::assertSame([], $preferences->offered());
+        self::assertCount(0, $this->draw($preferences)->querySelectorAll('.c-preference-switcher'));
+    }
+
     private function drawn(): HTMLDocument
     {
         return self::$drawn ??= $this->draw(self::catalogue()->reconcile([]));

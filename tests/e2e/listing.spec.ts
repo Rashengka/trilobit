@@ -215,6 +215,34 @@ test('the row of pages above the list redraws it, and each row keeps the focus o
     expect(await documentStayed(page), 'a step loaded the page rather than redrawing the list').toBe(true);
 });
 
+/**
+ * A step that takes the list to its last page is drawn disabled once it is
+ * there: Last and Next are no longer links with an address, and nothing of that
+ * name can take the focus back. The focus has to stay in the row of pages the
+ * step was taken from - on the page now current - rather than fall to the first
+ * thing in the list that takes it, which for a step taken under the list is at
+ * the top of it.
+ */
+for (const step of ['Last', 'Next']) {
+    test(`a step to the last page from the row under the list, ${step}, leaves the focus in that row`, async ({ page }) => {
+        await signIn(page);
+        await page.goto(`/admin/cms/pages?pages-title=Ride+${run}`);
+        await markTheDocument(page);
+
+        // The second page is the last one, so the first is the one before it.
+        await expect(status(page)).toHaveText(`${rides} pages matching the filters, page 1 of 2.`);
+        await pageLink(page, step).focus();
+        await page.keyboard.press('Enter');
+
+        await expect(page).toHaveURL(/pages-page=2/);
+        await expect(rows(page)).toHaveCount(3);
+        await expect(pageLink(page, step), `${step} is still a link on the last page`).toHaveAttribute('aria-disabled', 'true');
+        await expect(pageLink(page, 'Page 2'), `the focus left the row under the list after ${step}`).toBeFocused();
+
+        expect(await documentStayed(page), 'a step loaded the page rather than redrawing the list').toBe(true);
+    });
+}
+
 test('a filter that finds nothing says so, and clearing it brings the list back', async ({ page }) => {
     await signIn(page);
     await page.goto(`/admin/cms/pages?pages-title=Ride+${run}`);

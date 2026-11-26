@@ -8,9 +8,17 @@
  * from the top of the page after every step. So the element is remembered
  * before the snippet is replaced and found again in what replaced it, by what
  * it is rather than by where it was: its id, the name of a field, or what a
- * link or a button is called. Where it is no longer there to be found - Next,
- * on the last page, is not a link any more - the first thing in the snippet
- * that takes the focus has it.
+ * link or a button is called. Where it is no longer there to be found at all,
+ * the first thing in the snippet that takes the focus has it.
+ *
+ * Found is not the same as able to take the focus. A step of a row of pages
+ * that cannot be taken any more - Next and Last, once the last page is shown -
+ * is still drawn, as a link marked aria-disabled with no address, and it is
+ * found by its name like any other; but the keyboard passes over it. The focus
+ * then goes to what is current in the nearest part of the snippet around it -
+ * the page now shown, in the same row of pages - or, where nothing there is
+ * marked current, to the first thing in that part that takes it. It stays
+ * where the step was taken from rather than falling to the top of the snippet.
  *
  * A name can be there more than once: a listing draws its row of pages above
  * the rows and under them, and both have a Page 2. So which of the links of
@@ -38,8 +46,32 @@ function labelOf(element: Element): string {
     return element.getAttribute('aria-label') ?? element.textContent?.trim() ?? '';
 }
 
+/** A link or a button, including a link drawn disabled - which is still there, and still counts among those of its name. */
+const NAMED = 'a[href], a[aria-disabled="true"], button';
+
 function namedIn(snippet: Element, label: string): HTMLElement[] {
-    return [...snippet.querySelectorAll<HTMLElement>('a[href], button')].filter((element) => labelOf(element) === label);
+    return [...snippet.querySelectorAll<HTMLElement>(NAMED)].filter((element) => labelOf(element) === label);
+}
+
+/**
+ * The element found again if it can take the focus; otherwise what is current
+ * in the nearest part of the snippet around it, or the first thing there that
+ * can take the focus.
+ */
+function focusableNear(snippet: Element, element: HTMLElement): HTMLElement | null {
+    if (element.matches(FOCUSABLE)) {
+        return element;
+    }
+
+    for (let around = element.parentElement; around !== null && snippet.contains(around); around = around.parentElement) {
+        const near = [...around.querySelectorAll<HTMLElement>('[aria-current]:not([aria-current="false"])')].find((current) => current.matches(FOCUSABLE))
+            ?? around.querySelector<HTMLElement>(FOCUSABLE);
+        if (near !== undefined && near !== null) {
+            return near;
+        }
+    }
+
+    return null;
 }
 
 function whatItIs(snippet: Element, element: Element): Found | null {
@@ -97,7 +129,8 @@ export const focusThroughRedraws: Extension = {
                 return;
             }
 
-            const target = findIn(snippet, found) ?? snippet.querySelector<HTMLElement>(FOCUSABLE);
+            const again = findIn(snippet, found);
+            const target = (again === null ? null : focusableNear(snippet, again)) ?? snippet.querySelector<HTMLElement>(FOCUSABLE);
             target?.focus({ preventScroll: true });
         });
     },

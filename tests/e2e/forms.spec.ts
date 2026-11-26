@@ -274,6 +274,25 @@ for (const theme of themes) {
             expect(await heightOf(browserPage.getByTestId('forms-control-textarea'))).toBeGreaterThan(text * 1.5);
             expect(await heightOf(browserPage.getByTestId('forms-control-select-multiple'))).toBeGreaterThan(text * 1.5);
 
+            // A list that says size="1" shows one row, as one without a size
+            // does, and is one line; a size of more than one is several rows.
+            const sized = await browserPage.getByTestId('forms-control-select').evaluate((node) => {
+                const heights: Record<string, number> = {};
+                for (const size of ['1', '4']) {
+                    const probe = node.cloneNode(true) as HTMLSelectElement;
+                    probe.removeAttribute('data-testid');
+                    probe.removeAttribute('id');
+                    probe.setAttribute('size', size);
+                    node.after(probe);
+                    heights[size] = probe.getBoundingClientRect().height;
+                    probe.remove();
+                }
+
+                return heights;
+            });
+            expect(sized['1'], `a select of size="1" in ${where}`).toBeCloseTo(text, 0);
+            expect(sized['4'], `a select of size="4" in ${where}`).toBeGreaterThan(text * 1.5);
+
             // A combobox is a select drawn by a script, and is measured
             // against a line of text put beside it on its own page.
             await browserPage.goto('/_styleguide/components/combobox');
