@@ -14,6 +14,11 @@
  * been saved: every address, the permalink marked - the addresses are rows of
  * Core's register, and this is the one place in the administration they are
  * all shown together.
+ *
+ * So are its pictures, each from its published variants with the button that
+ * takes it off, and the form a new one is added in. A request the server threw
+ * away for its size is said at the top, because otherwise the page would be
+ * drawn as if nothing had been sent (Trilobit\Core\Media\UploadLimit).
  *}
 
 {import '../../../../../Core/Presentation/components/page-heading.latte'}
@@ -33,6 +38,13 @@
         {include button, label: 'All products', href: $listUrl, variant: 'quiet', testId: 'shop-product-back'}
     </div>
 
+    {if $bodyDropped}
+        {include notice,
+            message: 'What was sent was larger than this server takes at once, so none of it arrived and nothing was saved. A picture may have at most ' . $largestFile . '.',
+            variant: 'danger',
+            testId: 'shop-product-body-dropped'}
+    {/if}
+
     {if $noCategory}
         {include notice,
             message: 'There is no category to file a product in yet. A product is filed in at least one, and categories are arranged by somebody who arranges the content of the site.',
@@ -48,6 +60,37 @@
     {/embed}
 
     {if !$isNew}
+        {embed block panel, testId: 'shop-product-pictures'}
+            {block panelTitle}Pictures{/block}
+
+            {block panelBody}
+                <div class="l-stack">
+                    <p n:if="$pictures === []" data-testid="shop-product-no-pictures">This product has no picture yet.</p>
+
+                    <div n:if="$pictures !== []" class="l-cluster">
+                        <figure n:foreach="$pictures as $picture" class="l-stack" data-testid="shop-product-picture-{$picture->id}">
+                            <img
+                                src="{$picture->src}"
+                                srcset="{$picture->srcset}"
+                                sizes="{$picture->width}px"
+                                width="{$picture->width}"
+                                height="{$picture->height}"
+                                alt="{$picture->alt}"
+                                loading="lazy"
+                                data-testid="shop-product-picture-image-{$picture->id}">
+
+                            <figcaption>{$picture->alt !== '' ? $picture->alt : $picture->name}</figcaption>
+
+                            {* Taking it off removes the binding; the file stays in the library until plan 16. *}
+                            {control $picture->remover()}
+                        </figure>
+                    </div>
+
+                    {control pictures}
+                </div>
+            {/block}
+        {/embed}
+
         {embed block panel, testId: 'shop-product-where'}
             {block panelTitle}Where it answers, and what it costs with tax{/block}
 

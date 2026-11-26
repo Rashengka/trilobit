@@ -113,10 +113,32 @@ export default defineConfig({
         // document root on every request, not against the directory it was
         // started in, and a prepended file it cannot open is a fatal error on
         // every page - served, of all things, with status 200.
+        //
+        // The limits on what a form may send are the ones README.md, under
+        // "Pictures", asks every server of this application for: a file of up
+        // to the media library's 20 MiB, and a request with room for it and
+        // the fields beside it. PHP's own come lower, and tests/e2e/pictures.spec.ts
+        // sends a file just over each of these to see both refusals said.
+        // PHP's own errors go to the server's output and not into the page:
+        // PHP reports a body it threw away before the application runs, and a
+        // warning printed ahead of the page means no header can be sent after
+        // it, so nothing the application says about the body reaches the
+        // browser. Measured on the built-in server: display_errors=stderr
+        // still prints it into the page; display_errors=0 with log_errors=1
+        // keeps it out and in the output. The application's own errors are
+        // Tracy's either way.
         command: [
             'php bin/trilobit migrations:migrate --no-interaction',
             `php bin/trilobit app:tenant 'Trilobit E2E' 127.0.0.1`,
-            `php -d ${shellWord(`auto_prepend_file=${join(root, 'tests', 'e2e', 'checkout-identity.php')}`)} -S 127.0.0.1:${port} -t www`,
+            [
+                'php',
+                `-d ${shellWord(`auto_prepend_file=${join(root, 'tests', 'e2e', 'checkout-identity.php')}`)}`,
+                '-d upload_max_filesize=20M',
+                '-d post_max_size=24M',
+                '-d display_errors=0',
+                '-d log_errors=1',
+                `-S 127.0.0.1:${port} -t www`,
+            ].join(' '),
         ].join(' && '),
         url: baseURL,
         // On a developer's machine a server that already answers is taken over

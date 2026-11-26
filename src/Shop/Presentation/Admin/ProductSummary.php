@@ -27,5 +27,7 @@ final readonly class ProductSummary
         /** The permalink with its leading slash, or a sentence saying there is none. */
         public string $address,
         public string $editUrl,
+        /** The product's first picture, or null while it has none. */
+        public ?PictureSummary $thumbnail = null,
     ) {}
 }

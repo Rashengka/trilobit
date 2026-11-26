@@ -9,7 +9,9 @@ use Trilobit\Core\DI\CoreExtension;
 use Trilobit\Shop\Admin\ShopMenu;
 use Trilobit\Shop\Application\Product\PriceSettings;
 use Trilobit\Shop\Application\Product\Products;
+use Trilobit\Shop\Domain\Product\ProductImageRepository;
 use Trilobit\Shop\Domain\Product\ProductRepository;
+use Trilobit\Shop\Infrastructure\Doctrine\DoctrineProductImageRepository;
 use Trilobit\Shop\Infrastructure\Doctrine\DoctrineProductRepository;
 use Trilobit\Shop\Presentation\Admin\ProductListingFactory;
 use Trilobit\Shop\Presentation\Front\ShopSignpost;
@@ -73,6 +75,10 @@ final class ShopExtension extends CompilerExtension
         $builder->addDefinition($this->prefix('productRepository'))
             ->setType(ProductRepository::class)
             ->setFactory(DoctrineProductRepository::class);
+
+        $builder->addDefinition($this->prefix('productImageRepository'))
+            ->setType(ProductImageRepository::class)
+            ->setFactory(DoctrineProductImageRepository::class);
 
         // What the installation says about prices, from the parameters in
         // src/Shop/config/services.neon, which config/local.neon may override.
