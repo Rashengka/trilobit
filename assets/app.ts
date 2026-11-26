@@ -11,6 +11,7 @@ import { comboboxesInSnippets, enhanceWithin } from './combobox';
 import { answerTheDialogButtons, dialogsInSnippets } from './dialog';
 import { openWhatTheAddressNames } from './disclosure';
 import { keepTheDropdownsToTheKeyboard } from './dropdown';
+import { turnTheLightboxes } from './lightbox';
 import { focusThroughRedraws } from './listing';
 import { currentBranchesInSnippets, unfoldTheCurrentBranchWithin, unfoldTheNavigation } from './nav';
 import { dismissTheNotices } from './notice';
@@ -184,10 +185,11 @@ dismissTheNotices();
 // a browser that does not answer them itself. See assets/dialog.ts.
 answerTheDialogButtons();
 
-// The same for the carousels and the toasts: each listens on the document or
-// watches it, and prepares nothing a snippet could bring in or take away. See
-// assets/carousel.ts and assets/toast.ts.
+// The same for the carousels, the lightboxes and the toasts: each listens on
+// the document or watches it, and prepares nothing a snippet could bring in or
+// take away. See assets/carousel.ts, assets/lightbox.ts and assets/toast.ts.
 turnTheCarousels();
+turnTheLightboxes();
 announceTheToasts();
 
 // The same holds for the three popovers: each listens on the document and

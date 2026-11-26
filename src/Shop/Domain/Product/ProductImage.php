@@ -78,4 +78,10 @@ class ProductImage
     {
         return $this->position;
     }
+
+    /** Puts it at $position among the product's pictures; see Trilobit\Shop\Application\Product\Products::movePicture(). */
+    public function placeAt(int $position): void
+    {
+        $this->position = $position;
+    }
 }

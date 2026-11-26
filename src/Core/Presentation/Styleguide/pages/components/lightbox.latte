@@ -1,0 +1,77 @@
+{templateType Trilobit\Core\Presentation\Styleguide\OverviewDefaultTemplate}
+
+{*
+ * A set of pictures, each opening over the whole window: three of different
+ * shapes, the same three with what a caller hangs under each - here a caption
+ * and a word on which one comes first - one picture alone, which has no other
+ * to go on to and is not offered a way to one, two with a caption far longer
+ * than a line, and more pictures than a row holds, running on in rows.
+ *
+ * Each specimen draws its small pictures and its dialogs, which are drawn
+ * closed and take no room on the stage. tests/e2e/lightbox.spec.ts drives
+ * them. The pictures are drawn by the style guide's presenter, because the
+ * component draws an <img> and the guide keeps no files.
+ *
+ * The example content is invented and has to stay invented.
+ *}
+
+{import '../../templates/furniture.latte'}
+{import '../../../components/badge.latte'}
+{import '../../../components/lightbox.latte'}
+
+{block sgPage}
+    {embed block sgSection, component: $components['c-lightbox']}
+        {block sgSectionBody}
+            {specimen 'default'}
+                {include lightbox,
+                    id: 'sg-lightbox',
+                    label: 'Specimens',
+                    pictures: $samplePictures,
+                    testId: 'sg-lightbox'}
+            {/specimen}
+
+            {specimen 'with something under each picture'}
+                {embed block lightbox,
+                    id: 'sg-lightbox-captioned',
+                    label: 'Specimens, captioned',
+                    pictures: $samplePictures,
+                    testId: 'sg-lightbox-captioned'}
+                    {block lightboxItem}
+                        <div class="l-cluster">
+                            <span>{$picture->caption !== '' ? $picture->caption : 'Without a caption'}</span>
+                            {if $position === 1}{include badge, label: 'Shown first', variant: 'accent'}{/if}
+                        </div>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'with a single picture'}
+                {include lightbox,
+                    id: 'sg-lightbox-single',
+                    label: 'One specimen',
+                    pictures: [$samplePictures[0]],
+                    testId: 'sg-lightbox-single'}
+            {/specimen}
+
+            {specimen 'with a long caption'}
+                {embed block lightbox,
+                    id: 'sg-lightbox-long',
+                    label: 'Specimens, described at length',
+                    pictures: $sampleLongCaptions,
+                    testId: 'sg-lightbox-long'}
+                    {block lightboxItem}
+                        <p>{$picture->caption}</p>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {specimen 'with more pictures than a row holds'}
+                {include lightbox,
+                    id: 'sg-lightbox-many',
+                    label: 'Every specimen of the drawer',
+                    pictures: $sampleManyPictures,
+                    testId: 'sg-lightbox-many'}
+            {/specimen}
+        {/block}
+    {/embed}
+{/block}

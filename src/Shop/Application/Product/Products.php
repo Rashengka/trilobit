@@ -312,6 +312,54 @@ final readonly class Products
         return $picture;
     }
 
+    /**
+     * Says again what picture $id of $product shows - on the file, which is
+     * Core's, so a picture shown somewhere else as well says it there too.
+     * A number naming no picture of $product changes nothing.
+     */
+    public function describePicture(Product $product, int $id, string $alt): void
+    {
+        $picture = $this->pictureOf($product, $id);
+        if ($picture instanceof ProductImage) {
+            $this->library->describe($picture->file(), $alt);
+        }
+    }
+
+    /**
+     * Moves picture $id of $product $by places - -1 is one place earlier, 1
+     * one later - stopping at the first and the last. The first is the one
+     * the list of products shows.
+     *
+     * The whole order is written again, numbered from 0, rather than two
+     * numbers swapped: taking a picture off leaves a gap, and a swap across a
+     * gap would be a move that did nothing. A number naming no picture of
+     * $product changes nothing.
+     */
+    public function movePicture(Product $product, int $id, int $by): void
+    {
+        $pictures = $this->pictures->of($product);
+        $from = null;
+        foreach ($pictures as $index => $picture) {
+            if ($picture->id() === $id) {
+                $from = $index;
+            }
+        }
+
+        if ($from === null) {
+            return;
+        }
+
+        $to = max(0, min(count($pictures) - 1, $from + $by));
+        $moved = array_splice($pictures, $from, 1);
+        array_splice($pictures, $to, 0, $moved);
+
+        foreach ($pictures as $position => $picture) {
+            $picture->placeAt($position);
+        }
+
+        $this->pictures->saveAll($pictures);
+    }
+
     /** Takes the picture $id off $product, and only the binding: the file stays in the library. */
     public function removePicture(Product $product, int $id): void
     {

@@ -672,6 +672,7 @@ behaviour:
 | Tabs | headed sections, each one visible | turning them into a tab list |
 | Scrollspy | a list of links | marking the section in view, with an `IntersectionObserver` |
 | Carousel | a `scroll-snap` track that scrolls by hand and by keyboard | the previous and next buttons |
+| Lightbox | a list of buttons, each opening its picture in a `<dialog>` by invoker commands | going between the pictures: the buttons under one, the arrow keys, `Home` and `End` (`assets/lightbox.ts`) |
 | Toast | a live region | dismissing |
 | Navigation | a list of links; an entry with entries under it is its link and a button beside it | opening what is under an entry, folding the navigation behind its Menu button, unfolding the way to the current page (`assets/nav.ts`) |
 
@@ -706,6 +707,13 @@ Some choices behind the table, each with the reason it was made:
   atrium only marks them, because unfolding there would cover the page.
 - A carousel never turns by itself. A carousel that moved on its own would need
   a way to stop it (WCAG 2.2.2), and nothing here needs one that moves.
+- In `c-lightbox` every picture is a dialog of its own over the whole window,
+  so opening one and putting it away need no script, and the focus comes back
+  to the small picture it was opened from. Going on closes one dialog and opens
+  the next from its own small picture, so the focus comes back to the one
+  looked at last. Nothing moves between pictures: a dialog fading in lets the
+  page under it show through on every step. Each leads to its picture at the
+  largest size there is, through an ordinary link.
 - A toast stays until it is dismissed. A notice that goes after a fixed time is
   gone before some people have read it (WCAG 2.2.1). Nette's flash messages are
   drawn as toasts, in the `flashes` snippet of both layouts, after a redirect
@@ -1669,6 +1677,11 @@ gigabytes. An upload is the files and the row together or neither: a variant
 that cannot be written, or a row the database refuses, takes back everything
 written before it, and the error says which.
 
+What a picture shows - the sentence a screen reader says instead of it - is
+the file's, so it is said once for every place that shows the picture, and can
+be said again later: `MediaLibrary::describe()`, trimmed and empty for a
+picture that is decoration.
+
 `bin/trilobit app:media-variants` makes every variant again from the
 originals - after the sizes change, or when `www/media` was lost. A picture it
 cannot make is named, the others are made anyway, and the run fails.
@@ -1678,6 +1691,25 @@ directory. The library never writes one there; the rule is for the day
 something else does. Another server needs the same rule in its own
 configuration, and PHP's built-in server - the one the local stack runs - does
 not read `.htaccess` at all.
+
+### A product's pictures
+
+A product holds its pictures in an order, and the first is the one the list of
+products shows. On the product's page every picture says what it shows in a
+field of its own, and is moved a place earlier or later by two buttons - plain
+submit buttons, so the order is changed from the keyboard and without a script;
+the first has nowhere earlier to go and the last nowhere later. Taking a picture
+off removes only the product's binding to it. The order is written again whole
+on every move, numbered from 0, so the gap a picture taken off leaves never
+makes a move do nothing.
+
+Each of those forms asks for the right to edit the catalogue in its handler, as
+well as on the page, and reaches a picture only through the product open on the
+page: a number naming another product's picture is not found.
+
+The pictures are a `c-lightbox`: each opens over the whole window in its largest
+variant (1600 px), and leads to that variant on its own. The original is never
+served, so that variant is the full size anybody is given.
 
 ### What a form can send
 
@@ -2086,7 +2118,7 @@ bin/trilobit app:seed
 | `belemnite-editor@example.com` | holds Belemnite Books' own `editor` role, which under the same code means something narrower: reading and correcting the content |
 | content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, a main menu with an entry holding two others, and enough further pages that the list of pages runs past its first page |
 | `ammonite-cataloguer@example.com`, `belemnite-cataloguer@example.com`, with `Shop` switched on | each holds the business's own `catalogue` role - the catalogue's role in between: viewing, adding, editing and deleting products, and not changing what any of them costs, which the form shows them without letting them change it |
-| catalogue, with `Shop` switched on | in each business: the categories Bikes - with Mountain, Road and Gravel bikes under it - Parts and accessories, and Sale; 24 products carrying the business's name, enough that the list of products runs past its first page; one filed in two categories with its permalink in the first, one with its permalink in the second; a draft; prices at 21 %, 12 % and no tax, and one product without an SKU; pictures drawn by the seed on five bikes, two on Ridge 29, taken in through the media library |
+| catalogue, with `Shop` switched on | in each business: the categories Bikes - with Mountain, Road and Gravel bikes under it - Parts and accessories, and Sale; 24 products carrying the business's name, enough that the list of products runs past its first page; one filed in two categories with its permalink in the first, one with its permalink in the second; a draft; prices at 21 %, 12 % and no tax, and one product without an SKU; pictures drawn by the seed on five bikes, three on Ridge 29 and one of those standing up, taken in through the media library |
 
 Every password is generated and printed once, beside its address. What is
 stored is a hash, and none is written in the code. The invitation is printed as

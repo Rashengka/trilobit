@@ -1,0 +1,103 @@
+{**
+ * c-lightbox - a set of pictures, each chosen by a small one and opened over
+ * the whole window, with a way to the picture at the largest size there is.
+ *
+ * Every picture is its own dialog, the browser's own, shown as a modal the way
+ * c-modal is - so the focus is taken into it, the page behind it is inert,
+ * Escape closes it and closing it gives the focus back, and none of that is
+ * written here. It is opened by the small picture, a button naming the dialog
+ * and the command show-modal, which a browser with Invoker Commands answers
+ * with no script and assets/dialog.ts answers in one without them.
+ *
+ * Between the pictures of a set - the buttons under an open picture, the arrow
+ * keys, Home and End - is assets/lightbox.ts: it closes one dialog and opens the
+ * next from that one's small picture, so that closing whichever is open gives
+ * the focus back to the small picture of what was looked at last. A browser
+ * with no script is not shown the buttons, because they would do nothing; a set
+ * of one picture is not shown them either.
+ *
+ * The set is an ordered list, because the order is what a set of pictures
+ * often means: the first of a product's is the one shown for it elsewhere.
+ * What else belongs to each picture - its caption, the forms that change it -
+ * is the caller's, in lightboxItem, with the picture as $picture and its place
+ * as $position, counted from 1. Each item carries the id of its picture's
+ * dialog with `-item` after it, for an address to lead back to it.
+ *
+ * An open picture is named by what is written over it and where it is among
+ * the others ("From the side, 2 of 3"), so a screen reader says both as it
+ * opens. The small picture is named for what pressing it does.
+ *
+ * @param list<\Trilobit\Core\Presentation\Component\LightboxPicture> $pictures
+ *}
+
+{import 'close.latte'}
+
+{define lightbox, string $id, string $label, array $pictures, ?string $testId = null}
+    {var $count = count($pictures)}
+    <div class="c-lightbox" data-testid="{$testId}">
+        <ol class="c-lightbox__items" aria-label="{$label}">
+            <li n:foreach="$pictures as $picture" class="c-lightbox__item" id="{$id}-{$picture->key}-item">
+                {var $position = $iterator->counter}
+                <button
+                    type="button"
+                    class="c-lightbox__opener"
+                    commandfor="{$id}-{$picture->key}"
+                    command="show-modal"
+                    aria-label="{$picture->caption !== '' ? 'Enlarge: ' . $picture->caption : sprintf('Enlarge picture %d of %d', $position, $count)}"
+                    data-testid="{$testId === null ? null : $testId . '-open-' . $picture->key}"
+                >
+                    <img
+                        class="c-lightbox__thumb"
+                        src="{$picture->thumbSrc}"
+                        n:attr="srcset: $picture->srcset !== '' ? $picture->srcset : null, sizes: $picture->srcset !== '' ? '(max-width: 30rem) 100vw, 20rem' : null"
+                        width="{$picture->thumbWidth}"
+                        height="{$picture->thumbHeight}"
+                        alt="{$picture->alt}"
+                        loading="lazy"
+                        data-testid="{$testId === null ? null : $testId . '-thumb-' . $picture->key}"
+                    >
+                </button>
+
+                {block lightboxItem}{/block}
+            </li>
+        </ol>
+
+        <dialog
+            n:foreach="$pictures as $picture"
+            class="c-lightbox__dialog"
+            id="{$id}-{$picture->key}"
+            aria-labelledby="{$id}-{$picture->key}-title {$id}-{$picture->key}-place"
+            data-testid="{$testId === null ? null : $testId . '-dialog-' . $picture->key}"
+        >
+            <div class="c-lightbox__header">
+                <p class="c-lightbox__heading">
+                    <span class="c-lightbox__title" id="{$id}-{$picture->key}-title">{$picture->caption !== '' ? $picture->caption : 'Picture'}</span>
+                    <span class="c-lightbox__place" id="{$id}-{$picture->key}-place">{$iterator->counter} of {$count}</span>
+                </p>
+
+                <div class="c-lightbox__actions">
+                    <a class="c-button c-button--quiet c-button--small c-lightbox__full" href="{$picture->fullSrc}">Open full size</a>
+
+                    {include close, attributes: ['commandfor' => $id . '-' . $picture->key, 'command' => 'close', 'autofocus' => 'autofocus']}
+                </div>
+            </div>
+
+            <div class="c-lightbox__stage">
+                <img
+                    class="c-lightbox__image"
+                    src="{$picture->src}"
+                    n:attr="srcset: $picture->srcset !== '' ? $picture->srcset : null, sizes: $picture->srcset !== '' ? '100vw' : null"
+                    width="{$picture->width}"
+                    height="{$picture->height}"
+                    alt="{$picture->alt}"
+                    loading="lazy"
+                >
+            </div>
+
+            <div n:if="$count > 1" class="c-lightbox__controls">
+                <button type="button" class="c-button c-button--quiet c-lightbox__previous">Previous<span class="u-visually-hidden"> picture</span></button>
+                <button type="button" class="c-button c-button--quiet c-lightbox__next">Next<span class="u-visually-hidden"> picture</span></button>
+            </div>
+        </dialog>
+    </div>
+{/define}

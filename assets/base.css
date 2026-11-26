@@ -1588,6 +1588,20 @@
         color: var(--color-accent-ink);
     }
 
+    /*
+     * One that cannot be pressed, in whichever variant: sunk into the page and
+     * in the ink a reader may pass over, with no pointer offering a press and
+     * nothing lighting up under one. It comes after every variant and its
+     * hover and weighs as much as they do, so it wins over each of them by
+     * being later; a link says it with aria-disabled, which is all a link has.
+     */
+    .c-button:is(:disabled, [aria-disabled='true']) {
+        background-color: var(--color-canvas-sunken);
+        border-color: var(--color-line);
+        color: var(--color-ink-subtle);
+        cursor: not-allowed;
+    }
+
     /* Every preference as a row of its answers, one row under the next. The
        answers themselves are c-button, pressed or not. */
     .c-preference-switcher {
@@ -3306,6 +3320,182 @@
             .c-offcanvas--bottom[open] {
                 translate: 0 100%;
             }
+        }
+    }
+
+    /*
+     * c-lightbox: a grid of small pictures, each a button as wide as its cell
+     * and drawn at the shape of a card's picture - the whole picture inside it,
+     * whatever its own shape, on the sunken page so that its edges show.
+     *
+     * Each opens as a dialog over the whole window rather than in its middle:
+     * the room is the picture's. The header and the buttons under it stay
+     * where they are and the picture takes the rest, as large as it fits
+     * without changing its shape. The dialog is opaque, so the backdrop
+     * behind it is never seen; it is given one all the same, for the moment
+     * a browser draws the dialog before the picture has arrived.
+     *
+     * **No motion between pictures.** Going on closes one dialog and opens the
+     * next (assets/lightbox.ts), and a dialog fading in would let the page
+     * under it show through for as long as it took - a flash on every step.
+     *
+     * The buttons under it only work with the script, so a browser with none
+     * is not shown them.
+     */
+    .c-lightbox__items {
+        display: grid;
+        gap: var(--space-lg);
+        grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-card-min), 100%), 1fr));
+    }
+
+    /*
+     * Each picture a card of its own, drawn the way c-card is, so that what
+     * belongs to one picture - its caption, the forms a caller hangs under it -
+     * is told apart from the next by an edge and not by room alone.
+     */
+    .c-lightbox__item {
+        background-color: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-lg);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        min-inline-size: 0;
+        padding: var(--space-sm);
+    }
+
+    .c-lightbox__opener {
+        background-color: var(--color-canvas-sunken);
+        border: var(--border-hairline) solid var(--color-line);
+        border-radius: var(--radius-md);
+        cursor: zoom-in;
+        display: block;
+        inline-size: 100%;
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .c-lightbox__opener:hover {
+        border-color: var(--color-line-strong);
+    }
+
+    .c-lightbox__thumb {
+        aspect-ratio: var(--layout-card-media-ratio);
+        inline-size: 100%;
+        object-fit: contain;
+    }
+
+    .c-lightbox__dialog {
+        background-color: var(--color-surface);
+        block-size: 100%;
+        border: 0;
+        color: var(--color-ink);
+        inline-size: 100%;
+        margin: 0;
+        max-block-size: 100%;
+        max-inline-size: 100%;
+        padding: 0;
+    }
+
+    .c-lightbox__dialog[open] {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .c-lightbox__dialog::backdrop {
+        background-color: var(--color-backdrop);
+    }
+
+    /*
+     * The caption takes what the way to the full size and the cross leave of
+     * the line, and wraps within it however long it is; those two never wrap
+     * under it, so the cross stays at the top at the end, where a cross is
+     * looked for, on a phone as on a wide window.
+     */
+    .c-lightbox__header {
+        align-items: flex-start;
+        border-block-end: var(--border-hairline) solid var(--color-line);
+        display: flex;
+        gap: var(--space-sm);
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-lg);
+    }
+
+    /* The way to the full size and the cross, centred on each other, never wrapping under the caption. */
+    .c-lightbox__actions {
+        align-items: center;
+        display: flex;
+        flex: none;
+        gap: var(--space-sm);
+    }
+
+    .c-lightbox__controls {
+        align-items: center;
+        display: flex;
+        gap: var(--space-sm);
+        padding-block: var(--space-sm);
+        padding-inline: var(--space-lg);
+    }
+
+    /* What it is and where it is among the others, on one line while they fit. */
+    .c-lightbox__heading {
+        align-items: baseline;
+        align-self: center;
+        display: flex;
+        flex: 1 1 auto;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+        min-inline-size: 0;
+    }
+
+    .c-lightbox__title {
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        font-weight: var(--font-weight-display);
+        letter-spacing: var(--tracking-display);
+        line-height: var(--leading-tight);
+        overflow-wrap: anywhere;
+        /* A short name broken over two lines leaves its last word alone on the
+           second; a long caption is past what balancing looks at and wraps as
+           text does. */
+        text-wrap: balance;
+    }
+
+    .c-lightbox__place {
+        color: var(--color-ink-muted);
+        font-size: var(--text-sm);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * The picture as large as the room lets it be, in its own shape and in the
+     * middle of it (object-fit). The room is one track that may shrink to
+     * nothing, so the picture's own height never decides how tall it is: a
+     * track sized by its content would let a picture standing up push the
+     * buttons out of the window.
+     */
+    .c-lightbox__stage {
+        background-color: var(--color-canvas-sunken);
+        display: grid;
+        grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+        min-block-size: 0;
+        padding: var(--space-md);
+    }
+
+    .c-lightbox__image {
+        block-size: 100%;
+        inline-size: 100%;
+        object-fit: contain;
+    }
+
+    .c-lightbox__controls {
+        border-block-start: var(--border-hairline) solid var(--color-line);
+        justify-content: space-between;
+    }
+
+    @media (scripting: none) {
+        .c-lightbox__controls {
+            display: none;
         }
     }
 

@@ -9,7 +9,7 @@ use Trilobit\Core\Media\Variant;
 use Trilobit\Shop\Domain\Product\ProductImage;
 
 /**
- * One picture of a product as the administration draws it: from the published
+ * One picture of a product as the list of products draws it: from the published
  * variants - the smallest as `src`, all of them in `srcset` - and never from
  * the original, which is not served.
  *
@@ -49,12 +49,6 @@ final readonly class PictureSummary
             $file->alt(),
             $file->originalName(),
         );
-    }
-
-    /** The name of the button taking it off, as ProductPresenter registers it. */
-    public function remover(): string
-    {
-        return 'removePicture-' . $this->id;
     }
 
     /** Its width when its longer side is $side: what the list draws it at. */

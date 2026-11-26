@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Trilobit\Core\Presentation\Styleguide;
 
+use Nette\Application\Attributes\CrossOrigin;
 use Nette\Application\BadRequestException;
+use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Template;
 use Trilobit\Core\Presentation\Component\Component;
 use Trilobit\Core\Presentation\Component\ComponentRegistry;
+use Trilobit\Core\Presentation\Component\LightboxPicture;
 use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Content\ContentGroupRegistry;
@@ -101,6 +104,13 @@ final class OverviewPresenter extends FrontPresenter
         'Every value on this page is read out of a token.',
         'No component writes a colour or a length into its markup.',
         'Switching the theme is one attribute on the html element.',
+    ];
+
+    /** @var array<string, array{int, int}> the pictures handleDrawing() draws, by name: width and height */
+    private const array SAMPLE_SHAPES = [
+        'flat' => [1600, 1000],
+        'upright' => [1000, 1600],
+        'square' => [1200, 1200],
     ];
 
     public function __construct(
@@ -227,6 +237,28 @@ final class OverviewPresenter extends FrontPresenter
         $this->redirect('this');
     }
 
+    /**
+     * One of the invented pictures of c-lightbox's specimens, as an SVG file:
+     * the component draws an <img> and leads to the picture on its own, and a
+     * picture written into the page as a data: address is one the template
+     * engine refuses as an address, rightly. So the guide answers for its
+     * pictures here, keeping no file. A shape it does not draw is not found.
+     *
+     * It is a picture, so it is answered wherever it is asked from - opened on
+     * its own from the address bar as much as drawn by the page.
+     */
+    #[CrossOrigin]
+    public function handleDrawing(string $shape): void
+    {
+        $size = self::SAMPLE_SHAPES[$shape] ?? null;
+        if ($size === null) {
+            $this->error('The style guide draws no such picture.');
+        }
+
+        $this->getHttpResponse()->setContentType('image/svg+xml', 'utf-8');
+        $this->sendResponse(new TextResponse($this->sampleDrawing(...$size)));
+    }
+
     public function renderDefault(): void
     {
         $template = $this->styleguideTemplate();
@@ -324,6 +356,9 @@ final class OverviewPresenter extends FrontPresenter
         $template->sampleNestedNavigation = $this->sampleNestedNavigation();
         $template->sampleCurrentNavigation = $this->sampleCurrentNavigation();
         $template->sampleSignposts = $this->sampleSignposts();
+        $template->samplePictures = $this->samplePictures();
+        $template->sampleLongCaptions = $this->sampleLongCaptions();
+        $template->sampleManyPictures = $this->sampleManyPictures();
     }
 
     /**
@@ -548,6 +583,128 @@ final class OverviewPresenter extends FrontPresenter
             new NavigationItem('Specimens', '#', false, $prefix . '-specimens'),
             new NavigationItem('Tokens', '#', false, $prefix . '-tokens'),
         ];
+    }
+
+    /**
+     * Invented pictures for c-lightbox, drawn by handleDrawing() and handed
+     * over as its addresses: a specimen laid flat, one standing up and one
+     * square, so that a picture of each shape is seen fitted into the same
+     * room.
+     *
+     * The last one says nothing of what it shows, which is how a picture taken
+     * for decoration is handed over, and the component names it by its place.
+     *
+     * @return list<LightboxPicture>
+     */
+    private function samplePictures(): array
+    {
+        $drawn = [
+            'flat' => ['A specimen laid flat, its head shield to the left', 'Laid flat'],
+            'upright' => ['The same specimen standing on its tail', 'Standing up'],
+            'square' => ['', ''],
+        ];
+
+        $pictures = [];
+        foreach ($drawn as $key => [$alt, $caption]) {
+            [$width, $height] = self::SAMPLE_SHAPES[$key];
+            $source = $this->link('drawing!', ['shape' => $key]);
+            $pictures[] = new LightboxPicture(
+                'sample-' . $key,
+                $source,
+                (int) round($width * 240 / max($width, $height)),
+                (int) round($height * 240 / max($width, $height)),
+                $source,
+                $width,
+                $height,
+                $alt,
+                $caption,
+                $source,
+            );
+        }
+
+        return $pictures;
+    }
+
+    /**
+     * Two of the invented pictures with a caption far longer than a line, for
+     * the specimen showing where such a caption wraps: under the small picture
+     * and over the open one, where the cross keeps its place beside it.
+     *
+     * @return list<LightboxPicture>
+     */
+    private function sampleLongCaptions(): array
+    {
+        $long = 'A specimen laid flat on the felt of its drawer, its head shield to the left and every one of '
+            . 'its segments, down to the narrowest at the tail, lying where it was found in the slab';
+
+        return array_map(
+            static fn(LightboxPicture $picture): LightboxPicture => new LightboxPicture(
+                $picture->key . '-long',
+                $picture->thumbSrc,
+                $picture->thumbWidth,
+                $picture->thumbHeight,
+                $picture->src,
+                $picture->width,
+                $picture->height,
+                $long,
+                $long,
+                $picture->fullSrc,
+            ),
+            array_slice($this->samplePictures(), 0, 2),
+        );
+    }
+
+    /**
+     * The invented pictures three times over, more than any row holds, for the
+     * specimen showing a set running on in rows.
+     *
+     * @return list<LightboxPicture>
+     */
+    private function sampleManyPictures(): array
+    {
+        $many = [];
+        foreach ([1, 2, 3] as $round) {
+            foreach ($this->samplePictures() as $picture) {
+                $many[] = new LightboxPicture(
+                    $picture->key . '-' . $round,
+                    $picture->thumbSrc,
+                    $picture->thumbWidth,
+                    $picture->thumbHeight,
+                    $picture->src,
+                    $picture->width,
+                    $picture->height,
+                    $picture->alt,
+                    $picture->caption,
+                    $picture->fullSrc,
+                );
+            }
+        }
+
+        return $many;
+    }
+
+    /** An invented specimen of $width by $height, segments narrowing to a tail, as SVG. */
+    private function sampleDrawing(int $width, int $height): string
+    {
+        $segments = '';
+        $long = max($width, $height);
+        for ($segment = 0; $segment < 7; $segment++) {
+            $along = 0.18 + $segment * 0.11;
+            $across = (int) round($long * (0.2 - $segment * 0.022));
+            $deep = (int) round($long * 0.04);
+            [$x, $y, $rx, $ry] = $width >= $height
+                ? [(int) round($width * $along), (int) round($height / 2), $deep, $across]
+                : [(int) round($width / 2), (int) round($height * $along), $across, $deep];
+            $segments .= sprintf('<ellipse cx="%d" cy="%d" rx="%d" ry="%d"/>', $x, $y, $rx, $ry);
+        }
+
+        return sprintf(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="%1$d" height="%2$d" viewBox="0 0 %1$d %2$d">'
+                . '<rect width="%1$d" height="%2$d" fill="#d8d2c4"/><g fill="#5b5348" fill-opacity="0.75">%3$s</g></svg>',
+            $width,
+            $height,
+            $segments,
+        );
     }
 
     /**

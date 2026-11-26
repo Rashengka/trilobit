@@ -19,6 +19,7 @@ use Nette\DI\Container;
 use Nette\Http\FileUpload;
 use Nette\Http\IRequest;
 use Nette\Http\Request as HttpRequest;
+use Nette\Http\Session;
 use Nette\Http\UrlScript;
 use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
@@ -45,6 +46,7 @@ use Trilobit\Shop\Application\Product\Products;
 use Trilobit\Shop\Domain\Price\Money;
 use Trilobit\Shop\Domain\Price\VatRate;
 use Trilobit\Shop\Domain\Product\Product;
+use Trilobit\Shop\Domain\Product\ProductImage;
 use Trilobit\Shop\Security\ShopResource;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
@@ -346,7 +348,7 @@ final class ProductAdministrationTest extends TestCase
 
         $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()]));
 
-        $image = $document->querySelector(sprintf('[data-testid="shop-product-picture-image-%d"]', $picture->id()));
+        $image = $document->querySelector(sprintf('[data-testid="shop-product-gallery-thumb-%d"]', $picture->id()));
         self::assertNotNull($image, 'the picture is not drawn on the product\'s page');
         self::assertStringEndsWith('-thumb.jpg', (string) $image->getAttribute('src'));
         self::assertStringContainsString(' 40w', (string) $image->getAttribute('srcset'));
@@ -529,6 +531,257 @@ final class ProductAdministrationTest extends TestCase
         self::assertSame([], $this->products()->picturesOf($product));
     }
 
+    /** What a picture shows is said again on the product's page, by somebody who may edit the catalogue. */
+    public function testWhatAPictureShowsIsSaidAgainFromTheEditPage(): void
+    {
+        $this->signedInHolding($this->writer());
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', 'A bike');
+
+        $response = $this->describePicture($product, (int) $picture->id(), 'The Ridge 29 from the drive side');
+
+        self::assertInstanceOf(RedirectResponse::class, $response, $this->saidIn($response));
+        self::assertSame('The Ridge 29 from the drive side', $this->altOf((int) $picture->id()));
+    }
+
+    public function testWhatAPictureShowsIsRefusedToSomebodyWhoMayOnlyLook(): void
+    {
+        $this->signedInHolding([new Grant(ShopResource::Catalogue, Privilege::View)->code()]);
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', 'A bike');
+
+        $response = $this->describePicture($product, (int) $picture->id(), 'Rewritten by somebody who may only look');
+
+        self::assertInstanceOf(ForwardResponse::class, $response, 'saying what a picture shows was not refused');
+        self::assertSame('A bike', $this->altOf((int) $picture->id()));
+    }
+
+    public function testWhatAPictureOfAnotherProductShowsIsNotSaidThroughThisOne(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $ridge = $this->ridge();
+        $picture = $this->products()->addPicture($ridge, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', 'A bike');
+        $scree = $this->products()->create('Scree 27', new Filing($this->category['mountain'], [], 'scree-27'), new Money(1999000, 'CZK'), new VatRate(2100));
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->describePicture($scree, (int) $picture->id(), 'Rewritten through another product')));
+        self::assertSame('A bike', $this->altOf((int) $picture->id()));
+    }
+
+    /** Like the button taking a picture off, the form saying what it shows belongs to the product's page alone. */
+    public function testWhatAPictureShowsSentToTheListIsNotFound(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', 'A bike');
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit(
+            'default',
+            ['alt' => 'Sent to the list', 'describe' => 'Save'],
+            [],
+            [],
+            sprintf('describePicture-%d-submit', $picture->id()),
+        )));
+        self::assertSame('A bike', $this->altOf((int) $picture->id()));
+    }
+
+    public function testAPictureIsMovedEarlierFromTheEditPage(): void
+    {
+        $this->signedInHolding($this->writer());
+        $product = $this->ridge();
+        [, $back] = $this->twoPictures($product);
+
+        $response = $this->movePicture($product, (int) $back->id(), 'earlier');
+
+        self::assertInstanceOf(RedirectResponse::class, $response, $this->saidIn($response));
+        self::assertSame(['back.png', 'side.jpg'], $this->pictureNamesOf($product));
+    }
+
+    public function testAPictureIsMovedLaterFromTheEditPage(): void
+    {
+        $this->signedInHolding($this->writer());
+        $product = $this->ridge();
+        [$side] = $this->twoPictures($product);
+
+        $response = $this->movePicture($product, (int) $side->id(), 'later');
+
+        self::assertInstanceOf(RedirectResponse::class, $response, $this->saidIn($response));
+        self::assertSame(['back.png', 'side.jpg'], $this->pictureNamesOf($product));
+    }
+
+    /** The first picture is the one the list shows, so a picture moved first is shown there instead. */
+    public function testTheListShowsThePictureMovedFirst(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        [, $back] = $this->twoPictures($product);
+        $this->movePicture($product, (int) $back->id(), 'earlier');
+
+        $thumb = $this->pageOf($this->submit('default', []))->querySelector(sprintf('[data-testid="shop-product-thumb-%d"]', $product->id()));
+
+        self::assertNotNull($thumb, 'the list shows no picture of the product');
+        self::assertStringContainsString(pathinfo($back->file()->path(), PATHINFO_FILENAME), (string) $thumb->getAttribute('src'));
+    }
+
+    public function testMovingAPictureIsRefusedToSomebodyWhoMayOnlyLook(): void
+    {
+        $this->signedInHolding([new Grant(ShopResource::Catalogue, Privilege::View)->code()]);
+        $product = $this->ridge();
+        [, $back] = $this->twoPictures($product);
+
+        $response = $this->movePicture($product, (int) $back->id(), 'earlier');
+
+        self::assertInstanceOf(ForwardResponse::class, $response, 'moving a picture was not refused');
+        self::assertSame(['side.jpg', 'back.png'], $this->pictureNamesOf($product));
+    }
+
+    public function testAPictureOfAnotherProductIsNotMovedThroughThisOne(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $ridge = $this->ridge();
+        [, $back] = $this->twoPictures($ridge);
+        $scree = $this->products()->create('Scree 27', new Filing($this->category['mountain'], [], 'scree-27'), new Money(1999000, 'CZK'), new VatRate(2100));
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->movePicture($scree, (int) $back->id(), 'earlier')));
+        self::assertSame(['side.jpg', 'back.png'], $this->pictureNamesOf($ridge));
+    }
+
+    public function testAMoveSentToTheListIsNotFound(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        [, $back] = $this->twoPictures($product);
+
+        self::assertSame(404, $this->refusalOf(fn(): Response => $this->submit(
+            'default',
+            ['earlier' => 'Move earlier'],
+            [],
+            [],
+            sprintf('movePicture-%d-submit', $back->id()),
+        )));
+        self::assertSame(['side.jpg', 'back.png'], $this->pictureNamesOf($product));
+    }
+
+    /**
+     * The first picture has nowhere earlier to go and the last nowhere later,
+     * and a button that would do nothing is not offered: it is drawn, so that
+     * every picture's buttons stand in the same place, and it cannot be pressed.
+     */
+    public function testTheFirstPictureCannotBeMovedEarlierNorTheLastLater(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        [$side, $back] = $this->twoPictures($product);
+
+        $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()]));
+
+        $disabled = static fn(int $id, string $way): ?string => $document
+            ->querySelector(sprintf('[data-testid="shop-product-picture-%s-%d"]', $way, $id))?->getAttribute('disabled');
+        self::assertNotNull($disabled((int) $side->id(), 'earlier'), 'the first picture can be moved earlier');
+        self::assertNull($disabled((int) $side->id(), 'later'), 'the first picture cannot be moved later');
+        self::assertNull($disabled((int) $back->id(), 'earlier'), 'the last picture cannot be moved earlier');
+        self::assertNotNull($disabled((int) $back->id(), 'later'), 'the last picture can be moved later');
+    }
+
+    /**
+     * A button the page drew as one that cannot be pressed can still arrive
+     * pressed - from a page drawn before somebody else moved the picture. It
+     * is answered the way every form is, by a redirect, with a sentence saying
+     * why nothing moved, rather than by the page drawn again under the form.
+     */
+    public function testAMoveThePictureHasNoRoomForIsAnsweredWithARedirectAndASentence(): void
+    {
+        $this->signedInHolding($this->writer());
+        $product = $this->ridge();
+        [$side] = $this->twoPictures($product);
+
+        $response = $this->movePicture($product, (int) $side->id(), 'earlier');
+
+        self::assertInstanceOf(RedirectResponse::class, $response, $this->saidIn($response));
+        self::assertSame(['side.jpg', 'back.png'], $this->pictureNamesOf($product));
+        self::assertContains('This picture is already the first.', $this->flashedWith($response));
+    }
+
+    public function testWhatAPictureShowsLongerThanTheFieldTakesIsRefusedBesideIt(): void
+    {
+        $this->signedInHolding($this->writer());
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', 'A bike');
+
+        $document = $this->pageOf($this->describePicture($product, (int) $picture->id(), str_repeat('a', 256)));
+
+        $field = $document->querySelector(sprintf('[data-testid="shop-product-picture-alt-%d"]', $picture->id()));
+        self::assertSame('true', $field?->getAttribute('aria-invalid'), 'the field does not say what was refused');
+        self::assertSame('A bike', $this->altOf((int) $picture->id()));
+    }
+
+    /** A single picture has nowhere to go, and is offered no way to move, as the lightbox offers no way to another. */
+    public function testASinglePictureIsOfferedNoWayToMove(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', '');
+
+        $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()]));
+
+        self::assertNull($document->querySelector(sprintf('[data-testid="shop-product-picture-earlier-%d"]', $picture->id())));
+        self::assertNull($document->querySelector(sprintf('[data-testid="shop-product-picture-later-%d"]', $picture->id())));
+        self::assertNotNull($document->querySelector(sprintf('[data-testid="shop-product-picture-remove-%d"]', $picture->id())));
+    }
+
+    /** The form adding a picture is its own part of the panel, under a heading, apart from the fields of the pictures above it. */
+    public function testTheFormAddingAPictureStandsUnderAHeadingOfItsOwn(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        $this->twoPictures($product);
+
+        $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()]));
+
+        $heading = $document->querySelector('[data-testid="shop-product-new-picture"]');
+        self::assertNotNull($heading, 'the form adding a picture has no heading');
+        self::assertSame('Add a picture', trim((string) $heading->textContent));
+    }
+
+    /** Every picture's place is drawn the same way, so the first, marked as the one the list shows, stands in line with the others. */
+    public function testEveryPictureSaysItsPlaceTheSameWay(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        [$side, $back] = $this->twoPictures($product);
+
+        $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()]));
+
+        foreach ([$side, $back] as $picture) {
+            $place = $document->querySelector(sprintf('[data-testid="shop-product-picture-place-%d"]', $picture->id()));
+            self::assertNotNull($place);
+            self::assertStringContainsString('c-badge', (string) $place->getAttribute('class'), 'a place is not drawn as a badge');
+        }
+    }
+
+    /**
+     * Every picture opens larger over the page, in the largest variant there
+     * is, with a way to the file at that size - never to the original, which
+     * is not served.
+     */
+    public function testTheEditPageOffersEveryPictureLargerAndAtFullSize(): void
+    {
+        $this->signedInHolding(['app:*']);
+        $product = $this->ridge();
+        [$side] = $this->twoPictures($product);
+
+        $document = $this->pageOf($this->submit('edit', [], ['id' => (string) $product->id()]));
+
+        $dialogs = $document->querySelectorAll('[data-testid="shop-product-gallery"] dialog.c-lightbox__dialog');
+        self::assertCount(2, $dialogs, 'every picture opens over the page');
+
+        $large = $document->querySelector(sprintf('[data-testid="shop-product-gallery"] dialog img[src$="%s-large.jpg"]', pathinfo($side->file()->path(), PATHINFO_FILENAME)));
+        self::assertNotNull($large, 'the picture opens in its largest variant');
+
+        $full = $document->querySelector('[data-testid="shop-product-gallery"] dialog a.c-lightbox__full');
+        self::assertNotNull($full, 'there is no way to the picture at its full size');
+        self::assertStringEndsWith('-large.jpg', (string) $full->getAttribute('href'));
+    }
+
     /**
      * The form belongs to the actions that draw it, `add` and `edit`, and to
      * no other - asked of the owner, who may do everything, so that nothing
@@ -673,6 +926,80 @@ final class ProductAdministrationTest extends TestCase
             [],
             sprintf('removePicture-%d-submit', $id),
         );
+    }
+
+    /** The form saying what picture $id of $product shows, sent with $alt in it. */
+    private function describePicture(Product $product, int $id, string $alt): Response
+    {
+        return $this->submit(
+            'edit',
+            ['alt' => $alt, 'describe' => 'Save'],
+            ['id' => (string) $product->id()],
+            [],
+            sprintf('describePicture-%d-submit', $id),
+        );
+    }
+
+    /** The button moving picture $id of $product one place $way: `earlier` or `later`. */
+    private function movePicture(Product $product, int $id, string $way): Response
+    {
+        return $this->submit(
+            'edit',
+            [$way => 'Move ' . $way],
+            ['id' => (string) $product->id()],
+            [],
+            sprintf('movePicture-%d-submit', $id),
+        );
+    }
+
+    /** @return array{ProductImage, ProductImage} two pictures of $product, side.jpg and then back.png */
+    private function twoPictures(Product $product): array
+    {
+        $side = $this->products()->addPicture($product, $this->upload(Pictures::jpeg(40, 30), 'side.jpg')->getTemporaryFile(), 'side.jpg', '');
+        $back = $this->products()->addPicture($product, $this->upload(Pictures::png(30, 40), 'back.png')->getTemporaryFile(), 'back.png', '');
+
+        return [$side, $back];
+    }
+
+    /** @return list<string> the names the pictures of $product came with, the first one first, as the database has them */
+    private function pictureNamesOf(Product $product): array
+    {
+        $this->container()->getByType(EntityManagerInterface::class)->clear();
+        $read = $this->products()->find((int) $product->id()) ?? self::fail('the product is gone');
+
+        return array_map(static fn(ProductImage $picture): string => $picture->file()->originalName(), $this->products()->picturesOf($read));
+    }
+
+    /**
+     * The flash messages $redirect leaves for the page it leads to, read from
+     * the session section the address names.
+     *
+     * @return list<string>
+     */
+    private function flashedWith(RedirectResponse $redirect): array
+    {
+        parse_str((string) parse_url($redirect->getUrl(), PHP_URL_QUERY), $query);
+        $id = $query['_fid'] ?? null;
+        self::assertIsString($id, 'the redirect leaves no flash message');
+
+        $messages = $this->container()->getByType(Session::class)->getSection('Nette.Application.Flash/' . $id)->get('flash');
+        $said = [];
+        foreach (is_array($messages) ? $messages : [] as $message) {
+            if (is_object($message) && isset($message->message) && is_string($message->message)) {
+                $said[] = $message->message;
+            }
+        }
+
+        return $said;
+    }
+
+    /** What picture $id shows, as the database has it. */
+    private function altOf(int $id): string
+    {
+        $entityManager = $this->container()->getByType(EntityManagerInterface::class);
+        $entityManager->clear();
+
+        return ($entityManager->find(ProductImage::class, $id) ?? self::fail('the picture is gone'))->file()->alt();
     }
 
     /** A file holding $bytes, as an upload arrives: under a temporary name, with the name it came with beside it. */

@@ -82,10 +82,11 @@ final readonly class ShopSeed implements SeedProvider, SeedsMembers
     /**
      * How many pictures a product gets, by the last part of its address; the
      * others get none, so that a product without a picture is there to be
-     * seen too. Two on the first, so that their order is.
+     * seen too. Three on the first, so that their order is seen and can be
+     * changed, and there is more than one step between them open over the page.
      */
     private const array PICTURED = [
-        'ridge-29' => 2,
+        'ridge-29' => 3,
         'scree-trail' => 1,
         'basalt-sprint' => 1,
         'esker-all-road' => 1,
@@ -173,7 +174,7 @@ final readonly class ShopSeed implements SeedProvider, SeedsMembers
             ),
             sprintf('a draft, %s Cirque Junior', $brand),
             sprintf(
-                'pictures drawn for the seed on %d bikes, two of them on %s Ridge 29, taken in through the media library',
+                'pictures drawn for the seed on %d bikes, three of them on %s Ridge 29 and one of those standing up, taken in through the media library',
                 count(self::PICTURED),
                 $brand,
             ),
@@ -189,11 +190,29 @@ final readonly class ShopSeed implements SeedProvider, SeedsMembers
 
     /**
      * A picture of $name drawn for the seed - a bicycle in outline on a colour
-     * of its own, the second view the first one turned round - put on $product
-     * through the media library like any upload, so that its variants are made
-     * and published the way a person's would be.
+     * of its own, the second view the first one turned round, the third a
+     * wheel close up, standing up - put on $product through the media library
+     * like any upload, so that its variants are made and published the way a
+     * person's would be.
      */
     private function picture(Product $product, string $name, int $view): void
+    {
+        $file = $view > 2 ? $this->drawnWheel($name) : $this->drawnBike($name, $view > 1);
+
+        try {
+            $this->products->addPicture(
+                $product,
+                $file,
+                sprintf('%s-%d.jpg', strtolower(str_replace(' ', '-', $name)), $view),
+                sprintf('%s, view %d, drawn by the seed', $name, $view),
+            );
+        } finally {
+            unlink($file);
+        }
+    }
+
+    /** A bicycle in outline, turned round when $turned, written to a temporary file whose name is returned. */
+    private function drawnBike(string $name, bool $turned): string
     {
         $image = imagecreatetruecolor(self::PICTURE_WIDTH, self::PICTURE_HEIGHT);
         $hash = crc32($name);
@@ -214,24 +233,43 @@ final readonly class ShopSeed implements SeedProvider, SeedsMembers
             imageline($image, $x1, $y1, $x2, $y2, $ink);
         }
 
-        if ($view > 1) {
+        if ($turned) {
             imageflip($image, IMG_FLIP_HORIZONTAL);
         }
 
+        return $this->written($image);
+    }
+
+    /** One wheel and the fork holding it, close up and standing up - the other shape a picture comes in. */
+    private function drawnWheel(string $name): string
+    {
+        $image = imagecreatetruecolor(self::PICTURE_HEIGHT, self::PICTURE_WIDTH);
+        $hash = crc32($name);
+        $background = imagecolorallocate($image, 150 + (($hash >> 12) & 0x3F), 150 + ($hash & 0x3F), 150 + (($hash >> 6) & 0x3F));
+        $ink = imagecolorallocate($image, 40, 40, 48);
+        if ($background === false || $ink === false) {
+            throw new \RuntimeException('GD could not allocate the colours of a picture for the seed.');
+        }
+
+        imagefilledrectangle($image, 0, 0, self::PICTURE_HEIGHT - 1, self::PICTURE_WIDTH - 1, $background);
+        imagesetthickness($image, 28);
+        imagefilledellipse($image, 600, 1150, 1000, 1000, $ink);
+        imagefilledellipse($image, 600, 1150, 920, 920, $background);
+        foreach ([[600, 1150, 560, 200], [560, 200, 700, 120], [600, 1150, 600, 680]] as [$x1, $y1, $x2, $y2]) {
+            imageline($image, $x1, $y1, $x2, $y2, $ink);
+        }
+
+        return $this->written($image);
+    }
+
+    /** $image written to a temporary file as a JPEG, the way a camera would hand one over. */
+    private function written(\GdImage $image): string
+    {
         $file = tempnam(sys_get_temp_dir(), 'trilobit-seed-');
         if ($file === false || !imagejpeg($image, $file, 85)) {
             throw new \RuntimeException('The seed could not write down a picture it drew.');
         }
 
-        try {
-            $this->products->addPicture(
-                $product,
-                $file,
-                sprintf('%s-%d.jpg', strtolower(str_replace(' ', '-', $name)), $view),
-                sprintf('%s, view %d, drawn by the seed', $name, $view),
-            );
-        } finally {
-            unlink($file);
-        }
+        return $file;
     }
 }

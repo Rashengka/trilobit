@@ -3,7 +3,8 @@
 {*
  * The one thing a page wants you to do, the quieter things beside it, the one
  * that deletes, the smaller ones in a row of a table, a button that goes nowhere
- * because it does something where it is, and a button that is only an icon.
+ * because it does something where it is, a button that is only an icon, and
+ * one of each variant that cannot be pressed.
  *}
 
 {import '../../templates/furniture.latte'}
@@ -42,6 +43,16 @@
 
             {specimen 'with only an icon'}
                 {include button, label: 'Sign out', href: '#', variant: 'quiet', icon: 'sign-out', iconOnly: true}
+            {/specimen}
+
+            {specimen 'disabled'}
+                <div class="l-cluster">
+                    {include button, label: 'Add to basket', attributes: ['disabled' => 'disabled']}
+                    {include button, label: 'Keep looking', variant: 'quiet', attributes: ['disabled' => 'disabled']}
+                    {include button, label: 'Delete this page', variant: 'danger', attributes: ['disabled' => 'disabled']}
+                    {include button, label: 'Remove', variant: 'danger', size: 'small', attributes: ['disabled' => 'disabled']}
+                    {include button, label: 'Read the conditions', href: '#', variant: 'quiet', attributes: ['aria-disabled' => 'true']}
+                </div>
             {/specimen}
         {/block}
     {/embed}
