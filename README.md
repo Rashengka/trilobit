@@ -632,7 +632,9 @@ side is left to the reader's setting. `tests/e2e/administration-layout.spec.ts`
 measures both in the same window, in both themes.
 
 Nothing is written down when a page overrules. The reader's setting is untouched,
-the switch goes on showing it, and the next page is drawn at it again -
+the switch does not offer it on that page - a control that changes nothing there
+would look broken, and this goes for the administration and for the style guide's
+page that insists alike - and the next page is drawn at it again -
 `Trilobit\Core\Preference\Preferences` keeps "what this page is drawn at", "what
 the person prefers" and "what is worth remembering" apart on purpose, because the
 alternative is a report quietly turning into a setting.

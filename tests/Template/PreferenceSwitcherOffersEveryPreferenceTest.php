@@ -101,23 +101,15 @@ final class PreferenceSwitcherOffersEveryPreferenceTest extends TestCase
     }
 
     /**
-     * The switch shows the person's own setting, not what the page it is on
-     * insists on. A switch that showed the exception as the setting would save
-     * it the next time anybody clicked anything - see
-     * Trilobit\Core\Preference\Preferences::preferred().
+     * A page that insists on a preference is drawn without a switch for it:
+     * the control would do nothing there. The other preferences stay.
      */
-    public function testItShowsWhatThePersonPrefersRatherThanWhatThePageInsistsOn(): void
+    public function testItOffersNothingForWhatThePageInsistsOn(): void
     {
         $drawn = $this->draw(self::catalogue()->reconcile([])->overruledWith('content-width', 'full'));
 
-        self::assertSame(
-            'true',
-            $drawn->querySelector($this->control('content-width', 'content'))?->getAttribute('aria-pressed'),
-        );
-        self::assertSame(
-            'false',
-            $drawn->querySelector($this->control('content-width', 'full'))?->getAttribute('aria-pressed'),
-        );
+        self::assertCount(0, $drawn->querySelectorAll('[data-preference="content-width"]'));
+        self::assertNotNull($drawn->querySelector($this->control('theme', 'ledger')));
     }
 
     private function drawn(): HTMLDocument

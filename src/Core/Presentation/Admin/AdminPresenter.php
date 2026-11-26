@@ -378,8 +378,8 @@ abstract class AdminPresenter extends Presenter
         // width the person reads the site at. Its pages are mostly tables of
         // records, and a table squeezed into a reading column wraps every
         // cell; overruled rather than chosen, so the setting is left as it
-        // was, the switch goes on showing it and the site is drawn at it -
-        // see Trilobit\Core\Preference\Preferences.
+        // was and the site is drawn at it, and the switch does not offer a
+        // width that changes nothing here - see Trilobit\Core\Preference\Preferences.
         $template->preferences = $this->remembered->forThisRequest()
             ->overruledWith(PreferenceCatalogue::CONTENT_WIDTH, self::CONTENT_WIDTH);
         $template->preferenceUrl = $this->link(':Core:Preference:Choice:remember');

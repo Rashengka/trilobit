@@ -131,9 +131,10 @@ for (const theme of themes) {
             `the administration is drawn ${administration.column}px wide in ${administration.room}px of room`,
         ).toBeCloseTo(administration.room, 0);
 
-        // The reader's own setting is not touched by it: the switch goes on
-        // showing what they chose, and the site is drawn at it.
-        await expect(page.getByTestId('content-width-choice-content')).toHaveAttribute('aria-pressed', 'true');
+        // The width is not the reader's to switch here, so the menu does not
+        // offer it; the other switches stay.
+        await expect(page.getByTestId('content-width-choice-content')).toHaveCount(0);
+        await expect(page.getByTestId('theme-mode-choice-dark')).toHaveCount(1);
 
         await page.goto('/');
         await drawIn(page, theme, 'light');
