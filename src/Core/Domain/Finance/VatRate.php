@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Trilobit\Shop\Domain\Price;
+namespace Trilobit\Core\Domain\Finance;
 
 /**
  * The rate of tax on a product, in basis points: 2100 is 21 %, 1250 is 12.5 %

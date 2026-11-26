@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Trilobit\Shop\Domain\Price;
+namespace Trilobit\Core\Domain\Finance;
 
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;

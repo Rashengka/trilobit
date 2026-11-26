@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Trilobit\Tests\Unit\Shop\Domain\Price;
+namespace Trilobit\Tests\Unit\Core\Domain\Finance;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Trilobit\Shop\Domain\Price\Decimal;
-use Trilobit\Shop\Domain\Price\Money;
-use Trilobit\Shop\Domain\Price\PriceRefused;
-use Trilobit\Shop\Domain\Price\VatRate;
+use Trilobit\Core\Domain\Finance\Decimal;
+use Trilobit\Core\Domain\Finance\Money;
+use Trilobit\Core\Domain\Finance\PriceRefused;
+use Trilobit\Core\Domain\Finance\VatRate;
 
 /**
  * A price in the smallest unit of its currency, and what it comes to with tax.

@@ -8,9 +8,9 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Trilobit\Core\Contract\Content\ContentRef;
+use Trilobit\Core\Domain\Finance\Money;
+use Trilobit\Core\Domain\Finance\VatRate;
 use Trilobit\Core\Domain\Tenancy\Tenant;
-use Trilobit\Shop\Domain\Price\Money;
-use Trilobit\Shop\Domain\Price\VatRate;
 
 /**
  * Something a business sells, what it costs before tax, and the rate of tax
@@ -73,7 +73,7 @@ class Product
     #[ORM\Column(type: Types::TEXT)]
     private string $description = '';
 
-    /** In basis points; see Trilobit\Shop\Domain\Price\VatRate. */
+    /** In basis points; see Trilobit\Core\Domain\Finance\VatRate. */
     #[ORM\Column]
     private int $vatRate;
 
