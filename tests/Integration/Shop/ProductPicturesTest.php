@@ -149,6 +149,138 @@ final class ProductPicturesTest extends TestCase
         self::assertCount(1, $this->products()->picturesOf($ridge), 'another product\'s picture was removed');
     }
 
+    /** What a picture shows is said again, trimmed, on the file it is: the library keeps one sentence per picture. */
+    public function testWhatAPictureShowsCanBeSaidAgain(): void
+    {
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->file(Pictures::jpeg(40, 30)), 'ridge.jpg', 'A bike');
+
+        $this->products()->describePicture($product, (int) $picture->id(), "  The Ridge 29 from the drive side \n");
+
+        $this->entityManager()->clear();
+        self::assertSame('The Ridge 29 from the drive side', $this->products()->picturesOf($this->reread($product))[0]->file()->alt());
+    }
+
+    /** Said as nothing, the picture is taken for decoration - which is a sentence somebody may choose. */
+    public function testWhatAPictureShowsCanBeSaidAsNothing(): void
+    {
+        $product = $this->ridge();
+        $picture = $this->products()->addPicture($product, $this->file(Pictures::jpeg(40, 30)), 'ridge.jpg', 'A bike');
+
+        $this->products()->describePicture($product, (int) $picture->id(), '   ');
+
+        $this->entityManager()->clear();
+        self::assertSame('', $this->products()->picturesOf($this->reread($product))[0]->file()->alt());
+    }
+
+    public function testAPictureMovedEarlierChangesPlacesWithTheOneBeforeIt(): void
+    {
+        $product = $this->ridge();
+        $this->threePictures($product);
+        $front = $this->products()->picturesOf($product)[2];
+
+        $this->products()->movePicture($product, (int) $front->id(), -1);
+
+        self::assertSame(['side.jpg', 'front.jpg', 'back.jpg'], $this->namesOf($product));
+    }
+
+    public function testAPictureMovedLaterChangesPlacesWithTheOneAfterIt(): void
+    {
+        $product = $this->ridge();
+        $this->threePictures($product);
+        $side = $this->products()->picturesOf($product)[0];
+
+        $this->products()->movePicture($product, (int) $side->id(), 1);
+
+        self::assertSame(['back.jpg', 'side.jpg', 'front.jpg'], $this->namesOf($product));
+    }
+
+    /** The first is the one the list of products shows, so moving one first is how the picture shown is chosen. */
+    public function testAPictureMovedEarlierFromTheSecondPlaceBecomesTheFirst(): void
+    {
+        $product = $this->ridge();
+        $this->threePictures($product);
+        $back = $this->products()->picturesOf($product)[1];
+
+        $this->products()->movePicture($product, (int) $back->id(), -1);
+
+        self::assertSame(['back.jpg', 'side.jpg', 'front.jpg'], $this->namesOf($product));
+    }
+
+    public function testNeitherTheFirstMovesEarlierNorTheLastLater(): void
+    {
+        $product = $this->ridge();
+        $this->threePictures($product);
+        [$side, , $front] = $this->products()->picturesOf($product);
+
+        $this->products()->movePicture($product, (int) $side->id(), -1);
+        $this->products()->movePicture($product, (int) $front->id(), 1);
+
+        self::assertSame(['side.jpg', 'back.jpg', 'front.jpg'], $this->namesOf($product));
+    }
+
+    /**
+     * A picture taken off leaves a gap in the numbers; the order is written
+     * again whole, so a gap never makes a move do nothing.
+     */
+    public function testAMoveAfterAPictureWasTakenOffStillTakesOneStep(): void
+    {
+        $product = $this->ridge();
+        $this->threePictures($product);
+        $this->products()->addPicture($product, $this->file(Pictures::jpeg(40, 30)), 'top.jpg', '');
+        [, $back, , $top] = $this->products()->picturesOf($product);
+        $this->products()->removePicture($product, (int) $back->id());
+
+        $this->products()->movePicture($product, (int) $top->id(), -1);
+
+        self::assertSame(['side.jpg', 'top.jpg', 'front.jpg'], $this->namesOf($product));
+        self::assertSame([0, 1, 2], array_map(static fn(ProductImage $picture): int => $picture->position(), $this->products()->picturesOf($product)));
+    }
+
+    /** A binding is reached through its product and no other, for saying what it shows and for moving it too. */
+    public function testAPictureOfAnotherProductIsNeitherDescribedNorMovedThroughThisOne(): void
+    {
+        $ridge = $this->ridge();
+        $scree = $this->products()->create(
+            'Scree 27',
+            new Filing($this->mountain(), [], 'scree-27'),
+            new Money(1999000, 'CZK'),
+            new VatRate(2100),
+        );
+        $this->products()->addPicture($scree, $this->file(Pictures::jpeg(40, 30)), 'scree.jpg', '');
+        $this->threePictures($ridge);
+        $front = $this->products()->picturesOf($ridge)[2];
+
+        $this->products()->describePicture($scree, (int) $front->id(), 'Rewritten through another product');
+        $this->products()->movePicture($scree, (int) $front->id(), -1);
+
+        self::assertSame('', $front->file()->alt());
+        self::assertSame(['side.jpg', 'back.jpg', 'front.jpg'], $this->namesOf($ridge));
+    }
+
+    private function threePictures(Product $product): void
+    {
+        foreach (['side.jpg', 'back.jpg', 'front.jpg'] as $name) {
+            $this->products()->addPicture($product, $this->file(Pictures::jpeg(40, 30)), $name, '');
+        }
+    }
+
+    /** @return list<string> the names the pictures of $product came with, the first one first */
+    private function namesOf(Product $product): array
+    {
+        return array_map(static fn(ProductImage $picture): string => $picture->file()->originalName(), $this->products()->picturesOf($product));
+    }
+
+    private function reread(Product $product): Product
+    {
+        return $this->products()->find((int) $product->id()) ?? self::fail('the product is gone');
+    }
+
+    private function entityManager(): EntityManagerInterface
+    {
+        return $this->container()->getByType(EntityManagerInterface::class);
+    }
+
     private function ridge(): Product
     {
         return $this->products()->create(

@@ -16,6 +16,7 @@ use Trilobit\Core\Media\MediaLibrary;
 use Trilobit\Core\Media\UploadLimit;
 use Trilobit\Core\Media\UploadRefused;
 use Trilobit\Core\Presentation\Admin\AdminPresenter;
+use Trilobit\Core\Presentation\Component\LightboxPicture;
 use Trilobit\Core\Presentation\Error\RefusalPresenter;
 use Trilobit\Core\Presentation\Form\FormFactory;
 use Trilobit\Core\Security\Needs;
@@ -73,6 +74,15 @@ use Trilobit\Shop\Security\ShopResource;
  * Adding and taking off ask for editing the product, in their handlers too,
  * and a picture is reached only through the product it is of.
  *
+ * **So are saying again what a picture shows, and moving it**, each one small
+ * form per picture, asking for editing in its handler and reaching the picture
+ * through the product. What a picture shows is said of the file, which is
+ * Core's: a picture shown somewhere else too says it there as well. The order
+ * is changed a place at a time by two buttons, which work without a script
+ * and from the keyboard; the first picture is the one the list of products
+ * shows. Every picture opens over the page in a c-lightbox, in the largest
+ * variant there is, with a way to that variant on its own.
+ *
  * **Deleting is a submit and never a link**, for the reason a page's is; and it
  * takes the product and every address it had, hard, until
  * .ai/plans/16-soft-delete.md gives the catalogue a bin.
@@ -84,6 +94,12 @@ final class ProductPresenter extends AdminPresenter
 
     /** The list of products, by the name its parameters carry in the address: `?products-name=...`. */
     private const string LIST = 'products';
+
+    /** Said beside what a picture shows when it is longer than the media library keeps; %d is the most it may be. */
+    private const string ALT_TOO_LONG = 'What a picture shows is said in at most %d characters.';
+
+    /** The id the product's c-lightbox is drawn with, and what the id of each of its pictures starts with. */
+    public const string GALLERY = 'shop-picture';
 
     private ?Product $edited = null;
 
@@ -179,7 +195,13 @@ final class ProductPresenter extends AdminPresenter
         $basePath = $this->getHttpRequest()->getUrl()->getBasePath();
         $template->pictures = $product instanceof Product
             ? array_map(
-                fn(ProductImage $picture): PictureSummary => PictureSummary::of($picture, $this->library, $basePath),
+                fn(ProductImage $picture): LightboxPicture => LightboxPicture::ofMedia(
+                    $picture->file(),
+                    $this->library,
+                    $basePath,
+                    (string) $picture->id(),
+                    $picture->file()->alt() !== '' ? $picture->file()->alt() : $picture->file()->originalName(),
+                ),
                 $this->products->picturesOf($product),
             )
             : [];
@@ -218,7 +240,8 @@ final class ProductPresenter extends AdminPresenter
             ->setHtmlAttribute('accept', 'image/jpeg,image/png,image/webp')
             ->setHtmlAttribute('data-testid', 'shop-product-picture-input');
         $form->addText('alt', 'What it shows')
-            ->setMaxLength(255)
+            ->setMaxLength(MediaLibrary::ALT_LENGTH)
+            ->addRule(Form::MaxLength, self::ALT_TOO_LONG, MediaLibrary::ALT_LENGTH)
             ->setOption('description', 'Said instead of the picture to somebody who cannot see it. Left empty, the picture is taken for decoration.')
             ->setHtmlAttribute('data-testid', 'shop-product-picture-alt');
 
@@ -242,10 +265,90 @@ final class ProductPresenter extends AdminPresenter
         return new Multiplier(function (string $id): Form {
             $form = $this->forms->createInline(labelsShown: false);
             $remove = $form->addSubmit('remove', 'Take it off');
-            $remove->setHtmlAttribute('class', 'c-button--danger');
+            $remove->setHtmlAttribute('class', 'c-button--danger c-button--small');
             $remove->setHtmlAttribute('data-testid', 'shop-product-picture-remove-' . $id);
             $form->onSuccess[] = function () use ($id): void {
                 $this->removePicture((int) $id);
+            };
+
+            return $form;
+        });
+    }
+
+    /**
+     * The form saying again what one picture shows, one for each picture, so
+     * that each sends the picture it stands under. Like the buttons taking a
+     * picture off, it belongs to the product's own page.
+     *
+     * @return Multiplier<Form>
+     */
+    #[Requires(actions: 'edit')]
+    protected function createComponentDescribePicture(): Multiplier
+    {
+        return new Multiplier(function (string $id): Form {
+            // One above the other, so that the field takes the width of the
+            // picture it stands under and a sentence of what it shows can be read.
+            $form = $this->forms->createVertical();
+            $form->getElementPrototype()->setAttribute('data-testid', 'shop-product-picture-describe-form-' . $id);
+            $picture = $this->edited instanceof Product ? $this->products->pictureOf($this->edited, (int) $id) : null;
+
+            // The attribute keeps a browser from typing more, and the rule holds
+            // a form sent past it: the library would otherwise cut it short in
+            // silence.
+            $form->addText('alt', 'What it shows')
+                ->setMaxLength(MediaLibrary::ALT_LENGTH)
+                ->addRule(Form::MaxLength, self::ALT_TOO_LONG, MediaLibrary::ALT_LENGTH)
+                ->setDefaultValue($picture?->file()->alt() ?? '')
+                ->setHtmlAttribute('data-testid', 'shop-product-picture-alt-' . $id);
+            $form->addSubmit('describe', 'Save')
+                ->setHtmlAttribute('class', 'c-button--quiet c-button--small')
+                ->setHtmlAttribute('data-testid', 'shop-product-picture-describe-' . $id);
+            $form->onSuccess[] = function (Form $form) use ($id): void {
+                $alt = $form->getComponent('alt');
+                $written = $alt instanceof BaseControl ? $alt->getValue() : '';
+                $this->describePicture((int) $id, is_string($written) ? $written : '');
+            };
+
+            return $form;
+        });
+    }
+
+    /**
+     * The two buttons moving one picture a place earlier or later, one small
+     * form each picture. The first picture has nowhere earlier to go and the
+     * last nowhere later; its button is drawn, so that every picture's buttons
+     * stand in the same place, and cannot be pressed.
+     *
+     * @return Multiplier<Form>
+     */
+    #[Requires(actions: 'edit')]
+    protected function createComponentMovePicture(): Multiplier
+    {
+        return new Multiplier(function (string $id): Form {
+            $form = $this->forms->createInline(labelsShown: false);
+            $pictures = $this->edited instanceof Product ? $this->products->picturesOf($this->edited) : [];
+            $ids = array_map(static fn(ProductImage $picture): string => (string) $picture->id(), $pictures);
+            $at = array_search($id, $ids, true);
+
+            foreach (['earlier' => [-1, 'Move earlier', $at === 0], 'later' => [1, 'Move later', $at === count($ids) - 1]] as $way => [$by, $label, $nowhere]) {
+                $move = $form->addSubmit($way, $label);
+                $move->setHtmlAttribute('class', 'c-button--quiet c-button--small');
+                $move->setHtmlAttribute('data-testid', sprintf('shop-product-picture-%s-%s', $way, $id));
+                $move->setDisabled($nowhere);
+                $move->onClick[] = function () use ($id, $by): void {
+                    $this->movePicture((int) $id, $by);
+                };
+            }
+
+            // Sent by a button the page drew as one that cannot be pressed -
+            // from a page drawn before the picture was moved by somebody else -
+            // the form is still answered with a redirect, and says why nothing
+            // moved: a form drawn again under the same address is one the
+            // browser offers to send again.
+            $form->onSuccess[] = function () use ($id, $at, $ids): void {
+                $this->pictureOnThisPage((int) $id);
+                $this->flashMessage($at === 0 ? 'This picture is already the first.' : ($at === count($ids) - 1 ? 'This picture is already the last.' : 'The picture was not moved.'));
+                $this->redirect('this#' . self::GALLERY . '-' . $id . '-item');
             };
 
             return $form;
@@ -483,6 +586,36 @@ final class ProductPresenter extends AdminPresenter
      */
     private function removePicture(int $id): void
     {
+        $this->products->removePicture($this->pictureOnThisPage($id), $id);
+        $this->redirect('this');
+    }
+
+    /**
+     * Says again what picture $id of the product open on this page shows. A
+     * number naming a picture of another product - or sent where no product is
+     * open - is not found, whatever the form said.
+     */
+    private function describePicture(int $id, string $alt): void
+    {
+        $product = $this->pictureOnThisPage($id);
+        $this->products->describePicture($product, $id, $alt);
+        $this->redirect('this#' . self::GALLERY . '-' . $id . '-item');
+    }
+
+    /** Moves picture $id of the product open on this page $by places; see describePicture() for what it is refused. */
+    private function movePicture(int $id, int $by): void
+    {
+        $product = $this->pictureOnThisPage($id);
+        $this->products->movePicture($product, $id, $by);
+        $this->redirect('this#' . self::GALLERY . '-' . $id . '-item');
+    }
+
+    /**
+     * The product open on this page, once it is known that the person may edit
+     * it and that picture $id is one of its; refused or not found otherwise.
+     */
+    private function pictureOnThisPage(int $id): Product
+    {
         if (!$this->getUser()->isAllowed(ShopResource::Catalogue, Privilege::Edit)) {
             $this->forward(RefusalPresenter::DESTINATION);
         }
@@ -492,8 +625,7 @@ final class ProductPresenter extends AdminPresenter
             $this->error('This product has no such picture.');
         }
 
-        $this->products->removePicture($product, $id);
-        $this->redirect('this');
+        return $product;
     }
 
     /** How long the request said its body was, or null where it said nothing that is a length. */

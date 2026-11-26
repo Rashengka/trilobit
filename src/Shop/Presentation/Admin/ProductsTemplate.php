@@ -6,6 +6,7 @@ namespace Trilobit\Shop\Presentation\Admin;
 
 use Trilobit\Core\Content\Address;
 use Trilobit\Core\Presentation\Admin\AdminTemplate;
+use Trilobit\Core\Presentation\Component\LightboxPicture;
 
 /**
  * What both views of Shop:Admin:Product render with: the list of products, and
@@ -36,7 +37,7 @@ final class ProductsTemplate extends AdminTemplate
     /** What it costs with tax, as it is shown; '' while a new product is being written. */
     public string $priceWithVat = '';
 
-    /** @var list<PictureSummary> the pictures of the product, the first one first */
+    /** @var list<LightboxPicture> the pictures of the product, the first one first, each with the picture's id for its key */
     public array $pictures = [];
 
     /**

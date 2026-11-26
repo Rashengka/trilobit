@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Trilobit\Core\Presentation\Styleguide;
 
 use Trilobit\Core\Presentation\Component\Component;
+use Trilobit\Core\Presentation\Component\LightboxPicture;
 use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Content\ContentGroup;
 use Trilobit\Core\Presentation\Form\FormElementGroup;
@@ -81,6 +82,15 @@ final class OverviewDefaultTemplate extends FrontTemplate
 
     /** @var list<SignpostLink> */
     public array $sampleSignposts = [];
+
+    /** @var list<LightboxPicture> */
+    public array $samplePictures = [];
+
+    /** @var list<LightboxPicture> */
+    public array $sampleLongCaptions = [];
+
+    /** @var list<LightboxPicture> */
+    public array $sampleManyPictures = [];
 
     /** The sentence under the title: what the page being drawn is for. */
     public string $lead = '';

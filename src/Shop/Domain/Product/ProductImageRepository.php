@@ -22,5 +22,13 @@ interface ProductImageRepository
 
     public function save(ProductImage $picture): void;
 
+    /**
+     * Saves every picture of $pictures at once, so that an order written
+     * again is written whole or not at all.
+     *
+     * @param list<ProductImage> $pictures
+     */
+    public function saveAll(array $pictures): void;
+
     public function remove(ProductImage $picture): void;
 }

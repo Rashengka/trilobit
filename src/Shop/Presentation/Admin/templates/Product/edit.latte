@@ -15,10 +15,13 @@
  * Core's register, and this is the one place in the administration they are
  * all shown together.
  *
- * So are its pictures, each from its published variants with the button that
- * takes it off, and the form a new one is added in. A request the server threw
- * away for its size is said at the top, because otherwise the page would be
- * drawn as if nothing had been sent (Trilobit\Core\Media\UploadLimit).
+ * So are its pictures, a c-lightbox in the order they are shown in - each
+ * opening over the page, the first one marked as the one the list of products
+ * shows - and under each what it shows, written in, the buttons moving it a
+ * place earlier or later and the button taking it off; then, in a panel of its
+ * own, the form a new one is added in. A request the server threw away for its size is said at
+ * the top, because otherwise the page would be drawn as if nothing had been
+ * sent (Trilobit\Core\Media\UploadLimit).
  *}
 
 {import '../../../../../Core/Presentation/components/page-heading.latte'}
@@ -26,6 +29,7 @@
 {import '../../../../../Core/Presentation/components/button.latte'}
 {import '../../../../../Core/Presentation/components/badge.latte'}
 {import '../../../../../Core/Presentation/components/notice.latte'}
+{import '../../../../../Core/Presentation/components/lightbox.latte'}
 
 {block content}
     {include pageHeading,
@@ -67,27 +71,51 @@
                 <div class="l-stack">
                     <p n:if="$pictures === []" data-testid="shop-product-no-pictures">This product has no picture yet.</p>
 
-                    <div n:if="$pictures !== []" class="l-cluster">
-                        <figure n:foreach="$pictures as $picture" class="l-stack" data-testid="shop-product-picture-{$picture->id}">
-                            <img
-                                src="{$picture->src}"
-                                srcset="{$picture->srcset}"
-                                sizes="{$picture->width}px"
-                                width="{$picture->width}"
-                                height="{$picture->height}"
-                                alt="{$picture->alt}"
-                                loading="lazy"
-                                data-testid="shop-product-picture-image-{$picture->id}">
+                    {if $pictures !== []}
+                        <p class="text-sm text-ink-muted" data-testid="shop-product-pictures-order">The first picture is the one shown for the product in the list. Choose a picture to see it larger.</p>
 
-                            <figcaption>{$picture->alt !== '' ? $picture->alt : $picture->name}</figcaption>
+                        {embed block lightbox,
+                            id: Trilobit\Shop\Presentation\Admin\ProductPresenter::GALLERY,
+                            label: 'Pictures of this product, in the order they are shown in',
+                            pictures: $pictures,
+                            testId: 'shop-product-gallery'}
+                            {block lightboxItem}
+                                <div class="l-stack" data-testid="shop-product-picture-{$picture->key}">
+                                    {* Every place is a badge, so the first - marked besides as the
+                                       one the list shows - stands in line with the others. *}
+                                    <div class="l-cluster">
+                                        {include badge, label: 'Picture ' . $position, testId: 'shop-product-picture-place-' . $picture->key}
+                                        {if $position === 1}
+                                            {include badge, label: 'Shown in the list', variant: 'accent', testId: 'shop-product-picture-main'}
+                                        {/if}
+                                    </div>
 
-                            {* Taking it off removes the binding; the file stays in the library until plan 16. *}
-                            {control $picture->remover()}
-                        </figure>
-                    </div>
+                                    {control "describePicture-{$picture->key}"}
 
-                    {control pictures}
+                                    {* Nowhere to move a single picture, so no way to move it, as the
+                                       lightbox offers no way from it to another. *}
+                                    {if count($pictures) > 1}
+                                        {control "movePicture-{$picture->key}"}
+                                    {/if}
+
+                                    {* Taking it off removes the binding; the file stays in the library
+                                       until plan 16. On a line of its own, wherever the others end. *}
+                                    <div>{control "removePicture-{$picture->key}"}</div>
+                                </div>
+                            {/block}
+                        {/embed}
+                    {/if}
                 </div>
+            {/block}
+        {/embed}
+
+        {* A panel of its own, so that what a new picture shows is not taken
+           for what the last picture above it shows. *}
+        {embed block panel, testId: 'shop-product-add-picture'}
+            {block panelTitle}<span data-testid="shop-product-new-picture">Add a picture</span>{/block}
+
+            {block panelBody}
+                {control pictures}
             {/block}
         {/embed}
 

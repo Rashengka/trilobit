@@ -115,6 +115,18 @@ final class ComponentRegistry
                 ['default'],
             ),
             new Component(
+                'c-lightbox',
+                'A set of small pictures, each opening over the whole window as the browser\'s own dialog, '
+                . 'stepped through by buttons and by the arrow keys, with a way to the picture at full size.',
+                [
+                    'default',
+                    'with something under each picture',
+                    'with a single picture',
+                    'with a long caption',
+                    'with more pictures than a row holds',
+                ],
+            ),
+            new Component(
                 'c-signpost',
                 'The way into each part of something, drawn as a grid of linked tiles built out of c-card.',
                 ['default'],
@@ -122,7 +134,7 @@ final class ComponentRegistry
             new Component(
                 'c-button',
                 'The one thing a page wants you to do, and the quieter things beside it.',
-                ['primary', 'quiet', 'danger', 'small', 'without a destination', 'with an icon', 'with only an icon'],
+                ['primary', 'quiet', 'danger', 'small', 'without a destination', 'with an icon', 'with only an icon', 'disabled'],
             ),
             new Component(
                 'c-button-group',

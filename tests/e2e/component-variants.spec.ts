@@ -55,6 +55,74 @@ test('a small button is smaller than the button of the page, in either variant',
     expect(smallDanger?.height).toBeCloseTo(small?.height ?? 0, 0);
 });
 
+/**
+ * A button that cannot be pressed has to look it, in every variant, theme and
+ * mode: drawn in other colours than the same variant that can, with no pointer
+ * offering a press, and unchanged under the pointer - a hover that still
+ * lights it up is a promise the button does not keep.
+ */
+for (const theme of themes) {
+    for (const mode of modes) {
+        test(`in ${theme}, ${mode}: a button that cannot be pressed is drawn so, in every variant`, async ({ page }) => {
+            await page.goto(address('button'));
+            await drawIn(page, theme, mode);
+
+            // Each variant that can be pressed, and the label of the same one that cannot.
+            const enabled = {
+                primary: [stage(page, 'primary').locator('.c-button'), 'Add to basket'],
+                quiet: [stage(page, 'quiet').locator('.c-button'), 'Keep looking'],
+                danger: [stage(page, 'danger').locator('.c-button'), 'Delete this page'],
+            } as const;
+
+            for (const [variant, [live, label]] of Object.entries(enabled)) {
+                const dead = stage(page, 'disabled').getByRole('button', { name: label });
+                await expect(dead).toBeDisabled();
+
+                const [deadInk, liveInk] = [await resolved(dead, 'color'), await resolved(live, 'color')];
+                const [deadFill, liveFill] = [await resolved(dead, 'background-color'), await resolved(live, 'background-color')];
+                expect(
+                    deadInk.join() !== liveInk.join() || deadFill.join() !== liveFill.join(),
+                    `the ${variant} button that cannot be pressed is drawn like the one that can`,
+                ).toBe(true);
+                expect(await dead.evaluate((node) => getComputedStyle(node).cursor), `the ${variant} button offers a press`).not.toBe('pointer');
+
+                // Under the pointer it keeps the fill of a button that cannot be
+                // pressed; polled, because a fill changed by the theme just now
+                // is still gliding there.
+                await dead.hover({ force: true });
+                const sunk = await resolved(dead, 'background-color', '--color-canvas-sunken');
+                await expect
+                    .poll(async () => (await resolved(dead, 'background-color')).join(), { message: `the ${variant} button lights up under the pointer` })
+                    .toBe(sunk.join());
+            }
+        });
+    }
+}
+
+/**
+ * A link that leads nowhere for now says so with aria-disabled, which is all a
+ * link has, and is drawn like a button that cannot be pressed; so is a small
+ * one, which keeps its size.
+ */
+test('a link that cannot be followed and a small button that cannot be pressed are drawn as such', async ({ page }) => {
+    await page.goto(address('button'));
+    const disabled = stage(page, 'disabled');
+
+    const link = disabled.getByRole('link', { name: 'Read the conditions' });
+    await expect(link).toHaveAttribute('aria-disabled', 'true');
+    const small = disabled.getByRole('button', { name: 'Remove' });
+    await expect(small).toBeDisabled();
+
+    for (const [what, control] of [['link', link], ['small button', small]] as const) {
+        const sunk = await resolved(control, 'background-color', '--color-canvas-sunken');
+        await expect.poll(async () => (await resolved(control, 'background-color')).join(), { message: `the ${what} is not drawn as one that cannot be used` }).toBe(sunk.join());
+        expect(await control.evaluate((node) => getComputedStyle(node).cursor), `the ${what} offers a press`).toBe('not-allowed');
+    }
+
+    const enabledSmall = await stage(page, 'small').getByRole('button', { name: 'Remove' }).boundingBox();
+    expect((await small.boundingBox())?.height).toBeCloseTo(enabledSmall?.height ?? 0, 0);
+});
+
 test('a card\'s footer sits at its foot, lines up along the row, and is not part of its link', async ({ page }) => {
     await page.goto(address('card'));
 

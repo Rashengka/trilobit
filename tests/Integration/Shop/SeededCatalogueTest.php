@@ -26,6 +26,7 @@ use Trilobit\Core\Security\Privilege;
 use Trilobit\Core\Security\Resource;
 use Trilobit\Shop\Application\Product\Products;
 use Trilobit\Shop\Domain\Product\Product;
+use Trilobit\Shop\Domain\Product\ProductImage;
 use Trilobit\Shop\Security\ShopResource;
 use Trilobit\Tests\Boot;
 use Trilobit\Tests\Database;
@@ -83,8 +84,11 @@ final class SeededCatalogueTest extends TestCase
 
     /**
      * Pictures to click through, drawn for the seed rather than taken from
-     * anywhere: one product with two, so that their order can be seen, and
-     * products with none, so that a product without a picture can be too.
+     * anywhere: one product with three, so that their order can be seen and
+     * changed and there is more than one step to take between them when they
+     * are open over the page - one of them standing up, so that a picture of
+     * another shape is seen fitted into the same room - and products with
+     * none, so that a product without a picture can be too.
      * They go through the media library like any upload, so their variants are
      * on disk and nothing but the variants is published.
      */
@@ -94,7 +98,11 @@ final class SeededCatalogueTest extends TestCase
         $this->enter($container, 'Ammonite Bikes');
 
         $pictures = $this->products($container)->picturesOf($this->named($container, 'Ammonite Ridge 29'));
-        self::assertCount(2, $pictures);
+        self::assertCount(3, $pictures);
+        self::assertSame([false, false, true], array_map(
+            static fn(ProductImage $picture): bool => $picture->file()->height() > $picture->file()->width(),
+            $pictures,
+        ), 'the third picture is not the one standing up');
         foreach ($pictures as $picture) {
             self::assertStringContainsString('Ammonite Ridge 29', $picture->file()->alt());
             self::assertSame('image/jpeg', $picture->file()->mime());

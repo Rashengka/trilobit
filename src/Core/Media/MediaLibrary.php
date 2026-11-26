@@ -34,6 +34,9 @@ final readonly class MediaLibrary
     /** The length of MediaFile's column for the name the file came with. */
     private const int NAME_LENGTH = 255;
 
+    /** The length of MediaFile's column for what a picture shows: the most a form may take for it. */
+    public const int ALT_LENGTH = 255;
+
     public function __construct(
         private MediaStorage $storage,
         private EntityManagerInterface $entityManager,
@@ -76,6 +79,19 @@ final readonly class MediaLibrary
         }
 
         return $media;
+    }
+
+    /**
+     * Says again what $file shows, for somebody who cannot see it - trimmed,
+     * cut to the column's length, and '' for a picture that is decoration.
+     *
+     * It is said of the file and not of what shows it: one picture shown by a
+     * product and a page shows the same thing on both.
+     */
+    public function describe(MediaFile $file, string $alt): void
+    {
+        $file->describeAs(mb_substr(trim($alt), 0, self::ALT_LENGTH));
+        $this->entityManager->flush();
     }
 
     /** The address of $variant of $file, relative to the site's base path. */

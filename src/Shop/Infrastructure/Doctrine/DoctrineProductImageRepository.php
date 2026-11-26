@@ -46,6 +46,15 @@ final readonly class DoctrineProductImageRepository implements ProductImageRepos
         $this->entityManager->flush();
     }
 
+    public function saveAll(array $pictures): void
+    {
+        foreach ($pictures as $picture) {
+            $this->entityManager->persist($picture);
+        }
+
+        $this->entityManager->flush();
+    }
+
     public function remove(ProductImage $picture): void
     {
         $this->entityManager->remove($picture);
