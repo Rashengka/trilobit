@@ -135,8 +135,9 @@ abstract class FrontPresenter extends Presenter
      * which the framework calls before the render method, so a call from an
      * action method is too early and says so rather than being ignored.
      *
-     * Nothing is written down. The person's setting is untouched and the switch
-     * goes on showing it - see Trilobit\Core\Preference\Preferences.
+     * Nothing is written down. The person's setting is untouched, and the switch
+     * leaves the width out on this page, since choosing one here would change
+     * nothing - see Trilobit\Core\Preference\Preferences.
      */
     protected function overruleContentWidth(string $width): void
     {

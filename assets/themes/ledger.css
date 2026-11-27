@@ -206,6 +206,12 @@
     --control-size-sm: 1.875rem;
     --control-size-md: 2.25rem;
     --control-size-lg: 2.75rem;
+
+    /* A line of text, its padding and its edge, as in atrium; see there. */
+    --control-size-text: calc(1lh + 2 * var(--space-xs) + 2 * var(--border-hairline));
+
+    /* Chromium's own inset inside a native list of one line, as in atrium; see there. */
+    --control-list-inset: 4px;
     --control-icon-xs: 0.75rem;
     --control-icon-sm: 0.875rem;
     --control-icon-md: 1.125rem;

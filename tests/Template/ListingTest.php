@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Trilobit\Tests\Template;
 
+use Dom\Element;
 use Dom\HTMLDocument;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +31,42 @@ final class ListingTest extends TestCase
         self::assertNotNull($document->querySelector('[data-testid="sample-pagination"]'));
         self::assertNull($document->querySelector('[data-testid="sample-empty"]'));
         self::assertNull($document->querySelector('[data-testid="sample-no-match"]'));
+    }
+
+    /**
+     * A list longer than one page is paged above its rows as well as under
+     * them: somebody looking for the next page should not have to scroll past
+     * a whole page of rows to find the way to it. The two rows of pages are
+     * the same way through, and they are named apart, because two landmarks
+     * of one name are one landmark to somebody moving between them.
+     */
+    public function testTheWayThroughIsDrawnAboveTheRowsAsWellAsUnderThem(): void
+    {
+        $document = $this->draw("state: 'rows', pagination: \$pagination");
+
+        $order = [];
+        foreach ($document->querySelectorAll('[data-testid="sample-pagination-above"], [data-testid="sample-rows"], [data-testid="sample-pagination"]') as $element) {
+            $order[] = $element->getAttribute('data-testid');
+        }
+
+        self::assertSame(['sample-pagination-above', 'sample-rows', 'sample-pagination'], $order);
+
+        $above = $document->querySelector('[data-testid="sample-pagination-above"]');
+        $under = $document->querySelector('[data-testid="sample-pagination"]');
+        self::assertNotNull($above);
+        self::assertNotNull($under);
+        self::assertSame($this->hrefs($under), $this->hrefs($above), 'the row above leads elsewhere than the row under');
+        self::assertNotSame($under->getAttribute('aria-label'), $above->getAttribute('aria-label'));
+    }
+
+    /** One page is nothing to move between, at either end of it. */
+    public function testOnePageIsPagedNeitherAboveNorUnder(): void
+    {
+        $document = $this->draw("state: 'rows', pagination: \$pagination", new Pagination(1, 1, static fn(int $page): string => '#p' . $page));
+
+        self::assertNotNull($document->querySelector('[data-testid="sample-rows"]'));
+        self::assertNull($document->querySelector('[data-testid="sample-pagination-above"]'));
+        self::assertNull($document->querySelector('[data-testid="sample-pagination"]'));
     }
 
     public function testNothingYetIsNotNothingMatching(): void
@@ -109,7 +146,51 @@ final class ListingTest extends TestCase
         $this->draw("state: 'loading'");
     }
 
-    private function draw(string $arguments): HTMLDocument
+    /**
+     * The style guide shows a list the way the administration draws one, in
+     * its default specimen: the filter, the sentence saying how much it found,
+     * the row of pages above, the rows and the row of pages under - so that
+     * whoever judges the component from the guide judges the whole of what a
+     * page shows, and not the half of it c-listing draws by itself.
+     */
+    public function testTheStyleGuideShowsAListFromItsFilterToItsLastRowOfPages(): void
+    {
+        $shown = [];
+        foreach (StyleguideSpecimens::everyPage() as $page) {
+            $specimen = $page->querySelector(sprintf(
+                '[%s="c-listing"] [%s="default"]',
+                StyleguideSpecimens::COMPONENT,
+                StyleguideSpecimens::VARIANT,
+            ));
+            if ($specimen === null) {
+                continue;
+            }
+
+            foreach ($specimen->querySelectorAll('[role="search"] form, .c-listing__status, .c-pagination, table') as $element) {
+                $shown[] = match (true) {
+                    $element->tagName === 'FORM' => 'filter',
+                    $element->classList->contains('c-listing__status') => 'count',
+                    $element->classList->contains('c-pagination') => 'pages',
+                    default => 'rows',
+                };
+            }
+        }
+
+        self::assertSame(['filter', 'count', 'pages', 'rows', 'pages'], $shown);
+    }
+
+    /** @return list<string> */
+    private function hrefs(Element $navigation): array
+    {
+        $hrefs = [];
+        foreach ($navigation->querySelectorAll('a') as $link) {
+            $hrefs[] = (string) $link->getAttribute('href');
+        }
+
+        return $hrefs;
+    }
+
+    private function draw(string $arguments, ?Pagination $pagination = null): HTMLDocument
     {
         return ComponentRendering::render(
             'listing.latte',
@@ -117,7 +198,7 @@ final class ListingTest extends TestCase
                 "{embed block listing, %s, testId: 'sample'}{block listingTable}<table data-testid=\"sample-rows\"></table>{/block}{/embed}",
                 $arguments,
             ),
-            ['pagination' => new Pagination(2, 3, static fn(int $page): string => '#p' . $page)],
+            ['pagination' => $pagination ?? new Pagination(2, 3, static fn(int $page): string => '#p' . $page)],
         );
     }
 }

@@ -23,17 +23,20 @@
         {include button, label: 'Back to people', href: $listUrl, variant: 'quiet', testId: 'people-back'}
     </div>
 
-    {embed block panel, testId: 'people-addition-panel'}
-        {block panelTitle}Somebody new{/block}
+    {* A form is read down a column, so it keeps to the measure while a list runs across (assets/base.css, .l-measure). *}
+    <div class="l-measure l-stack l-stack--loose">
+        {embed block panel, testId: 'people-addition-panel'}
+            {block panelTitle}Somebody new{/block}
 
-        {block panelBody}
-            {if $offersARole}
-                {control addition}
-            {else}
-                {include notice,
-                    message: 'There is no role here you may give, so there is nobody you can add.',
-                    testId: 'people-nothing-to-give'}
-            {/if}
-        {/block}
-    {/embed}
+            {block panelBody}
+                {if $offersARole}
+                    {control addition}
+                {else}
+                    {include notice,
+                        message: 'There is no role here you may give, so there is nobody you can add.',
+                        testId: 'people-nothing-to-give'}
+                {/if}
+            {/block}
+        {/embed}
+    </div>
 {/block}

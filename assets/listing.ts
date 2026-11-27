@@ -8,9 +8,23 @@
  * from the top of the page after every step. So the element is remembered
  * before the snippet is replaced and found again in what replaced it, by what
  * it is rather than by where it was: its id, the name of a field, or what a
- * link or a button is called. Where it is no longer there to be found - Next,
- * on the last page, is not a link any more - the first thing in the snippet
- * that takes the focus has it.
+ * link or a button is called. Where it is no longer there to be found at all,
+ * the first thing in the snippet that takes the focus has it.
+ *
+ * Found is not the same as able to take the focus. A step of a row of pages
+ * that cannot be taken any more - Next and Last, once the last page is shown -
+ * is still drawn, as a link marked aria-disabled with no address, and it is
+ * found by its name like any other; but the keyboard passes over it. The focus
+ * then goes to what is current in the nearest part of the snippet around it -
+ * the page now shown, in the same row of pages - or, where nothing there is
+ * marked current, to the first thing in that part that takes it. It stays
+ * where the step was taken from rather than falling to the top of the snippet.
+ *
+ * A name can be there more than once: a listing draws its row of pages above
+ * the rows and under them, and both have a Page 2. So which of the links of
+ * that name it was is remembered too, by its place among them, and the focus
+ * goes back to the same row rather than to the first link of the name - which,
+ * for a step taken under the list, is a page's height away.
  *
  * A snippet brought back by history.back() is left alone: the focus is not in
  * it, because going back is not something done inside the page.
@@ -22,13 +36,45 @@ import type { Extension } from 'naja';
 
 const MARK = 'data-keep-focus';
 
-type Found = { id: string } | { name: string } | { label: string };
+type Found = { id: string } | { name: string } | { label: string; nth: number };
 
 const focusedIn = new WeakMap<Element, Found>();
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function whatItIs(element: Element): Found | null {
+function labelOf(element: Element): string {
+    return element.getAttribute('aria-label') ?? element.textContent?.trim() ?? '';
+}
+
+/** A link or a button, including a link drawn disabled - which is still there, and still counts among those of its name. */
+const NAMED = 'a[href], a[aria-disabled="true"], button';
+
+function namedIn(snippet: Element, label: string): HTMLElement[] {
+    return [...snippet.querySelectorAll<HTMLElement>(NAMED)].filter((element) => labelOf(element) === label);
+}
+
+/**
+ * The element found again if it can take the focus; otherwise what is current
+ * in the nearest part of the snippet around it, or the first thing there that
+ * can take the focus.
+ */
+function focusableNear(snippet: Element, element: HTMLElement): HTMLElement | null {
+    if (element.matches(FOCUSABLE)) {
+        return element;
+    }
+
+    for (let around = element.parentElement; around !== null && snippet.contains(around); around = around.parentElement) {
+        const near = [...around.querySelectorAll<HTMLElement>('[aria-current]:not([aria-current="false"])')].find((current) => current.matches(FOCUSABLE))
+            ?? around.querySelector<HTMLElement>(FOCUSABLE);
+        if (near !== undefined && near !== null) {
+            return near;
+        }
+    }
+
+    return null;
+}
+
+function whatItIs(snippet: Element, element: Element): Found | null {
     if (element.id !== '') {
         return { id: element.id };
     }
@@ -38,9 +84,9 @@ function whatItIs(element: Element): Found | null {
         return { name };
     }
 
-    const label = element.getAttribute('aria-label') ?? element.textContent?.trim() ?? '';
+    const label = labelOf(element);
 
-    return label === '' ? null : { label };
+    return label === '' ? null : { label, nth: Math.max(0, namedIn(snippet, label).indexOf(element as HTMLElement)) };
 }
 
 function findIn(snippet: Element, found: Found): HTMLElement | null {
@@ -54,13 +100,9 @@ function findIn(snippet: Element, found: Found): HTMLElement | null {
         return snippet.querySelector<HTMLElement>(`[name="${CSS.escape(found.name)}"]`);
     }
 
-    for (const element of snippet.querySelectorAll<HTMLElement>('a[href], button')) {
-        if ((element.getAttribute('aria-label') ?? element.textContent?.trim()) === found.label) {
-            return element;
-        }
-    }
+    const named = namedIn(snippet, found.label);
 
-    return null;
+    return named[found.nth] ?? named[0] ?? null;
 }
 
 /** Registered before naja.initialize(), like the other extensions, and doing nothing outside a marked snippet. */
@@ -73,7 +115,7 @@ export const focusThroughRedraws: Extension = {
                 return;
             }
 
-            const found = whatItIs(focused);
+            const found = whatItIs(snippet, focused);
             if (found !== null) {
                 focusedIn.set(snippet, found);
             }
@@ -87,7 +129,8 @@ export const focusThroughRedraws: Extension = {
                 return;
             }
 
-            const target = findIn(snippet, found) ?? snippet.querySelector<HTMLElement>(FOCUSABLE);
+            const again = findIn(snippet, found);
+            const target = (again === null ? null : focusableNear(snippet, again)) ?? snippet.querySelector<HTMLElement>(FOCUSABLE);
             target?.focus({ preventScroll: true });
         });
     },

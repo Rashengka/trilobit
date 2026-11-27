@@ -174,6 +174,39 @@ final class PageListTest extends TestCase
     }
 
     /**
+     * The way through a long list is drawn above its rows as well as under
+     * them, under the filter, and a list of one page has neither.
+     */
+    public function testALongListIsPagedAboveItsRowsAsWellAsUnderThem(): void
+    {
+        $this->pagesTitled(...array_map(static fn(int $n): string => sprintf('Ride %02d', $n), range(1, Listing::PER_PAGE + 3)));
+
+        $document = $this->list(['pages-title' => 'ride']);
+
+        $selector = sprintf(
+            '[role="search"], [data-testid="%1$s-pagination-above"], [data-testid="%1$s-table"], [data-testid="%1$s-pagination"]',
+            self::LIST,
+        );
+        $order = [];
+        foreach ($document->querySelectorAll($selector) as $element) {
+            $order[] = $element->getAttribute('data-testid');
+        }
+
+        self::assertSame(
+            [self::LIST . '-filter', self::LIST . '-pagination-above', self::LIST . '-table', self::LIST . '-pagination'],
+            $order,
+        );
+        self::assertSame(
+            '1',
+            trim((string) $document->querySelector(sprintf('[data-testid="%s-pagination-above"] [aria-current="page"]', self::LIST))?->textContent),
+        );
+
+        $short = $this->list(['pages-title' => 'Ride 01']);
+        self::assertNull($short->querySelector(sprintf('[data-testid="%s-pagination-above"]', self::LIST)));
+        self::assertNull($short->querySelector(sprintf('[data-testid="%s-pagination"]', self::LIST)));
+    }
+
+    /**
      * .ai/plans/15, the trap it names first: somebody on the second page
      * changes the filter. Kept on the second page, they would land on an
      * empty one and read it as the filter having found nothing.

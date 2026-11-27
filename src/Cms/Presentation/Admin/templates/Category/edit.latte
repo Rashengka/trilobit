@@ -30,72 +30,75 @@
         {include button, label: 'All categories', href: $listUrl, variant: 'quiet', testId: 'cms-category-back'}
     </div>
 
-    {embed block panel, testId: 'cms-category-panel'}
-        {block panelTitle}The category{/block}
+    {* A form is read down a column, so it keeps to the measure while a list runs across (assets/base.css, .l-measure). *}
+    <div class="l-measure l-stack l-stack--loose">
+        {embed block panel, testId: 'cms-category-panel'}
+            {block panelTitle}The category{/block}
 
-        {block panelBody}
-            <form n:name="category" class="l-stack" data-testid="cms-category-form">
-                {foreach $errors as $error}
-                    {include notice, message: $error, variant: 'danger', testId: 'cms-category-error'}
-                {/foreach}
+            {block panelBody}
+                <form n:name="category" class="l-stack" data-testid="cms-category-form">
+                    {foreach $errors as $error}
+                        {include notice, message: $error, variant: 'danger', testId: 'cms-category-error'}
+                    {/foreach}
 
-                {* Name and the segment below are required (CategoryPresenter::createComponentCategory());
-                   c-field does not own the element, so this page says so instead of it being read off the
-                   control. *}
-                <p class="c-field-required-note">Fields marked with * are required.</p>
+                    {* Name and the segment below are required (CategoryPresenter::createComponentCategory());
+                       c-field does not own the element, so this page says so instead of it being read off the
+                       control. *}
+                    <p class="c-field-required-note">Fields marked with * are required.</p>
 
-                {embed block field, testId: 'cms-category-name-field', required: true}
-                    {block fieldLabel}<label n:name="name">Name</label>{/block}
+                    {embed block field, testId: 'cms-category-name-field', required: true}
+                        {block fieldLabel}<label n:name="name">Name</label>{/block}
 
-                    {block fieldControl}
-                        <input n:name="name" data-testid="cms-category-name-input">
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <input n:name="name" data-testid="cms-category-name-input">
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-category-parent-field'}
-                    {block fieldLabel}<label n:name="parent">Filed under</label>{/block}
+                    {embed block field, testId: 'cms-category-parent-field'}
+                        {block fieldLabel}<label n:name="parent">Filed under</label>{/block}
 
-                    {block fieldControl}
-                        <select n:name="parent" data-combobox data-testid="cms-category-parent-input"></select>
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <select n:name="parent" data-combobox data-testid="cms-category-parent-input"></select>
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-category-segment-field', hintId: 'cms-category-segment-hint', required: true}
-                    {block fieldLabel}<label n:name="segment">Last part of the address</label>{/block}
+                    {embed block field, testId: 'cms-category-segment-field', hintId: 'cms-category-segment-hint', required: true}
+                        {block fieldLabel}<label n:name="segment">Last part of the address</label>{/block}
 
-                    {block fieldControl}
-                        <div class="l-cluster">
-                            <input n:name="segment" aria-describedby="cms-category-segment-hint" data-testid="cms-category-segment-input">
+                        {block fieldControl}
+                            <div class="l-cluster">
+                                <input n:name="segment" aria-describedby="cms-category-segment-hint" data-testid="cms-category-segment-input">
 
-                            {include button,
-                                label: 'Suggest from the name',
-                                variant: 'quiet',
-                                testId: 'cms-category-suggest',
-                                attributes: [
-                                    'data-suggest-segment' => $suggestUrl,
-                                    'data-suggest-from' => 'name',
-                                    'data-suggest-under' => 'parent',
-                                    'data-suggest-into' => 'segment',
-                                ]}
+                                {include button,
+                                    label: 'Suggest from the name',
+                                    variant: 'quiet',
+                                    testId: 'cms-category-suggest',
+                                    attributes: [
+                                        'data-suggest-segment' => $suggestUrl,
+                                        'data-suggest-from' => 'name',
+                                        'data-suggest-under' => 'parent',
+                                        'data-suggest-into' => 'segment',
+                                    ]}
 
-                            <output data-suggest-status aria-live="polite" data-testid="cms-category-suggest-status"></output>
-                        </div>
-                    {/block}
+                                <output data-suggest-status aria-live="polite" data-testid="cms-category-suggest-status"></output>
+                            </div>
+                        {/block}
 
-                    {block fieldHint}Lower case letters, digits and hyphens - no slash and no dot.{/block}
-                {/embed}
+                        {block fieldHint}Lower case letters, digits and hyphens - no slash and no dot.{/block}
+                    {/embed}
 
-                {* See the note in Page/edit.latte: the controls of a form are
-                   the form's own elements, so they carry the class of c-button
-                   rather than being drawn by it. *}
-                <div class="l-cluster">
-                    <button n:name="send" class="c-button" data-testid="cms-category-save">Save</button>
+                    {* See the note in Page/edit.latte: the controls of a form are
+                       the form's own elements, so they carry the class of c-button
+                       rather than being drawn by it. *}
+                    <div class="l-cluster">
+                        <button n:name="send" class="c-button" data-testid="cms-category-save">Save</button>
 
-                    {if !$isNew}
-                        <button n:name="delete" class="c-button c-button--danger" data-testid="cms-category-delete">Delete this category</button>
-                    {/if}
-                </div>
-            </form>
-        {/block}
-    {/embed}
+                        {if !$isNew}
+                            <button n:name="delete" class="c-button c-button--danger" data-testid="cms-category-delete">Delete this category</button>
+                        {/if}
+                    </div>
+                </form>
+            {/block}
+        {/embed}
+    </div>
 {/block}

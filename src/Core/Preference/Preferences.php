@@ -136,19 +136,23 @@ final readonly class Preferences
     }
 
     /**
-     * Every preference this build has, by name and in the catalogue's order,
-     * each with every answer it accepts: what a switch has to offer.
+     * Every preference this build has that this page leaves to the person, by
+     * name and in the catalogue's order, each with every answer it accepts: what
+     * a switch has to offer.
      *
      * It is the catalogue's list rather than a list of what was chosen, so a
      * switch drawn out of it cannot leave out a preference nobody has an
-     * opinion about - which is most of them, for most people. See
+     * opinion about - which is most of them, for most people. What the page
+     * insists on is the one thing left out: a control for it would change
+     * nothing here and look broken, and the person's setting is still theirs to
+     * change on any page that leaves it alone. See
      * src/Core/Presentation/components/preference-switcher.latte.
      *
-     * @return non-empty-array<string, Preference>
+     * @return array<string, Preference>
      */
     public function offered(): array
     {
-        return $this->catalogue;
+        return array_diff_key($this->catalogue, $this->overruled);
     }
 
     private function preference(string $name): Preference

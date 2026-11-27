@@ -450,7 +450,7 @@
      * win; the states weigh more than the rule they modify, so which of them
      * applies never depends on the order they are written in.
      */
-    input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
+    input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
     select,
     textarea {
         background-color: var(--color-surface);
@@ -462,8 +462,57 @@
         padding-inline: var(--space-sm);
     }
 
+    /*
+     * One line is one height, whatever draws it. A line of text is as tall as
+     * its line, its padding and its edge, but a browser draws a native select
+     * to a height of its own whatever its padding says, and a row of a filter
+     * - a name, a list, a date side by side - stops lining up by a few pixels
+     * that differ between engines. So the height is said rather than left to
+     * come out of the padding, and it is the theme's
+     * (--control-size-text). c-combobox draws its control to the same one.
+     *
+     * A list of several answers, or one showing several rows, is not one line
+     * and keeps the height of what it shows; so does textarea. A list that
+     * says size="1" shows one row, as one that says no size does, and is one
+     * line.
+     */
+    input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
+    select:where(:not([multiple], [size]:not([size='1']))) {
+        block-size: var(--control-size-text);
+    }
+
+    /*
+     * Chromium draws the text of a native list of one line further in than its
+     * padding says: it adds an inset of its own inside the padding the
+     * stylesheet gives it (--control-list-inset), so in a column of fields the
+     * text of a list started a few pixels right of the text of every line
+     * above and under it. Here the inset is taken off the padding again.
+     *
+     * Chromium is told apart by what else it does with a select, a list it
+     * can draw out of the page's own parts (appearance: base-select); no
+     * condition can ask about the inset itself. Firefox adds none, and draws
+     * the padding as it is. Whether the two start together is measured on the
+     * pixels in both engines (tests/e2e/forms.spec.ts), so an engine that
+     * starts answering yes here without drawing the inset is caught there.
+     */
+    @supports (appearance: base-select) {
+        select:where(:not([multiple], [size]:not([size='1']))) {
+            padding-inline-start: calc(var(--space-sm) - var(--control-list-inset));
+        }
+    }
+
     :is(input, textarea)::placeholder {
         color: var(--color-ink-muted);
+    }
+
+    /* The button a browser draws inside a file input is the part that picks,
+       and is told apart from the name of the file beside it by being a link's
+       colour rather than by a box inside the box. */
+    input[type='file']::file-selector-button {
+        color: var(--color-link);
+        cursor: pointer;
+        font-weight: var(--font-weight-display);
+        margin-inline-end: var(--space-sm);
     }
 
     /*
@@ -742,6 +791,13 @@
         grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-card-min), 100%), 1fr));
     }
 
+    /*
+     * The theme's reading measure. A paragraph keeps to it, and so does a form
+     * in the administration: the administration runs as wide as the shell lets
+     * it for its tables, but a field for a rate of tax drawn across the screen
+     * is read nowhere better than at the width of a line of text
+     * (tests/e2e/administration-layout.spec.ts).
+     */
     .l-measure {
         max-inline-size: var(--layout-measure);
     }
@@ -1726,6 +1782,7 @@
         color: var(--color-ink);
         cursor: pointer;
         display: flex;
+        block-size: var(--control-size-text);
         gap: var(--space-2xs);
         padding-block: var(--space-xs);
         padding-inline: var(--space-sm);
@@ -1757,8 +1814,11 @@
         white-space: nowrap;
     }
 
+    /* A line of text inside the control rather than a control of its own, so
+       none of the height of one either: the control is one line tall. */
     .c-combobox__input {
         background-color: transparent;
+        block-size: auto;
         border: 0;
         color: inherit;
         flex: 1 1 0;
