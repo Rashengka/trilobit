@@ -739,6 +739,13 @@
         gap: var(--space-sm);
     }
 
+    /* Side by side however little room there is: for things that are read as
+       one - a picture and the name beside it - where whatever holds the
+       cluster scrolls rather than lets it wrap. */
+    .l-cluster--nowrap {
+        flex-wrap: nowrap;
+    }
+
     /*
      * Columns that fit rather than columns that were counted: the card width is
      * a token, so the number of columns is a consequence of the theme and of the
@@ -3094,18 +3101,14 @@
 
     /*
      * A button in a row - the name the row is opened by - and a badge stay on
-     * one line, and a picture beside a name stays beside it. Broken over two
-     * or three lines a button or a badge was a tall pill, the shape of
-     * something made for one line, and a name pushed under its picture made
-     * the row twice as tall; the room they need is what the frame above
-     * scrolls for.
+     * one line. Broken over two or three lines a button or a badge was a tall
+     * pill, the shape of something made for one line; the room they need is
+     * what the frame above scrolls for. A picture beside a name is kept beside
+     * it by the row itself, with l-cluster--nowrap: a layout primitive is not
+     * changed here behind the back of the page it is written on.
      */
     .c-table__grid :is(.c-button, .c-badge) {
         white-space: nowrap;
-    }
-
-    .c-table__grid .l-cluster {
-        flex-wrap: nowrap;
     }
 
     /* Figures line up under each other when the digits are all one width, and

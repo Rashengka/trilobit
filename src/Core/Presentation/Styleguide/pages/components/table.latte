@@ -147,8 +147,10 @@
              * A list of the administration on a phone, in a stage narrower
              * than its rows: the rows scroll inside the frame, which shades the
              * edge there is more beyond, and the page stays where it is. The
-             * name a row is opened by and a badge stay one line, an amount stays
-             * beside its currency, and the cells keep to the middle of the row.
+             * name a row is opened by and a badge stay one line, a picture stays
+             * beside the name (l-cluster--nowrap), an amount stays beside its
+             * currency, and the cells keep to the middle of the row - the row
+             * with a picture is the taller one.
              *}
             {specimen 'wider than its frame, a row opened by its name, with amounts', narrow: true}
                 {embed block table, caption: 'Drawers of the collection, and what each is insured for'}
@@ -165,7 +167,11 @@
                     {block tableBody}
                         <tr>
                             <th scope="row">
-                                {include button, label: 'Head shields of the northern quarry', href: '#', variant: 'quiet'}
+                                <div class="l-cluster l-cluster--nowrap">
+                                    {include sgSpecimenThumbnail}
+
+                                    {include button, label: 'Head shields of the northern quarry', href: '#', variant: 'quiet'}
+                                </div>
                             </th>
                             <td>{include badge, label: 'Catalogued', variant: 'accent'}</td>
                             <td class="c-table__number">27,990.00 CZK</td>

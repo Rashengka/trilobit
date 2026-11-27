@@ -28,7 +28,7 @@
 {define listingRow, Trilobit\Shop\Presentation\Admin\ProductSummary $row}
     <tr data-testid="shop-product-{$row->id}">
         <th scope="row">
-            <div class="l-cluster">
+            <div class="l-cluster l-cluster--nowrap">
                 {* Decoration beside the name, which already says what it is. *}
                 <img n:if="$row->thumbnail !== null"
                     src="{$row->thumbnail->src}"
