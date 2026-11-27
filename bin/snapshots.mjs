@@ -34,8 +34,9 @@
 // A picture is taken in a window exactly as wide as its width, with the page
 // as wide or one scrollbar narrower; a page wider than the window is pictured
 // overflowing. A window of another width is given its size once more, and is
-// named in the summary when that was needed; still another width, and the
-// picture fails rather than being filed under a width it was not taken at.
+// named in the summary and marked in the index when that was needed; still
+// another width, and the picture fails rather than being filed under a width
+// it was not taken at.
 //
 // --click clicks the first element the selector matches before each picture,
 // to show a menu or a dialog open.
@@ -57,6 +58,7 @@ import {
     fileName,
     indexPage,
     REQUEST_VARIABLE,
+    resizedNote,
 } from '../tests/snapshots/matrix.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
@@ -162,7 +164,7 @@ child.on('exit', (code, signal) => {
         lines.push(`  FAILED  ${result.file}: ${result.error}`);
     }
     for (const result of results.filter((result) => result.resized === true && result.error === null)) {
-        lines.push(`  RESIZED ${result.file}: the window was not ${result.width}px wide at first and was given its size again`);
+        lines.push(`  RESIZED ${result.file}: ${resizedNote(result)}`);
     }
     if (missing.length > 0) {
         lines.push(`  ${missing.length} never reported - see the run's output above for why - first ${missing[0]}`);

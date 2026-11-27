@@ -1,0 +1,37 @@
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snapshot narrow root</title>
+<script>
+    // The matrix reads the theme and the mode back off <html>, as the
+    // application draws them there from these two cookies, so that the width
+    // is the only thing about this page it refuses.
+    for (const [name, attribute] of [['trilobit-theme', 'data-theme'], ['trilobit-theme-mode', 'data-theme-mode']]) {
+        const value = document.cookie.split('; ').find((pair) => pair.startsWith(`${name}=`))?.slice(name.length + 1);
+        if (value !== undefined) {
+            document.documentElement.setAttribute(attribute, value);
+        }
+    }
+</script>
+<style>
+    /*
+     * A page of the snapshot tool's own test (tests/snapshots/tool.test.mjs),
+     * served by tests/snapshots/matrix.spec.ts and never by the application.
+     *
+     * It has no doctype on purpose. In quirks mode the root element is not
+     * what reports the width the window lends the document - the body is -
+     * so document.documentElement.clientWidth is the width of <html> itself
+     * (CSSOM View, clientWidth). Made 200 pixels wide, it reads as a layout
+     * no scrollbar explains in a window of the width asked for, however often
+     * the window is given its size: the one page on which the matrix has to
+     * give up and fail the picture.
+     */
+    html { width: 200px; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+</style>
+</head>
+<body>
+<p>A root narrower than any window.</p>
+</body>
+</html>

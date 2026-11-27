@@ -15,6 +15,10 @@
 //   - every picture says it was taken in a window of its width, with the page
 //     laid out as wide or one scrollbar narrower - in Firefox too, which has a
 //     window of its own to fall back to;
+//   - a page whose layout is of another width than its window, however often
+//     the window is given its size, fails every picture of it and the run,
+//     says the size was given again to no effect, and leaves no picture
+//     (tests/snapshots/fixtures/narrow-root.html);
 //   - --sign-in pictures the administration, says nothing on the way that has
 //     the shape of the password app:account prints, and leaves no session
 //     behind - neither in the checkout nor in a container that outlived it.
@@ -184,6 +188,32 @@ test('a picture is the page as laid out beside the scrollbar, every edge of it a
         assert.equal(picture.pixel(0, middle), '#00ff00', `${where}: the left edge of the layout is not its first column`);
         assert.equal(picture.pixel(picture.width - 1, middle), '#ff0000', `${where}: the right edge of the layout is not its last column`);
         assert.equal(picture.pixel(Math.floor(picture.width / 2), picture.height - 1), '#0000ff', `${where}: the bottom of the layout is not its last row`);
+    }
+});
+
+test('a page laid out narrower than its window, after the window is given its size again, fails and is not pictured', (t) => {
+    // tests/snapshots/fixtures/narrow-root.html, in quirks mode, where
+    // document.documentElement.clientWidth is the 200 pixels of <html> itself
+    // rather than the width the window lends the page.
+    const path = '/_snapshot-fixtures/narrow-root.html';
+    const { out, status, output } = run('tool-test-narrow-root', '--browser=all', path);
+    t.after(() => rmSync(out, { recursive: true, force: true }));
+
+    assert.notEqual(status, 0, output);
+    assert.match(output, /0 of 16 pictures taken/);
+    assert.match(output, /200px wide beside the scrollbar of a window \d+px wide.* Setting the size again did not help\./);
+    assert.deepEqual(pngs(out), []);
+    assert.equal(readFileSync(join(out, 'index.html'), 'utf8').match(/<td class="failed">[^<]*Setting the size again did not help/g)?.length, 16);
+
+    const all = results(out);
+    assert.equal(all.length, 16);
+    for (const result of all) {
+        assert.match(result.error, /Setting the size again did not help/, result.file);
+        assert.equal(result.resized, true, result.file);
+        assert.equal(result.layout, null, result.file);
+        // What made the matrix give the window its size: the window was right,
+        // the layout was the 200 pixels of the root - in both browsers.
+        assert.deepEqual(result.firstLayout, { window: result.width, width: 200 }, result.file);
     }
 });
 

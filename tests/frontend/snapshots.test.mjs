@@ -18,8 +18,9 @@ import {
     fileName,
     indexPage,
     refusal,
+    resizedNote,
     slugOf,
-    SCROLLBAR_ROOM,
+    SCROLLBAR_WIDTH,
     widthRefusal,
 } from '../snapshots/matrix.mjs';
 
@@ -113,7 +114,8 @@ test('a page laid out in a window of another width than the one asked for is a f
     assert.equal(widthRefusal('/x', 'firefox', 390, { window: 390, layout: 390 }), null);
     assert.equal(widthRefusal('/x', 'firefox', 390, { window: 390, layout: 375 }), null);
     assert.equal(widthRefusal('/x', 'chromium', 1440, { window: 1440, layout: 1425 }), null);
-    assert.equal(widthRefusal('/x', 'chromium', 1440, { window: 1440, layout: 1440 - SCROLLBAR_ROOM }), null);
+    assert.equal(widthRefusal('/x', 'chromium', 1440, { window: 1440, layout: 1440 - SCROLLBAR_WIDTH }), null);
+    assert.equal(SCROLLBAR_WIDTH, 15);
 
     // What a run took as a picture at 390 and at 1440: Firefox's own window, not the one asked for.
     assert.match(
@@ -125,4 +127,40 @@ test('a page laid out in a window of another width than the one asked for is a f
     // The window right, the page laid out narrower than any scrollbar explains, or wider than the window.
     assert.match(widthRefusal('/x', 'chromium', 1440, { window: 1440, layout: 1137 }), /1137px wide beside the scrollbar of a window 1440px wide/);
     assert.match(widthRefusal('/x', 'chromium', 390, { window: 390, layout: 391 }), /391px wide beside the scrollbar of a window 390px wide/);
+
+    // Any room but exactly one scrollbar's, a pixel either way included.
+    assert.match(widthRefusal('/x', 'chromium', 390, { window: 390, layout: 389 }), /389px wide .*the scrollbar is 15px or none/);
+    assert.match(widthRefusal('/x', 'chromium', 390, { window: 390, layout: 374 }), /374px wide/);
+    assert.match(widthRefusal('/x', 'firefox', 390, { window: 390, layout: 376 }), /376px wide/);
+    assert.match(widthRefusal('/x', 'firefox', 390, { window: 390, layout: 370 }), /370px wide/);
+});
+
+test('a picture whose window was given its size again says what was first measured, the window or the layout', () => {
+    assert.equal(resizedNote({ width: 390, resized: false, firstLayout: null }), null);
+    assert.equal(
+        resizedNote({ width: 390, resized: true, firstLayout: { window: 1152, width: 1137 } }),
+        'asked for 390px, the window was at first 1152px wide with the page laid out 1137px wide beside it, and was given its size again',
+    );
+    // The window right and the layout off: the note does not claim the window was another width.
+    assert.match(resizedNote({ width: 1440, resized: true, firstLayout: { window: 1440, width: 1137 } }), /window was at first 1440px wide with the page laid out 1137px wide/);
+});
+
+test('the index marks a picture whose window was given its size again, and leaves the others unmarked', () => {
+    const combination = { theme: 'atrium', mode: 'light', width: 390 };
+    const resized = fileName('/a', combination, 'firefox');
+    const plain = fileName('/a', { ...combination, width: 1440 }, 'firefox');
+    const html = indexPage({
+        title: 'Snapshots test',
+        paths: ['/a'],
+        browsers: ['firefox'],
+        results: [
+            { file: resized, width: 390, error: null, resized: true, firstLayout: { window: 1152, width: 1137 } },
+            { file: plain, width: 1440, error: null, resized: false, firstLayout: null },
+        ],
+    });
+
+    const note = 'asked for 390px, the window was at first 1152px wide with the page laid out 1137px wide beside it, and was given its size again';
+    assert.match(html, new RegExp(`<td class="resized" title="${note}"><a href="${resized}">.*?</a><p>RESIZED: ${note}</p></td>`));
+    assert.match(html, new RegExp(`<td><a href="${plain}">`));
+    assert.equal(html.match(/class="resized"/g)?.length, 1);
 });

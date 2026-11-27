@@ -549,10 +549,14 @@ the picture is taken. Both browsers lay the page out beside Linux's classic
 scrollbar, so a page that scrolls is pictured fifteen pixels narrower than the
 window, as CI draws it - all of the page as laid out beside that scrollbar,
 every edge of it, in both browsers alike. Each picture is taken in a window
-exactly as wide as asked for: a window of another width is given its size once
-more (and named `RESIZED` in the summary), and one still another width is a
-failure, never a picture filed under a width it was not taken at. A page wider
-than the window is pictured overflowing. `--sign-in` makes an account of its own,
+exactly as wide as asked for, with the page laid out as wide or exactly one
+scrollbar narrower. That is checked as soon as the page is opened, before a
+click or anything the page's scripts do: a window of another width is given its
+size once more and the page opened again - named `RESIZED` in the summary, with
+the window and the layout as first measured, and marked in the index - and one
+still off is a failure, never a picture filed under a width it was not taken
+at. It is checked once more just before the picture. A page wider than the
+window is pictured overflowing. `--sign-in` makes an account of its own,
 `snapshots@example.com`, in this checkout's database and signs in once; the
 account is left there, as the browser suite leaves its own, and its password
 never leaves the process. `--click` clicks the first match of a selector before
@@ -563,13 +567,16 @@ The pictures go to `var/snapshots/<run>/`, named
 `<path>__<theme>-<mode>-<width>-<browser>.png`, with an `index.html` that lays
 them out as a grid; `<run>` is the time of the run unless `--run=<name>` names
 it. A page that answers anything but 200, redirects - to the sign-in page
-above all - is drawn in another theme or mode than asked for, or is laid out in a window of another width is a failure: it is named in the summary and as a red cell of the
-index, never pictured, and the command exits non-zero. The specs are in
+above all - is drawn in another theme or mode than asked for, or is laid out
+at another width is a failure: it is named in the summary and as a red cell of
+the index, never pictured, and the command exits non-zero. The specs are in
 `tests/snapshots/`, run by `playwright.snapshots.config.ts`, which
 `npm run e2e` does not read. `npm run snapshots:test` runs the tool itself:
 signed out on the administration, on a page of the style guide in both
 browsers, on a page of its own whose every edge is a colour (to see the picture
-is the layout, no more and no less), and signed in; it needs Docker, as the tool does. It
+is the layout, no more and no less), on a page of its own laid out narrower than
+any window (to see such a page fail), and signed in; it needs Docker, as the
+tool does. It
 uses the container name `npm run e2e:docker` uses, so the two are not run at
 the same time in one checkout.
 
