@@ -450,7 +450,7 @@
      * win; the states weigh more than the rule they modify, so which of them
      * applies never depends on the order they are written in.
      */
-    input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
+    input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
     select,
     textarea {
         background-color: var(--color-surface);
@@ -462,8 +462,37 @@
         padding-inline: var(--space-sm);
     }
 
+    /*
+     * One line is one height, whatever draws it. A line of text is as tall as
+     * its line, its padding and its edge, but a browser draws a native select
+     * to a height of its own whatever its padding says, and a row of a filter
+     * - a name, a list, a date side by side - stops lining up by a few pixels
+     * that differ between engines. So the height is said rather than left to
+     * come out of the padding, and it is the theme's
+     * (--control-size-text). c-combobox draws its control to the same one.
+     *
+     * A list of several answers, or one showing several rows, is not one line
+     * and keeps the height of what it shows; so does textarea. A list that
+     * says size="1" shows one row, as one that says no size does, and is one
+     * line.
+     */
+    input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='submit'], [type='reset'], [type='button'], [type='image'], [type='hidden'])),
+    select:where(:not([multiple], [size]:not([size='1']))) {
+        block-size: var(--control-size-text);
+    }
+
     :is(input, textarea)::placeholder {
         color: var(--color-ink-muted);
+    }
+
+    /* The button a browser draws inside a file input is the part that picks,
+       and is told apart from the name of the file beside it by being a link's
+       colour rather than by a box inside the box. */
+    input[type='file']::file-selector-button {
+        color: var(--color-link);
+        cursor: pointer;
+        font-weight: var(--font-weight-display);
+        margin-inline-end: var(--space-sm);
     }
 
     /*
@@ -708,6 +737,13 @@
         display: flex;
         flex-wrap: wrap;
         gap: var(--space-sm);
+    }
+
+    /* Side by side however little room there is: for things that are read as
+       one - a picture and the name beside it - where whatever holds the
+       cluster scrolls rather than lets it wrap. */
+    .l-cluster--nowrap {
+        flex-wrap: nowrap;
     }
 
     /*
@@ -1726,6 +1762,7 @@
         color: var(--color-ink);
         cursor: pointer;
         display: flex;
+        block-size: var(--control-size-text);
         gap: var(--space-2xs);
         padding-block: var(--space-xs);
         padding-inline: var(--space-sm);
@@ -1757,8 +1794,11 @@
         white-space: nowrap;
     }
 
+    /* A line of text inside the control rather than a control of its own, so
+       none of the height of one either: the control is one line tall. */
     .c-combobox__input {
         background-color: transparent;
+        block-size: auto;
         border: 0;
         color: inherit;
         flex: 1 1 0;
@@ -2500,10 +2540,17 @@
      * another. The sentence saying how much was found is drawn above it by the
      * listing's own template - a live region has to outlive the rows it
      * counts - and it is quieter than they are, like the way out.
+     *
+     * The one column is as wide as the listing and no wider. Left to itself a
+     * grid's column is as wide as what is in it, and a table of rows wider
+     * than a phone then widened the column, the row of pages with it, and the
+     * page: the frame c-table scrolls its rows in never got narrower than the
+     * rows, so it had nothing to scroll.
      */
     .c-listing {
         display: grid;
         gap: var(--space-sm);
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .c-listing__set-aside {
@@ -2961,9 +3008,31 @@
         overflow: hidden;
     }
 
+    /*
+     * Positioned, so that what is positioned inside it is held by it as well.
+     * Text kept for a screen reader (u-visually-hidden) is laid out absolutely,
+     * and with no positioned element around it its place is the document's: a
+     * label at the end of a row wider than the frame stood beyond the frame
+     * and widened the page, which the frame exists to prevent.
+     *
+     * A shade at the edge the rows can still be scrolled towards, because a
+     * scrollbar is not enough to say so: a phone hides it until a finger
+     * moves. It is the frame's background and needs no script. The shades
+     * stay at the edges of the frame (scroll); over each lies a cover in the
+     * colour of the surface that moves with the rows (local), so the cover
+     * hides a shade exactly when the rows have reached that edge, and a table
+     * that fits shows none.
+     */
     .c-table__viewport {
+        background:
+            linear-gradient(to right, var(--color-surface) 40%, transparent) left center / var(--space-lg) 100% no-repeat local,
+            linear-gradient(to left, var(--color-surface) 40%, transparent) right center / var(--space-lg) 100% no-repeat local,
+            radial-gradient(farthest-side at 0 50%, var(--color-line), transparent) left center / var(--space-sm) 100% no-repeat scroll,
+            radial-gradient(farthest-side at 100% 50%, var(--color-line), transparent) right center / var(--space-sm) 100% no-repeat scroll;
+        background-color: var(--color-surface);
         overflow-x: auto;
         overscroll-behavior-inline: contain;
+        position: relative;
     }
 
     /*
@@ -2989,10 +3058,13 @@
         padding-inline: var(--space-sm);
     }
 
+    /* A row keeps what is in it in the middle of its height: a button and a
+       line of text side by side, and a row a long value has made taller,
+       read as one row and not as a button sitting on the rule under it. */
     .c-table__grid :is(th, td) {
         padding-block: var(--space-xs);
         padding-inline: var(--space-sm);
-        vertical-align: baseline;
+        vertical-align: middle;
     }
 
     .c-table__grid thead th {
@@ -3027,10 +3099,25 @@
         text-decoration: none;
     }
 
-    /* Figures line up under each other when the digits are all one width. */
+    /*
+     * A button in a row - the name the row is opened by - and a badge stay on
+     * one line. Broken over two or three lines a button or a badge was a tall
+     * pill, the shape of something made for one line; the room they need is
+     * what the frame above scrolls for. A picture beside a name is kept beside
+     * it by the row itself, with l-cluster--nowrap: a layout primitive is not
+     * changed here behind the back of the page it is written on.
+     */
+    .c-table__grid :is(.c-button, .c-badge) {
+        white-space: nowrap;
+    }
+
+    /* Figures line up under each other when the digits are all one width, and
+       a figure stays one piece: an amount is not read apart from its
+       currency. */
     .c-table__number {
         font-variant-numeric: tabular-nums;
         text-align: end;
+        white-space: nowrap;
     }
 
     /*

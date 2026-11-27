@@ -93,6 +93,25 @@
     </svg>
 {/define}
 
+{*
+ * The same specimen the size of a thumbnail beside a name in a row, where the
+ * name already says what it is: decoration, so hidden from a screen reader as
+ * the picture beside a product's name is.
+ *}
+{define sgSpecimenThumbnail}
+    <svg width="48" height="36" viewBox="0 0 48 36" aria-hidden="true" focusable="false">
+        <rect x="0.5" y="0.5" width="47" height="35" fill="none" stroke="currentColor" stroke-opacity="0.25" />
+
+        <g fill="currentColor" fill-opacity="0.6">
+            <ellipse cx="24" cy="8" rx="11" ry="4" />
+            <ellipse cx="24" cy="15" rx="9" ry="2.5" />
+            <ellipse cx="24" cy="20" rx="7.5" ry="2.2" />
+            <ellipse cx="24" cy="25" rx="6" ry="2" />
+            <ellipse cx="24" cy="29.5" rx="4" ry="1.8" />
+        </g>
+    </svg>
+{/define}
+
 {define sgSpecimen, string $variant, bool $narrow = false}
     <div class="sg-specimen" data-styleguide-variant="{$variant}">
         <div n:class="'sg-specimen__stage', $narrow ? 'sg-specimen__stage--narrow'">{block sgSpecimenStage}{/block}</div>

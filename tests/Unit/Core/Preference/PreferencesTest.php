@@ -122,22 +122,39 @@ final class PreferencesTest extends TestCase
 
     /**
      * What a switch has to offer: every preference this build has, in the
-     * catalogue's order, each with every answer it accepts - and nothing about
-     * what was chosen or what a page insists on changes that list.
+     * catalogue's order, each with every answer it accepts - whatever was
+     * chosen.
      */
     public function testItOffersEveryPreferenceTheCatalogueHasWhateverWasChosen(): void
     {
         $catalogue = PreferenceCatalogue::of(DesignSystem::of(Bootstrap::rootDirectory(), 'atrium'));
 
-        $offered = $this
-            ->chosen([PreferenceCatalogue::THEME => 'ledger'])
-            ->overruledWith(PreferenceCatalogue::CONTENT_WIDTH, 'full')
-            ->offered();
+        $offered = $this->chosen([PreferenceCatalogue::THEME => 'ledger'])->offered();
 
         self::assertSame($catalogue->names(), array_keys($offered));
         foreach ($catalogue->all() as $name => $preference) {
             self::assertSame($preference->values, $offered[$name]->values, $name . ' is offered with other answers');
         }
+    }
+
+    /**
+     * A page that insists on a preference has nothing to offer for it: whatever
+     * is clicked changes nothing there, and the control would look broken.
+     * Everything the page leaves alone is still offered.
+     */
+    public function testItDoesNotOfferWhatThePageInsistsOn(): void
+    {
+        $catalogue = PreferenceCatalogue::of(DesignSystem::of(Bootstrap::rootDirectory(), 'atrium'));
+
+        $offered = $this
+            ->chosen([PreferenceCatalogue::CONTENT_WIDTH => 'wide'])
+            ->overruledWith(PreferenceCatalogue::CONTENT_WIDTH, 'full')
+            ->offered();
+
+        self::assertSame(
+            array_values(array_diff($catalogue->names(), [PreferenceCatalogue::CONTENT_WIDTH])),
+            array_keys($offered),
+        );
     }
 
     /** @param array<string, string> $chosen */

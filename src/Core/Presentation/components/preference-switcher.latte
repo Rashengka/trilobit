@@ -1,6 +1,9 @@
 {**
- * c-preference-switcher - every preference this build has, each drawn as the
- * set of answers somebody can switch between.
+ * c-preference-switcher - every preference this build has that the page it is
+ * on leaves to the person, each drawn as the set of answers somebody can switch
+ * between. A preference the page insists on is not offered, because a control
+ * for it would change nothing there; and a page that insists on every one has
+ * nothing to offer, so the switch is not drawn at all rather than drawn empty.
  *
  * One component for every place the switch appears - the top of the style
  * guide, and the menu of whoever is signed in to the administration - so that
@@ -8,7 +11,8 @@
  *
  * Nothing is listed here. The preferences and their answers come out of
  * Trilobit\Core\Preference\PreferenceCatalogue by way of
- * Preferences::offered(), and the words on the controls are derived from the
+ * Preferences::offered() - less any the page insists on, which a control
+ * would change nothing for - and the words on the controls are derived from the
  * names, so a fourth preference is an entry in the catalogue and not a line in
  * this file. tests/Template/PreferenceSwitcherOffersEveryPreferenceTest fails
  * when what is drawn and what the catalogue has part company in either
@@ -24,14 +28,16 @@
  * the one in force.
  *
  * It is preferred() and not value() that decides which control is pressed: the
- * switch shows the person's own setting, which is not always what the page it
- * happens to be on is drawn at - see Trilobit\Core\Preference\Preferences.
+ * switch shows the person's own setting. For a preference it offers the two are
+ * the same, since the page does not insist on it, and preferred() says what the
+ * control means - the person's setting, which is what clicking another answer
+ * changes - rather than leaning on that. See Trilobit\Core\Preference\Preferences.
  *}
 
 {import 'button.latte'}
 
 {define preferenceSwitcher, Trilobit\Core\Preference\Preferences $preferences, ?string $testId = null}
-    <div class="c-preference-switcher" data-testid="{$testId}">
+    <div n:if="$preferences->offered() !== []" class="c-preference-switcher" data-testid="{$testId}">
         {foreach $preferences->offered() as $name => $preference}
             {var string $label = ($name|replace: '-', ' '|firstUpper)}
 

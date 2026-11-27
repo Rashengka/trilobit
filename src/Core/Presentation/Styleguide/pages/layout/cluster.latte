@@ -3,15 +3,16 @@
 {*
  * Short things side by side, wrapping where the row runs out.
  *
- * The second specimen is drawn in a frame too narrow for the row on purpose,
- * so that the wrapping is something to look at rather than something to take
- * on trust.
+ * The second and the third specimen are drawn in a frame too narrow for the
+ * row on purpose, so that the wrapping - and the cluster that does not wrap -
+ * is something to look at rather than something to take on trust.
  *
  * The example content is invented and has to stay invented.
  *}
 
 {import '../../templates/furniture.latte'}
 {import '../../../components/badge.latte'}
+{import '../../../components/button.latte'}
 
 {block sgPage}
     {embed block sgLayoutSection,
@@ -38,6 +39,19 @@
                         {include badge, label: 'Devonian'}
                         {include badge, label: 'Carboniferous'}
                         {include badge, label: 'Permian', variant: 'accent'}
+                    </div>
+                {/block}
+            {/embed}
+
+            {* What is read as one - a picture and the name beside it - stays on
+               its line and runs past a frame too narrow for it rather than
+               wrap; whatever holds it, the frame of a table, scrolls. *}
+            {embed block sgSpecimen, variant: 'never wrapping, in a narrow frame', narrow: true}
+                {block sgSpecimenStage}
+                    <div class="l-cluster l-cluster--nowrap">
+                        {include sgSpecimenThumbnail}
+
+                        {include button, label: 'Head shields of the northern quarry', href: '#', variant: 'quiet'}
                     </div>
                 {/block}
             {/embed}

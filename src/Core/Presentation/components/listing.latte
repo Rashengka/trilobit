@@ -14,6 +14,13 @@
  * for each sentence (see Trilobit\Core\Presentation\Listing\Filters::read()):
  * the list under it is shown without that part, and says why.
  *
+ * The way through the rows is drawn twice, above them and under them, so that
+ * the next page is as near as the rows somebody is reading: at the top of a
+ * page they have not scrolled yet, and at the bottom of one they have read.
+ * The two are the same row of pages under two names, because two navigation
+ * landmarks of one name are one landmark to somebody moving between them; and
+ * neither is drawn for a list of one page, which c-pagination decides.
+ *
  * The rows are a slot, listingTable, because what a row holds is the page's -
  * a Nette control fills it with c-table. $redrawn marks the links it draws for
  * Naja, which redraws the listing rather than loading the page; a specimen in
@@ -48,11 +55,20 @@
             {if $state === 'no match'}
                 {include notice, message: $nothingMatches, testId: $testId === null ? null : $testId . '-no-match'}
             {else}
+                {if $pagination !== null}
+                    {include pagination,
+                        pagination: $pagination,
+                        label: 'Pages, above the list',
+                        redrawn: $redrawn,
+                        testId: $testId === null ? null : $testId . '-pagination-above'}
+                {/if}
+
                 {block listingTable}{/block}
 
                 {if $pagination !== null}
                     {include pagination,
                         pagination: $pagination,
+                        label: 'Pages, under the list',
                         redrawn: $redrawn,
                         testId: $testId === null ? null : $testId . '-pagination'}
                 {/if}

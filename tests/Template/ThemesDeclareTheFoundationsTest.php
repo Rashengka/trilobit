@@ -70,6 +70,7 @@ final class ThemesDeclareTheFoundationsTest extends TestCase
         '--control-size-sm',
         '--control-size-md',
         '--control-size-lg',
+        '--control-size-text',
         '--control-icon-xs',
         '--control-icon-sm',
         '--control-icon-md',

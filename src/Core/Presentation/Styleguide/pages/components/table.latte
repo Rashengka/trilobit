@@ -10,6 +10,8 @@
 
 {import '../../templates/furniture.latte'}
 {import '../../../components/table.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/badge.latte'}
 
 {block sgPage}
     {embed block sgSection, component: $components['c-table']}
@@ -136,6 +138,55 @@
                         <tr>
                             <th scope="row">Tail shields</th>
                             <td>The one without</td>
+                        </tr>
+                    {/block}
+                {/embed}
+            {/specimen}
+
+            {*
+             * A list of the administration on a phone, in a stage narrower
+             * than its rows: the rows scroll inside the frame, which shades the
+             * edge there is more beyond, and the page stays where it is. The
+             * name a row is opened by and a badge stay one line, a picture stays
+             * beside the name (l-cluster--nowrap), an amount stays beside its
+             * currency, and the cells keep to the middle of the row - the row
+             * with a picture is the taller one.
+             *}
+            {specimen 'wider than its frame, a row opened by its name, with amounts', narrow: true}
+                {embed block table, caption: 'Drawers of the collection, and what each is insured for'}
+                    {block tableHead}
+                        <tr>
+                            <th scope="col">Drawer</th>
+                            <th scope="col">State</th>
+                            <th scope="col" class="c-table__number">Insured for</th>
+                            <th scope="col" class="c-table__number">With the levy</th>
+                            <th scope="col">Shelf</th>
+                        </tr>
+                    {/block}
+
+                    {block tableBody}
+                        <tr>
+                            <th scope="row">
+                                <div class="l-cluster l-cluster--nowrap">
+                                    {include sgSpecimenThumbnail}
+
+                                    {include button, label: 'Head shields of the northern quarry', href: '#', variant: 'quiet'}
+                                </div>
+                            </th>
+                            <td>{include badge, label: 'Catalogued', variant: 'accent'}</td>
+                            <td class="c-table__number">27,990.00 CZK</td>
+                            <td class="c-table__number">33,867.90 CZK</td>
+                            <td>{include badge, label: '/east-wing/upper-shelf/head-shields'}</td>
+                        </tr>
+
+                        <tr>
+                            <th scope="row">
+                                {include button, label: 'Tail shields', href: '#', variant: 'quiet'}
+                            </th>
+                            <td>{include badge, label: 'Waiting'}</td>
+                            <td class="c-table__number">890.00 CZK</td>
+                            <td class="c-table__number">1,076.90 CZK</td>
+                            <td>{include badge, label: '/east-wing/lower-shelf/tail-shields'}</td>
                         </tr>
                     {/block}
                 {/embed}
