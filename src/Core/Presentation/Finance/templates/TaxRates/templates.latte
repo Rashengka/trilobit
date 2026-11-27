@@ -6,7 +6,8 @@
  * the rates this business holds already, and a form offering the rest.
  *
  * Only the rates the business has not taken are offered; one taken already is
- * said as taken rather than drawn as a box that would be refused.
+ * said as taken, leading to its page - an archived one with the advice to
+ * restore it there - rather than drawn as a box that would be refused.
  * Trilobit\Core\Finance\TaxRates::adopt() refuses it all the same.
  *}
 
@@ -49,7 +50,10 @@
                         <div data-testid="tax-rate-template-adopted">
                             <p>Among the rates of this business already:</p>
                             <ul>
-                                <li n:foreach="$adopted as $rate">{$rate}</li>
+                                <li n:foreach="$adopted as $rate">
+                                    <a href="{$rate['url']}">{$rate['label']}</a>
+                                    {if $rate['archived']} - archived: restore it from its page rather than take it again{/if}
+                                </li>
                             </ul>
                         </div>
                     {/if}

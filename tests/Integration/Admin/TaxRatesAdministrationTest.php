@@ -518,21 +518,85 @@ final class TaxRatesAdministrationTest extends TestCase
     }
 
     /**
-     * A rate that is not offered - taken already, or of no template - posted
-     * by hand is not taken, and neither is nothing: the form says why.
+     * What is posted is what the service is asked, as sent: a batch holding a
+     * rate taken already - by somebody else since the page was drawn, or
+     * posted by hand - or a rate of another country is refused whole, with a
+     * sentence saying which, and not quietly cut down to what is offered.
      */
-    public function testOnlyARateOfferedIsTakenFromTheForm(): void
+    public function testABatchHoldingARateThatIsNotOfferedIsRefusedWhole(): void
     {
         $this->signIn(self::KEEPER);
         $this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], ['rates' => ['cz.zero'], 'adopt' => 'Add the chosen rates']);
 
-        foreach ([['cz.zero'], ['cz.nothing'], ['sk.standard'], []] as $posted) {
-            $response = $this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], ['rates' => $posted, 'adopt' => 'Add the chosen rates']);
-            self::assertInstanceOf(TextResponse::class, $response, implode(', ', $posted) . ' was taken');
-            self::assertStringContainsString('Choose at least one rate', $this->textOf($this->pageOf($response), 'tax-rate-template-form'));
+        $refusals = [
+            'is among the rates of this business already' => [['cz.zero'], ['cz.standard', 'cz.zero']],
+            'is not a rate of the template of CZ' => [['sk.standard'], ['cz.standard', 'sk.standard']],
+            'No template has a rate called cz.nothing' => [['cz.nothing']],
+            'Choose at least one rate' => [[]],
+        ];
+        foreach ($refusals as $sentence => $batches) {
+            foreach ($batches as $posted) {
+                $response = $this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], ['rates' => $posted, 'adopt' => 'Add the chosen rates']);
+                self::assertInstanceOf(TextResponse::class, $response, implode(', ', $posted) . ' was taken');
+                self::assertStringContainsString($sentence, $this->textOf($this->pageOf($response), 'tax-rate-template-form'), implode(', ', $posted));
+            }
         }
 
         self::assertSame(['cz.zero'], $this->templateKeysHere());
+    }
+
+    /** A rate taken and then archived is said to be archived, and to be restored rather than taken again. */
+    public function testAnArchivedRateOfTheTemplateIsSaidToBeRestoredRatherThanTaken(): void
+    {
+        $this->signIn(self::KEEPER);
+        $this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], ['rates' => ['cz.zero'], 'adopt' => 'Add the chosen rates']);
+        $zero = $this->connection()->fetchOne('SELECT id FROM core_tax_rate WHERE template_key = ?', ['cz.zero']);
+        self::assertIsNumeric($zero);
+        $this->request(self::RATES, 'edit', ['id' => (string) $zero, 'do' => 'archive-submit'], ['archive' => 'Archive']);
+
+        $page = $this->pageOf($this->request(self::RATES, 'templates', ['country' => 'cz']));
+
+        $adopted = $this->textOf($page, 'tax-rate-template-adopted');
+        self::assertStringContainsString('archived', $adopted);
+        self::assertStringContainsString('restore it', $adopted);
+        self::assertSame('/admin/finance/tax-rates/' . $zero, $page->querySelector('[data-testid="tax-rate-template-adopted"] a')?->getAttribute('href'));
+    }
+
+    /**
+     * Somebody else takes the same rate between this page being drawn and
+     * its form being sent: the database refuses it, and the page answers with
+     * a redirect rather than drawing itself from the entity manager the
+     * refusal closed.
+     */
+    public function testARateTakenMeanwhileIsAnsweredWithARedirect(): void
+    {
+        $this->signIn(self::KEEPER);
+        $connection = $this->connection();
+        $tenant = $connection->fetchOne('SELECT id FROM core_tenant WHERE name = ?', ['Ammonite Bikes']);
+        $meanwhile = new class ($connection, is_numeric($tenant) ? (int) $tenant : 0) {
+            private bool $done = false;
+
+            public function __construct(private readonly Connection $connection, private readonly int $tenant) {}
+
+            public function onFlush(OnFlushEventArgs $flush): void
+            {
+                if ($this->done || $flush->getObjectManager()->getUnitOfWork()->getScheduledEntityInsertions() === []) {
+                    return;
+                }
+
+                $this->done = true;
+                $this->connection->executeStatement(
+                    "INSERT INTO core_tax_rate (tenant_id, name, rate, country, kind, position, template_key, is_default, created_at, updated_at) VALUES (?, 'Theirs', 0, 'CZ', 'zero', 9, 'cz.zero', 0, NOW(), NOW())",
+                    [$this->tenant],
+                );
+            }
+        };
+        $this->container()->getByType(EntityManagerInterface::class)->getEventManager()->addEventListener([Events::onFlush], $meanwhile);
+
+        $response = $this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], ['rates' => ['cz.zero'], 'adopt' => 'Add the chosen rates']);
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertSame([], $this->templateKeysHere());
     }
 
     /** Every rate of a template taken, the page says so and draws no form. */

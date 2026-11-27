@@ -1353,7 +1353,10 @@ tests read every shipped file the same way.
 template key - the country in small letters and the rate's key,
 `cz.standard` - which says which rate of the country it is and never its
 percent, so it stays when the law changes the number. The page offers only the
-rates the business has not taken, archived ones counted as taken, and a key is
+rates the business has not taken, archived ones counted as taken - an archived
+one is listed with the advice to restore it from its page. What the form sends
+is what the service is asked, as sent: a batch holding a rate taken already or
+a rate of another country is refused whole, with a sentence saying which. A key is
 unique within a business in the database (`uniq_tax_rate_template`), so two
 people taking the same rate at once cannot both: the second is refused with a
 sentence, and nothing of it is kept. Taken rates follow the rule of every

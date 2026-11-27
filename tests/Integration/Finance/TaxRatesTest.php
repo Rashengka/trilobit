@@ -386,6 +386,18 @@ final class TaxRatesTest extends TestCase
         self::assertSame([], $this->templateKeysOfThisBusiness());
     }
 
+    /** Asked for the rates of one country, a rate of another is refused, and nothing is taken. */
+    public function testARateOfAnotherCountryIsRefusedWhenOneCountryIsAskedFor(): void
+    {
+        $this->signIn(self::KEEPER);
+
+        $this->assertRefused(fn(): array => $this->rates()->adopt(['cz.standard', 'sk.standard'], 'CZ'));
+        self::assertSame([], $this->templateKeysOfThisBusiness());
+
+        $this->rates()->adopt(['cz.standard'], 'cz');
+        self::assertSame(['cz.standard'], $this->templateKeysOfThisBusiness());
+    }
+
     /** Another business's rates taken from a template are its own: a key is unique within a business, not across them. */
     public function testTwoBusinessesAdoptTheSameRateEach(): void
     {

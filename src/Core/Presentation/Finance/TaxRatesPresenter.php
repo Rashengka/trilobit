@@ -172,12 +172,15 @@ final class TaxRatesPresenter extends AdminPresenter
         $template->templatesUrl = $this->link('templates');
         $template->verifiedAt = $chosen->verifiedAt->format('j F Y');
         $template->sources = $chosen->sources;
-        $offered = array_map(static fn(TemplateRate $rate): string => $rate->templateKey, $adoptable);
-        $template->mayAdopt = $offered !== [];
-        $template->adopted = array_values(array_map(
-            static fn(TemplateRate $rate): string => $rate->written(),
-            array_filter($chosen->rates, static fn(TemplateRate $rate): bool => !in_array($rate->templateKey, $offered, true)),
-        ));
+        $template->mayAdopt = $adoptable !== [];
+        $template->adopted = [];
+        foreach ($this->rates->adoptedFrom($chosen) as $taken) {
+            $template->adopted[] = [
+                'label' => $taken->label(),
+                'archived' => $taken->isArchived(),
+                'url' => $this->link('edit', ['id' => $taken->id()]),
+            ];
+        }
     }
 
     public function renderEdit(): void
@@ -284,8 +287,9 @@ final class TaxRatesPresenter extends AdminPresenter
 
         $form = $this->forms->createVertical();
         $form->getElementPrototype()->setAttribute('data-testid', 'tax-rate-template-form');
+        // Not required here: what is sent is read as sent and judged by
+        // TaxRates::adopt(), choosing none included - see adopt() below.
         $form->addCheckboxList('rates', 'Rates to add', $offered)
-            ->setRequired('Choose at least one rate of the template to add.')
             ->setHtmlAttribute('data-testid', 'tax-rate-template-rate');
         $form->addSubmit('adopt', 'Add the chosen rates')->setHtmlAttribute('data-testid', 'tax-rate-template-submit');
 
@@ -375,11 +379,14 @@ final class TaxRatesPresenter extends AdminPresenter
 
     private function adopt(Form $form): void
     {
-        $values = $form->getValues('array');
-        $chosen = is_array($values['rates'] ?? null) ? array_values(array_filter($values['rates'], is_string(...))) : [];
+        // What was sent, not what the list of boxes keeps of it: the list
+        // holds only what is offered now, and would quietly drop a rate taken
+        // meanwhile or one of another country instead of having it refused.
+        $sent = $form->getHttpData(Form::DataLine, 'rates[]');
+        $chosen = is_array($sent) ? array_values(array_filter($sent, is_string(...))) : [];
 
         try {
-            $adopted = $this->rates->adopt($chosen);
+            $adopted = $this->rates->adopt($chosen, $this->chosen->country ?? '');
         } catch (TaxRateConflict $conflict) {
             $this->flashMessage($conflict->getMessage(), 'danger');
             $this->redirect('this');
@@ -391,7 +398,8 @@ final class TaxRatesPresenter extends AdminPresenter
 
         $labels = implode(', ', array_map(static fn(TaxRate $rate): string => $rate->label(), $adopted));
         $this->flashMessage(match (true) {
-            $adopted[0]->isDefault() => sprintf('%s added; the first is the default: it is the first rate of this business.', $labels),
+            count($adopted) === 1 && $adopted[0]->isDefault() => sprintf('%s is added, and is the default: it is the first rate of this business.', $labels),
+            $adopted[0]->isDefault() => sprintf('%s are added, and the first is the default: it is the first rate of this business.', $labels),
             count($adopted) === 1 => sprintf('%s is added.', $labels),
             default => sprintf('%s are added.', $labels),
         });

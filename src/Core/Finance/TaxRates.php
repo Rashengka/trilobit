@@ -154,32 +154,49 @@ final readonly class TaxRates
      * to hold, by the unique index over the business and the template key
      * (TaxRate); the one that loses is refused as a TaxRateConflict.
      *
+     * Asked with $country - a page of one country's template - a rate of
+     * another country is refused too, rather than taken from a page that did
+     * not offer it.
+     *
      * Taking a rate is adding one, and asks the same right.
      *
      * @param list<string> $templateKeys such as `cz.standard`; one asked twice is taken once
+     * @param ?string $country the two letters of the only template the rates may be of, in either case; null for any
      *
      * @return list<TaxRate>
      *
      * @throws TaxRateRefused
      */
-    public function adopt(array $templateKeys): array
+    public function adopt(array $templateKeys, ?string $country = null): array
     {
         $this->refuseUnless($this->doorkeeper->mayDo(Resource::TaxRate, Privilege::Add), 'add rates of tax');
 
         $chosen = [];
         foreach (array_unique($templateKeys) as $templateKey) {
-            $chosen[] = $this->templates->rate($templateKey)
+            $asked = $this->templates->rate($templateKey)
                 ?? throw new TaxRateRefused(sprintf('No template has a rate called %s.', $templateKey));
+            if ($country !== null && $asked->country !== strtoupper($country)) {
+                throw new TaxRateRefused(sprintf('%s is not a rate of the template of %s.', $asked->written(), strtoupper($country)));
+            }
+
+            $chosen[] = $asked;
         }
 
         if ($chosen === []) {
             throw new TaxRateRefused('Choose at least one rate of the template to add.');
         }
 
-        $held = $this->adoptedKeys();
-        foreach ($chosen as $rate) {
-            if (in_array($rate->templateKey, $held, true)) {
-                throw new TaxRateRefused(sprintf('%s of %s is among the rates of this business already.', $rate->label, $rate->country));
+        $held = $this->adoptedFrom(null);
+        foreach ($chosen as $wanted) {
+            $taken = $held[$wanted->templateKey] ?? null;
+            if ($taken instanceof TaxRate) {
+                throw new TaxRateRefused(sprintf(
+                    $taken->isArchived()
+                        ? '%s of %s is among the rates of this business already, archived: restore it from its page rather than take it again.'
+                        : '%s of %s is among the rates of this business already.',
+                    $wanted->label,
+                    $wanted->country,
+                ));
             }
         }
 
@@ -187,8 +204,8 @@ final readonly class TaxRates
         $position = $this->nextPosition();
         $hasDefault = $this->default() instanceof TaxRate;
         $adopted = [];
-        foreach ($chosen as $rate) {
-            $made = new TaxRate($this->tenancy->tenant(), $rate->label, $rate->rate, $rate->country, $rate->kind, $position++, $now, $rate->templateKey);
+        foreach ($chosen as $one) {
+            $made = new TaxRate($this->tenancy->tenant(), $one->label, $one->rate, $one->country, $one->kind, $position++, $now, $one->templateKey);
             if (!$hasDefault && $adopted === []) {
                 $made->makeDefault($now);
             }
@@ -215,12 +232,38 @@ final readonly class TaxRates
      */
     public function adoptable(TaxRateTemplate $template): array
     {
-        $held = $this->adoptedKeys();
+        $held = array_keys($this->adoptedFrom($template));
 
         return array_values(array_filter(
             $template->rates,
             static fn(TemplateRate $rate): bool => !in_array($rate->templateKey, $held, true),
         ));
+    }
+
+    /**
+     * The rates of this business taken from $template - from any template for
+     * null - archived ones included, by their template keys.
+     *
+     * @return array<string, TaxRate>
+     */
+    public function adoptedFrom(?TaxRateTemplate $template): array
+    {
+        $taken = [];
+        $rates = $this->entityManager
+            ->createQuery(sprintf('SELECT r FROM %s r WHERE r.templateKey IS NOT NULL ORDER BY r.position ASC, r.id ASC', TaxRate::class))
+            ->getResult();
+        foreach (is_array($rates) ? $rates : [] as $rate) {
+            if (!$rate instanceof TaxRate) {
+                continue;
+            }
+
+            $key = $rate->templateKey();
+            if ($key !== null && (!$template instanceof TaxRateTemplate || str_starts_with($key, strtolower($template->country) . '.'))) {
+                $taken[$key] = $rate;
+            }
+        }
+
+        return $taken;
     }
 
     /**
@@ -425,16 +468,6 @@ final readonly class TaxRates
         }
 
         return $country;
-    }
-
-    /** @return list<string> the template keys of every rate of this business taken from a template, archived ones included */
-    private function adoptedKeys(): array
-    {
-        $keys = $this->entityManager
-            ->createQuery(sprintf('SELECT r.templateKey FROM %s r WHERE r.templateKey IS NOT NULL', TaxRate::class))
-            ->getSingleColumnResult();
-
-        return array_values(array_filter($keys, is_string(...)));
     }
 
     private function nextPosition(): int

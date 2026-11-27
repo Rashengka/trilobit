@@ -49,7 +49,12 @@ final class TaxRatesTemplate extends AdminTemplate
     /** @var list<string> where the rates of the chosen template can be checked */
     public array $sources = [];
 
-    /** @var list<string> the rates of the chosen template this business holds already, as a person reads them */
+    /**
+     * The rates of the chosen template this business holds already: as a
+     * person reads them, whether archived, and where each is kept.
+     *
+     * @var list<array{label: string, archived: bool, url: string}>
+     */
     public array $adopted = [];
 
     /** Whether the chosen template has a rate this business has not taken yet, so the form is drawn. */
