@@ -1,5 +1,6 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { test } from '@playwright/test';
 
@@ -60,12 +61,23 @@ interface Result {
     readonly file: string;
     readonly error: string | null;
     /**
-     * How many pixels of the window's width the page did not get: the room a
-     * classic scrollbar takes on a page that scrolls. Null when no picture was
-     * taken. tests/snapshots/tool.test.mjs reads it.
+     * The size the page was laid out at, measured in the page just before the
+     * picture: the width the window lends the document beside a classic
+     * scrollbar (clientWidth), and the height of the whole document. A picture
+     * of what a visitor sees is exactly this size. Null when no picture was
+     * taken. tests/snapshots/tool.test.mjs compares it with the PNG.
      */
-    readonly scrollbar: number | null;
+    readonly layout: { readonly width: number; readonly height: number } | null;
 }
+
+/**
+ * Pages of the tool's own test, under a prefix the application has no route
+ * for, served out of tests/snapshots/fixtures/ rather than by the server:
+ * tests/snapshots/tool.test.mjs pictures one whose every edge is a colour of
+ * its own, to see that nothing of the layout is lost on the way to the PNG.
+ */
+const FIXTURES = '/_snapshot-fixtures/';
+const fixtureDirectory = fileURLToPath(new URL('./fixtures/', import.meta.url));
 
 function report(result: Result): void {
     const directory = join(request.out, 'results');
@@ -88,9 +100,22 @@ for (const combination of combinations()) {
                 const browser = info.project.name;
                 const file = fileName(path, combination, browser);
                 const fail = (error: string): never => {
-                    report({ path, theme, mode, width, browser, file, error, scrollbar: null });
+                    report({ path, theme, mode, width, browser, file, error, layout: null });
                     throw new Error(error);
                 };
+
+                await context.route(`**${FIXTURES}*`, async (route) => {
+                    const name = new URL(route.request().url()).pathname.slice(FIXTURES.length);
+                    if (!/^[a-z0-9-]+\.html$/.test(name)) {
+                        return route.fulfill({ status: 404, body: '' });
+                    }
+
+                    return route.fulfill({
+                        status: 200,
+                        contentType: 'text/html; charset=utf-8',
+                        body: readFileSync(join(fixtureDirectory, name), 'utf8'),
+                    });
+                });
 
                 await context.addCookies([
                     { name: 'trilobit-theme', value: theme, url: baseURL ?? '' },
@@ -133,6 +158,11 @@ for (const combination of combinations()) {
                 }
 
                 await page.evaluate(() => document.fonts.ready.then(() => undefined));
+                const layout = await page.evaluate(() => ({
+                    width: document.documentElement.clientWidth,
+                    height: document.documentElement.scrollHeight,
+                    scrolls: document.documentElement.clientWidth < window.innerWidth,
+                }));
                 await page.screenshot({
                     path: join(request.out, file),
                     fullPage: true,
@@ -140,11 +170,29 @@ for (const combination of combinations()) {
                     caret: 'hide',
                     // Tracy's bar: the server runs in dev, as the browser suite's does,
                     // and the bar is a tool of the developer's, not part of the design.
-                    style: '#tracy-debug { display: none !important; }',
+                    //
+                    // And the room of the scrollbar kept. For a whole page, Chromium
+                    // captures beyond the window with every scrollbar hidden: the page
+                    // is laid out again fifteen pixels wider - and shorter, where
+                    // anything wraps - and the picture is cut to the width and height
+                    // measured beside the scrollbar. Its right edge was lost and an
+                    // empty band was left under the footer. With the gutter held
+                    // (scrollbar-gutter: stable) the room stays while the scrollbar is
+                    // hidden, the page keeps the layout the visitor has, and the
+                    // picture is all of it. Telling the root to scroll is not enough:
+                    // a hidden scrollbar takes no room whatever the overflow. Only
+                    // where the window showed a scrollbar to begin with - a page that
+                    // fits, or one a modal dialog holds still, has none for a visitor
+                    // either. Firefox pictures a whole page beside the scrollbar it
+                    // drew, and is told the same to no effect, so both browsers give
+                    // the same geometry (tests/snapshots/tool.test.mjs measures it).
+                    style: [
+                        '#tracy-debug { display: none !important; }',
+                        ...(layout.scrolls ? [':root { scrollbar-gutter: stable !important; }'] : []),
+                    ].join('\n'),
                 });
 
-                const scrollbar = await page.evaluate(() => window.innerWidth - document.documentElement.clientWidth);
-                report({ path, theme, mode, width, browser, file, error: null, scrollbar });
+                report({ path, theme, mode, width, browser, file, error: null, layout: { width: layout.width, height: layout.height } });
             });
         }
     });

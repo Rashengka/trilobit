@@ -547,7 +547,8 @@ The theme and the mode are set the way a device keeps them, as the cookies
 `trilobit-theme` and `trilobit-theme-mode`, and read back off `<html>` before
 the picture is taken. Both browsers lay the page out beside Linux's classic
 scrollbar, so a page that scrolls is pictured fifteen pixels narrower than the
-window, as CI draws it. `--sign-in` makes an account of its own,
+window, as CI draws it - all of the page as laid out beside that scrollbar,
+every edge of it, in both browsers alike. `--sign-in` makes an account of its own,
 `snapshots@example.com`, in this checkout's database and signs in once; the
 account is left there, as the browser suite leaves its own, and its password
 never leaves the process. `--click` clicks the first match of a selector before
@@ -563,7 +564,8 @@ index, never pictured, and the command exits non-zero. The specs are in
 `tests/snapshots/`, run by `playwright.snapshots.config.ts`, which
 `npm run e2e` does not read. `npm run snapshots:test` runs the tool itself:
 signed out on the administration, on a page of the style guide in both
-browsers, and signed in; it needs Docker, as the tool does. It
+browsers, on a page of its own whose every edge is a colour (to see the picture
+is the layout, no more and no less), and signed in; it needs Docker, as the tool does. It
 uses the container name `npm run e2e:docker` uses, so the two are not run at
 the same time in one checkout.
 

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snapshot edges</title>
+<script>
+    // The matrix reads the theme and the mode back off <html> before it takes
+    // the picture, as the application draws them there from these two cookies.
+    for (const [name, attribute] of [['trilobit-theme', 'data-theme'], ['trilobit-theme-mode', 'data-theme-mode']]) {
+        const value = document.cookie.split('; ').find((pair) => pair.startsWith(`${name}=`))?.slice(name.length + 1);
+        if (value !== undefined) {
+            document.documentElement.setAttribute(attribute, value);
+        }
+    }
+</script>
+<style>
+    /*
+     * A page of the snapshot tool's own test (tests/snapshots/tool.test.mjs),
+     * served by tests/snapshots/matrix.spec.ts and never by the application.
+     *
+     * Every edge of the layout is a colour of its own: a red bar flush against
+     * the right edge, a green one against the left, a blue one along the
+     * bottom. Between them, tiles that wrap, so that the height of the page
+     * depends on its width: laid out fifteen pixels wider, it is a few hundred
+     * pixels shorter. The page is taller than any window of the matrix, so a
+     * classic scrollbar takes room beside it. A picture of exactly what a
+     * visitor sees starts with green, ends with red and has blue as its last
+     * row; one taken under a layout the visitor never had loses the red, or
+     * ends below the blue.
+     */
+    html, body { margin: 0; padding: 0; background: #fff; }
+    main { position: relative; padding-block-end: 4px; font-size: 0; }
+    .tile { display: inline-block; inline-size: 20px; block-size: 20px; }
+    .edge { position: absolute; }
+    .left { inset-block: 0; inset-inline-start: 0; inline-size: 4px; background: #00ff00; }
+    .right { inset-block: 0; inset-inline-end: 0; inline-size: 4px; background: #ff0000; }
+    .bottom { inset-inline: 4px; inset-block-end: 0; block-size: 4px; background: #0000ff; }
+</style>
+</head>
+<body>
+<main>
+    <div class="edge left"></div>
+    <div class="edge right"></div>
+    <div class="edge bottom"></div>
+</main>
+<script>
+    document.querySelector('main').append(...Array.from({ length: 6000 }, () => Object.assign(document.createElement('span'), { className: 'tile' })));
+</script>
+</body>
+</html>
