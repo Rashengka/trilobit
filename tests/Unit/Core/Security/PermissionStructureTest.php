@@ -92,14 +92,15 @@ final class PermissionStructureTest extends TestCase
         self::assertSame([Resource::Administration, Resource::App], $structure->ancestorsOf(Resource::Account));
         self::assertSame([Resource::App], $structure->ancestorsOf(Resource::Administration));
         self::assertSame([Resource::App], $structure->ancestorsOf(Resource::Redirection));
+        self::assertSame([Resource::Finance, Resource::Administration, Resource::App], $structure->ancestorsOf(Resource::TaxRate));
         self::assertSame([], $structure->ancestorsOf(Resource::App));
 
         self::assertEqualsCanonicalizing(
-            [Resource::Administration, Resource::Account, Resource::Content, Resource::Redirection],
+            [Resource::Administration, Resource::Account, Resource::Content, Resource::Finance, Resource::TaxRate, Resource::Redirection],
             $structure->descendantsOf(Resource::App),
         );
         self::assertEqualsCanonicalizing(
-            [Resource::Account, Resource::Content],
+            [Resource::Account, Resource::Content, Resource::Finance, Resource::TaxRate],
             $structure->descendantsOf(Resource::Administration),
         );
         self::assertSame([], $structure->descendantsOf(Resource::Content));
@@ -267,7 +268,7 @@ final class PermissionStructureTest extends TestCase
             $structure->ancestorsOf(DemoResource::Ledger),
         );
         self::assertEqualsCanonicalizing(
-            [Resource::Account, Resource::Content, DemoResource::Demo, DemoResource::Ledger],
+            [Resource::Account, Resource::Content, Resource::Finance, Resource::TaxRate, DemoResource::Demo, DemoResource::Ledger],
             $structure->descendantsOf(Resource::Administration),
         );
         self::assertTrue($structure->offers(DemoResource::Ledger, Privilege::Edit));

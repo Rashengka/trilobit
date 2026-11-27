@@ -1,0 +1,16 @@
+# The rates of value added tax of Hungary, as Act CXXVII of 2007 sets them; the
+# zero rate is the one for medicines available on prescription only, from
+# 1 September 2026, as the second source sets it.
+# Read by Trilobit\Core\Finance\TaxRateTemplates; see README.md, "Templates of
+# rates of tax", for what each key means.
+
+country: HU
+verifiedAt: 2026-11-27
+sources:
+	- https://njt.jog.gov.hu/jogszabaly/2007-127-00-00
+	- https://njt.jog.gov.hu/jogszabaly/2026-40-00-00
+rates:
+	standard: {kind: standard, percent: 27, label: Standard rate}
+	reduced: {kind: reduced, percent: 18, label: Reduced rate}
+	reduced-2: {kind: reduced, percent: 5, label: Second reduced rate}
+	zero: {kind: zero, percent: 0, label: 'Zero rate (prescription-only medicines)'}

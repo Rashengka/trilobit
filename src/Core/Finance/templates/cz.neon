@@ -1,0 +1,15 @@
+# The rates of value added tax of the Czech Republic, as Act 235/2004 sets
+# them. Act 180/2026, in force from 1 January 2027, moves what falls under the
+# reduced rate and leaves the rates as they are.
+# Read by Trilobit\Core\Finance\TaxRateTemplates; see README.md, "Templates of
+# rates of tax", for what each key means.
+
+country: CZ
+verifiedAt: 2026-11-27
+sources:
+	- https://www.zakonyprolidi.cz/cs/2004-235
+	- https://www.zakonyprolidi.cz/cs/2026-180
+rates:
+	standard: {kind: standard, percent: 21, label: Standard rate}
+	reduced: {kind: reduced, percent: 12, label: Reduced rate}
+	zero: {kind: zero, percent: 0, label: 'Zero rate (books and the like)'}

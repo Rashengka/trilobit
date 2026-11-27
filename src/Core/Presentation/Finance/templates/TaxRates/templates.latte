@@ -1,0 +1,72 @@
+{templateType Trilobit\Core\Presentation\Finance\TaxRatesTemplate}
+
+{*
+ * Rates of tax taken from a template of a country's rates: the countries
+ * first, then - on a country's page - when its rates were checked and where,
+ * the rates this business holds already, and a form offering the rest.
+ *
+ * Only the rates the business has not taken are offered; one taken already is
+ * said as taken, leading to its page - an archived one with the advice to
+ * restore it there - rather than drawn as a box that would be refused.
+ * Trilobit\Core\Finance\TaxRates::adopt() refuses it all the same.
+ *}
+
+{import '../../../components/page-heading.latte'}
+{import '../../../components/panel.latte'}
+{import '../../../components/button.latte'}
+{import '../../../components/notice.latte'}
+{import '../../../components/signpost.latte'}
+
+{block content}
+    {include pageHeading,
+        title: $headline,
+        lead: $lead,
+        testId: 'tax-rate-templates-headline',
+        leadTestId: 'tax-rate-templates-lead'}
+
+    <div class="l-cluster">
+        {include button, label: 'All tax rates', href: $listUrl, variant: 'quiet', testId: 'tax-rate-templates-back'}
+
+        {if $templatesUrl !== ''}
+            {include button, label: 'Another country', href: $templatesUrl, variant: 'quiet', testId: 'tax-rate-templates-countries'}
+        {/if}
+    </div>
+
+    {if $countries !== []}
+        {include signpost, items: $countries, label: 'Countries', testId: 'tax-rate-templates'}
+    {else}
+        {embed block panel, testId: 'tax-rate-template-panel'}
+            {block panelTitle}The rates{/block}
+
+            {block panelBody}
+                <div class="l-stack">
+                    <p data-testid="tax-rate-template-verified">Checked on {$verifiedAt}, against:</p>
+
+                    <ul data-testid="tax-rate-template-sources">
+                        <li n:foreach="$sources as $source"><a href="{$source}" rel="noopener noreferrer">{$source}</a></li>
+                    </ul>
+
+                    {if $adopted !== []}
+                        <div data-testid="tax-rate-template-adopted">
+                            <p>Among the rates of this business already:</p>
+                            <ul>
+                                <li n:foreach="$adopted as $rate">
+                                    <a href="{$rate['url']}">{$rate['label']}</a>
+                                    {if $rate['archived']} - archived: restore it from its page rather than take it again{/if}
+                                </li>
+                            </ul>
+                        </div>
+                    {/if}
+
+                    {if $mayAdopt}
+                        {control adopt}
+                    {else}
+                        {include notice,
+                            message: 'Every rate of this template is among the rates of this business already.',
+                            testId: 'tax-rate-template-nothing'}
+                    {/if}
+                </div>
+            {/block}
+        {/embed}
+    {/if}
+{/block}

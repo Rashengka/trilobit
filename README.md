@@ -63,9 +63,10 @@ owns no table, and a module that owns no table cannot be used to show that
 switching it off leaves its data alone. Each marker goes away with its
 migration once its module has entities of its own, the way `cms_marker` did.
 
-Core's own entities are real. It owns accounts, roles, settings and a media
-library - the four things every build has whichever modules are switched on, and
-the only tables a module is allowed to point a foreign key at.
+Core's own entities are real. It owns accounts, roles, settings, a media
+library and each business's rates of tax - the things every build has whichever
+modules are switched on, and the only tables a module is allowed to point a
+foreign key at.
 
 ## Modules
 
@@ -1303,6 +1304,104 @@ and says why where it offers nothing - but a form posted without a button, with
 a role it never offered, for a role it drew no button for, or to another page,
 ends where the service says, as a sentence on the screen.
 
+### Finance
+
+`/admin/finance` is a business's money matters: a signpost drawn from the
+section's entries on the bar, which today are one - the rates of tax at
+`/admin/finance/tax-rates`.
+
+**Each business keeps its own rates of tax** (`Trilobit\Core\Domain\Finance\TaxRate`,
+table `core_tax_rate`), listed by the same `Listing` control as the people and
+filtered by name, country and kind. A rate has a name, the rate itself in basis
+points (`VatRate`: 2100 is 21 %, any rate with up to two decimal places), and
+optionally the country it is a rate of - two capital letters, `CZ`, meant as
+ISO 3166-1 alpha-2 and not checked against its list - and its kind: standard,
+reduced, super-reduced, parking or zero. A rate is added on its own page and
+changed there; nothing points at a rate yet - the shop's products do not choose
+one of these, and still carry a rate of their own.
+
+**One rate is the default** - the one a new price will start with. The first
+rate a business adds becomes it, another is made it from that rate's page, and
+the default cannot be archived, so a business that has rates has exactly one.
+That there is never a second, and that the default is never archived, is the
+database's to hold, not only the service's: `default_key` is a virtual column
+holding the business on the default row and nothing on any other, with a
+unique index over it (see "A unique index over a column that may be empty"),
+and `is_default` carries a `CHECK` that the default has no `archived_at`. Both
+are generated from the mapping. So two people who read the same rates and
+write against each other - one making a rate the default while the other
+archives it - cannot both win: the database refuses the second write, nothing
+of it is kept, and the page answers with a redirect and a sentence saying
+somebody else changed the rates meanwhile.
+
+**A rate is archived rather than deleted.** It is offered for nothing new and
+kept as it was, so it cannot be changed or made the default until it is
+restored. **Changing the rate itself is written to the audit trail**
+(`core_audit_entry`) as `rate_changed`, in the same transaction as the change,
+so the two are kept together or not at all - it is the change that will alter
+what everything priced at the rate costs with tax once something is. The trail
+records which rate and when, not the old and new number or who changed it. A
+new name is not written there.
+
+**Every rule is in one service**, `Trilobit\Core\Finance\TaxRates`, which every
+page and form goes through and which asks for its own right at each act, on
+`app.administration.finance.tax_rate`: `view` to see the rates, `add` to add
+one, `edit` to change one or make it the default, `delete` to archive or
+restore one. A rate's own page opens for `view`, and draws each act for the
+right it asks, so `view` and `delete` alone archive and restore from there and
+are shown no form that changes the rate. The rates are no bundle - `tax_rate:*` is not honoured - because
+changing one changes prices; the section above them, `app.administration.finance`,
+is one, so the whole of the section reaches them, as the whole administration
+does. Any right on the rates opens the section's signpost, and somebody holding
+none is refused both pages and shown no way into them on the bar.
+
+#### Templates of rates of tax
+
+A business does not have to type its country's rates: `/admin/finance/tax-rates/templates`
+offers the rates of a country as a template, and `/admin/finance/tax-rates/templates/cz`
+the Czech ones, with the day they were last checked and where. The chosen rates
+become rates of the business (`TaxRates::adopt()`), named by the template's
+label and carrying its country, kind and percent; from then on each is a rate
+like any other, changed or archived on its own page, and a template changed
+later does not change it. Taking rates is adding them and asks `add`.
+
+A template is data of the application, not of a business: one NEON file per
+country in `src/Core/Finance/templates/`, beside
+`Trilobit\Core\Finance\TaxRateTemplates`, which reads them - templates are
+shipped for AT, CZ, DE, HU, PL and SK.
+
+```neon
+country: CZ               # the two capital letters the file is named after: cz.neon
+verifiedAt: 2026-11-27    # the day the rates were last checked against the sources
+sources:                  # where they can be checked, each an https address
+	- https://www.zakonyprolidi.cz/cs/2004-235
+rates:                    # each by a key of its own: small letters and digits, a hyphen between words
+	standard: {kind: standard, percent: 21, label: Standard rate}
+	reduced: {kind: reduced, percent: 12, label: Reduced rate}
+```
+
+`kind` is one of the kinds above, `percent` any rate `VatRate` takes - `4.9`
+is 490 basis points - and `label` what the rate is called once taken; a label
+holding parentheses is written in quotes, or NEON reads it as something else.
+A file that says anything wrongly is refused whole when it is read, and the
+tests read every shipped file the same way.
+
+**A rate of a template is taken once per business.** It is kept under its
+template key - the country in small letters and the rate's key,
+`cz.standard` - which says which rate of the country it is and never its
+percent, so it stays when the law changes the number. The page offers only the
+rates the business has not taken, archived ones counted as taken - an archived
+one is listed with the advice to restore it from its page. What the form sends
+is what the service is asked, as sent: a batch holding a rate taken already or
+a rate of another country is refused whole, with a sentence saying which. A key is
+unique within a business in the database (`uniq_tax_rate_template`), so two
+people taking the same rate at once cannot both: the second is refused with a
+sentence, and nothing of it is kept. Taken rates follow the rule of every
+other: the first rate of a business becomes its default, and a business that
+has one keeps it. On a working copy, `app:seed` takes the Czech standard and
+reduced rates from the Czech template, so the zero rate is what it still
+offers.
+
 ## Who may do what
 
 Every page of the administration is behind a declaration saying who may open
@@ -1383,10 +1482,11 @@ somebody having decided it. Which pairs mean anything is said in
 resource, and whether the whole of it may be granted.
 
 The resources form a tree, and the tree is in their names: a resource is the
-path to it, and it falls under its name up to the last dot. Core has five -
+path to it, and it falls under its name up to the last dot. Core has seven -
 `app`, the application inside one business and what everything falls under;
-`app.administration` and its two sections, `app.administration.account` and
-`app.administration.content`; and `app.redirection`, which is a decision on a
+`app.administration` and its three sections, `app.administration.account`,
+`app.administration.content` and `app.administration.finance`, with
+`app.administration.finance.tax_rate` under the last; and `app.redirection`, which is a decision on a
 public page rather than a section, so it is under the application and not under
 the administration. Nothing but the name says what a resource falls under, and
 every resource a name passes through has to exist, or the build does not
@@ -2119,8 +2219,10 @@ bin/trilobit app:seed
 | `ammonite-editor@example.com` | holds Ammonite Bikes' own `editor` role - the role in between: viewing, adding, editing, deleting and reordering the content, and nothing beside it - not purging or exporting it, not the accounts |
 | `ammonite-onlooker@example.com` | holds a role of Ammonite Bikes that grants nothing: signed in, and refused every page of the administration |
 | `ammonite-people@example.com` | holds Ammonite Bikes' own `people` role - seeing, adding, changing and removing its people, and nothing else - so the people page shows what it may give and what it may not: roles holding no more than that, never the owner's |
+| `ammonite-finance@example.com` | holds Ammonite Bikes' own `finance` role - seeing, adding, changing and archiving its rates of tax, each by name, and nothing else - so the bar shows the money matters and neither the content nor the people |
 | `ammonite-invited@example.com` | added to Ammonite Bikes as an onlooker and not signed in yet: no password, and the link that sets one printed under Invitations - nothing is sent |
 | `belemnite-editor@example.com` | holds Belemnite Books' own `editor` role, which under the same code means something narrower: reading and correcting the content |
+| rates of tax | in each business: the Czech standard rate, 21 % and the default, and the reduced rate, 12 %, both taken from the Czech template - so its zero rate is still offered there |
 | content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, a main menu with an entry holding two others, and enough further pages that the list of pages runs past its first page |
 | `ammonite-cataloguer@example.com`, `belemnite-cataloguer@example.com`, with `Shop` switched on | each holds the business's own `catalogue` role - the catalogue's role in between: viewing, adding, editing and deleting products, and not changing what any of them costs, which the form shows them without letting them change it |
 | catalogue, with `Shop` switched on | in each business: the categories Bikes - with Mountain, Road and Gravel bikes under it - Parts and accessories, and Sale; 24 products carrying the business's name, enough that the list of products runs past its first page; one filed in two categories with its permalink in the first, one with its permalink in the second; a draft; prices at 21 %, 12 % and no tax, and one product without an SKU; pictures drawn by the seed on five bikes, two on Ridge 29, taken in through the media library |

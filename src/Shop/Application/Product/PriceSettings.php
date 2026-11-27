@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Trilobit\Shop\Application\Product;
 
-use Trilobit\Shop\Domain\Price\Money;
-use Trilobit\Shop\Domain\Price\VatRate;
+use Trilobit\Core\Domain\Finance\Money;
+use Trilobit\Core\Domain\Finance\VatRate;
 
 /**
  * What the installation says about prices: the currency every new price is set

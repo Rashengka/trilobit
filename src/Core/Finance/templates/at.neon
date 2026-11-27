@@ -1,0 +1,17 @@
+# The rates of value added tax of Austria, as section 10 of its Act on the tax
+# sets them in the wording in force from 1 July 2026 - the first source. The
+# second is the act that brought in the rate of 4.9 % from that day, which is
+# super-reduced, as the rules of the European Union call a rate under 5 %.
+# Read by Trilobit\Core\Finance\TaxRateTemplates; see README.md, "Templates of
+# rates of tax", for what each key means.
+
+country: AT
+verifiedAt: 2026-11-27
+sources:
+	- https://ris.bka.gv.at/eli/bgbl/1994/663/P10/NOR40278068
+	- https://www.ris.bka.gv.at/Dokumente/BgblAuth/BGBLA_2026_I_37/BGBLA_2026_I_37.html
+rates:
+	standard: {kind: standard, percent: 20, label: Standard rate}
+	reduced: {kind: reduced, percent: 13, label: Reduced rate}
+	reduced-2: {kind: reduced, percent: 10, label: Second reduced rate}
+	super-reduced: {kind: super_reduced, percent: 4.9, label: Super-reduced rate}

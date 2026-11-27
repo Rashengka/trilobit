@@ -1,0 +1,14 @@
+# The rates of value added tax of Poland, from the text of its Act on the tax
+# the source publishes. The zero rate is left out until it is checked against
+# that text, and so is any reduction meant for a while only.
+# Read by Trilobit\Core\Finance\TaxRateTemplates; see README.md, "Templates of
+# rates of tax", for what each key means.
+
+country: PL
+verifiedAt: 2026-11-27
+sources:
+	- https://api.sejm.gov.pl/eli/acts/DU/2026/1263
+rates:
+	standard: {kind: standard, percent: 23, label: Standard rate}
+	reduced: {kind: reduced, percent: 8, label: Reduced rate}
+	reduced-2: {kind: reduced, percent: 5, label: Second reduced rate}

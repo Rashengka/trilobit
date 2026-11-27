@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Trilobit\Tests\Unit\Shop\Domain\Price;
+namespace Trilobit\Tests\Unit\Core\Domain\Finance;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Trilobit\Shop\Domain\Price\Decimal;
-use Trilobit\Shop\Domain\Price\PriceRefused;
-use Trilobit\Shop\Domain\Price\VatRate;
+use Trilobit\Core\Domain\Finance\Decimal;
+use Trilobit\Core\Domain\Finance\PriceRefused;
+use Trilobit\Core\Domain\Finance\VatRate;
 
 /**
  * The rate of tax on a product, in basis points: 2100 is 21 %.
@@ -89,5 +89,12 @@ final class VatRateTest extends TestCase
 
         self::assertSame($percent, $rate->percent());
         self::assertSame($basisPoints, VatRate::ofPercent($rate->percent())->basisPoints());
+    }
+
+    /** For a page, the sign is held to the number by a no-break space, so a narrow column never parts them. */
+    public function testARateIsWrittenForAPageWithTheSignHeldToTheNumber(): void
+    {
+        self::assertSame("21\u{a0}%", new VatRate(2100)->written());
+        self::assertSame("12.5\u{a0}%", new VatRate(1250)->written());
     }
 }

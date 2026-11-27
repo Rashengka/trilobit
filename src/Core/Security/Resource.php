@@ -65,6 +65,16 @@ enum Resource: string implements ResourceName
     /** What the public site is drawn from: the pages, the menus, the media. */
     case Content = 'app.administration.content';
 
+    /** The business's money matters: the section every one of them falls under. */
+    case Finance = 'app.administration.finance';
+
+    /**
+     * The rates of tax the business charges. Changing one changes what
+     * everything priced at it costs with tax, so it is never reached by a
+     * privilege added later - see permissions.neon.
+     */
+    case TaxRate = 'app.administration.finance.tax_rate';
+
     /**
      * Where a visitor ends up, as distinct from what they are shown. It is a
      * decision inside a page rather than a section of the administration,

@@ -1,0 +1,15 @@
+# The rates of value added tax of Slovakia, as Act 222/2004 sets them in its
+# wording from 1 January 2026, unchanged in the one from 1 January 2027.
+# There is no zero rate.
+# Read by Trilobit\Core\Finance\TaxRateTemplates; see README.md, "Templates of
+# rates of tax", for what each key means.
+
+country: SK
+verifiedAt: 2026-11-27
+sources:
+	- https://static.slov-lex.sk/static/SK/ZZ/2004/222/20260101.html
+	- https://static.slov-lex.sk/static/SK/ZZ/2004/222/20270101.html
+rates:
+	standard: {kind: standard, percent: 23, label: Standard rate}
+	reduced: {kind: reduced, percent: 19, label: Reduced rate}
+	reduced-2: {kind: reduced, percent: 5, label: Second reduced rate}

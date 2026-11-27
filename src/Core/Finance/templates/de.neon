@@ -1,0 +1,14 @@
+# The rates of value added tax of Germany, as section 12 of its Act on the tax
+# sets them; the zero rate is the one of section 12(3), for photovoltaic
+# installations.
+# Read by Trilobit\Core\Finance\TaxRateTemplates; see README.md, "Templates of
+# rates of tax", for what each key means.
+
+country: DE
+verifiedAt: 2026-11-27
+sources:
+	- https://www.gesetze-im-internet.de/ustg_1980/__12.html
+rates:
+	standard: {kind: standard, percent: 19, label: Standard rate}
+	reduced: {kind: reduced, percent: 7, label: Reduced rate}
+	zero: {kind: zero, percent: 0, label: 'Zero rate (photovoltaic installations)'}

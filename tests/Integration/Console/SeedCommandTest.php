@@ -18,10 +18,12 @@ use Symfony\Component\Console\Tester\CommandTester;
 use Trilobit\Core\Bootstrap;
 use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Console\SeedCommand;
+use Trilobit\Core\Domain\Finance\TaxRateKind;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
+use Trilobit\Core\Finance\TaxRates;
 use Trilobit\Core\Module\ModuleList;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Grant;
@@ -73,6 +75,8 @@ final class SeedCommandTest extends TestCase
     private const string AMMONITE_PEOPLE = 'ammonite-people@example.com';
 
     private const string AMMONITE_INVITED = 'ammonite-invited@example.com';
+
+    private const string AMMONITE_FINANCE = 'ammonite-finance@example.com';
 
     private const string BELEMNITE_OWNER = 'belemnite-owner@example.com';
 
@@ -152,6 +156,7 @@ final class SeedCommandTest extends TestCase
         self::assertSame(
             [
                 self::AMMONITE_EDITOR,
+                self::AMMONITE_FINANCE,
                 self::AMMONITE_ONLOOKER,
                 self::AMMONITE_OWNER,
                 self::AMMONITE_PEOPLE,
@@ -336,6 +341,65 @@ final class SeedCommandTest extends TestCase
             ]),
             $this->allowedPairs($container),
         );
+    }
+
+    /**
+     * The role in between for the money matters: the rates of tax, each
+     * privilege by name - they are no bundle - and nothing else. It opens the
+     * section and the administration they are in, and no content and nobody.
+     */
+    public function testTheFinanceManagerKeepsTheRatesOfTaxAndNothingElse(): void
+    {
+        $container = $this->seeded($output);
+        $ammonite = $this->businessCalled($container, 'Ammonite Bikes');
+
+        $this->signIn($container, self::AMMONITE_FINANCE, $this->passwordsIn($output));
+        Tenants::switchTo($container, $ammonite);
+
+        $role = $this->roleHeldBy($container, self::AMMONITE_FINANCE);
+        self::assertSame('finance', $role->code());
+        self::assertSame($ammonite->id(), $role->business()?->id(), 'the role is the business\'s own');
+        $keeping = [
+            new Grant(Resource::TaxRate, Privilege::View),
+            new Grant(Resource::TaxRate, Privilege::Add),
+            new Grant(Resource::TaxRate, Privilege::Edit),
+            new Grant(Resource::TaxRate, Privilege::Delete),
+        ];
+        self::assertSame($this->pairs($keeping), $this->sorted($role->permissions()));
+        self::assertSame(
+            $this->pairs([
+                new Grant(Resource::App, Privilege::View),
+                new Grant(Resource::Administration, Privilege::View),
+                new Grant(Resource::Finance, Privilege::View),
+                ...$keeping,
+            ]),
+            $this->allowedPairs($container),
+        );
+    }
+
+    /**
+     * Each business charges the Czech rates: the standard one, its one
+     * default, and the reduced one - its own rows, so changing one business's
+     * rate leaves the other's as it was - taken from the Czech template, so
+     * that the zero rate is what the template still offers.
+     */
+    public function testEachBusinessChargesTheCzechRatesOfTaxWithTheStandardOneTheDefault(): void
+    {
+        $container = $this->seeded();
+
+        foreach (['Ammonite Bikes', 'Belemnite Books'] as $name) {
+            Tenants::switchTo($container, $this->businessCalled($container, $name));
+
+            $rates = [];
+            foreach ($container->getByType(TaxRates::class)->offered() as $rate) {
+                $rates[] = [$rate->name(), $rate->rate()->basisPoints(), $rate->country(), $rate->kind(), $rate->isDefault(), $rate->templateKey()];
+            }
+
+            self::assertSame([
+                ['Standard rate', 2100, 'CZ', TaxRateKind::Standard, true, 'cz.standard'],
+                ['Reduced rate', 1200, 'CZ', TaxRateKind::Reduced, false, 'cz.reduced'],
+            ], $rates, $name);
+        }
     }
 
     /**

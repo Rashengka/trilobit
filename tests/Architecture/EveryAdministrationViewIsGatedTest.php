@@ -151,6 +151,11 @@ final class EveryAdministrationViewIsGatedTest extends TestCase
                 // Trilobit\Core\Presentation\Session\SignOutPresenter and is
                 // outside everything this rule is about.
                 'Core/Presentation/Admin/SignPresenter.php: in',
+                'Core/Presentation/Finance/SignpostPresenter.php: default',
+                'Core/Presentation/Finance/TaxRatesPresenter.php: add',
+                'Core/Presentation/Finance/TaxRatesPresenter.php: default',
+                'Core/Presentation/Finance/TaxRatesPresenter.php: edit',
+                'Core/Presentation/Finance/TaxRatesPresenter.php: templates',
                 // The other administration: the section of the installation
                 // itself, which is a directory of its own rather than two more
                 // files beside the pages of a business's administration - see

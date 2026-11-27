@@ -10,7 +10,7 @@ use RuntimeException;
  * A product that cannot be saved as it was written, for a reason about the
  * other products of the business rather than about its address - which is
  * Trilobit\Core\Content\PathRefused - or its price, which is
- * Trilobit\Shop\Domain\Price\PriceRefused.
+ * Trilobit\Core\Domain\Finance\PriceRefused.
  *
  * It is raised before anything is written, so the product stays as it was.
  */
