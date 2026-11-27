@@ -3007,8 +3007,22 @@
      * and with no positioned element around it its place is the document's: a
      * label at the end of a row wider than the frame stood beyond the frame
      * and widened the page, which the frame exists to prevent.
+     *
+     * A shade at the edge the rows can still be scrolled towards, because a
+     * scrollbar is not enough to say so: a phone hides it until a finger
+     * moves. It is the frame's background and needs no script. The shades
+     * stay at the edges of the frame (scroll); over each lies a cover in the
+     * colour of the surface that moves with the rows (local), so the cover
+     * hides a shade exactly when the rows have reached that edge, and a table
+     * that fits shows none.
      */
     .c-table__viewport {
+        background:
+            linear-gradient(to right, var(--color-surface) 40%, transparent) left center / var(--space-lg) 100% no-repeat local,
+            linear-gradient(to left, var(--color-surface) 40%, transparent) right center / var(--space-lg) 100% no-repeat local,
+            radial-gradient(farthest-side at 0 50%, var(--color-line), transparent) left center / var(--space-sm) 100% no-repeat scroll,
+            radial-gradient(farthest-side at 100% 50%, var(--color-line), transparent) right center / var(--space-sm) 100% no-repeat scroll;
+        background-color: var(--color-surface);
         overflow-x: auto;
         overscroll-behavior-inline: contain;
         position: relative;
@@ -3037,10 +3051,13 @@
         padding-inline: var(--space-sm);
     }
 
+    /* A row keeps what is in it in the middle of its height: a button and a
+       line of text side by side, and a row a long value has made taller,
+       read as one row and not as a button sitting on the rule under it. */
     .c-table__grid :is(th, td) {
         padding-block: var(--space-xs);
         padding-inline: var(--space-sm);
-        vertical-align: baseline;
+        vertical-align: middle;
     }
 
     .c-table__grid thead th {
@@ -3076,13 +3093,19 @@
     }
 
     /*
-     * A button in a row - the name the row is opened by - stays on one line.
-     * Broken over two or three it was a tall pill, the shape of a button made
-     * for one line; the room a long name needs is what the frame above
+     * A button in a row - the name the row is opened by - and a badge stay on
+     * one line, and a picture beside a name stays beside it. Broken over two
+     * or three lines a button or a badge was a tall pill, the shape of
+     * something made for one line, and a name pushed under its picture made
+     * the row twice as tall; the room they need is what the frame above
      * scrolls for.
      */
-    .c-table__grid .c-button {
+    .c-table__grid :is(.c-button, .c-badge) {
         white-space: nowrap;
+    }
+
+    .c-table__grid .l-cluster {
+        flex-wrap: nowrap;
     }
 
     /* Figures line up under each other when the digits are all one width, and
