@@ -169,6 +169,55 @@ export function clickRefusal(requested, selector, before, after) {
     return `clicking ${selector} on ${requested} went on to ${after}; the picture would be of another page.`;
 }
 
+/**
+ * The width of the classic scrollbar both browsers draw beside a page that
+ * scrolls, in CSS pixels. Chromium on Linux draws it this wide on its own;
+ * Firefox is told to by tests/snapshots/matrix.spec.ts, which reads the value
+ * from here, so that the setting and the check below cannot part.
+ */
+export const SCROLLBAR_WIDTH = 15;
+
+/**
+ * Why a page laid out as $measured cannot be filed under $wanted pixels wide,
+ * or null when it can.
+ *
+ * $measured is read in the page: the width of the window (innerWidth) and the
+ * width it lends the document beside a scrollbar (clientWidth). The window has
+ * to be exactly the width asked for, and the document either as wide - no
+ * scrollbar - or exactly one scrollbar narrower. A document wider than that
+ * (scrollWidth) is not looked at: a page that overflows is pictured
+ * overflowing, which is what the picture is for. A browser that kept a window
+ * of its own instead of the one it was given would otherwise have its picture
+ * filed under a width it was never taken at.
+ */
+export function widthRefusal(requested, browser, wanted, measured) {
+    if (measured.window !== wanted) {
+        return `${requested} was laid out in ${browser} in a window ${measured.window}px wide (${measured.layout}px beside the scrollbar), not ${wanted}px.`;
+    }
+    if (measured.layout !== measured.window && measured.window - measured.layout !== SCROLLBAR_WIDTH) {
+        return `${requested} was laid out in ${browser} ${measured.layout}px wide beside the scrollbar of a window ${measured.window}px wide; the scrollbar is ${SCROLLBAR_WIDTH}px or none.`;
+    }
+
+    return null;
+}
+
+/**
+ * What a picture whose window had to be given its size again says about it,
+ * or null for one that did not: the width asked for, and the window and the
+ * layout as first measured - whichever of the two was off.
+ */
+export function resizedNote(result) {
+    if (result.resized !== true) {
+        return null;
+    }
+    const first = result.firstLayout;
+    const measured = first === null || first === undefined
+        ? 'of a size not recorded'
+        : `${first.window}px wide with the page laid out ${first.width}px wide beside it`;
+
+    return `asked for ${result.width}px, the window was at first ${measured}, and was given its size again`;
+}
+
 /** A value as text an HTML page can carry. */
 function escape(value) {
     return String(value)
@@ -183,7 +232,8 @@ function escape(value) {
  * browser and width. A picture is a thumbnail linking to the file; a picture
  * that could not be taken is a red cell saying why, and so is one that was
  * expected and never reported - a run that stopped half way must not look like
- * a shorter matrix.
+ * a shorter matrix. A picture whose window had to be given its size again
+ * carries a marked note saying so (resizedNote), as the summary does.
  */
 export function indexPage({ title, paths, browsers, results }) {
     const byFile = new Map(results.map((result) => [result.file, result]));
@@ -208,7 +258,13 @@ export function indexPage({ title, paths, browsers, results }) {
                         return `<td class="failed">${escape(result.error)}</td>`;
                     }
 
-                    return `<td><a href="${escape(file)}"><img src="${escape(file)}" alt="${escape(file)}" loading="lazy"></a></td>`;
+                    const picture = `<a href="${escape(file)}"><img src="${escape(file)}" alt="${escape(file)}" loading="lazy"></a>`;
+                    const note = resizedNote(result);
+                    if (note !== null) {
+                        return `<td class="resized" title="${escape(note)}">${picture}<p>RESIZED: ${escape(note)}</p></td>`;
+                    }
+
+                    return `<td>${picture}</td>`;
                 });
                 rows.push(`<tr><th scope="row">${escape(browser)}<br>${width}px</th>${cells.join('')}</tr>`);
             }
@@ -231,6 +287,8 @@ th, td { border: 1px solid #d4d4d8; padding: .25rem; vertical-align: top; }
 td { width: 240px; background: #fff; }
 img { display: block; width: 240px; height: auto; max-height: 520px; object-fit: cover; object-position: top; }
 .failed, .missing { background: #fee2e2; color: #991b1b; }
+.resized { background: #fef3c7; }
+.resized p { margin: .25rem 0 0; color: #92400e; font-size: 12px; }
 </style>
 </head>
 <body>

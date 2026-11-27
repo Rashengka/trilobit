@@ -2,9 +2,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { test } from '@playwright/test';
+import { type Response, test } from '@playwright/test';
 
-import { clickRefusal, combinations, drawnRefusal, fileName, HEIGHTS, refusal } from './matrix.mjs';
+import { clickRefusal, combinations, drawnRefusal, fileName, HEIGHTS, refusal, SCROLLBAR_WIDTH, widthRefusal } from './matrix.mjs';
 import { readRequest, SESSION_FILE } from './request';
 
 /**
@@ -38,15 +38,15 @@ test.describe.configure({ mode: 'parallel' });
  * sets scrollbar-width: none. So, as in tests/e2e/layers.spec.ts, Chrome is
  * started without that argument, and Firefox with a window - in the display
  * bin/e2e-docker.mjs runs everything under - told to draw the classic
- * scrollbar, fifteen pixels wide as Chrome's is, rather than one laid over
- * the page.
+ * scrollbar, as wide as Chrome's is (SCROLLBAR_WIDTH, which widthRefusal
+ * holds every picture to), rather than one laid over the page.
  */
 test.use({
     launchOptions: {
         ignoreDefaultArgs: ['--hide-scrollbars'],
         firefoxUserPrefs: {
             'widget.gtk.overlay-scrollbars.enabled': false,
-            'widget.non-native-theme.scrollbar.size.override': 15,
+            'widget.non-native-theme.scrollbar.size.override': SCROLLBAR_WIDTH,
         },
     },
     headless: [async ({ headless, browserName }, use) => use(browserName === 'firefox' ? false : headless), { scope: 'worker' }],
@@ -62,12 +62,25 @@ interface Result {
     readonly error: string | null;
     /**
      * The size the page was laid out at, measured in the page just before the
-     * picture: the width the window lends the document beside a classic
-     * scrollbar (clientWidth), and the height of the whole document. A picture
-     * of what a visitor sees is exactly this size. Null when no picture was
+     * picture: the width of the window (innerWidth), the width it lends the
+     * document beside a classic scrollbar (clientWidth), and the height of the
+     * whole document. A picture of what a visitor sees is exactly this size. Null when no picture was
      * taken. tests/snapshots/tool.test.mjs compares it with the PNG.
      */
-    readonly layout: { readonly width: number; readonly height: number } | null;
+    readonly layout: { readonly window: number; readonly width: number; readonly height: number } | null;
+    /**
+     * Whether the window was not the width asked for at first and had to be
+     * given its size again before the picture (widthRefusal in matrix.mjs).
+     * bin/snapshots.mjs names every such picture, and the index marks it, so
+     * that it shows how often a browser does it.
+     */
+    readonly resized: boolean;
+    /**
+     * The window and the layout as first measured, right after the page was
+     * opened, when that is what made the window be given its size again; null
+     * when it did not have to be. resizedNote in matrix.mjs says them.
+     */
+    readonly firstLayout: { readonly window: number; readonly width: number } | null;
 }
 
 /**
@@ -99,10 +112,13 @@ for (const combination of combinations()) {
             test(path, async ({ page, context, baseURL }, info) => {
                 const browser = info.project.name;
                 const file = fileName(path, combination, browser);
+                let resized = false;
+                let firstLayout: Result['firstLayout'] = null;
                 const fail = (error: string): never => {
-                    report({ path, theme, mode, width, browser, file, error, layout: null });
+                    report({ path, theme, mode, width, browser, file, error, layout: null, resized, firstLayout });
                     throw new Error(error);
                 };
+                const size = { width, height: HEIGHTS[width as keyof typeof HEIGHTS] };
 
                 await context.route(`**${FIXTURES}*`, async (route) => {
                     const name = new URL(route.request().url()).pathname.slice(FIXTURES.length);
@@ -122,16 +138,54 @@ for (const combination of combinations()) {
                     { name: 'trilobit-theme-mode', value: mode, url: baseURL ?? '' },
                 ]);
 
-                const response = await page.goto(path).catch((error: Error) => fail(`${path} could not be opened: ${error.message}`));
-                const arrived = new URL(page.url());
-                const problem = refusal(path, {
-                    status: response?.status() ?? null,
-                    redirected: response?.request().redirectedFrom() != null,
-                    arrivedAt: arrived.pathname,
-                    origin: arrived.origin,
-                }, new URL(baseURL ?? '').origin);
-                if (problem !== null) {
-                    fail(problem);
+                // Whatever the page answered, checked after it was opened and
+                // again after it was opened once more: a reload can redirect
+                // as the first load could, to the sign-in page above all.
+                const arrive = (response: Response | null): void => {
+                    const arrived = new URL(page.url());
+                    const problem = refusal(path, {
+                        status: response?.status() ?? null,
+                        redirected: response?.request().redirectedFrom() != null,
+                        arrivedAt: arrived.pathname,
+                        origin: arrived.origin,
+                    }, new URL(baseURL ?? '').origin);
+                    if (problem !== null) {
+                        fail(problem);
+                    }
+                };
+                const measure = (): Promise<{ window: number; width: number; height: number; scrolls: boolean }> => page.evaluate(() => ({
+                    window: window.innerWidth,
+                    width: document.documentElement.clientWidth,
+                    height: document.documentElement.scrollHeight,
+                    scrolls: document.documentElement.clientWidth < window.innerWidth,
+                }));
+                const misfit = (measured: { window: number; width: number }): string | null => widthRefusal(path, browser, width, { window: measured.window, layout: measured.width });
+
+                arrive(await page.goto(path).catch((error: Error) => fail(`${path} could not be opened: ${error.message}`)));
+
+                // The window has to be the width asked for, and that is
+                // checked first, before anything the page does: its scripts
+                // read the width when they start (matchMedia), and a click
+                // lands on the layout of the window it is made in. A run with
+                // --browser=all once had Firefox lay two pages out in a window
+                // 1152 pixels wide - the window Firefox opens on its own in the
+                // display of bin/e2e-docker.mjs, nine tenths of its 1280 -
+                // rather than at 390 or 1440, and the pictures were filed under
+                // those widths as if they had been taken there. The size is
+                // given once more and the page opened again, so that it starts
+                // in the window it is pictured in; a window still not that
+                // wide fails the picture, which is never filed under a width it
+                // was not taken at.
+                const first = await measure();
+                if (misfit(first) !== null) {
+                    resized = true;
+                    firstLayout = { window: first.window, width: first.width };
+                    await page.setViewportSize(size);
+                    arrive(await page.reload().catch((error: Error) => fail(`${path} could not be opened again: ${error.message}`)));
+                    const again = misfit(await measure());
+                    if (again !== null) {
+                        fail(`${again} Setting the size again did not help.`);
+                    }
                 }
 
                 const drawn = await page.evaluate(() => ({
@@ -158,11 +212,16 @@ for (const combination of combinations()) {
                 }
 
                 await page.evaluate(() => document.fonts.ready.then(() => undefined));
-                const layout = await page.evaluate(() => ({
-                    width: document.documentElement.clientWidth,
-                    height: document.documentElement.scrollHeight,
-                    scrolls: document.documentElement.clientWidth < window.innerWidth,
-                }));
+                // Measured once more just before the picture, as the last guard
+                // and with no second chance: the window was right when the page
+                // started, so one that is not right now changed under the click
+                // or the page, and giving it its size again here would picture
+                // a layout neither had.
+                const layout = await measure();
+                const narrowed = misfit(layout);
+                if (narrowed !== null) {
+                    fail(`${narrowed} It was measured just before the picture.`);
+                }
                 await page.screenshot({
                     path: join(request.out, file),
                     fullPage: true,
@@ -192,7 +251,7 @@ for (const combination of combinations()) {
                     ].join('\n'),
                 });
 
-                report({ path, theme, mode, width, browser, file, error: null, layout: { width: layout.width, height: layout.height } });
+                report({ path, theme, mode, width, browser, file, error: null, layout: { window: layout.window, width: layout.width, height: layout.height }, resized, firstLayout });
             });
         }
     });
