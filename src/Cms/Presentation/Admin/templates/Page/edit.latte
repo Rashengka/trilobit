@@ -48,120 +48,123 @@
         {/if}
     </div>
 
-    {embed block panel, testId: 'cms-page-panel'}
-        {block panelTitle}The page{/block}
+    {* A form is read down a column, so it keeps to the measure while a list runs across (assets/base.css, .l-measure). *}
+    <div class="l-measure l-stack l-stack--loose">
+        {embed block panel, testId: 'cms-page-panel'}
+            {block panelTitle}The page{/block}
 
-        {block panelBody}
-            <form n:name="page" class="l-stack" data-testid="cms-page-form">
-                {foreach $errors as $error}
-                    {include notice, message: $error, variant: 'danger', testId: 'cms-page-error'}
-                {/foreach}
+            {block panelBody}
+                <form n:name="page" class="l-stack" data-testid="cms-page-form">
+                    {foreach $errors as $error}
+                        {include notice, message: $error, variant: 'danger', testId: 'cms-page-error'}
+                    {/foreach}
 
-                {if $typedAddress !== ''}
-                    {include notice,
-                        message: 'This page answers at ' . $typedAddress . ', an address typed out in full before categories existed. It stays there until the category or the last part below is changed; then it moves, and the old address keeps leading to the new one.',
-                        testId: 'cms-page-legacy-address'}
-                {/if}
-
-                {* Title and the segment below are required (PagePresenter::createComponentPage()); c-field
-                   does not own the element, so this page says so instead of it being read off the control. *}
-                <p class="c-field-required-note">Fields marked with * are required.</p>
-
-                {embed block field, testId: 'cms-page-title-field', required: true}
-                    {block fieldLabel}<label n:name="title">Title</label>{/block}
-
-                    {block fieldControl}
-                        <input n:name="title" data-testid="cms-page-title-input">
-                    {/block}
-                {/embed}
-
-                {embed block field, testId: 'cms-page-category-field', hintId: 'cms-page-category-hint'}
-                    {block fieldLabel}<label n:name="category">Category</label>{/block}
-
-                    {block fieldControl}
-                        <select n:name="category" data-combobox aria-describedby="cms-page-category-hint" data-testid="cms-page-category-input"></select>
-                    {/block}
-
-                    {block fieldHint}What the page is filed under. Its address begins with the category's.{/block}
-                {/embed}
-
-                {embed block field, testId: 'cms-page-segment-field', hintId: 'cms-page-segment-hint', required: true}
-                    {block fieldLabel}<label n:name="segment">Last part of the address</label>{/block}
-
-                    {block fieldControl}
-                        <div class="l-cluster">
-                            <input n:name="segment" aria-describedby="cms-page-segment-hint" data-testid="cms-page-segment-input">
-
-                            {include button,
-                                label: 'Suggest from the title',
-                                variant: 'quiet',
-                                testId: 'cms-page-suggest',
-                                attributes: [
-                                    'data-suggest-segment' => $suggestUrl,
-                                    'data-suggest-from' => 'title',
-                                    'data-suggest-under' => 'category',
-                                    'data-suggest-into' => 'segment',
-                                ]}
-
-                            <output data-suggest-status aria-live="polite" data-testid="cms-page-suggest-status"></output>
-                        </div>
-                    {/block}
-
-                    {block fieldHint}Lower case letters, digits and hyphens - no slash and no dot.{/block}
-                {/embed}
-
-                {embed block field, testId: 'cms-page-state-field'}
-                    {block fieldLabel}<label n:name="status">State</label>{/block}
-
-                    {block fieldControl}
-                        <select n:name="status" data-testid="cms-page-status-input"></select>
-                    {/block}
-                {/embed}
-
-                {embed block field, testId: 'cms-page-lead-field'}
-                    {block fieldLabel}<label n:name="perex">Lead</label>{/block}
-
-                    {block fieldControl}
-                        <textarea n:name="perex" rows="3" data-testid="cms-page-perex-input"></textarea>
-                    {/block}
-                {/embed}
-
-                {embed block field, testId: 'cms-page-body-field'}
-                    {block fieldLabel}<label n:name="content">Body</label>{/block}
-
-                    {block fieldControl}
-                        <textarea n:name="content" rows="12" data-testid="cms-page-content-input"></textarea>
-                    {/block}
-                {/embed}
-
-                {embed block field, testId: 'cms-page-seo-title-field'}
-                    {block fieldLabel}<label n:name="seoTitle">Title for search engines</label>{/block}
-
-                    {block fieldControl}
-                        <input n:name="seoTitle" data-testid="cms-page-seo-title-input">
-                    {/block}
-                {/embed}
-
-                {embed block field, testId: 'cms-page-seo-description-field'}
-                    {block fieldLabel}<label n:name="seoDescription">Description for search engines</label>{/block}
-
-                    {block fieldControl}
-                        <input n:name="seoDescription" data-testid="cms-page-seo-description-input">
-                    {/block}
-                {/embed}
-
-                {* The controls of a form have to be the form's own elements -
-                   n:name is resolved on the element itself - and c-button
-                   draws an element of its own, so these carry the component's
-                   class instead of being drawn by it. *}
-                <div class="l-cluster">
-                    <button n:name="send" class="c-button" data-testid="cms-page-save">Save</button>
-
-                    {if !$isNew}
-                        <button n:name="delete" class="c-button c-button--danger" data-testid="cms-page-delete">Delete this page</button>
+                    {if $typedAddress !== ''}
+                        {include notice,
+                            message: 'This page answers at ' . $typedAddress . ', an address typed out in full before categories existed. It stays there until the category or the last part below is changed; then it moves, and the old address keeps leading to the new one.',
+                            testId: 'cms-page-legacy-address'}
                     {/if}
-                </div>
-            </form>
-        {/block}
-    {/embed}
+
+                    {* Title and the segment below are required (PagePresenter::createComponentPage()); c-field
+                       does not own the element, so this page says so instead of it being read off the control. *}
+                    <p class="c-field-required-note">Fields marked with * are required.</p>
+
+                    {embed block field, testId: 'cms-page-title-field', required: true}
+                        {block fieldLabel}<label n:name="title">Title</label>{/block}
+
+                        {block fieldControl}
+                            <input n:name="title" data-testid="cms-page-title-input">
+                        {/block}
+                    {/embed}
+
+                    {embed block field, testId: 'cms-page-category-field', hintId: 'cms-page-category-hint'}
+                        {block fieldLabel}<label n:name="category">Category</label>{/block}
+
+                        {block fieldControl}
+                            <select n:name="category" data-combobox aria-describedby="cms-page-category-hint" data-testid="cms-page-category-input"></select>
+                        {/block}
+
+                        {block fieldHint}What the page is filed under. Its address begins with the category's.{/block}
+                    {/embed}
+
+                    {embed block field, testId: 'cms-page-segment-field', hintId: 'cms-page-segment-hint', required: true}
+                        {block fieldLabel}<label n:name="segment">Last part of the address</label>{/block}
+
+                        {block fieldControl}
+                            <div class="l-cluster">
+                                <input n:name="segment" aria-describedby="cms-page-segment-hint" data-testid="cms-page-segment-input">
+
+                                {include button,
+                                    label: 'Suggest from the title',
+                                    variant: 'quiet',
+                                    testId: 'cms-page-suggest',
+                                    attributes: [
+                                        'data-suggest-segment' => $suggestUrl,
+                                        'data-suggest-from' => 'title',
+                                        'data-suggest-under' => 'category',
+                                        'data-suggest-into' => 'segment',
+                                    ]}
+
+                                <output data-suggest-status aria-live="polite" data-testid="cms-page-suggest-status"></output>
+                            </div>
+                        {/block}
+
+                        {block fieldHint}Lower case letters, digits and hyphens - no slash and no dot.{/block}
+                    {/embed}
+
+                    {embed block field, testId: 'cms-page-state-field'}
+                        {block fieldLabel}<label n:name="status">State</label>{/block}
+
+                        {block fieldControl}
+                            <select n:name="status" data-testid="cms-page-status-input"></select>
+                        {/block}
+                    {/embed}
+
+                    {embed block field, testId: 'cms-page-lead-field'}
+                        {block fieldLabel}<label n:name="perex">Lead</label>{/block}
+
+                        {block fieldControl}
+                            <textarea n:name="perex" rows="3" data-testid="cms-page-perex-input"></textarea>
+                        {/block}
+                    {/embed}
+
+                    {embed block field, testId: 'cms-page-body-field'}
+                        {block fieldLabel}<label n:name="content">Body</label>{/block}
+
+                        {block fieldControl}
+                            <textarea n:name="content" rows="12" data-testid="cms-page-content-input"></textarea>
+                        {/block}
+                    {/embed}
+
+                    {embed block field, testId: 'cms-page-seo-title-field'}
+                        {block fieldLabel}<label n:name="seoTitle">Title for search engines</label>{/block}
+
+                        {block fieldControl}
+                            <input n:name="seoTitle" data-testid="cms-page-seo-title-input">
+                        {/block}
+                    {/embed}
+
+                    {embed block field, testId: 'cms-page-seo-description-field'}
+                        {block fieldLabel}<label n:name="seoDescription">Description for search engines</label>{/block}
+
+                        {block fieldControl}
+                            <input n:name="seoDescription" data-testid="cms-page-seo-description-input">
+                        {/block}
+                    {/embed}
+
+                    {* The controls of a form have to be the form's own elements -
+                       n:name is resolved on the element itself - and c-button
+                       draws an element of its own, so these carry the component's
+                       class instead of being drawn by it. *}
+                    <div class="l-cluster">
+                        <button n:name="send" class="c-button" data-testid="cms-page-save">Save</button>
+
+                        {if !$isNew}
+                            <button n:name="delete" class="c-button c-button--danger" data-testid="cms-page-delete">Delete this page</button>
+                        {/if}
+                    </div>
+                </form>
+            {/block}
+        {/embed}
+    </div>
 {/block}

@@ -262,6 +262,14 @@
      * lining up.
      */
     --control-size-text: calc(1lh + 2 * var(--space-xs) + 2 * var(--border-hairline));
+
+    /*
+     * The inset Chromium draws inside the padding of a native list of one
+     * line, on top of it. Not a choice but the engine's own number, written
+     * down so that assets/base.css can take it off again and the text of a
+     * list starts where the text of a line does.
+     */
+    --control-list-inset: 4px;
     --control-icon-xs: 0.875rem;
     --control-icon-sm: 1rem;
     --control-icon-md: 1.25rem;

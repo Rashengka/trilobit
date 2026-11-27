@@ -11,12 +11,21 @@
  * part of it that is markup, with the rows written out by hand. Its links lead
  * to places on this page and are not marked for Naja.
  *
+ * The default specimen is a list the way a page of the administration draws
+ * one, top to bottom: the filter, the sentence saying how much it found, the
+ * row of pages above, the rows and the row of pages under. The filter and the
+ * sentence are the control's (Listing/templates/listing.latte) rather than
+ * c-listing's, and are written out here after it, so that the component is
+ * judged among what it is always drawn with. It is not a variant: every list
+ * of more than one page is drawn so, and the states below are what varies.
+ *
  * The example content is invented and has to stay invented.
  *}
 
 {import '../../templates/furniture.latte'}
 {import '../../../components/listing.latte'}
 {import '../../../components/table.latte'}
+{import '../../../components/field.latte'}
 
 {define drawers}
     {embed block table, caption: 'Where each drawer is kept'}
@@ -48,9 +57,41 @@
             {var $second = new Trilobit\Core\Presentation\Component\Pagination(2, 3, $link)}
 
             {specimen 'default'}
-                {embed block listing, state: 'rows', pagination: $second, testId: 'sample-listing'}
-                    {block listingTable}{include drawers}{/block}
-                {/embed}
+                <div class="l-stack">
+                    <div role="search" aria-label="Filters" data-testid="sample-listing-filter">
+                        <form action="#listing-filtered" class="l-form l-form--inline">
+                            {embed block field}
+                                {block fieldLabel}<label for="sg-listing-name">Drawer</label>{/block}
+
+                                {block fieldControl}
+                                    <input id="sg-listing-name" type="search" value="shield">
+                                {/block}
+                            {/embed}
+
+                            {embed block field}
+                                {block fieldLabel}<label for="sg-listing-room">Room</label>{/block}
+
+                                {block fieldControl}
+                                    <select id="sg-listing-room">
+                                        <option>Every room</option>
+                                        <option>The one with the window</option>
+                                        <option>The one without</option>
+                                    </select>
+                                {/block}
+                            {/embed}
+
+                            <div class="l-form__buttons">
+                                <button type="submit" class="c-button">Filter</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <p class="c-listing__status">6 drawers matching the filters, page 2 of 3.</p>
+
+                    {embed block listing, state: 'rows', pagination: $second, testId: 'sample-listing'}
+                        {block listingTable}{include drawers}{/block}
+                    {/embed}
+                </div>
             {/specimen}
 
             {*

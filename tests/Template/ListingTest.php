@@ -146,6 +146,39 @@ final class ListingTest extends TestCase
         $this->draw("state: 'loading'");
     }
 
+    /**
+     * The style guide shows a list the way the administration draws one, in
+     * its default specimen: the filter, the sentence saying how much it found,
+     * the row of pages above, the rows and the row of pages under - so that
+     * whoever judges the component from the guide judges the whole of what a
+     * page shows, and not the half of it c-listing draws by itself.
+     */
+    public function testTheStyleGuideShowsAListFromItsFilterToItsLastRowOfPages(): void
+    {
+        $shown = [];
+        foreach (StyleguideSpecimens::everyPage() as $page) {
+            $specimen = $page->querySelector(sprintf(
+                '[%s="c-listing"] [%s="default"]',
+                StyleguideSpecimens::COMPONENT,
+                StyleguideSpecimens::VARIANT,
+            ));
+            if ($specimen === null) {
+                continue;
+            }
+
+            foreach ($specimen->querySelectorAll('[role="search"] form, .c-listing__status, .c-pagination, table') as $element) {
+                $shown[] = match (true) {
+                    $element->tagName === 'FORM' => 'filter',
+                    $element->classList->contains('c-listing__status') => 'count',
+                    $element->classList->contains('c-pagination') => 'pages',
+                    default => 'rows',
+                };
+            }
+        }
+
+        self::assertSame(['filter', 'count', 'pages', 'rows', 'pages'], $shown);
+    }
+
     /** @return list<string> */
     private function hrefs(Element $navigation): array
     {

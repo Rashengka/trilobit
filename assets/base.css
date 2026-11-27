@@ -481,6 +481,26 @@
         block-size: var(--control-size-text);
     }
 
+    /*
+     * Chromium draws the text of a native list of one line further in than its
+     * padding says: it adds an inset of its own inside the padding the
+     * stylesheet gives it (--control-list-inset), so in a column of fields the
+     * text of a list started a few pixels right of the text of every line
+     * above and under it. Here the inset is taken off the padding again.
+     *
+     * Chromium is told apart by what else it does with a select, a list it
+     * can draw out of the page's own parts (appearance: base-select); no
+     * condition can ask about the inset itself. Firefox adds none, and draws
+     * the padding as it is. Whether the two start together is measured on the
+     * pixels in both engines (tests/e2e/forms.spec.ts), so an engine that
+     * starts answering yes here without drawing the inset is caught there.
+     */
+    @supports (appearance: base-select) {
+        select:where(:not([multiple], [size]:not([size='1']))) {
+            padding-inline-start: calc(var(--space-sm) - var(--control-list-inset));
+        }
+    }
+
     :is(input, textarea)::placeholder {
         color: var(--color-ink-muted);
     }
@@ -771,6 +791,13 @@
         grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-card-min), 100%), 1fr));
     }
 
+    /*
+     * The theme's reading measure. A paragraph keeps to it, and so does a form
+     * in the administration: the administration runs as wide as the shell lets
+     * it for its tables, but a field for a rate of tax drawn across the screen
+     * is read nowhere better than at the width of a line of text
+     * (tests/e2e/administration-layout.spec.ts).
+     */
     .l-measure {
         max-inline-size: var(--layout-measure);
     }

@@ -164,3 +164,77 @@ for (const theme of themes) {
         });
     }
 }
+
+/** A window as wide as the one the critic reads the administration at. */
+const desktop = { width: 1440, height: 900 };
+
+/** Every page of the administration that is a form to fill in rather than a list to read. */
+const formPages = [
+    '/admin/shop/products/add',
+    '/admin/people/add',
+    '/admin/cms/categories/add',
+    '/admin/cms/pages/add',
+    '/admin/cms/menus/add',
+];
+
+/** The theme's reading measure (--layout-measure), in pixels, as the browser resolves it on the page. */
+async function measureOf(page: Page): Promise<number> {
+    return page.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.style.inlineSize = 'var(--layout-measure)';
+        document.body.append(probe);
+        const width = probe.getBoundingClientRect().width;
+        probe.remove();
+
+        return width;
+    });
+}
+
+/**
+ * The widest one-line control of a form in the content, outside the filter of
+ * a list. A combobox is measured by its control, as heightsIn() measures it.
+ */
+async function widestFieldIn(page: Page): Promise<{ control: string; width: number }> {
+    return page.getByTestId('admin-content').evaluate((node) =>
+        [
+            ...node.querySelectorAll<HTMLElement>(
+                'form input:not([type="hidden"], [type="checkbox"], [type="radio"], [type="submit"], [type="button"]), form select:not([multiple]), form .c-combobox__control',
+            ),
+        ]
+            .filter((element) => element.closest('[role="search"]') === null)
+            .filter((element) => element.closest('.c-combobox__control') === null || element.matches('.c-combobox__control'))
+            .filter((element) => !element.matches('.ts-hidden-accessible'))
+            .map((element) => ({
+                control: element.getAttribute('name') ?? element.className,
+                width: element.getBoundingClientRect().width,
+            }))
+            .reduce((widest, field) => (field.width > widest.width ? field : widest), { control: 'nothing', width: 0 }),
+    );
+}
+
+for (const theme of themes) {
+    test(`a form of the administration keeps to the reading measure while a list runs across, in ${theme}`, async ({ page }) => {
+        await page.setViewportSize(desktop);
+        await signIn(page);
+
+        await page.goto('/admin/shop/products');
+        await drawIn(page, theme, 'light');
+        const content = page.getByTestId('admin-content');
+        const { column } = await widths(content);
+        const table = await content.locator('table').first().evaluate((node) => node.getBoundingClientRect().width);
+        // The table sits in the listing's panel, so it is the column less the panel's padding and edge.
+        expect(table, `the list of products is drawn ${table}px wide in a ${column}px column`).toBeGreaterThan(column * 0.9);
+
+        for (const path of formPages) {
+            await page.goto(path);
+            await drawIn(page, theme, 'light');
+            const measure = await measureOf(page);
+            const widest = await widestFieldIn(page);
+            expect(widest.width, `nothing to measure on ${path} in ${theme}`).toBeGreaterThan(0);
+            expect(
+                widest.width,
+                `${widest.control} on ${path} is ${widest.width}px wide, past the measure of ${measure}px, in ${theme}`,
+            ).toBeLessThanOrEqual(measure + 0.5);
+        }
+    });
+}

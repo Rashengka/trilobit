@@ -51,63 +51,66 @@
             testId: 'shop-product-no-category'}
     {/if}
 
-    {embed block panel, testId: 'shop-product-panel'}
-        {block panelTitle}The product{/block}
-
-        {block panelBody}
-            {control product}
-        {/block}
-    {/embed}
-
-    {if !$isNew}
-        {embed block panel, testId: 'shop-product-pictures'}
-            {block panelTitle}Pictures{/block}
+    {* A form is read down a column, so it keeps to the measure while a list runs across (assets/base.css, .l-measure). *}
+    <div class="l-measure l-stack l-stack--loose">
+        {embed block panel, testId: 'shop-product-panel'}
+            {block panelTitle}The product{/block}
 
             {block panelBody}
-                <div class="l-stack">
-                    <p n:if="$pictures === []" data-testid="shop-product-no-pictures">This product has no picture yet.</p>
-
-                    <div n:if="$pictures !== []" class="l-cluster">
-                        <figure n:foreach="$pictures as $picture" class="l-stack" data-testid="shop-product-picture-{$picture->id}">
-                            <img
-                                src="{$picture->src}"
-                                srcset="{$picture->srcset}"
-                                sizes="{$picture->width}px"
-                                width="{$picture->width}"
-                                height="{$picture->height}"
-                                alt="{$picture->alt}"
-                                loading="lazy"
-                                data-testid="shop-product-picture-image-{$picture->id}">
-
-                            <figcaption>{$picture->alt !== '' ? $picture->alt : $picture->name}</figcaption>
-
-                            {* Taking it off removes the binding; the file stays in the library until plan 16. *}
-                            {control $picture->remover()}
-                        </figure>
-                    </div>
-
-                    {control pictures}
-                </div>
+                {control product}
             {/block}
         {/embed}
 
-        {embed block panel, testId: 'shop-product-where'}
-            {block panelTitle}Where it answers, and what it costs with tax{/block}
+        {if !$isNew}
+            {embed block panel, testId: 'shop-product-pictures'}
+                {block panelTitle}Pictures{/block}
 
-            {block panelBody}
-                <div class="l-stack">
-                    <p>With tax it costs <strong data-testid="shop-product-gross">{$priceWithVat}</strong>.</p>
+                {block panelBody}
+                    <div class="l-stack">
+                        <p n:if="$pictures === []" data-testid="shop-product-no-pictures">This product has no picture yet.</p>
 
-                    <div class="l-cluster">
-                        {foreach $addresses as $address}
-                            {include badge,
-                                label: '/' . $address->path . ($address->isCanonical() ? ' (permalink)' : ''),
-                                variant: $address->isCanonical() ? 'accent' : 'plain',
-                                testId: 'shop-product-address'}
-                        {/foreach}
+                        <div n:if="$pictures !== []" class="l-cluster">
+                            <figure n:foreach="$pictures as $picture" class="l-stack" data-testid="shop-product-picture-{$picture->id}">
+                                <img
+                                    src="{$picture->src}"
+                                    srcset="{$picture->srcset}"
+                                    sizes="{$picture->width}px"
+                                    width="{$picture->width}"
+                                    height="{$picture->height}"
+                                    alt="{$picture->alt}"
+                                    loading="lazy"
+                                    data-testid="shop-product-picture-image-{$picture->id}">
+
+                                <figcaption>{$picture->alt !== '' ? $picture->alt : $picture->name}</figcaption>
+
+                                {* Taking it off removes the binding; the file stays in the library until plan 16. *}
+                                {control $picture->remover()}
+                            </figure>
+                        </div>
+
+                        {control pictures}
                     </div>
-                </div>
-            {/block}
-        {/embed}
-    {/if}
+                {/block}
+            {/embed}
+
+            {embed block panel, testId: 'shop-product-where'}
+                {block panelTitle}Where it answers, and what it costs with tax{/block}
+
+                {block panelBody}
+                    <div class="l-stack">
+                        <p>With tax it costs <strong data-testid="shop-product-gross">{$priceWithVat}</strong>.</p>
+
+                        <div class="l-cluster">
+                            {foreach $addresses as $address}
+                                {include badge,
+                                    label: '/' . $address->path . ($address->isCanonical() ? ' (permalink)' : ''),
+                                    variant: $address->isCanonical() ? 'accent' : 'plain',
+                                    testId: 'shop-product-address'}
+                            {/foreach}
+                        </div>
+                    </div>
+                {/block}
+            {/embed}
+        {/if}
+    </div>
 {/block}

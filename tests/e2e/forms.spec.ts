@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import { paintedAlong } from './paint';
+
 /**
  * The native form controls are drawn out of the theme that is on, in both
  * themes and both modes - measured in the browser, not read off the stylesheet.
@@ -112,7 +114,20 @@ for (const theme of themes) {
                 await expectFromToken(control, 'border-top-width', '--border-hairline', label);
                 await expectFromToken(control, 'border-top-left-radius', '--radius-sm', label);
                 await expectFromToken(control, 'padding-top', '--space-xs', label);
-                await expectFromToken(control, 'padding-inline-start', '--space-sm', label);
+                if (testId === 'forms-control-select' && (await browserPage.evaluate(() => CSS.supports('appearance', 'base-select')))) {
+                    // Chromium's own inset inside a list of one line is taken
+                    // off its padding (assets/base.css), so that its text
+                    // starts where a line's does - measured on the pixels by
+                    // the test of where the text of a list starts.
+                    const space = parseFloat(await token(control, 'padding-inline-start', '--space-sm'));
+                    const inset = parseFloat(await token(control, 'padding-inline-start', '--control-list-inset'));
+                    expect(
+                        parseFloat(await computed(control, 'padding-inline-start')),
+                        `padding-inline-start of ${label} is not --space-sm less --control-list-inset`,
+                    ).toBeCloseTo(space - inset, 1);
+                } else {
+                    await expectFromToken(control, 'padding-inline-start', '--space-sm', label);
+                }
 
                 // As wide as the place it was put in: how wide that is, is the
                 // arrangement's business and not the control's.
@@ -367,3 +382,48 @@ test('a control is drawn the same with or without the field around it', async ({
         expect(await computed(alone, property), property).toBe(await computed(inField, property));
     }
 });
+
+/**
+ * The column a control's text starts in, in pixels from its edge: the first
+ * pixel along the middle of the control, past its border, that is painted
+ * apart from its ground. The ground is read in the middle of the control,
+ * where neither the text nor a select's arrow is drawn.
+ *
+ * Read off the pixels because the place in question is the browser's own: a
+ * native select adds a padding of its own inside the one the stylesheet gives
+ * it, and no computed style reports it.
+ */
+async function textStartOf(control: Locator): Promise<number> {
+    const row = await paintedAlong(control);
+    const ground = row[Math.floor(row.length / 2)] ?? [0, 0, 0];
+    const border = await control.evaluate((node) => Math.ceil(parseFloat(getComputedStyle(node).borderLeftWidth)));
+    for (let at = border + 1; at < row.length / 2; at++) {
+        const pixel = row[at] ?? ground;
+        if (Math.max(...pixel.map((channel, index) => Math.abs(channel - (ground[index] ?? 0)))) > 64) {
+            return at;
+        }
+    }
+
+    throw new Error('no text drawn in the first half of the control');
+}
+
+for (const theme of themes) {
+    test(`the text of a list starts where the text of a line does, in ${theme}`, async ({ page: browserPage }) => {
+        await browserPage.goto(page('controls'));
+        await drawIn(browserPage, theme, 'light');
+
+        // A line and a list of the same width holding the same word, one above
+        // the other, made on the page so that nothing else about them differs.
+        await browserPage.evaluate(() => {
+            const column = document.createElement('div');
+            column.style.inlineSize = '20rem';
+            column.innerHTML =
+                '<input data-testid="text-start-line" value="Wm"><select data-testid="text-start-list"><option>Wm</option></select>';
+            document.querySelector('main')?.prepend(column);
+        });
+
+        const line = await textStartOf(browserPage.getByTestId('text-start-line'));
+        const list = await textStartOf(browserPage.getByTestId('text-start-list'));
+        expect(Math.abs(list - line), `a list's text starts at ${list}px, a line's at ${line}px, in ${theme}`).toBeLessThanOrEqual(1);
+    });
+}

@@ -27,91 +27,94 @@
         {include button, label: 'All entries', href: $listUrl, variant: 'quiet', testId: 'cms-menu-back'}
     </div>
 
-    {embed block panel, testId: 'cms-menu-panel'}
-        {block panelTitle}The entry{/block}
+    {* A form is read down a column, so it keeps to the measure while a list runs across (assets/base.css, .l-measure). *}
+    <div class="l-measure l-stack l-stack--loose">
+        {embed block panel, testId: 'cms-menu-panel'}
+            {block panelTitle}The entry{/block}
 
-        {block panelBody}
-            <form n:name="entry" class="l-stack" data-testid="cms-menu-form">
-                {foreach $errors as $error}
-                    {include notice, message: $error, variant: 'danger', testId: 'cms-menu-error'}
-                {/foreach}
+            {block panelBody}
+                <form n:name="entry" class="l-stack" data-testid="cms-menu-form">
+                    {foreach $errors as $error}
+                        {include notice, message: $error, variant: 'danger', testId: 'cms-menu-error'}
+                    {/foreach}
 
-                {* Menu and Label below are required (MenuPresenter::createComponentEntry()); c-field does
-                   not own the element, so this page says so instead of it being read off the control. *}
-                <p class="c-field-required-note">Fields marked with * are required.</p>
+                    {* Menu and Label below are required (MenuPresenter::createComponentEntry()); c-field does
+                       not own the element, so this page says so instead of it being read off the control. *}
+                    <p class="c-field-required-note">Fields marked with * are required.</p>
 
-                {embed block field, testId: 'cms-menu-name-field', required: true}
-                    {block fieldLabel}<label n:name="menu">Menu</label>{/block}
+                    {embed block field, testId: 'cms-menu-name-field', required: true}
+                        {block fieldLabel}<label n:name="menu">Menu</label>{/block}
 
-                    {block fieldControl}
-                        <input n:name="menu" data-testid="cms-menu-name-input">
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <input n:name="menu" data-testid="cms-menu-name-input">
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-menu-label-field', required: true}
-                    {block fieldLabel}<label n:name="label">Label</label>{/block}
+                    {embed block field, testId: 'cms-menu-label-field', required: true}
+                        {block fieldLabel}<label n:name="label">Label</label>{/block}
 
-                    {block fieldControl}
-                        <input n:name="label" data-testid="cms-menu-label-input">
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <input n:name="label" data-testid="cms-menu-label-input">
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-menu-kind-field'}
-                    {block fieldLabel}<label n:name="targetType">Leads to</label>{/block}
+                    {embed block field, testId: 'cms-menu-kind-field'}
+                        {block fieldLabel}<label n:name="targetType">Leads to</label>{/block}
 
-                    {block fieldControl}
-                        <select n:name="targetType" data-testid="cms-menu-kind-input"></select>
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <select n:name="targetType" data-testid="cms-menu-kind-input"></select>
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-menu-page-field'}
-                    {block fieldLabel}<label n:name="page">Which page</label>{/block}
+                    {embed block field, testId: 'cms-menu-page-field'}
+                        {block fieldLabel}<label n:name="page">Which page</label>{/block}
 
-                    {block fieldControl}
-                        <select n:name="page" data-testid="cms-menu-page-input"></select>
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <select n:name="page" data-testid="cms-menu-page-input"></select>
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-menu-target-field'}
-                    {block fieldLabel}<label n:name="target">Address or presenter</label>{/block}
+                    {embed block field, testId: 'cms-menu-target-field'}
+                        {block fieldLabel}<label n:name="target">Address or presenter</label>{/block}
 
-                    {block fieldControl}
-                        <input n:name="target" data-testid="cms-menu-target-input">
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <input n:name="target" data-testid="cms-menu-target-input">
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-menu-parent-field'}
-                    {block fieldLabel}<label n:name="parent">Under</label>{/block}
+                    {embed block field, testId: 'cms-menu-parent-field'}
+                        {block fieldLabel}<label n:name="parent">Under</label>{/block}
 
-                    {block fieldControl}
-                        <select n:name="parent" data-testid="cms-menu-parent-input"></select>
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <select n:name="parent" data-testid="cms-menu-parent-input"></select>
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-menu-position-field'}
-                    {block fieldLabel}<label n:name="position">Position</label>{/block}
+                    {embed block field, testId: 'cms-menu-position-field'}
+                        {block fieldLabel}<label n:name="position">Position</label>{/block}
 
-                    {block fieldControl}
-                        <input n:name="position" data-testid="cms-menu-position-input">
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <input n:name="position" data-testid="cms-menu-position-input">
+                        {/block}
+                    {/embed}
 
-                {embed block field, testId: 'cms-menu-visible-field'}
-                    {block fieldLabel}<label n:name="visible">Shown on the site</label>{/block}
+                    {embed block field, testId: 'cms-menu-visible-field'}
+                        {block fieldLabel}<label n:name="visible">Shown on the site</label>{/block}
 
-                    {block fieldControl}
-                        <input n:name="visible" data-testid="cms-menu-visible-input">
-                    {/block}
-                {/embed}
+                        {block fieldControl}
+                            <input n:name="visible" data-testid="cms-menu-visible-input">
+                        {/block}
+                    {/embed}
 
-                <div class="l-cluster">
-                    <button n:name="send" class="c-button" data-testid="cms-menu-save">Save</button>
+                    <div class="l-cluster">
+                        <button n:name="send" class="c-button" data-testid="cms-menu-save">Save</button>
 
-                    {if !$isNew}
-                        <button n:name="delete" class="c-button c-button--danger" data-testid="cms-menu-delete">Delete this entry</button>
-                    {/if}
-                </div>
-            </form>
-        {/block}
-    {/embed}
+                        {if !$isNew}
+                            <button n:name="delete" class="c-button c-button--danger" data-testid="cms-menu-delete">Delete this entry</button>
+                        {/if}
+                    </div>
+                </form>
+            {/block}
+        {/embed}
+    </div>
 {/block}
