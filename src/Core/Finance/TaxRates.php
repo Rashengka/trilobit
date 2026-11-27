@@ -27,7 +27,8 @@ use Trilobit\Core\Tenancy\Tenancy;
  * here trusts that whoever calls it asked first. Each act asks for its own
  * privilege on Trilobit\Core\Security\Resource::TaxRate - adding, changing and
  * archiving are three rights, not one; restoring an archived rate is the undo
- * of archiving and asks what archiving asks - through
+ * of archiving and asks what archiving asks, and taking rates from a template
+ * is adding them and asks what adding asks - through
  * Trilobit\Core\Security\Doorkeeper, spelled out as the two enums.
  *
  * **A business that has rates has exactly one default, and it is not
@@ -73,6 +74,7 @@ final readonly class TaxRates
         private Doorkeeper $doorkeeper,
         private Tenancy $tenancy,
         private EventDispatcherInterface $dispatcher,
+        private TaxRateTemplates $templates,
     ) {}
 
     public function find(int $id): ?TaxRate
@@ -127,14 +129,98 @@ final readonly class TaxRates
             $added->makeDefault($this->now());
         }
 
-        // Only the default is unique among rates written here, so a refusal is
-        // somebody else's first rate saved in between.
+        // A rate made by hand has no template key, so the default is the only
+        // thing unique about it, and a refusal is somebody else's first rate
+        // saved in between.
         $this->written(function () use ($added): void {
             $this->entityManager->persist($added);
             $this->entityManager->flush();
         }, 'Somebody else added the first rate of this business at the same moment. Look at the rates again and add yours once more.');
 
         return $added;
+    }
+
+    /**
+     * Rates of the templates (TaxRateTemplates), each made a rate of this
+     * business under its template key, after every other and in the order
+     * asked; the first of a business with no rate yet becomes its default, as
+     * add() makes it. All of them are taken or none is.
+     *
+     * **A rate of a template is taken once.** One already among this
+     * business's rates - archived or not - is refused rather than skipped: the
+     * page offers only what adoptable() says, so asking for one is a form
+     * posted by hand or by somebody who read the page before somebody else
+     * took the rate. That two requests cannot both take it is the database's
+     * to hold, by the unique index over the business and the template key
+     * (TaxRate); the one that loses is refused as a TaxRateConflict.
+     *
+     * Taking a rate is adding one, and asks the same right.
+     *
+     * @param list<string> $templateKeys such as `cz.standard`; one asked twice is taken once
+     *
+     * @return list<TaxRate>
+     *
+     * @throws TaxRateRefused
+     */
+    public function adopt(array $templateKeys): array
+    {
+        $this->refuseUnless($this->doorkeeper->mayDo(Resource::TaxRate, Privilege::Add), 'add rates of tax');
+
+        $chosen = [];
+        foreach (array_unique($templateKeys) as $templateKey) {
+            $chosen[] = $this->templates->rate($templateKey)
+                ?? throw new TaxRateRefused(sprintf('No template has a rate called %s.', $templateKey));
+        }
+
+        if ($chosen === []) {
+            throw new TaxRateRefused('Choose at least one rate of the template to add.');
+        }
+
+        $held = $this->adoptedKeys();
+        foreach ($chosen as $rate) {
+            if (in_array($rate->templateKey, $held, true)) {
+                throw new TaxRateRefused(sprintf('%s of %s is among the rates of this business already.', $rate->label, $rate->country));
+            }
+        }
+
+        $now = $this->now();
+        $position = $this->nextPosition();
+        $hasDefault = $this->default() instanceof TaxRate;
+        $adopted = [];
+        foreach ($chosen as $rate) {
+            $made = new TaxRate($this->tenancy->tenant(), $rate->label, $rate->rate, $rate->country, $rate->kind, $position++, $now, $rate->templateKey);
+            if (!$hasDefault && $adopted === []) {
+                $made->makeDefault($now);
+            }
+
+            $adopted[] = $made;
+        }
+
+        $this->written(function () use ($adopted): void {
+            foreach ($adopted as $made) {
+                $this->entityManager->persist($made);
+            }
+
+            $this->entityManager->flush();
+        }, 'Somebody else added rates of this business at the same moment - one of these from the template, or the first rate of all. Look at the rates again and choose once more.');
+
+        return $adopted;
+    }
+
+    /**
+     * The rates of $template this business has not taken yet, in the
+     * template's order - what a page offers to adopt().
+     *
+     * @return list<TemplateRate>
+     */
+    public function adoptable(TaxRateTemplate $template): array
+    {
+        $held = $this->adoptedKeys();
+
+        return array_values(array_filter(
+            $template->rates,
+            static fn(TemplateRate $rate): bool => !in_array($rate->templateKey, $held, true),
+        ));
     }
 
     /**
@@ -270,8 +356,8 @@ final readonly class TaxRates
 
     /**
      * Runs $write in one transaction, and turns the database refusing it -
-     * the unique index over the default, or the CHECK that the default is not
-     * archived - into a TaxRateConflict saying $conflict. The transaction is
+     * the unique index over the default or over the template key, or the
+     * CHECK that the default is not archived - into a TaxRateConflict saying $conflict. The transaction is
      * rolled back, so nothing of $write is kept, and Doctrine closes the
      * entity manager; see TaxRateConflict for what a caller does then.
      *
@@ -339,6 +425,16 @@ final readonly class TaxRates
         }
 
         return $country;
+    }
+
+    /** @return list<string> the template keys of every rate of this business taken from a template, archived ones included */
+    private function adoptedKeys(): array
+    {
+        $keys = $this->entityManager
+            ->createQuery(sprintf('SELECT r.templateKey FROM %s r WHERE r.templateKey IS NOT NULL', TaxRate::class))
+            ->getSingleColumnResult();
+
+        return array_values(array_filter($keys, is_string(...)));
     }
 
     private function nextPosition(): int

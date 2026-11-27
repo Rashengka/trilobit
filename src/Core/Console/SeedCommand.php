@@ -19,12 +19,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Trilobit\Core\Config\Mode;
 use Trilobit\Core\Domain\Finance\TaxRate;
-use Trilobit\Core\Domain\Finance\TaxRateKind;
-use Trilobit\Core\Domain\Finance\VatRate;
 use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
+use Trilobit\Core\Finance\TaxRateTemplates;
 use Trilobit\Core\Routing\PasswordRoutes;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Grant;
@@ -147,6 +146,7 @@ final class SeedCommand extends Command
         private readonly HostTenants $hosts,
         private readonly Tenancy $tenancy,
         private readonly PasswordLinks $links,
+        private readonly TaxRateTemplates $templates,
         private readonly array $providers = [],
     ) {
         parent::__construct();
@@ -311,23 +311,33 @@ final class SeedCommand extends Command
     /**
      * The rates of tax $business charges: the Czech standard rate, its
      * default, and the reduced one - invented businesses, so the rates of the
-     * country the seed's hosts happen to be read in.
+     * country the seed's hosts happen to be read in - taken from the Czech
+     * template under its keys, so that what the template still offers to add
+     * is its zero rate.
      *
      * Made out of the entity rather than through Trilobit\Core\Finance\
-     * TaxRates, for the reason the people are: the service acts as whoever is
-     * signed in, and a console has nobody. What the service would hold of the
-     * two is held here by hand - the first is the default, and there is one.
-     * **Exit condition:** the templates of rates by country, at which point
-     * the seed takes them from the Czech one instead.
+     * TaxRates::adopt(), for the reason the people are: the service acts as
+     * whoever is signed in, and a console has nobody. What the service would
+     * hold of the two is held here by hand - the first is the default, and
+     * there is one.
      */
     private function taxRatesOf(Tenant $business): void
     {
         $now = new DateTimeImmutable();
 
-        $standard = new TaxRate($business, 'Standard rate', VatRate::ofPercent('21'), 'CZ', TaxRateKind::Standard, 1, $now);
-        $standard->makeDefault($now);
-        $this->entityManager->persist($standard);
-        $this->entityManager->persist(new TaxRate($business, 'Reduced rate', VatRate::ofPercent('12'), 'CZ', TaxRateKind::Reduced, 2, $now));
+        foreach (['cz.standard', 'cz.reduced'] as $position => $templateKey) {
+            $rate = $this->templates->rate($templateKey) ?? throw new LogicException(sprintf(
+                'The Czech template has no rate %s, and the seed takes it from there.',
+                $templateKey,
+            ));
+            $taken = new TaxRate($business, $rate->label, $rate->rate, $rate->country, $rate->kind, $position + 1, $now, $rate->templateKey);
+            if ($position === 0) {
+                $taken->makeDefault($now);
+            }
+
+            $this->entityManager->persist($taken);
+        }
+
         $this->entityManager->flush();
     }
 
@@ -517,7 +527,7 @@ final class SeedCommand extends Command
         $style->writeln(sprintf('  %s answers at %s', self::AMMONITE, implode(', ', self::AMMONITE_HOSTS)));
         $style->writeln(sprintf('  %s answers at %s', self::BELEMNITE, implode(', ', self::BELEMNITE_HOSTS)));
         $style->writeln('');
-        $style->writeln('Each charges the Czech rates of tax: 21 % standard, its default, and 12 % reduced.');
+        $style->writeln('Each charges the Czech rates of tax, taken from the Czech template: 21 % standard, its default, and 12 % reduced.');
         $style->writeln('');
         $style->writeln('Open them at the port this checkout is served on; see "Seeding a working copy" in README.md.');
 

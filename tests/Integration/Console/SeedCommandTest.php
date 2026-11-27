@@ -380,7 +380,8 @@ final class SeedCommandTest extends TestCase
     /**
      * Each business charges the Czech rates: the standard one, its one
      * default, and the reduced one - its own rows, so changing one business's
-     * rate leaves the other's as it was.
+     * rate leaves the other's as it was - taken from the Czech template, so
+     * that the zero rate is what the template still offers.
      */
     public function testEachBusinessChargesTheCzechRatesOfTaxWithTheStandardOneTheDefault(): void
     {
@@ -391,12 +392,12 @@ final class SeedCommandTest extends TestCase
 
             $rates = [];
             foreach ($container->getByType(TaxRates::class)->offered() as $rate) {
-                $rates[] = [$rate->name(), $rate->rate()->basisPoints(), $rate->country(), $rate->kind(), $rate->isDefault()];
+                $rates[] = [$rate->name(), $rate->rate()->basisPoints(), $rate->country(), $rate->kind(), $rate->isDefault(), $rate->templateKey()];
             }
 
             self::assertSame([
-                ['Standard rate', 2100, 'CZ', TaxRateKind::Standard, true],
-                ['Reduced rate', 1200, 'CZ', TaxRateKind::Reduced, false],
+                ['Standard rate', 2100, 'CZ', TaxRateKind::Standard, true, 'cz.standard'],
+                ['Reduced rate', 1200, 'CZ', TaxRateKind::Reduced, false, 'cz.reduced'],
             ], $rates, $name);
         }
     }

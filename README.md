@@ -1318,6 +1318,50 @@ is one, so the whole of the section reaches them, as the whole administration
 does. Any right on the rates opens the section's signpost, and somebody holding
 none is refused both pages and shown no way into them on the bar.
 
+#### Templates of rates of tax
+
+A business does not have to type its country's rates: `/admin/finance/tax-rates/templates`
+offers the rates of a country as a template, and `/admin/finance/tax-rates/templates/cz`
+the Czech ones, with the day they were last checked and where. The chosen rates
+become rates of the business (`TaxRates::adopt()`), named by the template's
+label and carrying its country, kind and percent; from then on each is a rate
+like any other, changed or archived on its own page, and a template changed
+later does not change it. Taking rates is adding them and asks `add`.
+
+A template is data of the application, not of a business: one NEON file per
+country in `src/Core/Finance/templates/`, beside
+`Trilobit\Core\Finance\TaxRateTemplates`, which reads them - templates are
+shipped for AT, CZ, DE, HU, PL and SK.
+
+```neon
+country: CZ               # the two capital letters the file is named after: cz.neon
+verifiedAt: 2026-11-27    # the day the rates were last checked against the sources
+sources:                  # where they can be checked, each an https address
+	- https://www.zakonyprolidi.cz/cs/2004-235
+rates:                    # each by a key of its own: small letters and digits, a hyphen between words
+	standard: {kind: standard, percent: 21, label: Standard rate}
+	reduced: {kind: reduced, percent: 12, label: Reduced rate}
+```
+
+`kind` is one of the kinds above, `percent` any rate `VatRate` takes - `4.9`
+is 490 basis points - and `label` what the rate is called once taken; a label
+holding parentheses is written in quotes, or NEON reads it as something else.
+A file that says anything wrongly is refused whole when it is read, and the
+tests read every shipped file the same way.
+
+**A rate of a template is taken once per business.** It is kept under its
+template key - the country in small letters and the rate's key,
+`cz.standard` - which says which rate of the country it is and never its
+percent, so it stays when the law changes the number. The page offers only the
+rates the business has not taken, archived ones counted as taken, and a key is
+unique within a business in the database (`uniq_tax_rate_template`), so two
+people taking the same rate at once cannot both: the second is refused with a
+sentence, and nothing of it is kept. Taken rates follow the rule of every
+other: the first rate of a business becomes its default, and a business that
+has one keeps it. On a working copy, `app:seed` takes the Czech standard and
+reduced rates from the Czech template, so the zero rate is what it still
+offers.
+
 ## Who may do what
 
 Every page of the administration is behind a declaration saying who may open
@@ -2138,7 +2182,7 @@ bin/trilobit app:seed
 | `ammonite-finance@example.com` | holds Ammonite Bikes' own `finance` role - seeing, adding, changing and archiving its rates of tax, each by name, and nothing else - so the bar shows the money matters and neither the content nor the people |
 | `ammonite-invited@example.com` | added to Ammonite Bikes as an onlooker and not signed in yet: no password, and the link that sets one printed under Invitations - nothing is sent |
 | `belemnite-editor@example.com` | holds Belemnite Books' own `editor` role, which under the same code means something narrower: reading and correcting the content |
-| rates of tax | in each business: the Czech standard rate, 21 % and the default, and the reduced rate, 12 %, both with country `CZ` |
+| rates of tax | in each business: the Czech standard rate, 21 % and the default, and the reduced rate, 12 %, both taken from the Czech template - so its zero rate is still offered there |
 | content, with `Cms` switched on | in each business: a page at `/about` carrying the business's name, a Help category with two pages filed under it, a draft that answers 404, a main menu with an entry holding two others, and enough further pages that the list of pages runs past its first page |
 | `ammonite-cataloguer@example.com`, `belemnite-cataloguer@example.com`, with `Shop` switched on | each holds the business's own `catalogue` role - the catalogue's role in between: viewing, adding, editing and deleting products, and not changing what any of them costs, which the form shows them without letting them change it |
 | catalogue, with `Shop` switched on | in each business: the categories Bikes - with Mountain, Road and Gravel bikes under it - Parts and accessories, and Sale; 24 products carrying the business's name, enough that the list of products runs past its first page; one filed in two categories with its permalink in the first, one with its permalink in the second; a draft; prices at 21 %, 12 % and no tax, and one product without an SKU; pictures drawn by the seed on five bikes, two on Ridge 29, taken in through the media library |

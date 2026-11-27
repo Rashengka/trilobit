@@ -61,10 +61,12 @@ final class AdminRoutes implements RouteProvider
         $routes->addRoute(self::PEOPLE_PATH . '/add', 'Core:Admin:People:add');
         $routes->addRoute(self::PEOPLE_PATH . '/<id \d+>', 'Core:Admin:People:person');
         // The section's signpost, and its rates of tax - the form for a new
-        // one before the page that takes an identifier, as above.
+        // one and the templates by country before the page that takes an
+        // identifier, as above.
         $routes->addRoute(self::FINANCE_PATH, 'Core:Finance:Signpost:default');
         $routes->addRoute(self::FINANCE_PATH . '/tax-rates', 'Core:Finance:TaxRates:default');
         $routes->addRoute(self::FINANCE_PATH . '/tax-rates/add', 'Core:Finance:TaxRates:add');
+        $routes->addRoute(self::FINANCE_PATH . '/tax-rates/templates[/<country [a-z]{2}>]', 'Core:Finance:TaxRates:templates');
         $routes->addRoute(self::FINANCE_PATH . '/tax-rates/<id \d+>', 'Core:Finance:TaxRates:edit');
         $routes->addRoute(self::INSTALLATION_PATH, 'Core:Installation:Signpost:default');
         $routes->addRoute(self::INSTALLATION_PATH . '/businesses', 'Core:Installation:Businesses:default');

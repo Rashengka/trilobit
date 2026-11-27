@@ -155,6 +155,7 @@ final class EveryAdministrationViewIsGatedTest extends TestCase
                 'Core/Presentation/Finance/TaxRatesPresenter.php: add',
                 'Core/Presentation/Finance/TaxRatesPresenter.php: default',
                 'Core/Presentation/Finance/TaxRatesPresenter.php: edit',
+                'Core/Presentation/Finance/TaxRatesPresenter.php: templates',
                 // The other administration: the section of the installation
                 // itself, which is a directory of its own rather than two more
                 // files beside the pages of a business's administration - see

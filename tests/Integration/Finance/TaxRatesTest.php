@@ -9,6 +9,8 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\DriverException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Event\OnFlushEventArgs;
+use Doctrine\ORM\Events;
 use Nette\DI\Container;
 use Nette\Security\Passwords;
 use Nette\Security\User as SignedIn;
@@ -22,8 +24,11 @@ use Trilobit\Core\Domain\Tenancy\Membership;
 use Trilobit\Core\Domain\Tenancy\Tenant;
 use Trilobit\Core\Domain\User\Role;
 use Trilobit\Core\Domain\User\User;
+use Trilobit\Core\Finance\TaxRateConflict;
 use Trilobit\Core\Finance\TaxRateRefused;
 use Trilobit\Core\Finance\TaxRates;
+use Trilobit\Core\Finance\TaxRateTemplates;
+use Trilobit\Core\Finance\TemplateRate;
 use Trilobit\Core\Security\Accounts;
 use Trilobit\Core\Security\Grant;
 use Trilobit\Core\Security\PermissionStructure;
@@ -312,6 +317,169 @@ final class TaxRatesTest extends TestCase
 
         $rate = $this->connection()->fetchAssociative('SELECT name, rate, is_default FROM core_tax_rate WHERE id = ?', [$theirs]);
         self::assertSame(['name' => 'Their standard rate', 'rate' => 2300, 'is_default' => 1], $rate);
+    }
+
+    /**
+     * Rates taken from a template are the business's like any other, carrying
+     * the template's label, country, kind and percent and the key they were
+     * taken under; the first of a business with no rate yet is its default.
+     */
+    public function testRatesAdoptedFromATemplateAreTheBusinesssWithTheirKeys(): void
+    {
+        $this->signIn(self::KEEPER);
+
+        $adopted = $this->rates()->adopt(['cz.standard', 'cz.zero']);
+
+        self::assertSame(['Standard rate', 'Zero rate (books and the like)'], $this->namesOf($adopted));
+        $rows = $this->connection()->fetchAllAssociative(
+            'SELECT r.name, r.rate, r.country, r.kind, r.template_key, r.is_default FROM core_tax_rate r JOIN core_tenant t ON t.id = r.tenant_id WHERE t.name = ? ORDER BY r.position',
+            ['Ammonite Bikes'],
+        );
+        self::assertSame([
+            ['name' => 'Standard rate', 'rate' => 2100, 'country' => 'CZ', 'kind' => 'standard', 'template_key' => 'cz.standard', 'is_default' => 1],
+            ['name' => 'Zero rate (books and the like)', 'rate' => 0, 'country' => 'CZ', 'kind' => 'zero', 'template_key' => 'cz.zero', 'is_default' => 0],
+        ], $rows);
+    }
+
+    /** A business that has a default keeps it: adopting is adding, and adding does not move the default. */
+    public function testAdoptingDoesNotMoveTheDefault(): void
+    {
+        $this->signIn(self::KEEPER);
+        $own = $this->rates()->add('Our own rate', VatRate::ofPercent('15'), null, null);
+
+        $this->rates()->adopt(['sk.standard']);
+
+        self::assertSame([$own->id()], $this->defaultsOfThisBusiness());
+    }
+
+    /**
+     * A rate taken from a template once is not offered again, archived or
+     * not, and taking it again - a form posted by hand - is refused with
+     * nothing written; the same key twice in one request is one rate.
+     */
+    public function testARateAdoptedOnceIsNotOfferedOrAdoptedAgain(): void
+    {
+        $this->signIn(self::KEEPER);
+        $templates = $this->container()->getByType(TaxRateTemplates::class);
+        $czech = $templates->of('CZ') ?? self::fail('there is no Czech template');
+
+        $this->rates()->adopt(['cz.standard', 'cz.reduced', 'cz.reduced']);
+        self::assertSame(['cz.zero'], $this->keysOf($this->rates()->adoptable($czech)));
+
+        $reduced = $this->connection()->fetchOne('SELECT id FROM core_tax_rate WHERE template_key = ?', ['cz.reduced']);
+        self::assertIsNumeric($reduced);
+        $this->rates()->archive((int) $reduced);
+        self::assertSame(['cz.zero'], $this->keysOf($this->rates()->adoptable($czech)), 'an archived rate is offered again');
+
+        $this->assertRefused(fn(): array => $this->rates()->adopt(['cz.zero', 'cz.reduced']));
+        self::assertSame(['cz.reduced', 'cz.standard'], $this->templateKeysOfThisBusiness());
+    }
+
+    /** What is asked for is a rate of a template or nothing is taken at all. */
+    public function testAKeyOfNoTemplateIsRefusedAndNothingIsAdopted(): void
+    {
+        $this->signIn(self::KEEPER);
+
+        $this->assertRefused(fn(): array => $this->rates()->adopt(['cz.standard', 'cz.nothing']));
+        $this->assertRefused(fn(): array => $this->rates()->adopt([]));
+
+        self::assertSame([], $this->templateKeysOfThisBusiness());
+    }
+
+    /** Another business's rates taken from a template are its own: a key is unique within a business, not across them. */
+    public function testTwoBusinessesAdoptTheSameRateEach(): void
+    {
+        $this->signIn(self::KEEPER);
+        $this->connection()->executeStatement("UPDATE core_tax_rate SET template_key = 'cz.standard' WHERE name = ?", ['Their standard rate']);
+
+        $this->rates()->adopt(['cz.standard']);
+
+        self::assertSame(['cz.standard'], $this->templateKeysOfThisBusiness());
+    }
+
+    /**
+     * That a business holds a rate of a template once is the database's to
+     * hold, so the same key written twice past the service is refused.
+     */
+    public function testTheDatabaseRefusesARateOfOneTemplateKeyTwice(): void
+    {
+        $this->signIn(self::KEEPER);
+        $this->rates()->adopt(['cz.standard']);
+        $other = $this->rates()->add('Our own rate', VatRate::ofPercent('15'), null, null);
+
+        $this->expectException(UniqueConstraintViolationException::class);
+        $this->connection()->executeStatement("UPDATE core_tax_rate SET template_key = 'cz.standard' WHERE id = ?", [$other->id()]);
+    }
+
+    /**
+     * Somebody else takes the same rate between this request reading what is
+     * offered and writing it: the database refuses the second, and the
+     * refusal is a sentence, with nothing of this request kept.
+     */
+    public function testARateAdoptedMeanwhileBySomebodyElseIsRefusedInASentence(): void
+    {
+        $this->signIn(self::KEEPER);
+        $tenant = $this->connection()->fetchOne('SELECT id FROM core_tenant WHERE name = ?', ['Ammonite Bikes']);
+        $meanwhile = new class ($this->connection(), is_numeric($tenant) ? (int) $tenant : 0) {
+            private bool $done = false;
+
+            public function __construct(private readonly Connection $connection, private readonly int $tenant) {}
+
+            public function onFlush(OnFlushEventArgs $flush): void
+            {
+                if ($this->done || $flush->getObjectManager()->getUnitOfWork()->getScheduledEntityInsertions() === []) {
+                    return;
+                }
+
+                $this->done = true;
+                $this->connection->executeStatement(
+                    "INSERT INTO core_tax_rate (tenant_id, name, rate, country, kind, position, template_key, is_default, created_at, updated_at) VALUES (?, 'Theirs', 2100, 'CZ', 'standard', 9, 'cz.standard', 0, NOW(), NOW())",
+                    [$this->tenant],
+                );
+            }
+        };
+        $this->container()->getByType(EntityManagerInterface::class)->getEventManager()->addEventListener([Events::onFlush], $meanwhile);
+
+        try {
+            $this->rates()->adopt(['cz.zero', 'cz.standard']);
+            self::fail('the same rate was taken twice');
+        } catch (TaxRateConflict $conflict) {
+            self::assertStringContainsString('at the same moment', $conflict->getMessage());
+        }
+
+        self::assertSame([], $this->templateKeysOfThisBusiness(), 'something of the refused request was kept');
+    }
+
+    /** Adopting is adding a rate, and asks the same right. */
+    public function testWithoutTheRightToAddARateNothingIsAdopted(): void
+    {
+        foreach ([self::VIEWER, self::EDITOR] as $email) {
+            $this->signIn($email);
+            $this->assertRefused(fn(): array => $this->rates()->adopt(['cz.standard']));
+        }
+
+        self::assertSame([], $this->templateKeysOfThisBusiness());
+    }
+
+    /**
+     * @param list<TemplateRate> $rates
+     *
+     * @return list<string>
+     */
+    private function keysOf(array $rates): array
+    {
+        return array_map(static fn(TemplateRate $rate): string => $rate->templateKey, $rates);
+    }
+
+    /** @return list<string> the template keys the first business holds, in their order, read past the mapping */
+    private function templateKeysOfThisBusiness(): array
+    {
+        $keys = $this->connection()->fetchFirstColumn(
+            'SELECT r.template_key FROM core_tax_rate r JOIN core_tenant t ON t.id = r.tenant_id WHERE t.name = ? AND r.template_key IS NOT NULL ORDER BY r.template_key',
+            ['Ammonite Bikes'],
+        );
+
+        return array_map(static fn(mixed $key): string => is_string($key) ? $key : '', $keys);
     }
 
     /** @param callable(): mixed $act */

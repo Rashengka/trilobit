@@ -52,6 +52,7 @@ use Trilobit\Core\Event\Dispatcher;
 use Trilobit\Core\Event\ListenerCollection;
 use Trilobit\Core\Event\ListenerProvider;
 use Trilobit\Core\Finance\TaxRates;
+use Trilobit\Core\Finance\TaxRateTemplates;
 use Trilobit\Core\Mail\Invitations;
 use Trilobit\Core\Mail\Mailers;
 use Trilobit\Core\Media\MediaLibrary;
@@ -268,6 +269,13 @@ final class CoreExtension extends CompilerExtension
         // is registered.
         $builder->addDefinition($this->prefix('taxRates'))
             ->setFactory(TaxRates::class, ['dispatcher' => '@' . $this->prefix('dispatcher')]);
+
+        // The templates of rates of tax by country a business takes rates
+        // from: files of the application's own, beside the class reading them,
+        // like the structure of permissions below - what a country's law sets
+        // is not a deployment's to configure.
+        $builder->addDefinition($this->prefix('taxRateTemplates'))
+            ->setFactory(TaxRateTemplates::class);
 
         $builder->addDefinition($this->prefix('authenticator'))
             ->setFactory(Authenticator::class);

@@ -15,7 +15,11 @@ use Trilobit\Core\Domain\Finance\VatRate;
 use Trilobit\Core\Finance\TaxRateConflict;
 use Trilobit\Core\Finance\TaxRateRefused;
 use Trilobit\Core\Finance\TaxRates;
+use Trilobit\Core\Finance\TaxRateTemplate;
+use Trilobit\Core\Finance\TaxRateTemplates;
+use Trilobit\Core\Finance\TemplateRate;
 use Trilobit\Core\Presentation\Admin\AdminPresenter;
+use Trilobit\Core\Presentation\Component\SignpostLink;
 use Trilobit\Core\Presentation\Form\FormFactory;
 use Trilobit\Core\Security\Needs;
 use Trilobit\Core\Security\Privilege;
@@ -45,6 +49,11 @@ use Trilobit\Core\Security\Resource;
  * manager, so the page is not drawn from it, and the sentence goes with the
  * redirect as a flash message.
  *
+ * **Rates are taken from a template on a page of their own** (`templates`):
+ * first the country, then which of its rates - only those the business has
+ * not taken yet, as Trilobit\Core\Finance\TaxRates::adoptable() says. Taking
+ * them is adding rates, so the page asks what adding one asks.
+ *
  * Archiving, restoring and making a rate the default are each a submit of a
  * form of their own and never a link, as taking a role away is: a link that
  * changes something is a link something else may follow.
@@ -59,10 +68,14 @@ final class TaxRatesPresenter extends AdminPresenter
 
     private ?TaxRate $edited = null;
 
+    /** The template whose rates the `templates` page offers, once a country is chosen. */
+    private ?TaxRateTemplate $chosen = null;
+
     public function __construct(
         private readonly TaxRates $rates,
         private readonly TaxRateListingFactory $listings,
         private readonly FormFactory $forms,
+        private readonly TaxRateTemplates $templates,
     ) {
         parent::__construct();
     }
@@ -71,6 +84,21 @@ final class TaxRatesPresenter extends AdminPresenter
     public function actionAdd(): void
     {
         $this->setView('edit');
+    }
+
+    /**
+     * The templates of rates by country: which country, and - once it is
+     * chosen - which of its rates to add. A country with no template is not
+     * found.
+     */
+    #[Needs(Resource::TaxRate, Privilege::Add)]
+    public function actionTemplates(?string $country = null): void
+    {
+        if ($country === null) {
+            return;
+        }
+
+        $this->chosen = $this->templates->of($country) ?? $this->error('There is no template of the rates of tax of that country.');
     }
 
     /**
@@ -101,11 +129,55 @@ final class TaxRatesPresenter extends AdminPresenter
         $template->lead = 'The rates of tax this business charges. The default is the one a new price starts with; '
             . 'an archived rate is kept for whatever is priced at it, and offered for nothing new.';
         $template->sectionUrl = $this->link('Signpost:default');
-        $template->addUrl = $this->getUser()->isAllowed(Resource::TaxRate, Privilege::Add) ? $this->link('add') : '';
+        $mayAdd = $this->getUser()->isAllowed(Resource::TaxRate, Privilege::Add);
+        $template->addUrl = $mayAdd ? $this->link('add') : '';
+        $template->fromTemplateUrl = $mayAdd ? $this->link('templates') : '';
 
         // Made before the template is drawn, not by it: an answer to Naja
         // holds the snippets of the controls that exist by then.
         $this->getComponent(self::LIST);
+    }
+
+    public function renderTemplates(): void
+    {
+        $template = $this->template();
+        $template->listUrl = $this->link('default');
+        $template->sectionUrl = $this->link('Signpost:default');
+        $chosen = $this->chosen;
+
+        if (!$chosen instanceof TaxRateTemplate) {
+            $template->pageTitle = 'Tax rates from a template';
+            $template->headline = 'Tax rates from a template';
+            $template->lead = 'Choose the country whose rates of tax to add to this business. '
+                . 'Each template says when its rates were last checked, and where.';
+            $template->countries = array_map(fn(TaxRateTemplate $each): SignpostLink => new SignpostLink(
+                $each->country,
+                $this->link('templates', ['country' => strtolower($each->country)]),
+                sprintf(
+                    '%s; checked %s',
+                    implode(', ', array_map(static fn(TemplateRate $rate): string => $rate->rate->written(), $each->rates)),
+                    $each->verifiedAt->format('j F Y'),
+                ),
+                'tax-rate-template-' . strtolower($each->country),
+            ), $this->templates->all());
+
+            return;
+        }
+
+        $adoptable = $this->rates->adoptable($chosen);
+        $template->pageTitle = sprintf('Tax rates of %s', $chosen->country);
+        $template->headline = sprintf('Tax rates of %s', $chosen->country);
+        $template->lead = 'Choose the rates to add to this business. Each becomes a rate of its own, '
+            . 'changed or archived like any other; a change to the template later does not change it.';
+        $template->templatesUrl = $this->link('templates');
+        $template->verifiedAt = $chosen->verifiedAt->format('j F Y');
+        $template->sources = $chosen->sources;
+        $offered = array_map(static fn(TemplateRate $rate): string => $rate->templateKey, $adoptable);
+        $template->mayAdopt = $offered !== [];
+        $template->adopted = array_values(array_map(
+            static fn(TemplateRate $rate): string => $rate->written(),
+            array_filter($chosen->rates, static fn(TemplateRate $rate): bool => !in_array($rate->templateKey, $offered, true)),
+        ));
     }
 
     public function renderEdit(): void
@@ -199,6 +271,29 @@ final class TaxRatesPresenter extends AdminPresenter
         return $form;
     }
 
+    /** The rates of the chosen template this business has not taken yet, taken. */
+    #[Requires(actions: ['templates'])]
+    protected function createComponentAdopt(): Form
+    {
+        $chosen = $this->chosen ?? $this->error('Rates are taken from a template on the page of its country.');
+
+        $offered = [];
+        foreach ($this->rates->adoptable($chosen) as $rate) {
+            $offered[$rate->templateKey] = sprintf('%s (%s)', $rate->written(), strtolower($rate->kind->label()));
+        }
+
+        $form = $this->forms->createVertical();
+        $form->getElementPrototype()->setAttribute('data-testid', 'tax-rate-template-form');
+        $form->addCheckboxList('rates', 'Rates to add', $offered)
+            ->setRequired('Choose at least one rate of the template to add.')
+            ->setHtmlAttribute('data-testid', 'tax-rate-template-rate');
+        $form->addSubmit('adopt', 'Add the chosen rates')->setHtmlAttribute('data-testid', 'tax-rate-template-submit');
+
+        $form->onSuccess[] = $this->adopt(...);
+
+        return $form;
+    }
+
     /** The rate shown, made the business's default. */
     #[Requires(actions: ['edit'])]
     protected function createComponentDefault(): Form
@@ -274,6 +369,32 @@ final class TaxRatesPresenter extends AdminPresenter
 
             return;
         }
+
+        $this->redirect('default');
+    }
+
+    private function adopt(Form $form): void
+    {
+        $values = $form->getValues('array');
+        $chosen = is_array($values['rates'] ?? null) ? array_values(array_filter($values['rates'], is_string(...))) : [];
+
+        try {
+            $adopted = $this->rates->adopt($chosen);
+        } catch (TaxRateConflict $conflict) {
+            $this->flashMessage($conflict->getMessage(), 'danger');
+            $this->redirect('this');
+        } catch (TaxRateRefused $refused) {
+            $form->addError($refused->getMessage());
+
+            return;
+        }
+
+        $labels = implode(', ', array_map(static fn(TaxRate $rate): string => $rate->label(), $adopted));
+        $this->flashMessage(match (true) {
+            $adopted[0]->isDefault() => sprintf('%s added; the first is the default: it is the first rate of this business.', $labels),
+            count($adopted) === 1 => sprintf('%s is added.', $labels),
+            default => sprintf('%s are added.', $labels),
+        });
 
         $this->redirect('default');
     }

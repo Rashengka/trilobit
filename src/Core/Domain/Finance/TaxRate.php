@@ -69,9 +69,6 @@ class TaxRate
     #[ORM\Column]
     private int $rate;
 
-    #[ORM\Column(length: self::MAX_TEMPLATE_KEY_LENGTH, nullable: true)]
-    private ?string $templateKey = null;
-
     /**
      * The CHECK is written in the column's definition because that is where
      * the schema comparison generates one from; it is not compared afterwards,
@@ -116,6 +113,9 @@ class TaxRate
         private int $position,
         #[ORM\Column]
         private DateTimeImmutable $createdAt,
+        /** Which rate of a template it was taken from, `cz.standard`; null for a rate made by hand. */
+        #[ORM\Column(length: self::MAX_TEMPLATE_KEY_LENGTH, nullable: true)]
+        private ?string $templateKey = null,
     ) {
         $this->rate = $rate->basisPoints();
         $this->updatedAt = $createdAt;

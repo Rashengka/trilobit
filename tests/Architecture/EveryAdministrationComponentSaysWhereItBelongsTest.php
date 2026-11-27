@@ -108,6 +108,7 @@ final class EveryAdministrationComponentSaysWhereItBelongsTest extends TestCase
                 'Core/Presentation/Admin/PeoplePresenter.php: createComponentResend()',
                 'Core/Presentation/Admin/PeoplePresenter.php: createComponentRole()',
                 'Core/Presentation/Admin/SignPresenter.php: createComponentSignIn()',
+                'Core/Presentation/Finance/TaxRatesPresenter.php: createComponentAdopt()',
                 'Core/Presentation/Finance/TaxRatesPresenter.php: createComponentArchive()',
                 'Core/Presentation/Finance/TaxRatesPresenter.php: createComponentDefault()',
                 'Core/Presentation/Finance/TaxRatesPresenter.php: createComponentRate()',

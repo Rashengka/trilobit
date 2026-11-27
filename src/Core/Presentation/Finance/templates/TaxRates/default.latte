@@ -5,8 +5,9 @@
  * Trilobit\Core\Presentation\Finance\TaxRateListing, whose rows are drawn by
  * ../TaxRateListing.latte.
  *
- * The way to add a rate is drawn only for whoever may; the form behind it
- * asks again all the same.
+ * The ways to add a rate - by hand, or from a template of a country's rates -
+ * are drawn only for whoever may; the forms behind them ask again all the
+ * same.
  *}
 
 {import '../../../components/page-heading.latte'}
@@ -25,6 +26,10 @@
 
         {if $addUrl !== ''}
             {include button, label: 'Add a rate', href: $addUrl, testId: 'tax-rates-add'}
+        {/if}
+
+        {if $fromTemplateUrl !== ''}
+            {include button, label: 'Add from a template', href: $fromTemplateUrl, variant: 'quiet', testId: 'tax-rates-from-template'}
         {/if}
     </div>
 

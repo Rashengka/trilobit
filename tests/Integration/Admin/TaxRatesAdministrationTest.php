@@ -436,6 +436,127 @@ final class TaxRatesAdministrationTest extends TestCase
         self::assertSame([$this->rates['Standard rate']], $this->idsWhere('archived_at IS NOT NULL'));
     }
 
+    public function testTheTemplatesHaveAddressesOfTheirOwn(): void
+    {
+        self::assertSame([self::RATES, 'templates'], $this->routed('/admin/finance/tax-rates/templates'));
+        self::assertSame([self::RATES, 'templates'], $this->routed('/admin/finance/tax-rates/templates/cz'));
+        self::assertSame('/admin/finance/tax-rates/templates/at', $this->linkTo('templates', ['country' => 'at']));
+    }
+
+    /**
+     * Adding from a template is adding a rate: the way to it is drawn only for
+     * whoever may add one, and somebody who may only see the rates is refused
+     * its page - and the form posted to it - by the gate.
+     */
+    public function testTheTemplatesAreOfferedOnlyToWhoeverMayAddARate(): void
+    {
+        $this->signIn(self::KEEPER);
+        $list = $this->pageOf($this->request(self::RATES, 'default'));
+        self::assertSame('/admin/finance/tax-rates/templates', $list->querySelector('[data-testid="tax-rates-from-template"]')?->getAttribute('href'));
+
+        foreach ([self::VIEWER, self::ARCHIVER] as $email) {
+            $this->signIn($email);
+            $list = $this->pageOf($this->request(self::RATES, 'default'));
+            self::assertNull($list->querySelector('[data-testid="tax-rates-from-template"]'), $email . ' is offered the templates');
+            $this->assertRefusedByTheGate($this->request(self::RATES, 'templates'));
+            $this->assertRefusedByTheGate($this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], ['rates' => ['cz.zero'], 'adopt' => 'Add the chosen rates']));
+        }
+
+        self::assertSame([], $this->templateKeysHere());
+    }
+
+    /** The page of the templates leads to each country's, and says when each was checked. */
+    public function testTheTemplatesPageLeadsToEveryCountry(): void
+    {
+        $this->signIn(self::KEEPER);
+
+        $page = $this->pageOf($this->request(self::RATES, 'templates'));
+
+        $addresses = [];
+        foreach ($page->querySelectorAll('[data-testid="tax-rate-templates"] a') as $link) {
+            $addresses[] = (string) $link->getAttribute('href');
+        }
+
+        self::assertSame(
+            array_map(static fn(string $country): string => '/admin/finance/tax-rates/templates/' . $country, ['at', 'cz', 'de', 'hu', 'pl', 'sk']),
+            $addresses,
+        );
+        self::assertNull($page->querySelector('[data-testid="tax-rate-template-form"]'), 'a form is drawn before a country is chosen');
+    }
+
+    /**
+     * A country's rates are offered with where they come from and when they
+     * were checked; the chosen ones are added to the business's rates with
+     * the key of the template, and are offered no more.
+     */
+    public function testRatesOfACountryAreAdoptedFromItsTemplateAndOfferedNoMore(): void
+    {
+        $this->signIn(self::KEEPER);
+
+        $page = $this->pageOf($this->request(self::RATES, 'templates', ['country' => 'cz']));
+        self::assertSame(['cz.standard', 'cz.reduced', 'cz.zero'], $this->offeredOn($page));
+        self::assertStringContainsString('27 November 2026', $this->textOf($page, 'tax-rate-template-verified'));
+        $sources = [];
+        foreach ($page->querySelectorAll('[data-testid="tax-rate-template-sources"] a') as $source) {
+            $sources[] = (string) $source->getAttribute('href');
+        }
+
+        self::assertSame(['https://www.zakonyprolidi.cz/cs/2004-235', 'https://www.zakonyprolidi.cz/cs/2026-180'], $sources);
+
+        $response = $this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], [
+            'rates' => ['cz.zero'],
+            'adopt' => 'Add the chosen rates',
+        ]);
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        $row = $this->connection()->fetchAssociative('SELECT name, rate, country, kind, is_default FROM core_tax_rate WHERE template_key = ?', ['cz.zero']);
+        self::assertSame(['name' => 'Zero rate (books and the like)', 'rate' => 0, 'country' => 'CZ', 'kind' => 'zero', 'is_default' => 0], $row);
+
+        $page = $this->pageOf($this->request(self::RATES, 'templates', ['country' => 'cz']));
+        self::assertSame(['cz.standard', 'cz.reduced'], $this->offeredOn($page));
+        self::assertStringContainsString('Zero rate (books and the like)', $this->textOf($page, 'tax-rate-template-adopted'));
+    }
+
+    /**
+     * A rate that is not offered - taken already, or of no template - posted
+     * by hand is not taken, and neither is nothing: the form says why.
+     */
+    public function testOnlyARateOfferedIsTakenFromTheForm(): void
+    {
+        $this->signIn(self::KEEPER);
+        $this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], ['rates' => ['cz.zero'], 'adopt' => 'Add the chosen rates']);
+
+        foreach ([['cz.zero'], ['cz.nothing'], ['sk.standard'], []] as $posted) {
+            $response = $this->request(self::RATES, 'templates', ['country' => 'cz', 'do' => 'adopt-submit'], ['rates' => $posted, 'adopt' => 'Add the chosen rates']);
+            self::assertInstanceOf(TextResponse::class, $response, implode(', ', $posted) . ' was taken');
+            self::assertStringContainsString('Choose at least one rate', $this->textOf($this->pageOf($response), 'tax-rate-template-form'));
+        }
+
+        self::assertSame(['cz.zero'], $this->templateKeysHere());
+    }
+
+    /** Every rate of a template taken, the page says so and draws no form. */
+    public function testATemplateWhoseEveryRateIsTakenOffersNothing(): void
+    {
+        $this->signIn(self::KEEPER);
+        $this->request(self::RATES, 'templates', ['country' => 'de', 'do' => 'adopt-submit'], [
+            'rates' => ['de.standard', 'de.reduced', 'de.zero'],
+            'adopt' => 'Add the chosen rates',
+        ]);
+
+        $page = $this->pageOf($this->request(self::RATES, 'templates', ['country' => 'de']));
+
+        self::assertNull($page->querySelector('[data-testid="tax-rate-template-form"]'));
+        self::assertStringContainsString('Every rate of this template is among the rates of this business', $this->textOf($page, 'tax-rate-template-nothing'));
+    }
+
+    public function testACountryWithNoTemplateIsNotFound(): void
+    {
+        $this->signIn(self::KEEPER);
+
+        $this->assertNotFound(fn(): Response => $this->request(self::RATES, 'templates', ['country' => 'xx']), 'templates');
+    }
+
     /** A form of a rate's page is not there on another page, where another gate would stand in front of it. */
     public function testTheFormsOfARateAreTakenOnlyOnItsPage(): void
     {
@@ -491,6 +612,44 @@ final class TaxRatesAdministrationTest extends TestCase
         return array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $ids);
     }
 
+    /** @return list<string> the template keys of the rates $page offers to take, in their order */
+    private function offeredOn(HTMLDocument $page): array
+    {
+        $keys = [];
+        foreach ($page->querySelectorAll('[data-testid="tax-rate-template-form"] input[type="checkbox"]') as $box) {
+            $keys[] = (string) $box->getAttribute('value');
+        }
+
+        return $keys;
+    }
+
+    /** @return list<string> the template keys the first business holds, in their order, read past the mapping */
+    private function templateKeysHere(): array
+    {
+        $keys = $this->connection()->fetchFirstColumn(
+            'SELECT r.template_key FROM core_tax_rate r JOIN core_tenant t ON t.id = r.tenant_id WHERE t.name = ? AND r.template_key IS NOT NULL ORDER BY r.template_key',
+            ['Ammonite Bikes'],
+        );
+
+        return array_map(static fn(mixed $key): string => is_string($key) ? $key : '', $keys);
+    }
+
+    /**
+     * The address the router writes for an action of the rates' pages.
+     *
+     * @param array<string, string> $parameters
+     */
+    private function linkTo(string $action, array $parameters): string
+    {
+        $url = $this->container()->getByType(Router::class)->constructUrl(
+            ['presenter' => self::RATES, 'action' => $action, ...$parameters],
+            new UrlScript('http://localhost/', '/'),
+        );
+        self::assertIsString($url, 'the router writes no address for ' . $action);
+
+        return (string) parse_url($url, PHP_URL_PATH);
+    }
+
     /** @return list<string> the addresses the administration bar of $response leads to */
     private function menuOf(Response $response): array
     {
@@ -512,7 +671,7 @@ final class TaxRatesAdministrationTest extends TestCase
 
     /**
      * @param array<string, string> $parameters
-     * @param array<string, string> $post
+     * @param array<string, string|list<string>> $post
      */
     private function request(string $presenter, string $action, array $parameters = [], array $post = []): Response
     {
