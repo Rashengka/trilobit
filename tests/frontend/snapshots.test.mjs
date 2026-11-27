@@ -19,6 +19,8 @@ import {
     indexPage,
     refusal,
     slugOf,
+    SCROLLBAR_ROOM,
+    widthRefusal,
 } from '../snapshots/matrix.mjs';
 
 test('a path is two themes, two modes and two widths in each browser', () => {
@@ -104,4 +106,23 @@ test('a click that leaves the page is a failure, since the picture would be of a
     assert.equal(clickRefusal('/x', '#menu', 'http://h/x', 'http://h/x#open'), null);
     assert.match(clickRefusal('/x', '#menu', 'http://h/x', 'http://h/y'), /clicking #menu on \/x went on to http:\/\/h\/y/);
     assert.match(clickRefusal('/x', '#menu', 'http://h/x', 'http://h/x?page=2'), /went on to/);
+});
+
+test('a page laid out in a window of another width than the one asked for is a failure, not a picture filed under that width', () => {
+    // A window of the width asked for, with or without a classic scrollbar taking its room.
+    assert.equal(widthRefusal('/x', 'firefox', 390, { window: 390, layout: 390 }), null);
+    assert.equal(widthRefusal('/x', 'firefox', 390, { window: 390, layout: 375 }), null);
+    assert.equal(widthRefusal('/x', 'chromium', 1440, { window: 1440, layout: 1425 }), null);
+    assert.equal(widthRefusal('/x', 'chromium', 1440, { window: 1440, layout: 1440 - SCROLLBAR_ROOM }), null);
+
+    // What a run took as a picture at 390 and at 1440: Firefox's own window, not the one asked for.
+    assert.match(
+        widthRefusal('/_styleguide/forms/controls', 'firefox', 390, { window: 1152, layout: 1137 }),
+        /\/_styleguide\/forms\/controls was laid out in firefox in a window 1152px wide \(1137px beside the scrollbar\), not 390px/,
+    );
+    assert.match(widthRefusal('/x', 'firefox', 1440, { window: 1152, layout: 1137 }), /window 1152px wide .*not 1440px/);
+
+    // The window right, the page laid out narrower than any scrollbar explains, or wider than the window.
+    assert.match(widthRefusal('/x', 'chromium', 1440, { window: 1440, layout: 1137 }), /1137px wide beside the scrollbar of a window 1440px wide/);
+    assert.match(widthRefusal('/x', 'chromium', 390, { window: 390, layout: 391 }), /391px wide beside the scrollbar of a window 390px wide/);
 });

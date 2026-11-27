@@ -169,6 +169,37 @@ export function clickRefusal(requested, selector, before, after) {
     return `clicking ${selector} on ${requested} went on to ${after}; the picture would be of another page.`;
 }
 
+/**
+ * The most room a classic scrollbar may take beside the page, in CSS pixels.
+ * Both browsers are told to draw one fifteen pixels wide (matrix.spec.ts); a
+ * few pixels more are allowed for a theme of the toolkit that draws it wider.
+ */
+export const SCROLLBAR_ROOM = 20;
+
+/**
+ * Why a page laid out as $measured cannot be filed under $wanted pixels wide,
+ * or null when it can.
+ *
+ * $measured is read in the page just before the picture: the width of the
+ * window (innerWidth) and the width it lends the document beside a scrollbar
+ * (clientWidth). The window has to be exactly the width asked for, and the
+ * document as wide or up to one scrollbar narrower. A document wider than
+ * that (scrollWidth) is not looked at: a page that overflows is pictured
+ * overflowing, which is what the picture is for. A browser that kept a window
+ * of its own instead of the one it was given would otherwise have its picture
+ * filed under a width it was never taken at.
+ */
+export function widthRefusal(requested, browser, wanted, measured) {
+    if (measured.window !== wanted) {
+        return `${requested} was laid out in ${browser} in a window ${measured.window}px wide (${measured.layout}px beside the scrollbar), not ${wanted}px.`;
+    }
+    if (measured.layout > measured.window || measured.window - measured.layout > SCROLLBAR_ROOM) {
+        return `${requested} was laid out in ${browser} ${measured.layout}px wide beside the scrollbar of a window ${measured.window}px wide; a scrollbar takes at most ${SCROLLBAR_ROOM}px.`;
+    }
+
+    return null;
+}
+
 /** A value as text an HTML page can carry. */
 function escape(value) {
     return String(value)

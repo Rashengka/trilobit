@@ -31,6 +31,12 @@
 // administration redirects to the sign-in page, and that is reported as a
 // failure, never pictured. So is any other redirect, and any status but 200.
 //
+// A picture is taken in a window exactly as wide as its width, with the page
+// as wide or one scrollbar narrower; a page wider than the window is pictured
+// overflowing. A window of another width is given its size once more, and is
+// named in the summary when that was needed; still another width, and the
+// picture fails rather than being filed under a width it was not taken at.
+//
 // --click clicks the first element the selector matches before each picture,
 // to show a menu or a dialog open.
 //
@@ -154,6 +160,9 @@ child.on('exit', (code, signal) => {
     const lines = [`snapshots: ${taken} of ${expected.length} pictures taken, in ${relative(ROOT, out)}/index.html`];
     for (const result of failed) {
         lines.push(`  FAILED  ${result.file}: ${result.error}`);
+    }
+    for (const result of results.filter((result) => result.resized === true && result.error === null)) {
+        lines.push(`  RESIZED ${result.file}: the window was not ${result.width}px wide at first and was given its size again`);
     }
     if (missing.length > 0) {
         lines.push(`  ${missing.length} never reported - see the run's output above for why - first ${missing[0]}`);

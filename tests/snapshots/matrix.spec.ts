@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { test } from '@playwright/test';
 
-import { clickRefusal, combinations, drawnRefusal, fileName, HEIGHTS, refusal } from './matrix.mjs';
+import { clickRefusal, combinations, drawnRefusal, fileName, HEIGHTS, refusal, widthRefusal } from './matrix.mjs';
 import { readRequest, SESSION_FILE } from './request';
 
 /**
@@ -62,12 +62,19 @@ interface Result {
     readonly error: string | null;
     /**
      * The size the page was laid out at, measured in the page just before the
-     * picture: the width the window lends the document beside a classic
-     * scrollbar (clientWidth), and the height of the whole document. A picture
-     * of what a visitor sees is exactly this size. Null when no picture was
+     * picture: the width of the window (innerWidth), the width it lends the
+     * document beside a classic scrollbar (clientWidth), and the height of the
+     * whole document. A picture of what a visitor sees is exactly this size. Null when no picture was
      * taken. tests/snapshots/tool.test.mjs compares it with the PNG.
      */
-    readonly layout: { readonly width: number; readonly height: number } | null;
+    readonly layout: { readonly window: number; readonly width: number; readonly height: number } | null;
+    /**
+     * Whether the window was not the width asked for at first and had to be
+     * given its size again before the picture (widthRefusal in matrix.mjs).
+     * bin/snapshots.mjs names every such picture, so that it shows how often
+     * a browser does it.
+     */
+    readonly resized: boolean;
 }
 
 /**
@@ -99,8 +106,9 @@ for (const combination of combinations()) {
             test(path, async ({ page, context, baseURL }, info) => {
                 const browser = info.project.name;
                 const file = fileName(path, combination, browser);
+                let resized = false;
                 const fail = (error: string): never => {
-                    report({ path, theme, mode, width, browser, file, error, layout: null });
+                    report({ path, theme, mode, width, browser, file, error, layout: null, resized });
                     throw new Error(error);
                 };
 
@@ -158,11 +166,31 @@ for (const combination of combinations()) {
                 }
 
                 await page.evaluate(() => document.fonts.ready.then(() => undefined));
-                const layout = await page.evaluate(() => ({
+                const measure = (): Promise<{ window: number; width: number; height: number; scrolls: boolean }> => page.evaluate(() => ({
+                    window: window.innerWidth,
                     width: document.documentElement.clientWidth,
                     height: document.documentElement.scrollHeight,
                     scrolls: document.documentElement.clientWidth < window.innerWidth,
                 }));
+                // The window has to be the width asked for. A run with
+                // --browser=all once had Firefox lay two pages out in a window
+                // 1152 pixels wide - the window Firefox opens on its own in the
+                // display of bin/e2e-docker.mjs, nine tenths of its 1280 -
+                // rather than at 390 or 1440, and the pictures were filed under
+                // those widths as if they had been taken there. The size is
+                // given once more, and a window still not that wide fails the
+                // picture: it is never filed under a width it was not taken at.
+                let layout = await measure();
+                if (widthRefusal(path, browser, width, { window: layout.window, layout: layout.width }) !== null) {
+                    resized = true;
+                    await page.setViewportSize({ width, height: HEIGHTS[width as keyof typeof HEIGHTS] });
+                    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+                    layout = await measure();
+                }
+                const narrowed = widthRefusal(path, browser, width, { window: layout.window, layout: layout.width });
+                if (narrowed !== null) {
+                    fail(`${narrowed} Setting the size again did not help.`);
+                }
                 await page.screenshot({
                     path: join(request.out, file),
                     fullPage: true,
@@ -192,7 +220,7 @@ for (const combination of combinations()) {
                     ].join('\n'),
                 });
 
-                report({ path, theme, mode, width, browser, file, error: null, layout: { width: layout.width, height: layout.height } });
+                report({ path, theme, mode, width, browser, file, error: null, layout: { window: layout.window, width: layout.width, height: layout.height }, resized });
             });
         }
     });

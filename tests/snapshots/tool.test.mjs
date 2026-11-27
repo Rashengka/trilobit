@@ -12,6 +12,9 @@
 //   - a picture is the page exactly as laid out beside the classic scrollbar,
 //     in both browsers: as wide and as tall as the layout, with its right edge
 //     and its bottom in it (tests/snapshots/fixtures/edges.html);
+//   - every picture says it was taken in a window of its width, with the page
+//     laid out as wide or one scrollbar narrower - in Firefox too, which has a
+//     window of its own to fall back to;
 //   - --sign-in pictures the administration, says nothing on the way that has
 //     the shape of the password app:account prints, and leaves no session
 //     behind - neither in the checkout nor in a container that outlived it.
@@ -30,7 +33,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 
-import { combinations, fileName } from './matrix.mjs';
+import { combinations, fileName, widthRefusal } from './matrix.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -154,6 +157,7 @@ test('a page that answers leaves every picture of its matrix and an index of the
     // because the picture is the claim - a window can have had a scrollbar
     // while the picture was taken without one.
     for (const result of results(out)) {
+        assert.equal(widthRefusal(path, result.browser, result.width, { window: result.layout.window, layout: result.layout.width }), null);
         const scrollbar = result.width - pngWidth(join(out, result.file));
         assert.ok(scrollbar > 0, `${result.file} was taken with no scrollbar taking room (${scrollbar})`);
     }
