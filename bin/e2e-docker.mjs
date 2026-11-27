@@ -156,6 +156,11 @@ const run = [
     // Chrome in the image to use as a channel.
     '--env', 'PLAYWRIGHT_CHANNEL=',
     '--env', `PLAYWRIGHT_BROWSERS=${browser}`,
+    // What bin/snapshots.mjs asks the snapshot matrix for, handed on by name
+    // so that Docker copies the value from this process's environment.
+    ...Object.keys(process.env)
+        .filter((name) => name.startsWith('TRILOBIT_SNAPSHOT_'))
+        .flatMap((name) => ['--env', name]),
     ...(process.stdout.isTTY ? ['--tty'] : []),
     image,
     'sh', '-c', inside, 'e2e-docker', ...passed,

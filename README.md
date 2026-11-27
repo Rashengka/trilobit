@@ -532,6 +532,43 @@ on and holds native code for it, so it is neither read nor written from the
 container; the volume is reinstalled only when the lock file changes. Traces of
 failed tests land in `test-results/` as they do on the host.
 
+`npm run snapshots` takes pictures of named pages for somebody to look at, in
+the same image and against the same server: every page in both themes
+(`atrium`, `ledger`), both modes (`light`, `dark`), at 390 and 1440 pixels
+wide, in Chromium and Firefox - sixteen whole-page pictures per path.
+
+```
+npm run snapshots -- /_styleguide/foundations/colours
+npm run snapshots -- --sign-in /admin/shop/products /_styleguide/components/listing
+npm run snapshots -- --sign-in --browser=chromium --click='[data-testid="admin-account-menu"]' /admin
+```
+
+The theme and the mode are set the way a device keeps them, as the cookies
+`trilobit-theme` and `trilobit-theme-mode`, and read back off `<html>` before
+the picture is taken. Both browsers lay the page out beside Linux's classic
+scrollbar, so a page that scrolls is pictured fifteen pixels narrower than the
+window, as CI draws it - all of the page as laid out beside that scrollbar,
+every edge of it, in both browsers alike. `--sign-in` makes an account of its own,
+`snapshots@example.com`, in this checkout's database and signs in once; the
+account is left there, as the browser suite leaves its own, and its password
+never leaves the process. `--click` clicks the first match of a selector before
+each picture, and a click that leads to another page is a failure. Tracy's bar
+is left out of the pictures.
+
+The pictures go to `var/snapshots/<run>/`, named
+`<path>__<theme>-<mode>-<width>-<browser>.png`, with an `index.html` that lays
+them out as a grid; `<run>` is the time of the run unless `--run=<name>` names
+it. A page that answers anything but 200, redirects - to the sign-in page
+above all - or is drawn in another theme or mode than asked for is a failure: it is named in the summary and as a red cell of the
+index, never pictured, and the command exits non-zero. The specs are in
+`tests/snapshots/`, run by `playwright.snapshots.config.ts`, which
+`npm run e2e` does not read. `npm run snapshots:test` runs the tool itself:
+signed out on the administration, on a page of the style guide in both
+browsers, on a page of its own whose every edge is a colour (to see the picture
+is the layout, no more and no less), and signed in; it needs Docker, as the tool does. It
+uses the container name `npm run e2e:docker` uses, so the two are not run at
+the same time in one checkout.
+
 `npm run test:frontend` runs what is claimed about the build itself under
 Node's own runner, because `composer test` has no Node to run it with.
 
