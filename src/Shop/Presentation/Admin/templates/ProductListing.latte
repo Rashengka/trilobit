@@ -18,8 +18,8 @@
     <tr>
         <th scope="col">Name</th>
         <th scope="col">SKU</th>
-        <th scope="col">Before tax</th>
-        <th scope="col">With tax</th>
+        <th scope="col" class="c-table__number">Before tax</th>
+        <th scope="col" class="c-table__number">With tax</th>
         <th scope="col">State</th>
         <th scope="col">Permalink</th>
     </tr>
@@ -50,9 +50,9 @@
 
         <td data-testid="shop-product-sku-{$row->id}">{$row->sku}</td>
 
-        <td data-testid="shop-product-price-{$row->id}">{$row->price}</td>
+        <td class="c-table__number" data-testid="shop-product-price-{$row->id}">{$row->price}</td>
 
-        <td data-testid="shop-product-gross-{$row->id}">{$row->priceWithVat}</td>
+        <td class="c-table__number" data-testid="shop-product-gross-{$row->id}">{$row->priceWithVat}</td>
 
         <td>
             {include badge,

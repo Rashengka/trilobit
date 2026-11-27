@@ -2533,10 +2533,17 @@
      * another. The sentence saying how much was found is drawn above it by the
      * listing's own template - a live region has to outlive the rows it
      * counts - and it is quieter than they are, like the way out.
+     *
+     * The one column is as wide as the listing and no wider. Left to itself a
+     * grid's column is as wide as what is in it, and a table of rows wider
+     * than a phone then widened the column, the row of pages with it, and the
+     * page: the frame c-table scrolls its rows in never got narrower than the
+     * rows, so it had nothing to scroll.
      */
     .c-listing {
         display: grid;
         gap: var(--space-sm);
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .c-listing__set-aside {
@@ -2994,9 +3001,17 @@
         overflow: hidden;
     }
 
+    /*
+     * Positioned, so that what is positioned inside it is held by it as well.
+     * Text kept for a screen reader (u-visually-hidden) is laid out absolutely,
+     * and with no positioned element around it its place is the document's: a
+     * label at the end of a row wider than the frame stood beyond the frame
+     * and widened the page, which the frame exists to prevent.
+     */
     .c-table__viewport {
         overflow-x: auto;
         overscroll-behavior-inline: contain;
+        position: relative;
     }
 
     /*
@@ -3060,10 +3075,23 @@
         text-decoration: none;
     }
 
-    /* Figures line up under each other when the digits are all one width. */
+    /*
+     * A button in a row - the name the row is opened by - stays on one line.
+     * Broken over two or three it was a tall pill, the shape of a button made
+     * for one line; the room a long name needs is what the frame above
+     * scrolls for.
+     */
+    .c-table__grid .c-button {
+        white-space: nowrap;
+    }
+
+    /* Figures line up under each other when the digits are all one width, and
+       a figure stays one piece: an amount is not read apart from its
+       currency. */
     .c-table__number {
         font-variant-numeric: tabular-nums;
         text-align: end;
+        white-space: nowrap;
     }
 
     /*
