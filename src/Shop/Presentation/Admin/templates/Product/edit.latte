@@ -38,21 +38,22 @@
         {include button, label: 'All products', href: $listUrl, variant: 'quiet', testId: 'shop-product-back'}
     </div>
 
-    {if $bodyDropped}
-        {include notice,
-            message: 'What was sent was larger than this server takes at once, so none of it arrived and nothing was saved. A picture may have at most ' . $largestFile . '.',
-            variant: 'danger',
-            testId: 'shop-product-body-dropped'}
-    {/if}
-
-    {if $noCategory}
-        {include notice,
-            message: 'There is no category to file a product in yet. A product is filed in at least one, and categories are arranged by somebody who arranges the content of the site.',
-            testId: 'shop-product-no-category'}
-    {/if}
-
     {* A form is read down a column, so it keeps to the measure while a list runs across (assets/base.css, .l-measure). *}
+    {* What the page says over the form keeps to it too, so that both start and end in one place. *}
     <div class="l-measure l-stack l-stack--loose">
+        {if $bodyDropped}
+            {include notice,
+                message: 'What was sent was larger than this server takes at once, so none of it arrived and nothing was saved. A picture may have at most ' . $largestFile . '.',
+                variant: 'danger',
+                testId: 'shop-product-body-dropped'}
+        {/if}
+
+        {if $noCategory}
+            {include notice,
+                message: 'There is no category to file a product in yet. A product is filed in at least one, and categories are arranged by somebody who arranges the content of the site.',
+                testId: 'shop-product-no-category'}
+        {/if}
+
         {embed block panel, testId: 'shop-product-panel'}
             {block panelTitle}The product{/block}
 

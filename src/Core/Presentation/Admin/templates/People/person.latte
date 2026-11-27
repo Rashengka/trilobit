@@ -35,12 +35,13 @@
         {include badge, label: $personState, testId: 'people-person-state'}
     </div>
 
-    {if $unchangeable !== null}
-        {include notice, message: $unchangeable, testId: 'people-unchangeable'}
-    {/if}
-
     {* A form is read down a column, so it keeps to the measure while a list runs across (assets/base.css, .l-measure). *}
+    {* What the page says over the form keeps to it too, so that both start and end in one place. *}
     <div class="l-measure l-stack l-stack--loose">
+        {if $unchangeable !== null}
+            {include notice, message: $unchangeable, testId: 'people-unchangeable'}
+        {/if}
+
         {embed block panel, testId: 'people-held-panel'}
             {block panelTitle}What they hold here{/block}
 
